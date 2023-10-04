@@ -5,16 +5,21 @@
 
 eval "$(shellspec - -c) exit 1"
 
+Mock logger
+    echo "$@"
+End
+
 Include ".scripts/_commons.sh"
 
 Describe "_commons.sh"
     BeforeRun 'export DEBUG="*"'
 
-    It "isHelp returns false"
-        When call isHelp
+    It "isHelp returns true when --help flag is provided"
+        When call isHelp --help
 
         The status should be success
-        The output should eq false
-        Dump
+        The output should eq true
+        The error should eq ''
+        # Dump
     End
 End

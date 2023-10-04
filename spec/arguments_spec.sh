@@ -5,19 +5,26 @@
 
 eval "$(shellspec - -c) exit 1"
 
-export line_1="133"
-export line_2="144"
-export line_3="159"
-export line_4="172"
+export line_1="136"
+export line_2="147"
+export line_3="162"
+export line_4="175"
 
-xDescribe '_arguments.sh'
+Describe '_arguments.sh'
 	BeforeRun 'export DEBUG="*"'
 	Include ".scripts/_arguments.sh"
 
+	Mock echoCommon
+		echo "$@"
+	End
+
+	Mock printfCommon
+		printf "$@"
+	End
+
 	It 'On no ARGS_DEFINITION provided, expected fallback to predefined flags'
-		# preserve() { %preserve version:VERSION; }
-		# AfterRun preserve
-		# When run source .scritps/_arguments.sh --help --version --debug --something
+		preserve() { %preserve version:VERSION; }
+		AfterCall preserve
 		When call parse_arguments --help --version --debug --something
 
 		The status should be success
@@ -33,17 +40,15 @@ xDescribe '_arguments.sh'
 		The stderr should include 'Definition: -h,--help -v,--version=:1.0.0 --debug=DEBUG:*'
 		The stderr should include 'ignored: --something'
 
-		Dump
+		# Dump
 	End
-End
 
-xDescribe "next"
-	xIt 'ARGS_DEFINITION set to "-h,--help" produce help env variable with value 1'
+	It 'ARGS_DEFINITION set to "-h,--help" produce help env variable with value 1'
 		preserve() { %preserve help:HELP; }
-		BeforeRun 'export ARGS_DEFINITION="-h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --help
+		When call parse_arguments --help
 
 		The status should be success
 		The variable HELP should eq '1'
@@ -56,12 +61,12 @@ xDescribe "next"
 		# Dump
 	End
 
-	xIt 'Extract argument after --id flag into args_pno variable'
+	It 'Extract argument after --id flag into args_pno variable'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --id "test" --help
+		When call parse_arguments --id "test" --help
 
 		The status should be success
 		The variable ID should eq 'test'
@@ -73,12 +78,12 @@ xDescribe "next"
 		# Dump
 	End
 
-	xIt 'Extract value into args_pno variable from key=value argument'
+	It 'Extract value into args_pno variable from key=value argument'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --id="test" --help
+		When call parse_arguments --id="test" --help
 
 		The status should be success
 		The variable ID should eq 'test'
@@ -90,12 +95,12 @@ xDescribe "next"
 		# Dump
 	End
 
-	xIt 'Force <empty> value into args_pno variable from key=value argument'
+	It 'Force <empty> value into args_pno variable from key=value argument'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --id="" --help
+		When call parse_arguments --id="" --help
 
 		The status should be success
 		The variable ID should eq '<empty>'
@@ -107,12 +112,12 @@ xDescribe "next"
 		# Dump
 	End
 
-	xIt 'Force overwrite of default "dummy" value by <empty> from key=value argument'
+	It 'Force overwrite of default "dummy" value by <empty> from key=value argument'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:1 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:1 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --id="" --help
+		When call parse_arguments --id="" --help
 
 		The stdout should include "[$line_1] export args_pno=\"<empty>\""
 		The stdout should include "[$line_2] export help=\"1\""
@@ -123,12 +128,12 @@ xDescribe "next"
 		# Dump
 	End
 
-	xIt 'Extract multiple arguments into args_pno variable, space separated array'
+	It 'Extract multiple arguments into args_pno variable, space separated array'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --id "first" "second" --help
+		When call parse_arguments --id "first" "second" --help
 
 		The status should be success
 		The variable ID should eq 'first second'
@@ -142,10 +147,10 @@ xDescribe "next"
 
 	xIt 'Missed argument for --id flag raise error message'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --help --id "first"
+		When call parse_arguments --help --id "first"
 
 		The status should be failure
 		The variable ID should be undefined
@@ -157,12 +162,12 @@ xDescribe "next"
 		# Dump
 	End
 
-	xIt 'Ignore undefined flag arguments and print warning message to stderr'
+	It 'Ignore undefined flag arguments and print warning message to stderr'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --help --key1="first" --key2 "second"
+		When call parse_arguments --help --key1="first" --key2 "second"
 
 		The status should be success
 		The stderr should include 'ignored: --key1 (first)'
@@ -176,12 +181,12 @@ xDescribe "next"
 		# Dump
 	End
 
-	xIt 'Override default value of the definition by key=value argument'
+	It 'Override default value of the definition by key=value argument'
 		preserve() { %preserve DEBUG; }
-		BeforeRun 'export ARGS_DEFINITION="--debug=DEBUG:*"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="--debug=DEBUG:*"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --debug='*,-common'
+		When call parse_arguments --debug='*,-common'
 
 		The status should be success
 		The variable DEBUG should eq '*,-common'
@@ -196,12 +201,12 @@ xDescribe "next"
 	#
 	# TODO: fix the code, raise error instead of warning
 	#
-	xIt 'Print warning on multiple arguments definition for indexed arguments'
+	It 'Print warning on multiple arguments definition for indexed arguments'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="\$1,-i,--id,--pno=args_pno:dummy:2 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="\$1,-i,--id,--pno=args_pno:dummy:2 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --help "first" "second"
+		When call parse_arguments --help "first" "second"
 
 		The status should be success
 		The stderr should include "Warning. Indexed variable '\$1' should not be used for multiple arguments."
@@ -215,20 +220,15 @@ xDescribe "next"
 		# Dump
 	End
 
-End
-
-xDescribe "In Progress:"
-	BeforeRun 'export DEBUG="*"'
-
 	#
 	# TODO: fix the code, args_pno should have "dummy" value
 	#
-	It 'Expect default "dummy" value for ID for --id flag'
+	xIt 'Expect default "dummy" value for ID for --id flag'
 		preserve() { %preserve args_pno:ID; }
-		BeforeRun 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:1 -h,--help"'
-		AfterRun preserve
+		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:1 -h,--help"'
+		AfterCall preserve
 
-		When run source .scritps/_arguments.sh --id --help
+		When call parse_arguments --id --help
 
 		The status should be success
 		The variable ID should eq 'dummy'
@@ -240,20 +240,43 @@ xDescribe "In Progress:"
 		Dump
 	End
 
-End
+	Describe 'function __extract_output_definition():'
+		Describe "Parameters Matrix:"
+			Parameters
+				"#00" --cookies --cookies "cookies|1|0"
+				"#01" --cookies --cookies= "cookies|1|0"
+				"#02" --cookies --cookies=: "cookies||0"
+				"#03" --cookies --cookies=::1 "cookies||1"
+				"#04" --cookies --cookies=:default:1 "cookies|default|1"
+				"#05" --cookies --cookies=first "first|1|0"
+				"#06" --cookies --cookies=first: "first||0"
+				"#07" --cookies --cookies=first::1 "first||1"
+				"#08" --cookies --cookies=first:default "first|default|0"
+				"#09" --cookies --cookies=first:default:1 "first|default|1"
+				"#10" --cookies "\$1,-c,--cookies=first:default:1" "first|default|1"
+				"#11" "\$1" "\$1,-c,--cookies=first:default:1" "first|default|1"
+				"#12" "-c" "\$1,-c,--cookies=first:default:1" "first|default|1"
+				"#13" "-cookies=first:default:1" "\$1,-c,--cookies=first:default:1" "first|default|1"
+			End
 
-xDescribe 'Utility functions:'
-	# BeforeRun 'export DEBUG="*"'
-	Include .scripts/_logger.sh
-	Include .scritps/_arguments.sh
+			It "__extract_output_definition for parse_arguments function $1" tags:inner
+				When call __extract_output_definition "$2" "$3"
 
-	It 'Extract output definition for parse_arguments function' tags:inner
-		When call __extract_output_definition --cookies --cookies=first:default:1
+				The stdout should include "$4"
+				The stderr should include "~> $4"
 
-		The stderr should include '~> cookies|default|1'
-		The stdout should include 'cookies|default|1'
+				# Dump
+			End
+		End
 
-		Dump
+		It "Expected Waring when Indexed parameters has reservation for more than one argument" tags:inner
+			When call __extract_output_definition "\$1" "\$1,-c,--cookies=first:default:2"
+
+			The stdout should include "first|default|2"
+			The stderr should include "Warning. Indexed variable '\$1' should not be used for multiple arguments."
+			The stderr should include "~> first|default|2"
+
+			# Dump
+		End
 	End
-
 End

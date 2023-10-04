@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
-# set +x
-
-echo "first!"
-
 # shellcheck disable=SC1090 source=_logger.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
-logger common "$@" # register own logger
 
 # shellcheck disable=SC1090 source=_commons.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
@@ -56,8 +51,8 @@ function __extract_output_definition() {
 		variable=$name_as_value
 	elif [[ "$output" == *:* ]]; then # extended: --cookies=first:*, --cookies=first:default:1, --cookies=::1, --cookies=:, --cookies=first:
 		local tmp=${output%%:*} && variable=${tmp:-"$name_as_value"}
-	else # extended: --cookies=first
-		variable=$output
+	else
+		variable=$output # extended: --cookies=first
 	fi
 
 	# extract default value
@@ -212,12 +207,11 @@ function parse_arguments() {
 	done
 }
 
-echo "done!"
-
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 # DO NOT allow execution of code bellow those line in shellspec tests
 ${__SOURCED__:+return}
 
+logger common "$@" # register own logger
 exclude_flags_from_args "$@"
 parse_arguments "$@"

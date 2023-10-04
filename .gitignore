@@ -1,0 +1,15 @@
+# utility folders
+coverage/
+.vscode/
+
+# backup/temporary files
+*.tmp
+*.old
+*.bak
+
+# logs
+*.log
+*.txt
+
+# temp scripts
+*.tmp.sh

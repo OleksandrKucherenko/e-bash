@@ -1,23 +1,15 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155,SC2034,SC2059
 
-# set -x
-
-# get script directory
-# SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 # is allowed to use macOS extensions (script can be executed in *nix environment)
 use_macos_extensions=false
 if [[ "$OSTYPE" == "darwin"* ]]; then use_macos_extensions=true; fi
-
-echo "src: $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck disable=SC1090  source=_colors.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_colors.sh"
 
 # shellcheck disable=SC1090 source=_logger.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
-logger common "$@" # register own logger
 
 function now() {
 	echo "$EPOCHREALTIME" # <~ bash 5.0
@@ -164,3 +156,5 @@ function isHelp() {
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
+
+logger common "$@" # register own logger

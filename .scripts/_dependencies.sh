@@ -5,7 +5,6 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
-logger dependencies "$@" # register own debug tag & logger functions
 
 #set -x # Uncomment to DEBUG
 
@@ -124,6 +123,13 @@ function optional() {
 	# we should expand any number of input arguments to required 4 + extra flags
 	dependency "${args[@]}"
 }
+
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+# DO NOT allow execution of code bellow those line in shellspec tests
+${__SOURCED__:+return}
+
+logger dependencies "$@" # register own debug tag & logger functions
 
 # Tests:
 #dependency bash "5.0.18(1)-release" "brew install bash" "--version"
