@@ -1,8 +1,9 @@
 --require spec_helper
---shell /usr/local/bin/bash
+--shell bash
 --format documentation
 --skip-message quiet
 --pending-message quiet
+--output junit
 
 ## Default kcov (coverage) options
 --kcov

@@ -13,3 +13,6 @@ coverage/
 
 # temp scripts
 *.tmp.sh
+
+# local overrides
+.shellspec-local

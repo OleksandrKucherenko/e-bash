@@ -1,0 +1,55 @@
+name: "Shellspec"
+on: [push, pull_request]
+env:
+  SHELLSPEC_VERSION: 0.28.1
+  TERM: xterm-256color
+
+jobs:
+  shellspec-macos:
+    name: "MacOS"
+    runs-on: macos-latest
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install shellspec
+        run: |
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+          curl -fsSL https://git.io/shellspec | sh -s ${{ env.SHELLSPEC_VERSION }} --yes
+          brew update
+          brew install bash
+          brew install kcov
+      - name: Run shellspec tests
+        run: |
+          shellspec
+      - name: Coverage Report
+        if: always()
+        uses: aGallea/tests-coverage-report@v1
+        with:
+          min-coverage-percentage: "90"
+          fail-under-coverage-percentage: "false"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          junit-path: report/results_junit.xml
+          cobertura-path: coverage/cobertura.xml
+      - name: "Publish: Coverage Report"
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./coverage
+
+  shellspec-ubuntu:
+    name: "Ubuntu"
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install shellspec
+        run: |
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+          curl -fsSL https://git.io/shellspec | sh -s ${{ env.SHELLSPEC_VERSION }} --yes
+          sudo apt-get update
+          sudo apt-get install kcov
+      - name: Run shellspec tests
+        run: |
+          shellspec
