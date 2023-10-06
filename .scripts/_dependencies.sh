@@ -38,7 +38,7 @@ function dependency() {
 	local is_exec=$(isExec "$@")
 	local is_optional=$(isOptional "$@")
 
-	configDebugDependencies "$@" # refresh debug flags
+	config:logger:Dependencies "$@" # refresh debug flags
 
 	# escape symbols: & / . { }, remove end of line, replace * by expectation from 1 to 4 digits
 	local tool_version=$(sed -e 's#[&\\/\.{}]#\\&#g; s#$#\\#' -e '$s#\\$##' -e 's#*#[0-9]\\{1,4\\}#g' <<<$tool_version_pattern)
@@ -47,7 +47,7 @@ function dependency() {
 	local which_tool=$(command -v $tool_name)
 
 	if [ -z "$which_tool" ]; then
-		printfDependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
+		printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
 			"${which_tool:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
 
 		if $is_optional; then
@@ -65,7 +65,7 @@ function dependency() {
 	local version_message=$($tool_name $tool_version_flag 2>&1)
 	local version_cleaned=$(echo "'$version_message'" | sed -n "s#.*\($tool_version\).*#\1#p" | head -1)
 
-	printfDependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\nver.   : %s\n-------\n" \
+	printf:Dependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\nver.   : %s\n-------\n" \
 		"$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
 	if [ "$version_cleaned" == "" ]; then

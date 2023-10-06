@@ -14,8 +14,8 @@ Include ".scripts/_commons.sh"
 Describe "_commons.sh"
     BeforeRun 'export DEBUG="*"'
 
-    It "isHelp returns true when --help flag is provided"
-        When call isHelp --help
+    It "args:isHelp returns true when --help flag is provided"
+        When call args:isHelp --help
 
         The status should be success
         The output should eq true

@@ -5,10 +5,10 @@
 
 eval "$(shellspec - -c) exit 1"
 
-export line_1="136"
-export line_2="147"
-export line_3="162"
-export line_4="175"
+export line_1="144"
+export line_2="155"
+export line_3="170"
+export line_4="183"
 
 Describe '_arguments.sh'
 	BeforeRun 'export DEBUG="*"'
@@ -25,7 +25,7 @@ Describe '_arguments.sh'
 	It 'On no ARGS_DEFINITION provided, expected fallback to predefined flags'
 		preserve() { %preserve version:VERSION; }
 		AfterCall preserve
-		When call parse_arguments --help --version --debug --something
+		When call parse:arguments --help --version --debug --something
 
 		The status should be success
 		The variable VERSION should eq '1.0.0'
@@ -48,7 +48,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --help
+		When call parse:arguments --help
 
 		The status should be success
 		The variable HELP should eq '1'
@@ -66,7 +66,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --id "test" --help
+		When call parse:arguments --id "test" --help
 
 		The status should be success
 		The variable ID should eq 'test'
@@ -83,7 +83,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --id="test" --help
+		When call parse:arguments --id="test" --help
 
 		The status should be success
 		The variable ID should eq 'test'
@@ -100,7 +100,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno::1 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --id="" --help
+		When call parse:arguments --id="" --help
 
 		The status should be success
 		The variable ID should eq '<empty>'
@@ -117,7 +117,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:1 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --id="" --help
+		When call parse:arguments --id="" --help
 
 		The stdout should include "[$line_1] export args_pno=\"<empty>\""
 		The stdout should include "[$line_2] export help=\"1\""
@@ -133,7 +133,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --id "first" "second" --help
+		When call parse:arguments --id "first" "second" --help
 
 		The status should be success
 		The variable ID should eq 'first second'
@@ -150,7 +150,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --help --id "first"
+		When call parse:arguments --help --id "first"
 
 		The status should be failure
 		The variable ID should be undefined
@@ -167,7 +167,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:2 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --help --key1="first" --key2 "second"
+		When call parse:arguments --help --key1="first" --key2 "second"
 
 		The status should be success
 		The stderr should include 'ignored: --key1 (first)'
@@ -186,7 +186,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="--debug=DEBUG:*"'
 		AfterCall preserve
 
-		When call parse_arguments --debug='*,-common'
+		When call parse:arguments --debug='*,-common'
 
 		The status should be success
 		The variable DEBUG should eq '*,-common'
@@ -206,7 +206,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="\$1,-i,--id,--pno=args_pno:dummy:2 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --help "first" "second"
+		When call parse:arguments --help "first" "second"
 
 		The status should be success
 		The stderr should include "Warning. Indexed variable '\$1' should not be used for multiple arguments."
@@ -228,7 +228,7 @@ Describe '_arguments.sh'
 		BeforeCall 'export ARGS_DEFINITION="-i,--id,--pno=args_pno:dummy:1 -h,--help"'
 		AfterCall preserve
 
-		When call parse_arguments --id --help
+		When call parse:arguments --id --help
 
 		The status should be success
 		The variable ID should eq 'dummy'
@@ -240,7 +240,7 @@ Describe '_arguments.sh'
 		Dump
 	End
 
-	Describe 'function __extract_output_definition():'
+	Describe 'function parse:extract_output_definition():'
 		Describe "Parameters Matrix:"
 			Parameters
 				"#00" --cookies --cookies "cookies|1|0"
@@ -259,8 +259,8 @@ Describe '_arguments.sh'
 				"#13" "-cookies=first:default:1" "\$1,-c,--cookies=first:default:1" "first|default|1"
 			End
 
-			It "__extract_output_definition for parse_arguments function $1" tags:inner
-				When call __extract_output_definition "$2" "$3"
+			It "parse:extract_output_definition for parse:arguments function $1" tags:inner
+				When call parse:extract_output_definition "$2" "$3"
 
 				The stdout should include "$4"
 				The stderr should include "~> $4"
@@ -270,7 +270,7 @@ Describe '_arguments.sh'
 		End
 
 		It "Expected Waring when Indexed parameters has reservation for more than one argument" tags:inner
-			When call __extract_output_definition "\$1" "\$1,-c,--cookies=first:default:2"
+			When call parse:extract_output_definition "\$1" "\$1,-c,--cookies=first:default:2"
 
 			The stdout should include "first|default|2"
 			The stderr should include "Warning. Indexed variable '\$1' should not be used for multiple arguments."

@@ -8,8 +8,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
 
 # array of script arguments cleaned from flags (e.g. --help)
-export ARGS_NO_FLAGS=()
-function exclude_flags_from_args() {
+if [ -z "$ARGS_NO_FLAGS" ]; then export ARGS_NO_FLAGS=(); fi
+function parse:exclude_flags_from_args() {
 	local args=("$@")
 
 	# remove all flags from call
@@ -25,8 +25,8 @@ function exclude_flags_from_args() {
 
 if [ -z "$ARGS_DEFINITION" ]; then export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"; fi
 
-# Utility function, that extract output definition for parse_arguments function
-function __extract_output_definition() {
+# Utility function, that extract output definition for parse:arguments function
+function parse:extract_output_definition() {
 	# --cookies -> "cookies||0", $1 -> "$1||0"
 	# --cookies=: -> "cookies||0"
 	# --cookies=first -> "first||0",
@@ -70,8 +70,8 @@ function __extract_output_definition() {
 	echo "$variable|$default|$args_qt"
 }
 
-# pattern: "{argument},-{short},--{alias}={output}:{init_value}:{args_quantity}"
-function parse_arguments() {
+# parse ARGS_DEFINITION string to global arrays: lookup_arguments, index_to_outputs, index_to_args_qt, index_to_default
+function parse:mapping() {
 	local args=("$@")
 
 	# TODO (olku): trim whitespaces in $ARGS_DEFINITION, not spaces in begining or end, no double spaces
@@ -81,10 +81,10 @@ function parse_arguments() {
 	readarray -td ' ' definitions <<<"$ARGS_DEFINITION " && unset 'definitions[-1]'
 
 	# build lookup map of arguments, extract the longest name of each argument
-	declare -A lookup_arguments && lookup_arguments=() # key-to-index_of_definition. e.g. -c -> 0, --cookies -> 0
-	declare -A index_to_outputs && index_to_outputs=() # index-to-variable_name, e.g. -c,--cookies -> 0=cookies
-	declare -A index_to_args_qt && index_to_args_qt=() # index-to-argument_qauntity, e.g. -c,--cookies -> 0="0"
-	declare -A index_to_default && index_to_default=() # index-to-argument_default, e.g. -c,--cookies -> 0="", -c=:default:1 -> 0="default"
+	declare -A -g lookup_arguments && lookup_arguments=() # key-to-index_of_definition. e.g. -c -> 0, --cookies -> 0
+	declare -A -g index_to_outputs && index_to_outputs=() # index-to-variable_name, e.g. -c,--cookies -> 0=cookies
+	declare -A -g index_to_args_qt && index_to_args_qt=() # index-to-argument_qauntity, e.g. -c,--cookies -> 0="0"
+	declare -A -g index_to_default && index_to_default=() # index-to-argument_default, e.g. -c,--cookies -> 0="", -c=:default:1 -> 0="default"
 
 	# build parameters mapping
 	for i in "${!definitions[@]}"; do
@@ -93,7 +93,7 @@ function parse_arguments() {
 		local keys=(${definitions[i]//,/ })
 		for key in "${keys[@]}"; do
 			local name=${key%%=*} # extract clean key name, e.g. --cookies=first -> --cookies
-			local helper=$(__extract_output_definition "$key" "${definitions[i]}")
+			local helper=$(parse:extract_output_definition "$key" "${definitions[i]}")
 
 			# do the mapping
 			lookup_arguments[$name]=$i
@@ -102,6 +102,14 @@ function parse_arguments() {
 			index_to_default[$i]=$(echo "$helper" | awk -F'|' '{print $2}')
 		done
 	done
+
+}
+
+# pattern: "{argument},-{short},--{alias}={output}:{init_value}:{args_quantity}"
+function parse:arguments() {
+	local args=("$@")
+
+	parse:mapping "$@"
 
 	local index=1             # indexed input arguments without pre-flag
 	local skip_next_counter=0 # how many argument to skip from processing
@@ -207,11 +215,40 @@ function parse_arguments() {
 	done
 }
 
+# global associative array for flag-to-description mapping
+if [ -z "$args_to_description" ]; then export args_to_description=(); fi
+if [ -z "$args_to_group" ]; then export args_to_group=(); fi
+
+function parse:descr() {
+	local flag=$1
+	local description=$2
+	local group=${3:-"common"}
+	local order=${4:-100}
+
+	args_to_description[flag]="${description}"
+	args_to_group[flag]="${group}"
+}
+
+# print help for ARGS_DEFINITION parameters
+function print:help() {
+	# if multiple groups defined in $args_to_group then print each group separately
+	if [ ${#args_to_group[@]} -gt 1 ]; then
+		: # TODO (olku): implement me
+	fi
+
+	# print help for each argument
+}
+
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 # DO NOT allow execution of code bellow those line in shellspec tests
 ${__SOURCED__:+return}
 
 logger common "$@" # register own logger
-exclude_flags_from_args "$@"
-parse_arguments "$@"
+parse:exclude_flags_from_args "$@"
+parse:arguments "$@"
+
+# common descriptions for argumetns
+parse:descr -h "Print utility help"
+parse:descr --debug "Force debug output of the tool"
+parse:descr -v "Display tool version"

@@ -17,16 +17,40 @@ Describe '_logger.sh:'
         The status should be success
         The output should eq ''
         The error should eq ''
+
         # Dump
     End
 
     It 'Expected TAGS dump when register token after common loggers'
         BeforeCall 'export DEBUG="*" && logger common && logger token'
-        When call echoToken "test token echo command"
+        When call echo:Token "test token echo command"
 
         The status should be success
         The output should include 'test token echo command'
         The error should include 'Logger tags  : common token | 1 1'
+
+        # Dump
+    End
+
+    It 'Expected echo with custom prefix when register token after common loggers'
+        BeforeCall 'export DEBUG="*" && logger common && logger token && TAGS_PREFIX[token]="[token] "'
+        When call echo:Token "test token echo command"
+
+        The status should be success
+        The output should include '[token] test token echo command'
+        The error should include 'Logger tags  : common token | 1 1'
+
+        # Dump
+    End
+
+    It 'Expected printf with custom prefix when register token after common loggers'
+        BeforeCall 'export DEBUG="*" && logger common && logger token && TAGS_PREFIX[token]="[token] "'
+        When call printf:Token "%s" "test token echo command"
+
+        The status should be success
+        The output should include '[token] test token echo command'
+        The error should include 'Logger tags  : common token | 1 1'
+
         # Dump
     End
 End

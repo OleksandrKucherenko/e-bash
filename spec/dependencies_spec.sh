@@ -9,15 +9,15 @@ Mock logger
     echo "$@"
 End
 
-Mock configDebugDependencies
+Mock config:logger:Dependencies
     echo "$@"
 End
 
-Mock printfDependencies
-    echo "$@"
+Mock printf:Dependencies
+    printf "$@"
 End
 
-Mock echoDependencies
+Mock echo:Dependencies
     echo "$@"
 End
 

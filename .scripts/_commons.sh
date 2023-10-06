@@ -11,19 +11,19 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_colors.sh"
 # shellcheck disable=SC1090 source=_logger.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
 
-function now() {
+function time:now() {
 	echo "$EPOCHREALTIME" # <~ bash 5.0
 	#python -c 'import datetime; print datetime.datetime.now().strftime("%s.%f")'
 }
 
 # shellcheck disable=SC2155,SC2086
-function print_time_diff() {
-	local diff="$(now) - $1"
+function time:diff() {
+	local diff="$(time:now) - $1"
 	bc <<<$diff
 }
 
 # shellcheck disable=SC2086
-function validate_input() {
+function validate:input() {
 	local variable=$1
 	local default=${2:-""}
 	local prompt=${3:-""}
@@ -51,7 +51,7 @@ function validate_input() {
 }
 
 # shellcheck disable=SC2086,SC2059
-function validate_yn_input() {
+function validate:input:yn() {
 	local variable=$1
 	local default=${2:-""}
 	local prompt=${3:-""}
@@ -86,7 +86,7 @@ function validate_yn_input() {
 }
 
 # shellcheck disable=SC2086
-function env_variable_or_secret_file() {
+function env:variable:or:secret:file() {
 	#
 	# Usage:
 	#     env_variable_or_secret_file "new_value" \
@@ -119,7 +119,7 @@ function env_variable_or_secret_file() {
 }
 
 # shellcheck disable=SC2086
-function optional_env_variable_or_secret_file() {
+function env:variable:or:secret:file:optional() {
 	#
 	# Usage:
 	#     optional_env_variable_or_secret_file "new_value" \
@@ -148,7 +148,7 @@ function optional_env_variable_or_secret_file() {
 	fi
 }
 
-function isHelp() {
+function args:isHelp() {
 	local args=("$@")
 	if [[ "${args[*]}" =~ "--help" ]]; then echo true; else echo false; fi
 }
@@ -158,3 +158,12 @@ function isHelp() {
 ${__SOURCED__:+return}
 
 logger common "$@" # register own logger
+
+# old version of function names
+alias now=time:now
+alias print_time_diff=time:diff
+alias validate_input=validate:input
+alias validate_yn_input=validate:input:yn
+alias env_variable_or_secret_file=env:variable:or:secret:file
+alias optional_env_variable_or_secret_file=env:variable:or:secret:file:optional
+alias isHelp=args:isHelp
