@@ -1,0 +1,17 @@
+{
+  "files": [
+    {"file": "/Users/runner/work/e-bash/e-bash/.scripts/version-up.sh", "percent_covered": "0.00", "covered_lines": "0", "total_lines": "255"},
+    {"file": "/Users/runner/work/e-bash/e-bash/.scripts/_arguments.sh", "percent_covered": "79.17", "covered_lines": "95", "total_lines": "120"},
+    {"file": "/Users/runner/work/e-bash/e-bash/.scripts/_dependencies.sh", "percent_covered": "96.88", "covered_lines": "62", "total_lines": "64"},
+    {"file": "/Users/runner/work/e-bash/e-bash/.scripts/_colors.sh", "percent_covered": "100.00", "covered_lines": "18", "total_lines": "18"},
+    {"file": "/Users/runner/work/e-bash/e-bash/.scripts/_logger.sh", "percent_covered": "93.33", "covered_lines": "14", "total_lines": "15"},
+    {"file": "/Users/runner/work/e-bash/e-bash/.scripts/_commons.sh", "percent_covered": "8.33", "covered_lines": "7", "total_lines": "84"}
+  ],
+  "percent_covered": "35.25",
+  "covered_lines": 196,
+  "total_lines": 556,
+  "percent_low": 25,
+  "percent_high": 75,
+  "command": "shellspec spec",
+  "date": "2023-10-06 23:02:19"
+}

@@ -1,0 +1,31 @@
+var data = {lines:[
+{"lineNum":"    1","line":"#!/usr/bin/env bash"},
+{"lineNum":"    2","line":"# shellcheck disable=SC2155"},
+{"lineNum":"    3","line":""},
+{"lineNum":"    4","line":"# tput calls require TERM to be set"},
+{"lineNum":"    5","line":"if [[ -z $TERM ]]; then export TERM=xterm-256color; fi","class":"lineCov","hits":"3","order":"9","possible_hits":"0",},
+{"lineNum":"    6","line":""},
+{"lineNum":"    7","line":"# colors"},
+{"lineNum":"    8","line":"export cl_reset=$(tput sgr0)","class":"lineCov","hits":"6","order":"10","possible_hits":"0",},
+{"lineNum":"    9","line":""},
+{"lineNum":"   10","line":"export cl_red=$(tput setaf 1)","class":"lineCov","hits":"6","order":"11","possible_hits":"0",},
+{"lineNum":"   11","line":"export cl_green=$(tput setaf 2)","class":"lineCov","hits":"6","order":"12","possible_hits":"0",},
+{"lineNum":"   12","line":"export cl_yellow=$(tput setaf 3)","class":"lineCov","hits":"6","order":"13","possible_hits":"0",},
+{"lineNum":"   13","line":"export cl_blue=$(tput setaf 4)","class":"lineCov","hits":"6","order":"14","possible_hits":"0",},
+{"lineNum":"   14","line":"export cl_purple=$(tput setaf 5)","class":"lineCov","hits":"6","order":"15","possible_hits":"0",},
+{"lineNum":"   15","line":"export cl_cyan=$(tput setaf 6)","class":"lineCov","hits":"6","order":"16","possible_hits":"0",},
+{"lineNum":"   16","line":"export cl_white=$(tput setaf 7)","class":"lineCov","hits":"6","order":"17","possible_hits":"0",},
+{"lineNum":"   17","line":"export cl_grey=$(tput setaf 8)","class":"lineCov","hits":"6","order":"18","possible_hits":"0",},
+{"lineNum":"   18","line":""},
+{"lineNum":"   19","line":"export cl_lred=$(tput setaf 9)","class":"lineCov","hits":"6","order":"19","possible_hits":"0",},
+{"lineNum":"   20","line":"export cl_lgreen=$(tput setaf 10)","class":"lineCov","hits":"6","order":"20","possible_hits":"0",},
+{"lineNum":"   21","line":"export cl_lyellow=$(tput setaf 11)","class":"lineCov","hits":"6","order":"21","possible_hits":"0",},
+{"lineNum":"   22","line":"export cl_lblue=$(tput setaf 12)","class":"lineCov","hits":"6","order":"22","possible_hits":"0",},
+{"lineNum":"   23","line":"export cl_lpurple=$(tput setaf 13)","class":"lineCov","hits":"6","order":"23","possible_hits":"0",},
+{"lineNum":"   24","line":"export cl_lcyan=$(tput setaf 14)","class":"lineCov","hits":"6","order":"24","possible_hits":"0",},
+{"lineNum":"   25","line":"export cl_lwhite=$(tput setaf 15)","class":"lineCov","hits":"6","order":"25","possible_hits":"0",},
+{"lineNum":"   26","line":"export cl_black=$(tput setaf 16)","class":"lineCov","hits":"6","order":"26","possible_hits":"0",},
+]};
+var percent_low = 25;var percent_high = 75;
+var header = { "command" : "shellspec spec", "date" : "2023-10-06 23:02:19", "instrumented" : 18, "covered" : 18,};
+var merged_data = [];
