@@ -24,3 +24,11 @@ brew install kcov
 # run unit tests on file change
 watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec"
 ```
+
+## Deploy
+
+```bash
+# generate ssh key for gh-pages publishing
+# https://github.com/marketplace/actions/github-pages-action#%EF%B8%8F-create-ssh-deploy-key
+ssh-keygen -t rsa -b 4096 -C "kucherenko.alex@gmail.com" -f gh-pages -N ""
+```

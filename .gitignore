@@ -16,3 +16,6 @@ coverage/
 
 # local overrides
 .shellspec-local
+
+# secrets
+.secrets/
