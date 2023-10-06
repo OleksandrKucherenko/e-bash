@@ -44,11 +44,11 @@ function dependency() {
 	local tool_version=$(sed -e 's#[&\\/\.{}]#\\&#g; s#$#\\#' -e '$s#\\$##' -e 's#*#[0-9]\\{1,4\\}#g' <<<$tool_version_pattern)
 
 	# try to find tool
-	local WHICH_TOOL=$(command -v $tool_name)
+	local which_tool=$(command -v $tool_name)
 
-	if [ -z "$WHICH_TOOL" ]; then
+	if [ -z "$which_tool" ]; then
 		printfDependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
-			"${WHICH_TOOL:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
+			"${which_tool:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
 
 		if $is_optional; then
 			# shellcheck disable=SC2154
@@ -57,42 +57,42 @@ function dependency() {
 		else
 			echo "${cl_red}Error: dependency \`$tool_name\` not found."
 			echo "${cl_reset} Hint. To install tool use the command below: "
-			echo " $>  $tool_fallback"
-			exit 1
+			echo " \$>  $tool_fallback"
+			return 1
 		fi
 	fi
 
-	local VERSION_MSG=$($tool_name $tool_version_flag 2>&1)
-	local VERSION_CLEAN=$(echo "'$VERSION_MSG'" | sed -n "s#.*\($tool_version\).*#\1#p" | head -1)
+	local version_message=$($tool_name $tool_version_flag 2>&1)
+	local version_cleaned=$(echo "'$version_message'" | sed -n "s#.*\($tool_version\).*#\1#p" | head -1)
 
 	printfDependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\nver.   : %s\n-------\n" \
-		"$WHICH_TOOL" "$VERSION_MSG" "$tool_version_pattern" "$tool_version" "$VERSION_CLEAN"
+		"$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
-	if [ "$VERSION_CLEAN" == "" ]; then
+	if [ "$version_cleaned" == "" ]; then
 		if $is_optional; then
 			echo "Optional   [${cl_red}NO${cl_reset}]: \`$tool_name\` - ${cl_red}wrong version${cl_reset}! Try: ${cl_purple}$tool_fallback${cl_reset}"
 			return 0
 		else
 			echo "${cl_red}Error: dependency version \`$tool_name\` is wrong."
-			echo " Extracted: \`$VERSION_CLEAN\`"
+			echo " Extracted: \`$version_cleaned\`"
 			echo " Expected : \`$tool_version_pattern\`${cl_reset}"
 
 			if $is_exec; then
 				# shellcheck disable=SC2006,SC2154
-				echo " Executing: ${cl_yellow}$($tool_fallback)${cl_reset}"
+				echo " Executing: ${cl_yellow}${tool_fallback}${cl_reset}"
 				echo ""
 				eval $tool_fallback
 			else
 				echo ""
 				echo " Hint. To install tool use the command below: "
-				echo " $>  $tool_fallback"
-				exit 1
+				echo " \$>  $tool_fallback"
+				return 1
 			fi
 		fi
 	else
 		if $is_optional; then echo -n "Optional   "; else echo -n "Dependency "; fi
 		# shellcheck disable=SC2154
-		echo "[${cl_green}OK${cl_reset}]: \`$tool_name\` - version: $VERSION_CLEAN"
+		echo "[${cl_green}OK${cl_reset}]: \`$tool_name\` - version: $version_cleaned"
 	fi
 }
 

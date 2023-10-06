@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155
 
+# tput calls require TERM to be set
+if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
+
 # colors
 export cl_reset=$(tput sgr0)
 
