@@ -61,8 +61,11 @@ jobs:
           min-coverage-percentage: "90"
           fail-under-coverage-percentage: "false"
           github-token: ${{ github.token }}
-          junit-path: report/results_junit.xml
-          cobertura-path: coverage/cobertura.xml
+          junit-path: ./report/results_junit.xml
+          cobertura-path: ./coverage/cobertura.xml
+          jacoco-path: ""
+          lcov-path: ""
+          clover-path: ""
 
   shellspec-ubuntu:
     name: "Ubuntu"

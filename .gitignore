@@ -1,5 +1,6 @@
 # utility folders
 coverage/
+report/
 .vscode/
 
 # backup/temporary files
