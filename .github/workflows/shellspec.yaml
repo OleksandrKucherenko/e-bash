@@ -56,18 +56,24 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./coverage
-      - name: Coverage Report In PR Comments
-        if: always()
-        uses: aGallea/tests-coverage-report@v1
+      - name: Code Coverage Summary Report
+        uses: irongut/CodeCoverageSummary@v1.3.0
         with:
-          min-coverage-percentage: "90"
-          fail-under-coverage-percentage: "false"
-          github-token: ${{ github.token }}
-          junit-path: ./report/results_junit.xml
-          cobertura-path: ./coverage/cobertura.xml
-          jacoco-path: ""
-          lcov-path: ""
-          clover-path: ""
+          filename: ./coverage/cobertura.xml
+          badge: true
+          
+      # - name: Coverage Report In PR Comments
+      #   if: always()
+      #   uses: aGallea/tests-coverage-report@v1
+      #   with:
+      #     min-coverage-percentage: "90"
+      #     fail-under-coverage-percentage: "false"
+      #     github-token: ${{ github.token }}
+      #     junit-path: ./report/results_junit.xml
+      #     cobertura-path: ./coverage/cobertura.xml
+      #     jacoco-path: ""
+      #     lcov-path: ""
+      #     clover-path: ""
 
   shellspec-ubuntu:
     name: "Ubuntu"
