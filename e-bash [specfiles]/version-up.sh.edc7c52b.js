@@ -539,5 +539,5 @@ var data = {lines:[
 {"lineNum":"  538","line":"#"},
 ]};
 var percent_low = 25;var percent_high = 75;
-var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:32:55", "instrumented" : 255, "covered" : 0,};
+var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:49:08", "instrumented" : 255, "covered" : 0,};
 var merged_data = [];

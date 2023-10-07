@@ -7,5 +7,5 @@ var data = {files:[
 {"link":"_commons.sh.86725ccf.html","title":"_commons.sh","summary_name":"[...]/.scripts/_commons.sh","covered_class":"lineNoCov","covered":"8.3","covered_lines":"7","uncovered_lines":"77","total_lines" : "84"},
 ]};
 var percent_low = 25;var percent_high = 75;
-var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:32:55", "instrumented" : 556, "covered" : 196,};
+var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:49:08", "instrumented" : 556, "covered" : 196,};
 var merged_data = [];

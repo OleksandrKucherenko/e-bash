@@ -157,5 +157,5 @@ var data = {lines:[
 {"lineNum":"  156","line":"#  https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash"},
 ]};
 var percent_low = 25;var percent_high = 75;
-var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:32:55", "instrumented" : 64, "covered" : 62,};
+var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:49:08", "instrumented" : 64, "covered" : 62,};
 var merged_data = [];
