@@ -27,5 +27,5 @@ var data = {lines:[
 {"lineNum":"   26","line":"export cl_black=$(tput setaf 16)","class":"lineCov","hits":"6","order":"26","possible_hits":"0",},
 ]};
 var percent_low = 25;var percent_high = 75;
-var header = { "command" : "shellspec spec", "date" : "2023-10-07 12:08:25", "instrumented" : 18, "covered" : 18,};
+var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:32:55", "instrumented" : 18, "covered" : 18,};
 var merged_data = [];

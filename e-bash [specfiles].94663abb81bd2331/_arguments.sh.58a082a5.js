@@ -255,5 +255,5 @@ var data = {lines:[
 {"lineNum":"  254","line":"parse:descr -v \"Display tool version\"","class":"lineNoCov","hits":"0","possible_hits":"0",},
 ]};
 var percent_low = 25;var percent_high = 75;
-var header = { "command" : "shellspec spec", "date" : "2023-10-07 12:08:25", "instrumented" : 120, "covered" : 95,};
+var header = { "command" : "shellspec spec", "date" : "2023-10-07 16:32:55", "instrumented" : 120, "covered" : 95,};
 var merged_data = [];
