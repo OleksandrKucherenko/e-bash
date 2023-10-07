@@ -11,6 +11,16 @@
     - [Common(s) Functions](#commons-functions)
   - [Deploy / GitHub Pages](#deploy--github-pages)
 
+## Roadmap
+
+- [ ] High-level scripts should be in own `bin` OR `scripts` 
+- [ ] Git helpers
+- [ ] GitLabs helper scripts (work with branches, forks, submodules)
+- [ ] Slack notifications helper scripts
+- [ ] Telemetry module (report metrics to CI or DataDog)
+- [ ] Globals module (declarative way of defining script dependencies to global environment variables)
+- [ ] Loggs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
+
 ## Local Dev Environment - Requirements
 
 - DirEnv - https://github.com/direnv/direnv
