@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2023-10-18
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # tput calls require TERM to be set
 if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
 

@@ -7,6 +7,7 @@ report/
 *.tmp
 *.old
 *.bak
+*.orig
 
 # logs
 *.log
@@ -20,3 +21,6 @@ report/
 
 # secrets
 .secrets/
+
+# version file composed by version-up.sh script
+version.properties

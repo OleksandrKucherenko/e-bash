@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155,SC2034,SC2059
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2023-10-18
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # is allowed to use macOS extensions (script can be executed in *nix environment)
 use_macos_extensions=false
 if [[ "$OSTYPE" == "darwin"* ]]; then use_macos_extensions=true; fi
@@ -89,7 +95,7 @@ function validate:input:yn() {
 function env:variable:or:secret:file() {
 	#
 	# Usage:
-	#     env_variable_or_secret_file "new_value" \
+	#     env:variable:or:secret:file "new_value" \
 	#       "GITLAB_CI_INTEGRATION_TEST" \
 	#       ".secrets/gitlab_ci_integration_test" \
 	#       "{user friendly message}"
@@ -107,7 +113,9 @@ function env:variable:or:secret:file() {
 			echo ""
 			echo "Hint:"
 			echo "  $fallback"
-			exit 1
+			echo ""
+			echo:Common "Working Dir: $(pwd)"
+			return 1
 		else
 			echo "Using file: ${cl_green}$file${cl_reset} ~> $name"
 			eval $__result="'$(cat $file)'"
@@ -122,7 +130,7 @@ function env:variable:or:secret:file() {
 function env:variable:or:secret:file:optional() {
 	#
 	# Usage:
-	#     optional_env_variable_or_secret_file "new_value" \
+	#     env:variable:or:secret:file:optional "new_value" \
 	#       "GITLAB_CI_INTEGRATION_TEST" \
 	#       ".secrets/gitlab_ci_integration_test"
 	#

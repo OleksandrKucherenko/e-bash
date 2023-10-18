@@ -116,7 +116,12 @@ parse:arguments "$@"
 source ".scripts/_commons.sh"
 
 # Extract parameter from global env variable OR from secret file (file content)
+env:variable:or:secret:file "new_value" \
+  "GITLAB_CI_INTEGRATION_TEST" \
+  ".secrets/gitlab_ci_integration_test" \
+  "{user friendly message}"
 
+echo "Extracted: ${new_value}"
 
 # validate/confirm input parameter by user input
 # string

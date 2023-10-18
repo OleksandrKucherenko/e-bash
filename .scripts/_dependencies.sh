@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2023-10-18
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # shellcheck disable=SC1090 source=./_commons.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
 # shellcheck disable=SC1090 source=./_logger.sh
