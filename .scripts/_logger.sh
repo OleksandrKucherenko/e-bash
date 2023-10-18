@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155,SC2034,SC2059
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2023-10-18
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # declare global associative array
 if [[ -z $TAGS ]]; then declare -g -A TAGS; fi
 if [[ -z $TAGS_PREFIX ]]; then declare -g -A TAGS_PREFIX; fi

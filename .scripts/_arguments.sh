@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2023-10-18
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # shellcheck disable=SC1090 source=_logger.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
 
@@ -27,15 +33,6 @@ if [ -z "$ARGS_DEFINITION" ]; then export ARGS_DEFINITION="-h,--help -v,--versio
 
 # Utility function, that extract output definition for parse:arguments function
 function parse:extract_output_definition() {
-	# --cookies -> "cookies||0", $1 -> "$1||0"
-	# --cookies=: -> "cookies||0"
-	# --cookies=first -> "first||0",
-	# --cookies=first: -> "first||0"
-	# --cookies=::1 -> "cookies||1",
-	# --cookies=:default:1 -> "cookies|default|1"
-	# --cookies=first::1 -> "first||1"
-	# --cookies=first:default -> "first|default|0"
-	# --cookies=first:default:1 -> "first|default|1"
 	local definition=$1
 
 	# extract output variable name, examples:

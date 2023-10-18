@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155
 
-## Copyright (C) 2017, Oleksandr Kucherenko
-## Last revisit: 2023-09-30
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2023-10-18
 ## Version: 2.0.2
 ## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
 ## Fix: 2023-10-01, prefix for initial INIT_VERSION was not applied
 ## Fix: 2023-10-01, correct extraction of latest tag that match version pattern
 ## Added: 2023-09-30, @mrares prefix modification implemented
