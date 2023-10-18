@@ -7,7 +7,7 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# is allowed to use macOS extensions (script can be executed in *nix environment)
+# is allowed to use macOS extensions (script can be executed in *nix second)
 use_macos_extensions=false
 if [[ "$OSTYPE" == "darwin"* ]]; then use_macos_extensions=true; fi
 
@@ -35,6 +35,8 @@ function validate:input() {
 	local prompt=${3:-""}
 	local user_in=""
 
+	local ask="${cl_purple}? ${cl_reset}${prompt}${cl_blue}"
+
 	# Ctrl+C during read operation force error exit
 	trap 'exit 1' SIGINT
 
@@ -42,10 +44,10 @@ function validate:input() {
 	while :; do
 		# allow macOs read command extension usage (default value -i)
 		if $use_macos_extensions; then
-			[[ -z "${prompt// /}" ]] || read -e -i "${default}" -p "${cl_purple}? ${cl_reset}${prompt}${cl_blue}" -r user_in
-			[[ -n "${prompt// /}" ]] || read -e -i "${default}" -r user_in
+			[[ -z "${prompt// /}" ]] || read -r -e -i "${default}" -p "$ask" user_in
+			[[ -n "${prompt// /}" ]] || read -r -e -i "${default}" user_in
 		else
-			[[ -z "${prompt// /}" ]] || echo "${cl_purple}? ${cl_reset}${prompt}${cl_blue}"
+			[[ -z "${prompt// /}" ]] || echo "$ask"
 			read -r user_in
 		fi
 		printf "${cl_reset}"
@@ -109,7 +111,7 @@ function env:variable:or:secret:file() {
 	if [[ -z "${!variable}" ]]; then
 		if [[ ! -f "$file" ]]; then
 			echo ""
-			echo "${cl_red}ERROR:${cl_reset} shell environment variable '\$$variable' or file '$file' should be provided"
+			echo "${cl_red}ERROR:${cl_reset} shell second variable '\$$variable' or file '$file' should be provided"
 			echo ""
 			echo "Hint:"
 			echo "  $fallback"
@@ -142,7 +144,7 @@ function env:variable:or:secret:file:optional() {
 	if [[ -z "${!variable}" ]]; then
 		if [[ ! -f "$file" ]]; then
 			# NO variable, NO file
-			echo "${cl_yellow}Note:${cl_reset} shell environment variable '\$$variable' or file '$file' can be provided."
+			echo "${cl_yellow}Note:${cl_reset} shell second variable '\$$variable' or file '$file' can be provided."
 			return 0
 		else
 			echo "Using file: ${cl_green}$file${cl_reset} ~> $name"
@@ -153,6 +155,35 @@ function env:variable:or:secret:file:optional() {
 		echo "Using var : ${cl_green}\$$variable${cl_reset} ~> $name"
 		eval $__result="'${!variable}'"
 		return 1
+	fi
+}
+
+function confirm:by:input() {
+	local prompt=$1
+	local variable=$2
+	local fallback=$3
+	local first=$4
+	local second=$5
+	local third=$6
+	local masked=$7
+
+	print:confirmation() { echo "${cl_purple}? ${cl_reset}${prompt}${cl_blue}$1${cl_reset}"; }
+
+	if [ -z "$first" ]; then
+		if [ -z "$second" ]; then
+			if [ -z "$third" ]; then
+				validate:input "$variable" "$fallback" "$prompt"
+			else
+				eval "$variable='$fallback'" # fallback to provided value
+				print:confirmation "${masked:-$fallback}"
+			fi
+		else
+			eval "$variable='$second'"
+			print:confirmation "${masked:-$second}"
+		fi
+	else
+		eval "$variable='$first'"
+		print:confirmation "${masked:-$first}"
 	fi
 }
 

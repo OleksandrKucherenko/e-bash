@@ -23,7 +23,7 @@ function parse:exclude_flags_from_args() {
 		if [[ ${args[i]} == --* ]]; then unset 'args[i]'; fi
 	done
 
-	echoCommon "${cl_grey}Filtered args:" "$@" "~>" "${args[*]}" "${cl_reset}" >&2
+	echo:Common "${cl_grey}Filtered args:" "$@" "~>" "${args[*]}" "${cl_reset}" >&2
 
 	# shellcheck disable=SC2207,SC2116
 	ARGS_NO_FLAGS=($(echo "${args[*]}"))
@@ -62,7 +62,7 @@ function parse:extract_output_definition() {
 	if [[ "$args_qt" -gt 1 ]] && [[ "$1" == "\$"* ]]; then
 		echo "Warning. Indexed variable '$1' should not be used for multiple arguments." >&2
 	fi
-	echoCommon "${cl_grey}$1 '$2' ~> $variable|$default|$args_qt${cl_reset}" >&2
+	echo:Common "${cl_grey}$1 '$2' ~> $variable|$default|$args_qt${cl_reset}" >&2
 
 	echo "$variable|$default|$args_qt"
 }
@@ -72,7 +72,7 @@ function parse:mapping() {
 	local args=("$@")
 
 	# TODO (olku): trim whitespaces in $ARGS_DEFINITION, not spaces in begining or end, no double spaces
-	echoCommon "${cl_grey}Definition: $ARGS_DEFINITION${cl_reset}" >&2
+	echo:Common "${cl_grey}Definition: $ARGS_DEFINITION${cl_reset}" >&2
 
 	# extract definition of each argument, separated by space, remove last empty element
 	readarray -td ' ' definitions <<<"$ARGS_DEFINITION " && unset 'definitions[-1]'
@@ -138,7 +138,7 @@ function parse:arguments() {
 
 			# assign aggregated value to output variable
 			local tmp_index=${lookup_arguments[$last_processed]}
-			echoCommon "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$tmpValue\""
+			echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$tmpValue\""
 			eval "export ${index_to_outputs[$tmp_index]}=\"$tmpValue\""
 		fi
 
@@ -149,7 +149,7 @@ function parse:arguments() {
 			local expected=${index_to_args_qt[$tmp_index]}
 
 			# assign default value to the output variable first
-			echoCommon "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"${index_to_default[$tmp_index]}\""
+			echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"${index_to_default[$tmp_index]}\""
 			eval "export ${index_to_outputs[$tmp_index]}=\"${index_to_default[$tmp_index]}\""
 
 			# if expected more arguments than provided, configure skip_next_counter
@@ -164,23 +164,23 @@ function parse:arguments() {
 			else
 				# default value is re-assigned by provided value
 				if [ -n "$value" ]; then
-					echoCommon "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$value\""
+					echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$value\""
 					eval "export ${index_to_outputs[$tmp_index]}=\"$value\""
 				fi
 			fi
 		else
 			# process plain unnamed arguments
 			case $argument in
-			-*) echoCommon "${cl_grey}ignored: $argument ($value)${cl_reset}" >&2 ;;
+			-*) echo:Common "${cl_grey}ignored: $argument ($value)${cl_reset}" >&2 ;;
 			*)
 				if [ ${lookup_arguments[$by_index]+_} ]; then
 					last_processed=$by_index
 					local tmp_index=${lookup_arguments[$by_index]}
 
-					echoCommon "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$argument\""
+					echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$argument\""
 					eval "export ${index_to_outputs[$tmp_index]}=\"$argument\""
 				else
-					echoCommon "${cl_grey}ignored: $argument [$by_index] vs $last_processed:$skip_next_counter:$skip_aggregated:$value ${cl_reset}" >&2
+					echo:Common "${cl_grey}ignored: $argument [$by_index] vs $last_processed:$skip_next_counter:$skip_aggregated:$value ${cl_reset}" >&2
 				fi
 				index=$((index + 1))
 				;;
@@ -197,24 +197,24 @@ function parse:arguments() {
 	if [ ${#skip_aggregated} -gt 0 ]; then
 		local value="$skip_aggregated" && skip_aggregated="" && separator=""
 		local tmp_index=${lookup_arguments[$last_processed]}
-		echoCommon "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$value\""
+		echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}=\"$value\""
 		eval "export ${index_to_outputs[$tmp_index]}=\"$value\""
 	fi
 
 	# debug output
-	echoCommon "definition to output index:"
-	printfCommon '%s\n' "${!definitions[@]}" "${definitions[@]}" | pr -2t
-	echoCommon "'index', 'output variable name', 'args quantity', 'defaults':"
-	printfCommon '\"%s\"\n' "${!index_to_outputs[@]}" "${index_to_outputs[@]}" "${index_to_args_qt[@]}" "${index_to_default[@]}" | pr -4t | sort
+	echo:Common "definition to output index:"
+	printf:Common '%s\n' "${!definitions[@]}" "${definitions[@]}" | pr -2t
+	echo:Common "'index', 'output variable name', 'args quantity', 'defaults':"
+	printf:Common '\"%s\"\n' "${!index_to_outputs[@]}" "${index_to_outputs[@]}" "${index_to_args_qt[@]}" "${index_to_default[@]}" | pr -4t | sort
 	for variable in "${index_to_outputs[@]}"; do
 		declare -n var_ref=$variable
-		echoCommon "${cl_grey}extracted: $variable=$var_ref${cl_reset}"
+		echo:Common "${cl_grey}extracted: $variable=$var_ref${cl_reset}"
 	done
 }
 
 # global associative array for flag-to-description mapping
-if [ -z "$args_to_description" ]; then export args_to_description=(); fi
-if [ -z "$args_to_group" ]; then export args_to_group=(); fi
+if [ -z "$args_to_description" ]; then declare -A -g args_to_description && args_to_description=(); fi
+if [ -z "$args_to_group" ]; then declare -A -g args_to_group && args_to_group=(); fi
 
 function parse:descr() {
 	local flag=$1
@@ -246,6 +246,6 @@ parse:exclude_flags_from_args "$@"
 parse:arguments "$@"
 
 # common descriptions for argumetns
-parse:descr -h "Print utility help"
-parse:descr --debug "Force debug output of the tool"
-parse:descr -v "Display tool version"
+parse:descr "-h" "Print utility help"
+parse:descr "--debug" "Force debug output of the tool"
+parse:descr "-v" "Display tool version"
