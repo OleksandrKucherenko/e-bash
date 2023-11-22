@@ -11,21 +11,21 @@
 
 eval "$(shellspec - -c) exit 1"
 
-export line_1="144"
-export line_2="155"
-export line_3="170"
-export line_4="183"
+export line_1="141"
+export line_2="152"
+export line_3="167"
+export line_4="180"
 
 Describe '_arguments.sh'
 	BeforeRun 'export DEBUG="*"'
 	Include ".scripts/_arguments.sh"
 
-	Mock echoCommon
+	Mock echo:Common
 		echo "$@"
 	End
 
-	Mock printfCommon
-		printf "$@"
+	Mock printf:Common
+		printf "$@" # dummy
 	End
 
 	It 'On no ARGS_DEFINITION provided, expected fallback to predefined flags'
@@ -37,9 +37,9 @@ Describe '_arguments.sh'
 		The variable VERSION should eq '1.0.0'
 
 		# debug output is printed
-		The stdout should include "[$line_2] export help=\"1\""
-		The stdout should include "[$line_2] export version=\"1.0.0\""
-		The stdout should include "[$line_2] export DEBUG=\"*\""
+		The stdout should include "[$line_2] export help='1'"
+		The stdout should include "[$line_2] export version='1.0.0'"
+		The stdout should include "[$line_2] export DEBUG='*'"
 		The stdout should include 'definition to output index:'
 		The stdout should include "'index', 'output variable name', 'args quantity', 'defaults':"
 
@@ -59,7 +59,7 @@ Describe '_arguments.sh'
 		The status should be success
 		The variable HELP should eq '1'
 
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_2] export help='1'"
 		The stdout should include 'extracted: help=1'
 
 		The stderr should include 'Definition: -h,--help'
@@ -77,8 +77,8 @@ Describe '_arguments.sh'
 		The status should be success
 		The variable ID should eq 'test'
 
-		The stdout should include "[$line_1] export args_pno=\"test\""
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_1] export args_pno='test'"
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno::1 -h,--help'
 
 		# Dump
@@ -94,8 +94,8 @@ Describe '_arguments.sh'
 		The status should be success
 		The variable ID should eq 'test'
 
-		The stdout should include "[$line_1] export args_pno=\"test\""
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_1] export args_pno='test'"
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno::1 -h,--help'
 
 		# Dump
@@ -111,8 +111,8 @@ Describe '_arguments.sh'
 		The status should be success
 		The variable ID should eq '<empty>'
 
-		The stdout should include "[$line_1] export args_pno=\"<empty>\""
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_1] export args_pno='<empty>'"
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno::1 -h,--help'
 
 		# Dump
@@ -125,8 +125,8 @@ Describe '_arguments.sh'
 
 		When call parse:arguments --id="" --help
 
-		The stdout should include "[$line_1] export args_pno=\"<empty>\""
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_1] export args_pno='<empty>'"
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:1 -h,--help'
 		The status should be success
 		The variable ID should eq '<empty>'
@@ -144,8 +144,8 @@ Describe '_arguments.sh'
 		The status should be success
 		The variable ID should eq 'first second'
 
-		The stdout should include "[$line_1] export args_pno=\"first second\""
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_1] export args_pno='first second'"
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
 
 		# Dump
@@ -162,7 +162,7 @@ Describe '_arguments.sh'
 		The variable ID should be undefined
 		The stdout should include 'Error. Too little arguments provided'
 
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
 
 		# Dump
@@ -181,7 +181,7 @@ Describe '_arguments.sh'
 		The stderr should include "ignored: second [\$1]"
 		The variable ID should be undefined
 
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
 
 		# Dump
@@ -197,8 +197,8 @@ Describe '_arguments.sh'
 		The status should be success
 		The variable DEBUG should eq '*,-common'
 
-		The stdout should include "[$line_2] export DEBUG=\"*\""
-		The stdout should include "[$line_3] export DEBUG=\"*,-common\""
+		The stdout should include "[$line_2] export DEBUG='*'"
+		The stdout should include "[$line_3] export DEBUG='*,-common'"
 		The stderr should include 'Definition: --debug=DEBUG:*'
 
 		# Dump
@@ -219,8 +219,8 @@ Describe '_arguments.sh'
 		The variable ID should eq 'first'
 
 		# The stdout should include 'Too little arguments provided'
-		The stdout should include "[$line_2] export help=\"1\""
-		The stdout should include "[$line_4] export args_pno=\"first\""
+		The stdout should include "[$line_2] export help='1'"
+		The stdout should include "[$line_4] export args_pno='first'"
 		The stderr should include "Definition: \$1,-i,--id,--pno=args_pno:dummy:2 -h,--help"
 
 		# Dump
@@ -239,8 +239,8 @@ Describe '_arguments.sh'
 		The status should be success
 		The variable ID should eq 'dummy'
 
-		The stdout should include "[$line_2] export args_pno=\"dummy\""
-		The stdout should include "[$line_2] export help=\"1\""
+		The stdout should include "[$line_2] export args_pno='dummy'"
+		The stdout should include "[$line_2] export help='1'"
 		The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:1 -h,--help'
 
 		Dump

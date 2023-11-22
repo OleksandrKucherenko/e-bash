@@ -10,6 +10,7 @@
 # declare global associative array
 if [[ -z $TAGS ]]; then declare -g -A TAGS; fi
 if [[ -z $TAGS_PREFIX ]]; then declare -g -A TAGS_PREFIX; fi
+if [[ -z $TAGS_STACK ]]; then declare -g TAGS_STACK="0"; fi
 
 #
 # Create a dynamic functions with a Tag name as a suffix
@@ -82,6 +83,31 @@ function logger() {
   )
 
   return 0 # force exit code success
+}
+
+# save current $TAGS state
+function logger:push() {
+  TAGS_STACK=$((TAGS_STACK + 1))
+  local new_stack="__TAGS_STACK_$TAGS_STACK"
+  declare -g -A "$new_stack"
+
+  # shellcheck disable=SC1087
+  for key in "${!TAGS[@]}"; do
+    eval "$new_stack[\"$key\"]=\"${TAGS[$key]}\""
+  done
+}
+
+# recover previous $TAGS state
+function logger:pop() {
+  local stacked="__TAGS_STACK_$TAGS_STACK"
+  TAGS_STACK=$((TAGS_STACK - 1))
+
+  unset TAGS && declare -g -A TAGS
+
+  # shellcheck disable=SC1087
+  eval "for key in \"\${!$stacked[@]}\"; do eval \"TAGS[\\\"\$key\\\"]=\\\${$stacked[\\\"\$key\\\"]}\"; done"
+
+  unset "$stacked"
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
