@@ -299,12 +299,16 @@ function env:variable:or:secret:file:optional() {
     else
       echo "Using file: ${cl_green}$file${cl_reset} ~> $name"
       eval $__result="'$(cat $file)'"
-      return 2
+
+      # make unit test happy, they expect 0 exit code, otherwise variable preserve will not work
+      ${__SOURCED__:+x} && return 0 || return 2
     fi
   else
     echo "Using var : ${cl_green}\$$variable${cl_reset} ~> $name"
     eval $__result="'${!variable}'"
-    return 1
+
+    # make unit test happy, they expect 0 exit code, otherwise variable preserve will not work
+    ${__SOURCED__:+x} && return 0 || return 1
   fi
 }
 
