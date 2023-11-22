@@ -5,6 +5,7 @@ on: [push, pull_request]
 env:
   SHELLSPEC_VERSION: 0.28.1
   TERM: xterm-256color
+  HOMEBREW_NO_AUTO_UPDATE: 1
 
 jobs:
   shellspec-macos:
@@ -17,7 +18,7 @@ jobs:
       - name: Install shellspec
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
-          brew update
+          # brew update
           brew install bash
           brew install kcov
           curl -fsSL https://git.io/shellspec | sh -s ${{ env.SHELLSPEC_VERSION }} --yes
