@@ -1,6 +1,7 @@
 # Enhanced BASH Scripts
 
 - [Enhanced BASH Scripts](#enhanced-bash-scripts)
+  - [Roadmap](#roadmap)
   - [Local Dev Environment - Requirements](#local-dev-environment---requirements)
   - [TDD - Test Driven Development, run tests on file change](#tdd---test-driven-development-run-tests-on-file-change)
   - [Usage](#usage)
@@ -10,10 +11,11 @@
     - [Arguments Parsing](#arguments-parsing)
     - [Common(s) Functions](#commons-functions)
   - [Deploy / GitHub Pages](#deploy--github-pages)
+  - [Profile BASH script execution](#profile-bash-script-execution)
 
 ## Roadmap
 
-- [ ] High-level scripts should be in own `bin` OR `scripts` 
+- [ ] High-level scripts should be in own `bin` OR `scripts`
 - [ ] Git helpers
 - [ ] GitLabs helper scripts (work with branches, forks, submodules)
 - [ ] Slack notifications helper scripts
@@ -138,3 +140,24 @@ echo "Extracted: ${new_value}"
 # https://github.com/marketplace/actions/github-pages-action#%EF%B8%8F-create-ssh-deploy-key
 ssh-keygen -t rsa -b 4096 -C "kucherenko.alex@gmail.com" -f gh-pages -N ""
 ```
+
+## Profile BASH script execution
+
+```bash
+# print timestamp for each line of executed script
+PS4='+ $(gdate "+%s.%N ($LINENO) ")' bash -x bin/version-up.sh
+
+# save trace to file
+PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.sh 2>trace.log
+
+# process output to more user-friendly format: `execution_time | line_number | line_content``
+PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.sh 2>trace.log 1>/dev/null && cat trace.log | bin/profiler/tracing.sh
+
+# profile script execution and print summary
+bin/profiler/profile.sh bin/version-up.sh
+```
+
+src: https://itecnote.com/tecnote/r-performance-profiling-tools-for-shell-scripts/
+
+- https://www.thegeekstuff.com/2008/09/bash-shell-take-control-of-ps1-ps2-ps3-ps4-and-prompt_command/
+-
