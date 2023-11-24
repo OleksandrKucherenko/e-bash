@@ -364,7 +364,6 @@ function input:selector() {
   local distance=$((max_col - x_pos - ${#hint} - 4))
   local filler=$(printf ' %.0s' $(seq 1 $distance))
   local eraser=$(printf ' %.0s' $(seq 1 $((max_col - x_pos - 1))))
-  local cl_selected="$(tput setab 0 && tput setaf 7)"
 
   function selections() {
     local highlight=${1:-""}
@@ -473,12 +472,3 @@ alias validate_yn_input=validate:input:yn
 alias env_variable_or_secret_file=env:variable:or:secret:file
 alias optional_env_variable_or_secret_file=env:variable:or:secret:file:optional
 alias isHelp=args:isHelp
-
-# Usage:
-# declare -A -g connections && connections=(["d"]="direct" ["s"]="proxy-to-staging" ["p"]="proxy-to-local")
-# echo -n "Select connection type: " && tput civis # hide cursor
-# selected=$(input:selector "connections") && echo "${cl_blue}$selected${cl_reset}"
-
-# Usage:
-# echo -n "Enter password: "
-# password=$(input:readpwd) && echo "" && echo "Password: $password"
