@@ -27,8 +27,6 @@
 
 ## Local Dev Environment - Requirements
 
-![Bootstrap](docs/bootstrap.direnv.gif)
-
 - DirEnv - https://github.com/direnv/direnv
 - ShellFormat - https://github.com/mvdan/sh
 - ShellCheck - https://github.com/koalaman/shellcheck
@@ -141,6 +139,8 @@ echo "Extracted: ${new_value}"
 ![Selector](docs/ui.selector.gif)
 
 ```bash
+source ".scripts/_commons.sh"
+
 # Select value from short list of choices
 declare -A -g connections && connections=(["d"]="production" ["s"]="cors-proxy:staging" ["p"]="cors-proxy:local")
 echo -n "Select connection type: " && tput civis # hide cursor
@@ -170,7 +170,7 @@ PS4='+ $(gdate "+%s.%N ($LINENO) ")' bash -x bin/version-up.sh
 # save trace to file
 PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.sh 2>trace.log
 
-# process output to more user-friendly format: `execution_time | line_number | line_content``
+# process output to more user-friendly format: `execution_time | line_number | line_content`
 PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.sh 2>trace.log 1>/dev/null && cat trace.log | bin/profiler/tracing.sh
 
 # profile script execution and print summary
