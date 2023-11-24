@@ -30,3 +30,5 @@ export cl_lpurple=$(tput setaf 13)
 export cl_lcyan=$(tput setaf 14)
 export cl_lwhite=$(tput setaf 15)
 export cl_black=$(tput setaf 16)
+
+export cl_selected=$(tput setab 241 && tput setaf 15)

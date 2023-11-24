@@ -6,12 +6,14 @@
   - [TDD - Test Driven Development, run tests on file change](#tdd---test-driven-development-run-tests-on-file-change)
   - [Usage](#usage)
     - [Colors](#colors)
+    - [Script Dependencies](#script-dependencies)
     - [Logger](#logger)
-    - [Dependencies](#dependencies)
     - [Arguments Parsing](#arguments-parsing)
-    - [Common(s) Functions](#commons-functions)
-  - [Deploy / GitHub Pages](#deploy--github-pages)
+    - [Common(s) Functions And Inputs](#commons-functions-and-inputs)
+    - [UI: Selector](#ui-selector)
+    - [UI: Ask for Password](#ui-ask-for-password)
   - [Profile BASH script execution](#profile-bash-script-execution)
+  - [Colors support in my terminal](#colors-support-in-my-terminal)
 
 ## Roadmap
 
@@ -21,9 +23,11 @@
 - [ ] Slack notifications helper scripts
 - [ ] Telemetry module (report metrics to CI or DataDog)
 - [ ] Globals module (declarative way of defining script dependencies to global environment variables)
-- [ ] Loggs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
+- [ ] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
 
 ## Local Dev Environment - Requirements
+
+![Bootstrap](docs/bootstrap.direnv.gif)
 
 - DirEnv - https://github.com/direnv/direnv
 - ShellFormat - https://github.com/mvdan/sh
@@ -61,6 +65,22 @@ source ".scripts/_colors.sh"
 echo -e "${cl_red}Hello World${cl_reset}"
 ```
 
+### Script Dependencies
+
+![Bootstrap](docs/bootstrap.direnv.gif)
+
+```bash
+source ".scripts/_dependencies.sh"
+
+dependency bash "5.*.*" "brew install bash"
+dependency direnv "2.*.*" "curl -sfL https://direnv.net/install.sh | bash"
+dependency shellspec "0.28.*" "brew install shellspec"
+optional kcov "42" "brew install kcov"
+dependency shellcheck "0.9.*" "curl -sS https://webi.sh/shellcheck | sh"
+dependency shfmt "3.*.*" "curl -sS https://webi.sh/shfmt | sh"
+dependency watchman "2023.07.*.*" "brew install watchman"
+```
+
 ### Logger
 
 ```bash
@@ -76,20 +96,6 @@ export DEBUG=*,-common  # enable logger output for all tags except common
 
 # advanced functions
 config:logger:Common "$@" # re-configure logger enable/disable for common tag
-```
-
-### Dependencies
-
-```bash
-source ".scripts/_dependencies.sh"
-
-dependency bash "5.*.*" "brew install bash"
-dependency direnv "2.*.*" "curl -sfL https://direnv.net/install.sh | bash"
-dependency shellspec "0.28.*" "brew install shellspec"
-optional kcov "42" "brew install kcov"
-dependency shellcheck "0.9.*" "curl -sS https://webi.sh/shellcheck | sh"
-dependency shfmt "3.*.*" "curl -sS https://webi.sh/shfmt | sh"
-dependency watchman "2023.07.*.*" "brew install watchman"
 ```
 
 ### Arguments Parsing
@@ -112,7 +118,7 @@ echo "Is --debug: $DEBUG"
 parse:arguments "$@"
 ```
 
-### Common(s) Functions
+### Common(s) Functions And Inputs
 
 ```bash
 source ".scripts/_commons.sh"
@@ -128,20 +134,34 @@ echo "Extracted: ${new_value}"
 # validate/confirm input parameter by user input
 # string
 # Yes/No
-
-
-# track execution time
 ```
 
-## Deploy / GitHub Pages
+### UI: Selector
+
+![Selector](docs/ui.selector.gif)
 
 ```bash
-# generate ssh key for gh-pages publishing
-# https://github.com/marketplace/actions/github-pages-action#%EF%B8%8F-create-ssh-deploy-key
-ssh-keygen -t rsa -b 4096 -C "kucherenko.alex@gmail.com" -f gh-pages -N ""
+# Select value from short list of choices
+declare -A -g connections && connections=(["d"]="production" ["s"]="cors-proxy:staging" ["p"]="cors-proxy:local")
+echo -n "Select connection type: " && tput civis # hide cursor
+selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_reset}"
+```
+
+### UI: Ask for Password
+
+![Ask for Password](docs/ui.ask-for-password.gif)
+
+```bash
+source ".scripts/_commons.sh"
+
+# Usage:
+echo -n "Enter password: "
+password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
 
 ## Profile BASH script execution
+
+![Profiler](docs/profiler.version-up.gif)
 
 ```bash
 # print timestamp for each line of executed script
@@ -157,7 +177,14 @@ PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.sh 2>trac
 bin/profiler/profile.sh bin/version-up.sh
 ```
 
-src: https://itecnote.com/tecnote/r-performance-profiling-tools-for-shell-scripts/
+- ref1: https://itecnote.com/tecnote/r-performance-profiling-tools-for-shell-scripts/
+- ref2: https://www.thegeekstuff.com/2008/09/bash-shell-take-control-of-ps1-ps2-ps3-ps4-and-prompt_command/
 
-- https://www.thegeekstuff.com/2008/09/bash-shell-take-control-of-ps1-ps2-ps3-ps4-and-prompt_command/
--
+## Colors support in my terminal
+
+![Terminal Colors](docs/terminal.colors.gif)
+
+```bash
+# print all colors for easier selection
+demos/demo.colors.sh
+```
