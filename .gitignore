@@ -1,7 +1,10 @@
 # utility folders
 coverage/
 report/
+
+# IDE folders
 .vscode/
+.idea/
 
 # backup/temporary files
 *.tmp
@@ -24,3 +27,6 @@ report/
 
 # version file composed by version-up.sh script
 version.properties
+
+# self-update .versions folder
+.versions/

@@ -14,6 +14,7 @@
     - [UI: Ask for Password](#ui-ask-for-password)
   - [Profile BASH script execution](#profile-bash-script-execution)
   - [Colors support in my terminal](#colors-support-in-my-terminal)
+  - [References](#references)
 
 ## Roadmap
 
@@ -188,3 +189,10 @@ bin/profiler/profile.sh bin/version-up.sh
 # print all colors for easier selection
 demos/demo.colors.sh
 ```
+
+## References
+
+- PV - https://manpages.ubuntu.com/manpages/focal/man1/pv.1.html
+- https://catern.com/posts/pipes.html
+- https://stackoverflow.com/questions/238073/how-to-add-a-progress-bar-to-a-shell-script
+-
