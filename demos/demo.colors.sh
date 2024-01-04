@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2024-01-02
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # ESC[38:5:⟨n⟩m Select foreground color      where n is a number from the table below
 # ESC[48:5:⟨n⟩m Select background color
 # "\033[38;5;%dm" "\033[48;5;%dm" "\033[0m"

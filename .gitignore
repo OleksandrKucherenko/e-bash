@@ -28,5 +28,7 @@ report/
 # version file composed by version-up.sh script
 version.properties
 
-# self-update .versions folder
+# self-update .versions folder; symbolic links backup names `ln --backup=numbered -s ...`
 .versions/
+*.~*~
+*.sha1

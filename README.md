@@ -160,6 +160,75 @@ echo -n "Enter password: "
 password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
 
+## Semver - Semantic Versioning
+
+```bash
+source ".scripts/_semver.sh"
+
+# verify that version is passing the constraints expression
+semver:constraints "1.0.0-alpha" ">1.0.0-beta || <1.0.0" && echo "$? - OK!" || echo "$? - FAIL!" # expected OK
+
+# more specific cases
+semver:constraints:simple "1.0.0-beta.10 != 1.0.0-beta.2" && echo "OK!" || echo "$? - FAIL!"
+
+# parse and recompose version code
+semver:parse "2.0.0-rc.1+build.123" "V" \
+  && for i in "${!V[@]}"; do echo "$i: ${V[$i]}"; done \
+  && semver:recompose "V"
+  
+# test version code
+echo "1" | grep -E "${SEMVER_LINE}" --color=always --ignore-case || echo "OK!"
+```
+
+## Self-Update
+
+Requirements:
+- [x] detect a new version of the script
+- [x] download multiple versions into folder and do a symbolic link to a specific version
+- [x] download from GIT repo (git clone)
+  - [x] keep MASTER as default, extract version tags as sub-folders
+- [ ] download from GIT repo release URL (tar/zip archive)
+  - [ ] extract archive to a version sub-folder
+- [x] rollback to previous version (or specified one)
+- [ ] partial update of the scripts, different versions of scripts from different version sub-folders
+- [ ] verify SHA1 hash of the scripts
+  - [x] compute file SHA1 hash and store it in *.sha1 file
+- [ ] understand version expressions
+  - [ ] `latest` - latest stable version
+  - [ ] `*` - any highest version tag (INCLUDING: alpha, beta, rc etc)
+  - [ ] `branch:{any_branch}` or `tag:{any_tag}` - any branch name (also works for TAGs)
+  - [ ] `>`, `<`, `>=`, `<=`, `~`, `!=`, `||` - comparison syntax
+  - [ ] `1.0.0` or `=1.0.0` - exact version
+  - [ ] `~1.0.0` - version in range >= 1.0.x, patch releases allowed
+  - [ ] `^1.0.0` - version in range >= 1.x.x, minor & patch releases allowed
+  - [ ] `>1.0.0 <=1.5.0` - version in range `> 1.0.0 && <= 1.5.0`
+  - [ ] `>1.0.0 <1.1.0 || >1.5.0` - version in range `(> 1.0.0 < 1.1.0) || (> 1.5.0)`
+
+refs: 
+- https://classic.yarnpkg.com/lang/en/docs/dependency-versions/
+- https://github.com/fsaintjacques/semver-tool
+- https://github.com/Masterminds/semver
+
+```bash
+source ".scripts/_self-update.sh"
+
+# check for version update in range >= 1.0.x, stable versions
+# try to update itself from https://github.com/OleksandrKucherenko/e-bash.git repository
+self-update "~1.0.0"                          # patch releases allowed
+self-update "^1.0.0"                          # minor releases allowed
+self-update "> 1.0.0 <= 1.5.0"                # stay in range
+
+# update specific file to latest version tag
+self-update "latest" ".scripts/_colors.sh"    # latest stable
+self-update "*" ".scripts/_colors.sh"         # any highest version tag
+
+# update specific file to MASTER version (can be used any branch name)
+self-update "branch:master" ".scripts/_colors.sh"   
+self-update "tag:v1.0.0" ".scripts/_colors.sh"
+
+# TBD
+```
+
 ## Profile BASH script execution
 
 ![Profiler](docs/profiler.version-up.gif)

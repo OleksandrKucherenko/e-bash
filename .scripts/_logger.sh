@@ -24,7 +24,7 @@ function logger:compose() {
     # begin
     #
     function echo:${suffix}() {
-      [[ "\${TAGS[$tag]}" == "1" ]] && builtin echo "\${TAGS_PREFIX[$tag]}\$@"
+      [[ "\${TAGS[$tag]}" == "1" ]] && (builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@";)
     }
 
     function printf:${suffix}() {
