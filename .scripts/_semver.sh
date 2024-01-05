@@ -7,12 +7,11 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# one time initialization, CUID
+[[ "${clr0lmakk0007og38l1w9v18o}" == "yes" ]] && return 0 || export clr0lmakk0007og38l1w9v18o="yes"
+
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
-
-logger semver "$@" # declare echo:Semver & printf:Semver functions
-logger regex "$@"  # declare echo:Regex & printf:Regex functions
-logger simple "$@" # declare echo:Simple & printf:Simple functions
 
 # reserved global variable for parsing, declare associated array structure
 declare -A -g __semver_parse_result=(
@@ -108,7 +107,9 @@ function semver:grep() {
   echo "${v_valid_semver}"
 
   # debug output
-  echo:Regex "${v_valid_semver}" >&2
+  if type echo:Regex &>/dev/null; then
+    echo:Regex "${v_valid_semver}" >&2
+  fi
 }
 
 # create version from parsed results
@@ -462,6 +463,13 @@ export SEMVER_LINE_WITH_PREFIX="^v?${SEMVER}\$"
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
+
+logger semver "$@" # declare echo:Semver & printf:Semver functions
+logger regex "$@"  # declare echo:Regex & printf:Regex functions
+logger simple "$@" # declare echo:Simple & printf:Simple functions
+
+logger loader "$@" # initialize logger
+echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 # Refs:
 # - https://www.baeldung.com/linux/bash-bitwise-operators

@@ -2,10 +2,13 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2024-01-05
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+
+# one time initialization, CUID
+[[ "${clr0lj0ua0003og3884k1s2sh}" == "yes" ]] && return 0 || export clr0lj0ua0003og3884k1s2sh="yes"
 
 # shellcheck disable=SC1090 source=./_commons.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
@@ -15,9 +18,6 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_dependencies.sh"
 # shellcheck disable=SC1090 source=./_semver.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_semver.sh"
-
-logger git "$@"     # declare echo:Git
-logger version "$@" # declare echo:Version
 
 readonly E_BASH=".e-bash"
 readonly REPO_URL="https://github.com/OleksandrKucherenko/e-bash.git"
@@ -29,12 +29,20 @@ readonly VERSIONS_DIR=".versions"
 readonly MAIN_BRANCH="master"
 readonly VERSION_PATTERN="v?${SEMVER}"
 
+# declare global associative array for storing version-to-tag mapping
+declare -g -A __REPO_MAPPING=()
+# declare global array for storing all version tags of the repo
+declare -g -a __REPO_VERSIONS=()
+
 # check if script dependencies are satisfied
 function self-update:dependencies() {
   dependency bash "5.*.*" "brew install bash"
   dependency git "2.*.*" "brew install git"
+
+  # commands that support --backup=numbered option
   dependency gln "9.2" "brew install coreutils"
   dependency gmv "9.2" "brew install coreutils"
+  dependency gcp "9.2" "brew install coreutils"
 }
 
 # compare two version strings
@@ -70,11 +78,6 @@ function array:qsort() {
   array:qsort "$compare" "${right[@]}"
 }
 
-# declare global associative array for storing version-to-tag mapping
-declare -g -A __REPO_MAPPING=()
-# declare global array for storing all version tags of the repo
-declare -g -a __REPO_VERSIONS=()
-
 # extract all version tags of the repo into global array
 function self-update:version:tags() {
   pushd "${SELF_UPDATE_DIR}" &>${NULL} || exit 1
@@ -103,7 +106,7 @@ function self-update:version:tags() {
   popd &>${NULL} || exit 1
 }
 
-# find the highest version tag in git repo that matches version expression/contraints
+# find the highest version tag in git repo that matches version expression/constraints
 function self-update:version:find() {
   local constraints="$1"
 
@@ -173,14 +176,14 @@ function self-update:version:get() {
 # extract first/rollback version to local disk
 function self-update:version:get:first() {
   local version="${ROLLBACK_VERSION}"
-  echo:Version "First version is ${cl_blue}${version}${cl_reset}"
+  echo:Version "Extract first version: ${cl_blue}${version}${cl_reset}"
   self-update:version:has "${version}" || self-update:version:get "${version}"
 }
 
 # extract latest version from git repo to local disk VERSIONS_DIR folder
 function self-update:version:get:latest() {
   local version=$(self-update:version:find:highest_tag)
-  echo:Version "Latest version is ${cl_blue}${version}${cl_reset}"
+  echo:Version "Extract latest version: ${cl_blue}${version}${cl_reset}"
   self-update:version:has "${version}" || self-update:version:get "${version}"
 }
 
@@ -211,6 +214,9 @@ function self-update:version:bind() {
   # current execution script file is the subject of binding
   local script_file="$(basename "${file}")"
   local script_folder="$(cd "$(dirname "${file}")" && pwd)"
+
+  # TODO (olku): what should we do if $file points on other directory than `.scripts/`?
+  #   we also have `bin/` folder with additional scripts.
   local version_dir_home="~/${E_BASH}/${VERSIONS_DIR}/${version}/.scripts"
   local version_file="${SELF_UPDATE_DIR}/${VERSIONS_DIR}/${version}/.scripts/${script_file}"
 
@@ -239,8 +245,8 @@ function self-update:version:bind() {
     "${version_file}" \
     "${script_folder}/${script_file}"
 
-  echo:Version "e-bash binding: done ${cl_blue}${script_file}${cl_reset}" \
-    "~" "${cl_yellow}${version_dir_home}/${script_file}${cl_reset}"
+  echo:Version "e-bash binding: ${cl_blue}${script_file}${cl_reset}" \
+    "~>" "${cl_yellow}${version_dir_home}/${script_file}${cl_reset}"
 }
 
 # extract executable script version
@@ -250,13 +256,13 @@ function self-update:self:version() {
   local script_folder="$(cd "$(dirname "${file}")" && pwd)"
 
   # check is script file is already bind to the version or not
-  if [[ -L "${script_folder}/${script_file}" ]]; then
+  if [[ -L "${script_folder}/${script_file}" ]]; then # symbolic link
     local link=$(readlink "${script_folder}/${script_file}")
     local bind_version=$(echo "$link" | sed -E "s/.*\/\.versions\/(.*)\/\.scripts\/.*/\1/")
 
     echo:Version "binding: ${cl_blue}${script_file}${cl_reset} to ${cl_yellow}${bind_version}${cl_reset}" >&2
     echo "${bind_version}" # expected tag: v1.0.0
-  else
+  else # file content
     # try to extract version from script copyright comments, expected `## Version: 1.0.0`
     local file_version=$(grep -E "^## Version: ${VERSION_PATTERN}$" "${script_folder}/${script_file}" | sed -E "s/^## Version: (.*)$/\1/")
 
@@ -271,11 +277,17 @@ function self-update:self:version() {
       echo "${ROLLBACK_VERSION}" # expected tag: v1.0.0
     fi
   fi
+
+  # TODO (olku): should we try to extract version from git tags if file is a part of repo?
 }
 
 # calculate hash of the script file content, create a *.sha1 file for caching
-function self-update:self:hash() {
-  local file=${1:-"${BASH_SOURCE[0]}"}
+function self-update:file:hash() {
+  local filepath=${1:-"${BASH_SOURCE[0]}"}
+
+  # convert to fully resolved path
+  local name="$(basename "${filepath}")"
+  local file="$(cd "$(dirname "${filepath}")" && pwd)/$(basename "${filepath}")"
 
   # calculate hash of the script file content, SHA1, ref: https://manned.org/shasum
   local hash=$(shasum --algorithm 1 "${file}" | awk '{print $1}')
@@ -285,9 +297,12 @@ function self-update:self:hash() {
   if [[ "$(cat "${file}.sha1" 2>/dev/null)" != "${hash}" ]]; then
     echo:Version "hash: ${cl_blue}${file}${cl_reset} to ${cl_yellow}${hash}${cl_reset}" >&2
     create_hash_file=true
+  else
+    echo:Version "hash: ${cl_blue}${file}${cl_reset} to ${cl_yellow}${hash}${cl_reset} - ${cl_green}from ${name}.sha1${cl_reset}" >&2
   fi
 
-  # make a hash file if it does not exist, otherwise create a numbered backup file for existing hash file and replace it
+  # make a hash file if it does not exist, otherwise create a numbered backup file
+  # for existing hash file and replace it
   if $create_hash_file; then
     echo "${hash}" >"${file}.sha1.tmp"
     gmv --backup=numbered --force "${file}.sha1.tmp" "${file}.sha1"
@@ -298,9 +313,20 @@ function self-update:self:hash() {
 
 # calculate hash of the script file content, create a *.sha1 file for caching
 # but use version folder as a source of file content
+# shellcheck disable=SC2088
 function self-update:version:hash() {
   local file=${1:-"${BASH_SOURCE[0]}"}
   local version=${2}
+
+  local script_file="$(basename "${file}")"
+  #  local script_folder="$(cd "$(dirname "${file}")" && pwd)"
+
+  # TODO (olku): what should we do if $file points on other directory than `.scripts/`?
+  #   we also have `bin/` folder with additional scripts.
+  local version_file="${SELF_UPDATE_DIR}/${VERSIONS_DIR}/${version}/.scripts/${script_file}"
+  echo:Version "hash versioned file: ${cl_blue}${version_file}${cl_reset}"
+
+  self-update:file:hash "${version_file}"
 }
 
 # restore script file from LN backup file
@@ -311,8 +337,8 @@ function self-update:rollback:backup() {
   local script_folder="$(cd "$(dirname "${file}")" && pwd)"
 
   # find the latest backup file by pattern ${script_file}.~([0-9]+)~
-  local backup_file=$(find "${script_folder}" -maxdepth 1 -type f -name "${script_file}.~*~" | sort -V | tail -n1)
-  echo:Version "Found backup file: ${backup_file:-"<none>"}"
+  local backup_file=$(find "${script_folder}" -maxdepth 1 -name "${script_file}.~*~" | sort -V | tail -n1)
+  echo:Version "Found backup file: ${cl_yellow}${backup_file:-"<none>"}${cl_reset}"
 
   # restore script file from backup file, use move command for recovering
   if [[ -n "${backup_file}" ]]; then
@@ -329,9 +355,43 @@ function self-update:rollback:version() {
   self-update:version:has "${version}" || self-update:version:get "${version}"
 
   self-update:version:bind "${version}" "${file}"
+
+  # NOTE: rollback to specific version does not remove backup files, it will actually create a new one
+}
+
+# convert current file symbolic link to a file copy
+function self-update:unlink() {
+  local filepath=${1:-"${BASH_SOURCE[0]}"}
+
+  # convert to fully resolved path
+  local name="$(basename "${filepath}")"
+  local file_dir="$(cd "$(dirname "${filepath}")" && pwd)"
+  local file="${file_dir}/$(basename "${filepath}")"
+
+  if ! find "$file_dir" -type l -name "$name" -maxdepth 1 | grep .; then
+    echo:Version "e-bash unlink: ${cl_blue}${name}${cl_reset} - ${cl_red}NOT A LINK${cl_reset}"
+    return 0
+  fi
+
+  local link_target=$(greadlink --canonicalize-existing --no-newline --verbose "$file")
+
+  local cmd=""
+  if [[ -d "$link_target" ]]; then # directory
+    cmd="rm -f '$file' && cp -r '$link_target' '$file'"
+  else # file
+    cmd="rm -f '$file' && cp '$link_target' '$file'"
+  fi
+
+  echo:Version "e-bash unlink: ${cl_blue}${name}${cl_reset} <~ ${cl_yellow}${link_target}${cl_reset}"
+
+  if ! eval "$cmd"; then
+    echo:Version "WARNING: Problem running '$cmd' for ${cl_yellow}${file}${cl_reset}" >&2
+    return 1
+  fi
 }
 
 # initialize git repo in local disk that helps to manage versions of the script(s)
+# in addition: extract first version of the script files on disk;
 function self-update:initialize() {
   # create folder if it does not exist
   mkdir -p "${SELF_UPDATE_DIR}"
@@ -368,10 +428,10 @@ function self-update:initialize() {
     } >>.gitignore
   fi
 
-  # extract first version of the script
-  self-update:version:has "${ROLLBACK_VERSION}" || self-update:version:get "${ROLLBACK_VERSION}"
-
   popd &>${NULL} || exit 1
+
+  # extract first version of the script
+  self-update:version:get:first
 }
 
 # Entry point for self-update
@@ -382,8 +442,7 @@ function self-update() {
   # initialize git repo on $HOME/.e-bash folder
   self-update:initialize
 
-  # always, get latest and rollback versions on disk
-  self-update:version:get:first
+  # always, get latest version on disk
   self-update:version:get:latest
 
   # find version tag that matches version expression
@@ -397,14 +456,14 @@ function self-update() {
     self-update:version:bind "${upgrade_version}" "${file}"
 
     # calculate hash of the script file content
-    self-update:self:hash "${file}"
+    self-update:file:hash "${file}"
     self-update:version:hash "${file}" "${upgrade_version}"
   }
 
   # is current version of file matches the found update
   if [[ "${current_version}" == "${upgrade_version}" ]]; then
     # verify hash of the script file content to be 100% sure
-    local current_hash=$(self-update:self:hash "${file}")
+    local current_hash=$(self-update:file:hash "${file}")
     local update_hash=$(self-update:version:hash "${file}" "${upgrade_version}")
 
     if [[ "${current_hash}" != "${update_hash}" ]]; then
@@ -424,5 +483,12 @@ function self-update() {
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
 
+logger git "$@"     # declare echo:Git, printf:Git
+logger version "$@" # declare echo:Version, printf:Version
+
+logger loader "$@" # initialize logger
+echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
+
 # Refs:
 # - https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
+# - https://stackoverflow.com/questions/3338030/multiple-bash-traps-for-the-same-signal

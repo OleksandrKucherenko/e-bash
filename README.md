@@ -82,10 +82,14 @@ dependency watchman "2023.07.*.*" "brew install watchman"
 
 ### Logger
 
+Requirements:
+- [x] zero dependencies, pure BASH
+- [x] prefix for all logger messages
+
 ```bash
 source ".scripts/_logger.sh"
-logger common "$@" # declare echoCommon and printfCommon functions, tag: common
-logger debug "$@" # declare echoDebug and printfDebug functions, tag: debug
+logger common "$@" # declare echo:Common and printf:Common functions, tag: common
+logger debug "$@" # declare echo:Debug and printf:Debug functions, tag: debug
 
 echo:Common "Hello World" # output "Hello World" only if tag common is enabled
 
@@ -190,19 +194,21 @@ Requirements:
 - [ ] download from GIT repo release URL (tar/zip archive)
   - [ ] extract archive to a version sub-folder
 - [x] rollback to previous version (or specified one)
+  - [x] rollback to latest backup file (if exists)
 - [ ] partial update of the scripts, different versions of scripts from different version sub-folders
-- [ ] verify SHA1 hash of the scripts
+  - [x] developer can bind file to a specific version by calling function `self-update:version:bind`
+- [x] verify SHA1 hash of the scripts
   - [x] compute file SHA1 hash and store it in *.sha1 file
-- [ ] understand version expressions
+- [x] understand version expressions
   - [ ] `latest` - latest stable version
   - [ ] `*` - any highest version tag (INCLUDING: alpha, beta, rc etc)
   - [ ] `branch:{any_branch}` or `tag:{any_tag}` - any branch name (also works for TAGs)
-  - [ ] `>`, `<`, `>=`, `<=`, `~`, `!=`, `||` - comparison syntax
-  - [ ] `1.0.0` or `=1.0.0` - exact version
-  - [ ] `~1.0.0` - version in range >= 1.0.x, patch releases allowed
-  - [ ] `^1.0.0` - version in range >= 1.x.x, minor & patch releases allowed
-  - [ ] `>1.0.0 <=1.5.0` - version in range `> 1.0.0 && <= 1.5.0`
-  - [ ] `>1.0.0 <1.1.0 || >1.5.0` - version in range `(> 1.0.0 < 1.1.0) || (> 1.5.0)`
+  - [x] `>`, `<`, `>=`, `<=`, `~`, `!=`, `||` - comparison syntax
+  - [x] `1.0.0` or `=1.0.0` - exact version
+  - [x] `~1.0.0` - version in range >= 1.0.x, patch releases allowed
+  - [x] `^1.0.0` - version in range >= 1.x.x, minor & patch releases allowed
+  - [x] `>1.0.0 <=1.5.0` - version in range `> 1.0.0 && <= 1.5.0`
+  - [x] `>1.0.0 <1.1.0 || >1.5.0` - version in range `(> 1.0.0 < 1.1.0) || (> 1.5.0)`
 
 refs: 
 - https://classic.yarnpkg.com/lang/en/docs/dependency-versions/
@@ -225,6 +231,9 @@ self-update "*" ".scripts/_colors.sh"         # any highest version tag
 # update specific file to MASTER version (can be used any branch name)
 self-update "branch:master" ".scripts/_colors.sh"   
 self-update "tag:v1.0.0" ".scripts/_colors.sh"
+
+# bind file to a specific version
+self-update:version:bind "v1.0.0" ".scripts/_colors.sh"
 
 # TBD
 ```
