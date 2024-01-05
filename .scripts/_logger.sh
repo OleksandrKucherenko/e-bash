@@ -60,12 +60,11 @@ function logger() {
   #
   # Usage:
   #   source "$SCRIPT_DIR/commons.sh" && logger tag "$@"
-  #   echoTag "print only if DEBUG=tag is set"
-  #   printfTag "print only if DEBUG=tag is set %s" "something"
+  #   echo:Tag "print only if DEBUG=tag is set"
+  #   printf:Tag "print only if DEBUG=tag is set %s" "something"
   #
   local tag=${1}
-  local suffix=${1^}
-  # local suffix=$(echo "$1" | sed -e "s/\b\(.\)/\u\1/g")
+  local suffix=${1^} # capitalize first letter
 
   # check if logger already exists, then skip
   if type "echo:${suffix}" &>/dev/null; then return 0; fi

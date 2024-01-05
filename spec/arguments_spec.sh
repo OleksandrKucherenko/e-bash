@@ -11,10 +11,10 @@
 
 eval "$(shellspec - -c) exit 1"
 
-export line_1="141"
-export line_2="152"
-export line_3="167"
-export line_4="180"
+export line_1="144"
+export line_2="155"
+export line_3="170"
+export line_4="183"
 
 Describe '_arguments.sh'
 	BeforeRun 'export DEBUG="*"'
