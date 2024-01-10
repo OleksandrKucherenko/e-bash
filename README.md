@@ -201,7 +201,7 @@ Requirements:
   - [x] compute file SHA1 hash and store it in *.sha1 file
 - [x] understand version expressions
   - [ ] `latest` - latest stable version
-  - [ ] `*` - any highest version tag (INCLUDING: alpha, beta, rc etc)
+  - [ ] `*` or `next` - any highest version tag (INCLUDING: alpha, beta, rc etc)
   - [ ] `branch:{any_branch}` or `tag:{any_tag}` - any branch name (also works for TAGs)
   - [x] `>`, `<`, `>=`, `<=`, `~`, `!=`, `||` - comparison syntax
   - [x] `1.0.0` or `=1.0.0` - exact version
@@ -214,6 +214,8 @@ refs:
 - https://classic.yarnpkg.com/lang/en/docs/dependency-versions/
 - https://github.com/fsaintjacques/semver-tool
 - https://github.com/Masterminds/semver
+- https://stackoverflow.com/questions/356100/how-to-wait-in-bash-for-several-subprocesses-to-finish-and-return-exit-code-0
+- 
 
 ```bash
 source ".scripts/_self-update.sh"
@@ -236,6 +238,28 @@ self-update "tag:v1.0.0" ".scripts/_colors.sh"
 self-update:version:bind "v1.0.0" ".scripts/_colors.sh"
 
 # TBD
+
+# INTEGRATION EXAMPLE
+
+# do self-update on script exit
+trap "self-update '^1.0.0'" EXIT
+
+# OR:
+function __exit() {
+  # TODO: add more cleanup logic here
+  self-update '^1.0.0'
+}
+trap "__exit" EXIT
+```
+
+### Troubleshooting
+
+```bash
+# rollback with use of backup file(s)
+source ".scripts/_self-update.sh" && self-update:rollback:backup "${full_path_to_file}"
+
+# rollback to specific version
+source ".scripts/_self-update.sh" && self-update:rollback:version "v1.0.0" "${full_path_to_file}"
 ```
 
 ## Profile BASH script execution

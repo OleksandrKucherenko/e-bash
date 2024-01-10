@@ -7,18 +7,35 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-#export DEBUG=git,version,loader
+export DEBUG=git,version,loader
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.scripts" && pwd)"
 # shellcheck disable=SC1090 source=../.scripts/_self-update.sh
 source "$scripts_dir/_self-update.sh"
 
+# full path to the script file
+#self-update:version:bind "v1.0.0" "$scripts_dir/_colors.sh"
+
+# relative path to the caller script file
+#self-update:version:bind "v1.0.1-alpha.1" "../.scripts/_colors.sh"
+
+# relative path to the caller script file, project root dir
+#self-update:version:bind "v1.0.0" "00-format.sh"
+
 # ask self-update to the version >= 1.0.0 && < 2.0.0
 #self-update "^1.0.0"
 
 # check for version update in range >= 1.0.0 && < 2.0.0
 #self-update "^1.0.0" "${BASH_SOURCE[0]}" "$REPO_URL"
+
+## Resolve Path
+path:resolve "$scripts_dir/_colors.sh"
+path:resolve "../.scripts/_colors.sh"
+path:resolve "../bin/un-link.sh"
+path:resolve "./demo.semver.sh"
+path:resolve "./demo.semver.sh" "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+path:resolve "00-format.sh"
 
 ## Delete repo dir, to emulate first run
 #rm -rf "${SELF_UPDATE_DIR}"
@@ -42,7 +59,7 @@ self-update:self:version "$scripts_dir/_colors.sh"
 self-update:self:version "00-format.sh"
 
 ## Compute file hash
-#self-update:file:hash "00-format.sh"
+self-update:file:hash "00-format.sh"
 self-update:file:hash "$scripts_dir/_colors.sh"
 
 ## Compute file hash for a specific version
@@ -73,4 +90,5 @@ while find "${scripts_dir}" -name "_colors.sh.~*~" | grep . >/dev/null; do
 done
 
 ## Unlinking, error state
+# expected: `e-bash unlink: _colors.sh - NOT A LINK`
 self-update:unlink "$scripts_dir/_colors.sh"

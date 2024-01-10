@@ -257,14 +257,14 @@ function env:variable:or:secret:file() {
   #
   local name=$1
   local variable=$2
-  local file=$3
+  local filepath=$3
   local fallback=${4:-"No hints, check the documentation"}
   local __result=$name
 
   if [[ -z "${!variable}" ]]; then
-    if [[ ! -f "$file" ]]; then
+    if [[ ! -f "$filepath" ]]; then
       echo ""
-      echo "${cl_red}ERROR:${cl_reset} bash env variable '\$$variable' or file '$file' should be provided"
+      echo "${cl_red}ERROR:${cl_reset} bash env variable '\$$variable' or file '$filepath' should be provided"
       echo ""
       echo "Hint:"
       echo "  $fallback"
@@ -272,8 +272,8 @@ function env:variable:or:secret:file() {
       echo:Common "Working Dir: $(pwd)"
       return 1
     else
-      echo "Using file: ${cl_green}$file${cl_reset} ~> $name"
-      eval $__result="'$(cat $file)'"
+      echo "Using file: ${cl_green}$filepath${cl_reset} ~> $name"
+      eval $__result="'$(cat $filepath)'"
     fi
   else
     echo "Using var : ${cl_green}\$$variable${cl_reset} ~> $name"
@@ -291,17 +291,17 @@ function env:variable:or:secret:file:optional() {
   #
   local name=$1
   local variable=$2
-  local file=$3
+  local filepath=$3
   local __result=$name
 
   if [[ -z "${!variable}" ]]; then
-    if [[ ! -f "$file" ]]; then
+    if [[ ! -f "$filepath" ]]; then
       # NO variable, NO file
-      echo "${cl_yellow}Note:${cl_reset} bash env variable '\$$variable' or file '$file' can be provided."
+      echo "${cl_yellow}Note:${cl_reset} bash env variable '\$$variable' or file '$filepath' can be provided."
       return 0
     else
-      echo "Using file: ${cl_green}$file${cl_reset} ~> $name"
-      eval $__result="'$(cat $file)'"
+      echo "Using file: ${cl_green}$filepath${cl_reset} ~> $name"
+      eval $__result="'$(cat $filepath)'"
 
       # make unit test happy, they expect 0 exit code, otherwise variable preserve will not work
       ${__SOURCED__:+x} && return 0 || return 2
@@ -319,14 +319,14 @@ function confirm:by:input() {
   local hint=$1
   local variable=$2
   local fallback=$3
-  local first=$4
+  local top=$4
   local second=$5
   local third=$6
   local masked=$7
 
   print:confirmation() { echo "${cl_purple}? ${cl_reset}${hint}${cl_blue}$1${cl_reset}"; }
 
-  if [ -z "$first" ]; then
+  if [ -z "$top" ]; then
     if [ -z "$second" ]; then
       if [ -z "$third" ]; then
         if [ -n "$masked" ]; then
@@ -343,8 +343,8 @@ function confirm:by:input() {
       print:confirmation "${masked:-$second}"
     fi
   else
-    eval "$variable='$first'"
-    print:confirmation "${masked:-$first}"
+    eval "$variable='$top'"
+    print:confirmation "${masked:-$top}"
   fi
 }
 
