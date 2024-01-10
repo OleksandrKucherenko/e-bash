@@ -2,10 +2,13 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
-## Version: 1.0.0
+## Last revisit: 2024-01-06
+## Version: 1.0.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+
+# shellcheck disable=SC2015 # one time initialization, CUID
+[[ "${clr19adx10008og3819x1ipfv}" == "yes" ]] && return 0 || export clr19adx10008og3819x1ipfv="yes"
 
 # tput calls require TERM to be set
 if [[ -z $TERM ]]; then export TERM=xterm-256color; fi

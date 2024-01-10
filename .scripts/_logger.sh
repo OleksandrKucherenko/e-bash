@@ -7,6 +7,9 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# one time initialization, CUID
+[[ "${clr0li2550002og38iiryffm8}" == "yes" ]] && return 0 || export clr0li2550002og38iiryffm8="yes"
+
 # declare global associative array
 if [[ -z $TAGS ]]; then declare -g -A TAGS; fi
 if [[ -z $TAGS_PREFIX ]]; then declare -g -A TAGS_PREFIX; fi
@@ -24,7 +27,7 @@ function logger:compose() {
     # begin
     #
     function echo:${suffix}() {
-      [[ "\${TAGS[$tag]}" == "1" ]] && builtin echo "\${TAGS_PREFIX[$tag]}\$@"
+      [[ "\${TAGS[$tag]}" == "1" ]] && (builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@";)
     }
 
     function printf:${suffix}() {
@@ -57,12 +60,14 @@ function logger() {
   #
   # Usage:
   #   source "$SCRIPT_DIR/commons.sh" && logger tag "$@"
-  #   echoTag "print only if DEBUG=tag is set"
-  #   printfTag "print only if DEBUG=tag is set %s" "something"
+  #   echo:Tag "print only if DEBUG=tag is set"
+  #   printf:Tag "print only if DEBUG=tag is set %s" "something"
   #
   local tag=${1}
-  local suffix=${1^}
-  # local suffix=$(echo "$1" | sed -e "s/\b\(.\)/\u\1/g")
+  local suffix=${1^} # capitalize first letter
+
+  # check if logger already exists, then skip
+  if type "echo:${suffix}" &>/dev/null; then return 0; fi
 
   # keep it disabled by default
   TAGS+=([$tag]=0)
@@ -86,6 +91,7 @@ function logger() {
 }
 
 # save current $TAGS state
+# bashsupport disable=BP2001
 function logger:push() {
   TAGS_STACK=$((TAGS_STACK + 1))
   local new_stack="__TAGS_STACK_$TAGS_STACK"
@@ -113,3 +119,6 @@ function logger:pop() {
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
+
+logger loader "$@" # initialize logger
+echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"

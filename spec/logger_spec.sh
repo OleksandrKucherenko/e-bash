@@ -16,10 +16,6 @@ export SCRIPT_DIR=".scripts"
 Describe '_logger.sh:'
     Include ".scripts/_logger.sh"
 
-    Mock echo:Common
-        echo "$@"
-    End
-
     It 'Expected empty output when registered pre-defined common logger'
         BeforeCall 'export DEBUG="*"'
         When call logger "common"
