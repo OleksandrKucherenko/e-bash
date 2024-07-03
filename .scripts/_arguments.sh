@@ -7,11 +7,14 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # shellcheck disable=SC1090 source=_logger.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
+source "$E_BASH/_logger.sh"
 
 # shellcheck disable=SC1090 source=_commons.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
+source "$E_BASH/_commons.sh"
 
 # array of script arguments cleaned from flags (e.g. --help)
 if [ -z "$ARGS_NO_FLAGS" ]; then export ARGS_NO_FLAGS=(); fi
@@ -71,7 +74,7 @@ function parse:extract_output_definition() {
 function parse:mapping() {
   local args=("$@")
 
-  # TODO (olku): trim whitespaces in $ARGS_DEFINITION, not spaces in begining or end, no double spaces
+  # TODO (olku): trim whitespaces in $ARGS_DEFINITION, no spaces in beginning or end, no double spaces
   echo:Common "${cl_grey}Definition: $ARGS_DEFINITION${cl_reset}" >&2
 
   # extract definition of each argument, separated by space, remove last empty element
@@ -80,7 +83,7 @@ function parse:mapping() {
   # build lookup map of arguments, extract the longest name of each argument
   declare -A -g lookup_arguments && lookup_arguments=() # key-to-index_of_definition. e.g. -c -> 0, --cookies -> 0
   declare -A -g index_to_outputs && index_to_outputs=() # index-to-variable_name, e.g. -c,--cookies -> 0=cookies
-  declare -A -g index_to_args_qt && index_to_args_qt=() # index-to-argument_qauntity, e.g. -c,--cookies -> 0="0"
+  declare -A -g index_to_args_qt && index_to_args_qt=() # index-to-argument_quantity, e.g. -c,--cookies -> 0="0"
   declare -A -g index_to_default && index_to_default=() # index-to-argument_default, e.g. -c,--cookies -> 0="", -c=:default:1 -> 0="default"
 
   # build parameters mapping
@@ -213,8 +216,8 @@ function parse:arguments() {
 }
 
 # global associative array for flag-to-description mapping
-if [ -z "$args_to_description" ]; then declare -A -g args_to_description && args_to_description=(); fi
-if [ -z "$args_to_group" ]; then declare -A -g args_to_group && args_to_group=(); fi
+if [ -z "$args_to_description" ]; then declare -A -g args_to_description=(); fi
+if [ -z "$args_to_group" ]; then declare -A -g args_to_group=(); fi
 
 function parse:descr() {
   local flag=$1
@@ -230,7 +233,7 @@ function parse:descr() {
 function print:help() {
   # if multiple groups defined in $args_to_group then print each group separately
   if [ ${#args_to_group[@]} -gt 1 ]; then
-    : # TODO (olku): implement me
+    : # TODO (olku): implement me, compose HELP documentation from definitions
   fi
 
   # print help for each argument
@@ -242,10 +245,14 @@ function print:help() {
 ${__SOURCED__:+return}
 
 logger common "$@" # register own logger
-parse:exclude_flags_from_args "$@"
-parse:arguments "$@"
 
-# common descriptions for argumetns
+logger loader "$@" # initialize logger
+echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
+
+parse:exclude_flags_from_args "$@" # pre-filter arguments from flags
+parse:arguments "$@"               # parse arguments and assign them to output variables
+
+# common descriptions for arguments
 parse:descr "-h" "Print utility help"
+parse:descr "-v" "Display tool version and exit"
 parse:descr "--debug" "Force debug output of the tool"
-parse:descr "-v" "Display tool version"

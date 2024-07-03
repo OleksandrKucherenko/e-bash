@@ -24,7 +24,7 @@ function validate_dependencies() {
 }
 
 function print_warning() {
-  echo "Warning: Please fix all variables descriptions: $cl_grey/* ${cl_red}${NO_DESCRIPTION}$cl_grey */$cl_reset"
+  echo "${cl_yellow}Warning${cl_reset}:" "Please fix all variables descriptions:" "${cl_grey}/* ${cl_red}${NO_DESCRIPTION}${cl_grey} */${cl_reset}"
   echo "Follow the declaration pattern:"
   echo "  #"
   echo "  # {description}"

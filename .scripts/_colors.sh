@@ -2,10 +2,13 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
-## Version: 1.0.0
+## Last revisit: 2024-01-06
+## Version: 1.0.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+
+# shellcheck disable=SC2015 # one time initialization, CUID
+#[[ "${clr19adx10008og3819x1ipfv}" == "yes" ]] && return 0 || export clr19adx10008og3819x1ipfv="yes"
 
 # tput calls require TERM to be set
 if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
@@ -32,3 +35,10 @@ export cl_lwhite=$(tput setaf 15)
 export cl_black=$(tput setaf 16)
 
 export cl_selected=$(tput setab 241 && tput setaf 15)
+
+# unset colors, to prevent coloring in the output
+function cl:unset() {
+  unset cl_reset cl_selected
+  unset cl_red cl_green cl_yellow cl_blue cl_purple cl_cyan cl_white cl_grey cl_black 
+  unset cl_lred cl_lgreen  cl_lyellow cl_lblue cl_lpurple cl_lcyan cl_lwhite 
+}

@@ -12,6 +12,8 @@
     - [Common(s) Functions And Inputs](#commons-functions-and-inputs)
     - [UI: Selector](#ui-selector)
     - [UI: Ask for Password](#ui-ask-for-password)
+  - [Semver - Semantic Versioning](#semver---semantic-versioning)
+  - [Self-Update](#self-update)
   - [Profile BASH script execution](#profile-bash-script-execution)
   - [Colors support in my terminal](#colors-support-in-my-terminal)
   - [References](#references)
@@ -25,6 +27,7 @@
 - [ ] Telemetry module (report metrics to CI or DataDog)
 - [ ] Globals module (declarative way of defining script dependencies to global environment variables)
 - [ ] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
+- [ ] Copyright headers composing/parsing (extract from the file, update, insert)
 
 ## Local Dev Environment - Requirements
 
@@ -56,6 +59,20 @@ watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
 
 ## Usage
 
+Installation into your project:
+
+```bash
+# subtree approach (TODO: fix me!)
+git subtree --squash -P vendor/bats-all add https://github.com/hyperupcall/bats-all HEAD
+```
+
+refs:
+- https://gist.github.com/SKempin/b7857a6ff6bddb05717cc17a44091202
+- https://github.com/epcim/git-cross
+- https://github.com/ingydotnet/git-subrepo
+- https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3 [article](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
+- 
+
 ### Colors
 
 ```bash
@@ -82,10 +99,22 @@ dependency watchman "2023.07.*.*" "brew install watchman"
 
 ### Logger
 
+Requirements:
+- [x] zero dependencies, pure BASH
+- [x] prefix for all logger messages
+- [ ] work in pipe mode (forward logs to the named pipe)
+  - [ ] write logs to pipe; single line or multiple lines in '|' pipe mode
+  - [ ] read logs from the named pipe and output to the console (or file). Required PID and log tag.
+  - [ ] run logs to file/stream in background process mode 
+- [ ] support prefix for each log message
+- [x] listen to DEBUG environment variable for enabling/disabling logs
+  - [x] enable/disable log by tag name or tag name prefix (support wildcards)
+- [ ] execute command with logging the command and it parameters first (ref: https://bpkg.sh/pkg/echo-eval)
+
 ```bash
 source ".scripts/_logger.sh"
-logger common "$@" # declare echoCommon and printfCommon functions, tag: common
-logger debug "$@" # declare echoDebug and printfDebug functions, tag: debug
+logger common "$@" # declare echo:Common and printf:Common functions, tag: common
+logger debug "$@" # declare echo:Debug and printf:Debug functions, tag: debug
 
 echo:Common "Hello World" # output "Hello World" only if tag common is enabled
 
@@ -95,9 +124,24 @@ export DEBUG=*,-common  # enable logger output for all tags except common
 
 # advanced functions
 config:logger:Common "$@" # re-configure logger enable/disable for common tag
+
+# echo in pipe mode
+find . -type d -max-depth 1 | echo:Common
+
+# echo in output redirect
+find . -type d -max-depth 1 >echo:Common
 ```
 
 ### Arguments Parsing
+
+Requirements:
+- [x] zero dependencies, pure BASH
+- [x] support short and long arguments
+- [x] support default values
+- [x] support required arguments
+- [x] support aliases for arguments
+- [x] support destination variables for argument
+- [ ] compose help documentation from arguments definition
 
 ```bash
 # pattern: "{argument},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
@@ -160,6 +204,110 @@ echo -n "Enter password: "
 password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
 
+## Semver - Semantic Versioning
+
+Requirements:
+- [x] parse version code, according to semver specification
+- [x] compare version code
+- [x] verify version constraints
+- [x] compose version code from array of segments
+
+```bash
+source ".scripts/_semver.sh"
+
+# verify that version is passing the constraints expression
+semver:constraints "1.0.0-alpha" ">1.0.0-beta || <1.0.0" && echo "$? - OK!" || echo "$? - FAIL!" # expected OK
+
+# more specific cases
+semver:constraints:simple "1.0.0-beta.10 != 1.0.0-beta.2" && echo "OK!" || echo "$? - FAIL!"
+
+# parse and recompose version code
+semver:parse "2.0.0-rc.1+build.123" "V" \
+  && for i in "${!V[@]}"; do echo "$i: ${V[$i]}"; done \
+  && semver:recompose "V"
+  
+# test version code
+echo "1" | grep -E "${SEMVER_LINE}" --color=always --ignore-case || echo "OK!"
+```
+
+## Self-Update
+
+Requirements:
+- [x] detect a new version of the script
+- [x] download multiple versions into folder and do a symbolic link to a specific version
+- [x] download from GIT repo (git clone)
+  - [x] keep MASTER as default, extract version tags as sub-folders
+- [ ] download from GIT repo release URL (tar/zip archive)
+  - [ ] extract archive to a version sub-folder
+- [x] rollback to previous version (or specified one)
+  - [x] rollback to latest backup file (if exists)
+- [ ] partial update of the scripts, different versions of scripts from different version sub-folders
+  - [x] developer can bind file to a specific version by calling function `self-update:version:bind`
+- [x] verify SHA1 hash of the scripts
+  - [x] compute file SHA1 hash and store it in *.sha1 file
+- [x] understand version expressions
+  - [ ] `latest` - latest stable version
+  - [ ] `*` or `next` - any highest version tag (INCLUDING: alpha, beta, rc etc)
+  - [ ] `branch:{any_branch}` or `tag:{any_tag}` - any branch name (also works for TAGs)
+  - [x] `>`, `<`, `>=`, `<=`, `~`, `!=`, `||` - comparison syntax
+  - [x] `1.0.0` or `=1.0.0` - exact version
+  - [x] `~1.0.0` - version in range >= 1.0.x, patch releases allowed
+  - [x] `^1.0.0` - version in range >= 1.x.x, minor & patch releases allowed
+  - [x] `>1.0.0 <=1.5.0` - version in range `> 1.0.0 && <= 1.5.0`
+  - [x] `>1.0.0 <1.1.0 || >1.5.0` - version in range `(> 1.0.0 < 1.1.0) || (> 1.5.0)`
+
+refs: 
+- https://classic.yarnpkg.com/lang/en/docs/dependency-versions/
+- https://github.com/fsaintjacques/semver-tool
+- https://github.com/Masterminds/semver
+- https://stackoverflow.com/questions/356100/how-to-wait-in-bash-for-several-subprocesses-to-finish-and-return-exit-code-0
+- 
+
+```bash
+source ".scripts/_self-update.sh"
+
+# check for version update in range >= 1.0.x, stable versions
+# try to update itself from https://github.com/OleksandrKucherenko/e-bash.git repository
+self-update "~1.0.0"                          # patch releases allowed
+self-update "^1.0.0"                          # minor releases allowed
+self-update "> 1.0.0 <= 1.5.0"                # stay in range
+
+# update specific file to latest version tag
+self-update "latest" ".scripts/_colors.sh"    # latest stable
+self-update "*" ".scripts/_colors.sh"         # any highest version tag
+
+# update specific file to MASTER version (can be used any branch name)
+self-update "branch:master" ".scripts/_colors.sh"   
+self-update "tag:v1.0.0" ".scripts/_colors.sh"
+
+# bind file to a specific version
+self-update:version:bind "v1.0.0" ".scripts/_colors.sh"
+
+# TBD
+
+# INTEGRATION EXAMPLE
+
+# do self-update on script exit
+trap "self-update '^1.0.0'" EXIT
+
+# OR:
+function __exit() {
+  # TODO: add more cleanup logic here
+  self-update '^1.0.0'
+}
+trap "__exit" EXIT
+```
+
+### Troubleshooting
+
+```bash
+# rollback with use of backup file(s)
+source ".scripts/_self-update.sh" && self-update:rollback:backup "${full_path_to_file}"
+
+# rollback to specific version
+source ".scripts/_self-update.sh" && self-update:rollback:version "v1.0.0" "${full_path_to_file}"
+```
+
 ## Profile BASH script execution
 
 ![Profiler](docs/profiler.version-up.gif)
@@ -195,4 +343,6 @@ demos/demo.colors.sh
 - PV - https://manpages.ubuntu.com/manpages/focal/man1/pv.1.html
 - https://catern.com/posts/pipes.html
 - https://stackoverflow.com/questions/238073/how-to-add-a-progress-bar-to-a-shell-script
--
+- [bash-core](https://github.com/bash-bastion/bash-core/blob/main/pkg/src/util/util.sh#L17-L38), trap enhancement
+- [bash-bastion](https://github.com/bash-bastion) BASH helpers
+- https://github.com/dylanaraps/writing-a-tui-in-bash
