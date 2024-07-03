@@ -7,9 +7,6 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# one time initialization, CUID
-[[ "${clr0lkjrz0005og383aivno77}" == "yes" ]] && return 0 || export clr0lkjrz0005og383aivno77="yes"
-
 # is allowed to use macOS extensions (script can be executed in *nix second)
 use_macos_extensions=false
 if [[ "$OSTYPE" == "darwin"* ]]; then use_macos_extensions=true; fi
