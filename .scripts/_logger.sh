@@ -9,13 +9,6 @@
 
 # one time initialization, CUID
 if type logger | grep -q "is a function"; then return 0; fi
-# if [[ "${clr0li2550002og38iiryffm8}" == "yes" ]]; then return 0; else export clr0li2550002og38iiryffm8="yes"; fi
-
-# shellcheck disable=SC2155
-[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# shellcheck disable=SC1090  source=_colors.sh
-source "${E_BASH}/_colors.sh"
 
 # global helpers
 export __SESSION=$(uuidgen)
@@ -92,11 +85,6 @@ EOF
 function pipe:killer:compose() {
   local pipe=${1}
   local myPid=${2:-"${BASHPID}"}
-
-    # cat <"${pipe}" >/dev/tty &
-    # pid=$!; echo "${cl_grey}Background process started: ${myPid}/\${BASHPID}/\${pid} ${cl_blue}${pipe}${cl_reset}" >/dev/tty
-    # echo "killing child process: \${pid}" >/dev/tty
-    # kill -9 "\${pid}" 2>/dev/null
 
   cat <<EOF
     trap "rm -f \"${pipe}\" >/dev/null" HUP INT QUIT ABRT TERM KILL EXIT
@@ -216,4 +204,11 @@ function logger:redirect() {
 ${__SOURCED__:+return}
 
 logger loader "$@" # initialize logger
+
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck disable=SC1090  source=_colors.sh
+[ -f "${E_BASH}/_colors.sh" ] && source "${E_BASH}/_colors.sh" # load if available
+
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
