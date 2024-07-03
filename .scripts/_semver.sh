@@ -7,11 +7,11 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# one time initialization, CUID
-[[ "${clr0lmakk0007og38l1w9v18o}" == "yes" ]] && return 0 || export clr0lmakk0007og38l1w9v18o="yes"
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck disable=SC1090 source=./_logger.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
+source "$E_BASH/_logger.sh"
 
 # reserved global variable for parsing, declare associated array structure
 declare -A -g __semver_parse_result=(

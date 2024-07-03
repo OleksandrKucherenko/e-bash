@@ -7,18 +7,18 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# one time initialization, CUID
-[[ "${clr0lkjrz0005og383aivno77}" == "yes" ]] && return 0 || export clr0lkjrz0005og383aivno77="yes"
-
 # is allowed to use macOS extensions (script can be executed in *nix second)
 use_macos_extensions=false
 if [[ "$OSTYPE" == "darwin"* ]]; then use_macos_extensions=true; fi
 
-# shellcheck disable=SC1090  source=_colors.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_colors.sh"
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck disable=SC1090 source=_logger.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
+# shellcheck disable=SC1090  source=./_colors.sh
+source "$E_BASH/_colors.sh"
+
+# shellcheck disable=SC1090 source=./_logger.sh
+source "$E_BASH/_logger.sh"
 
 function time:now() {
   echo "$EPOCHREALTIME" # <~ bash 5.0

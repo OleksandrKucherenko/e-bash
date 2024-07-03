@@ -7,13 +7,13 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# one time initialization, CUID
-[[ "${clr0ll9d90006og38jx5kjlnj}" == "yes" ]] && return 0 || export clr0ll9d90006og38jx5kjlnj="yes"
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck disable=SC1090 source=./_commons.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
+source "$E_BASH/_commons.sh"
 # shellcheck disable=SC1090 source=./_logger.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
+source "$E_BASH/_logger.sh"
 
 #set -x # Uncomment to DEBUG
 

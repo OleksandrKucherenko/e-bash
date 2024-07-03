@@ -32,3 +32,6 @@ version.properties
 .versions/
 *.~*~
 *.sha1
+
+# openapi experiments
+bin/bitbucket

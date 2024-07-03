@@ -7,14 +7,14 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# one time initialization, CUID
-[[ "${clr0ljyne0004og38nhbnvpal}" == "yes" ]] && return 0 || export clr0ljyne0004og38nhbnvpal="yes"
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck disable=SC1090 source=_logger.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_logger.sh"
+source "$E_BASH/_logger.sh"
 
 # shellcheck disable=SC1090 source=_commons.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_commons.sh"
+source "$E_BASH/_commons.sh"
 
 # array of script arguments cleaned from flags (e.g. --help)
 if [ -z "$ARGS_NO_FLAGS" ]; then export ARGS_NO_FLAGS=(); fi

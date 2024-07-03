@@ -7,9 +7,6 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# one time initialization, CUID
-[[ "${clr0li2550002og38iiryffm8}" == "yes" ]] && return 0 || export clr0li2550002og38iiryffm8="yes"
-
 # declare global associative array
 if [[ -z $TAGS ]]; then declare -g -A TAGS; fi
 if [[ -z $TAGS_PREFIX ]]; then declare -g -A TAGS_PREFIX; fi

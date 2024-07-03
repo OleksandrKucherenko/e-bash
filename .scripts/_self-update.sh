@@ -7,15 +7,15 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# shellcheck disable=SC2015 # one time initialization, CUID
-[[ "${clr0lj0ua0003og3884k1s2sh}" == "yes" ]] && return 0 || export clr0lj0ua0003og3884k1s2sh="yes"
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # shellcheck disable=SC1090 source=./_commons.sh
 # shellcheck disable=SC1090 source=./_logger.sh
 # shellcheck disable=SC1090 source=./_dependencies.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_dependencies.sh"
+source "$E_BASH/_dependencies.sh"
 # shellcheck disable=SC1090 source=./_semver.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_semver.sh"
+source "$E_BASH/_semver.sh"
 
 readonly __E_BASH=".e-bash"
 readonly __E_ROOT="${HOME}/${__E_BASH}"
@@ -25,7 +25,7 @@ readonly __REPO_MASTER="master"
 readonly __REPO_V1="v1.0.0"
 readonly __WORKTREES=".versions"
 readonly __VERSION_PATTERN="v?${SEMVER}"
-declare -g -A __REPO_MAPPING=() # version-to-tag mapping
+declare -g -A __REPO_MAPPING=()  # version-to-tag mapping
 declare -g -a __REPO_VERSIONS=() # sorted array of versions
 
 # check if script dependencies are satisfied
@@ -72,7 +72,7 @@ function array:qsort() {
   array:qsort "$compare" "${right[@]}"
 }
 
-# resolve provided path to absolute path
+# resolve provided path to absolute path, relative to caller script path
 function path:resolve() {
   local file="$1"
   local working_dir=${2:-"$PWD"}
@@ -359,7 +359,7 @@ function self-update:file:hash() {
 # but use version folder as a source of file content
 # shellcheck disable=SC2088
 function self-update:version:hash() {
-  local filepath=${1:-"${BASH_SOURCE[0]}"}      # can be full or relative path
+  local filepath=${1:-"${BASH_SOURCE[0]}"} # can be full or relative path
   local version=${2}
 
   local full_path=$(path:resolve "${filepath}") # resolve to absolute path
