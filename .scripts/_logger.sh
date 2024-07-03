@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2155,SC2034,SC2059
+# shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2023-10-18
@@ -7,9 +7,25 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# one time initialization, CUID
+if type logger | grep -q "is a function"; then return 0; fi
+# if [[ "${clr0li2550002og38iiryffm8}" == "yes" ]]; then return 0; else export clr0li2550002og38iiryffm8="yes"; fi
+
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck disable=SC1090  source=_colors.sh
+source "${E_BASH}/_colors.sh"
+
+# global helpers
+export __SESSION=$(uuidgen)
+export __TTY=$(tty)
+
 # declare global associative array
 if [[ -z $TAGS ]]; then declare -g -A TAGS; fi
 if [[ -z $TAGS_PREFIX ]]; then declare -g -A TAGS_PREFIX; fi
+if [[ -z $TAGS_PIPE ]]; then declare -g -A TAGS_PIPE; fi
+if [[ -z $TAGS_REDIRECT ]]; then declare -g -A TAGS_REDIRECT; fi
 if [[ -z $TAGS_STACK ]]; then declare -g TAGS_STACK="0"; fi
 
 #
@@ -17,36 +33,74 @@ if [[ -z $TAGS_STACK ]]; then declare -g TAGS_STACK="0"; fi
 #
 function logger:compose() {
   local tag=${1}
-  local suffix=$2
+  local suffix=${2}
+  local flags=${3:-""}
 
   cat <<EOF
-    #
-    # begin
-    #
-    function echo:${suffix}() {
-      [[ "\${TAGS[$tag]}" == "1" ]] && (builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@";)
-    }
+  #
+  # begin
+  #
+  function echo:${suffix}() {
+    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@"; } ${TAGS_REDIRECT[$tag]})
+  }
+  #
+  function printf:${suffix}() {
+    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin printf "%s\${@:1:1}" "\${TAGS_PREFIX[$tag]}" "\${@:2}"; } ${TAGS_REDIRECT[$tag]})
+  }
+  #
+EOF
+}
 
-    function printf:${suffix}() {
-      [[ "\${TAGS[$tag]}" == "1" ]] && builtin printf "%s%s" "\${TAGS_PREFIX[$tag]}" "\$(builtin printf "\$@")"
-    }
+#
+# Create a dynamic helper functions with a Tag name as a suffix
+#
+function logger:compose:helpers() {
+  local tag=${1}
+  local suffix=${2}
+  local flags=${3:-""}
 
-    function config:logger:${suffix}() {
-      local args=("\$@")
-      IFS="," read -r -a tags <<<\$(echo "\$DEBUG")
-      [[ "\${args[*]}" =~ "--debug" ]] && TAGS+=([$tag]=1)
-      [[ "\${tags[*]}" =~ "$tag" ]] && TAGS+=([$tag]=1)
-      [[ "\${tags[*]}" =~ "*" ]] && TAGS+=([$tag]=1)
-      [[ "\${tags[*]}" =~ "-$tag" ]] && TAGS+=([$tag]=0)
-      #builtin echo "done! \${!TAGS[@]} \${TAGS[@]}"
-    }
-    # alternative names
-    alias configDebug${suffix}=config:logger:${suffix}
-    alias echo${suffix}=echo:${suffix}
-    alias printf${suffix}=printf:${suffix}
-    #
-    # end
-    #
+  cat <<EOF
+  #
+  # begin
+  #
+  function config:logger:${suffix}() {
+    local args=("\$@")
+    IFS="," read -r -a tags <<<\$(echo "\$DEBUG")
+    [[ "\${args[*]}" =~ "--debug" ]] && TAGS+=([$tag]=1)
+    [[ "\${tags[*]}" =~ "$tag" ]] && TAGS+=([$tag]=1)
+    [[ "\${tags[*]}" =~ "*" ]] && TAGS+=([$tag]=1)
+    [[ "\${tags[*]}" =~ "-$tag" ]] && TAGS+=([$tag]=0)
+    #builtin echo "done! \${!TAGS[@]} \${TAGS[@]}"
+  }
+  #
+  function log:${suffix}() {
+    # if no input params and stdin is tty, then print named_pipe name
+    if [ \$# -eq 0 ] && [ -t 0 ]; then echo "\${TAGS_PIPE[$tag]}"; else
+      local prefix=\${1:-""} && shift
+      if [ -t 0 ] && [ -t 1 ]; then set - "\${prefix}" "\$@"; fi
+      if [ -t 0 ]; then echo:${suffix} "\$@"; return 0; fi
+      while read -r -t 0.1 line; do echo:${suffix} "\${prefix}\${line}"; done
+    fi
+  }
+  #
+EOF
+}
+
+#
+# Create dynamic function that listen to parent process and delete named pipe on parent process exit/kill
+#
+function pipe:killer:compose() {
+  local pipe=${1}
+  local myPid=${2:-"${BASHPID}"}
+
+    # cat <"${pipe}" >/dev/tty &
+    # pid=$!; echo "${cl_grey}Background process started: ${myPid}/\${BASHPID}/\${pid} ${cl_blue}${pipe}${cl_reset}" >/dev/tty
+    # echo "killing child process: \${pid}" >/dev/tty
+    # kill -9 "\${pid}" 2>/dev/null
+
+  cat <<EOF
+    trap "rm -f \"${pipe}\" >/dev/null" HUP INT QUIT ABRT TERM KILL EXIT
+    while kill -0 "${myPid}" 2>/dev/null; do sleep 0.1; done
 EOF
 }
 
@@ -72,6 +126,7 @@ function logger() {
   # declare logger functions
   # source /dev/stdin <<EOF
   eval "$(logger:compose "$tag" "$suffix")"
+  eval "$(logger:compose:helpers "$tag" "$suffix")"
 
   # configure logger
   # shellcheck disable=SC2294
@@ -83,6 +138,16 @@ function logger() {
     # ignore output error
     eval "echo:Common \"Logger tags  :\" \"\${!TAGS[@]}\" \"|\" \"\${TAGS[@]}\" " 2>/dev/null | tee >(cat >&2)
   )
+
+  # create named pipe, if it does not exist
+  local pipe="/tmp/_logger.${suffix}.${__SESSION}"
+  if [[ ! -p "${pipe}" ]]; then
+    mkfifo "${pipe}" || echo "Failed to create named pipe: ${pipe}" >&2
+    TAGS_PIPE+=([$tag]="${pipe}")
+
+    # run background process to wait for parent proces exit and delete the named pipe
+    bash <(pipe:killer:compose "$pipe" "$myPid") &
+  fi
 
   return 0 # force exit code success
 }
@@ -111,6 +176,39 @@ function logger:pop() {
   eval "for key in \"\${!$stacked[@]}\"; do eval \"TAGS[\\\"\$key\\\"]=\\\${$stacked[\\\"\$key\\\"]}\"; done"
 
   unset "$stacked"
+}
+
+# cleanup all named pipes
+function logger:cleanup() {
+  # iterate TAGS_PIPE and remove all named pipes
+  for pipe in "${TAGS_PIPE[@]}"; do
+    [[ -p "${pipe}" ]] && rm -f "${pipe}"
+  done
+
+  # reset array
+  TAGS_PIPE=()
+}
+
+# run background process to listen the named pipe
+function logger:listen() {
+  local tag=${1}
+  local pipe=${TAGS_PIPE[$tag]}
+
+  # run background process to read from pipe and output that to parent process TTY
+  cat <"${pipe}" >/dev/tty &
+}
+
+# force logger redirections
+function logger:redirect() {
+  local tag=${1}
+  local redirect=${2:-""}
+  local suffix=${1^} # capitalize first letter
+
+  # redirect to named pipe
+  TAGS_REDIRECT[$tag]="${redirect}"
+
+  # recreate logger functions with the redirects
+  eval "$(logger:compose "$tag" "$suffix")"
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.

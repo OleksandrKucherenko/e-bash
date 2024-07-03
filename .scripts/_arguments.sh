@@ -254,5 +254,5 @@ parse:arguments "$@"               # parse arguments and assign them to output v
 
 # common descriptions for arguments
 parse:descr "-h" "Print utility help"
-parse:descr "--debug" "Force debug output of the tool"
 parse:descr "-v" "Display tool version and exit"
+parse:descr "--debug" "Force debug output of the tool"

@@ -14,6 +14,9 @@ function cleanup() {
 
 trap cleanup EXIT SIGINT SIGTERM
 
+
+trap
+
 # change the CWD to the demos directory, so we work with the demo .envrc file
 pushd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" &>/dev/null || exit 1
 

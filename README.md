@@ -12,6 +12,8 @@
     - [Common(s) Functions And Inputs](#commons-functions-and-inputs)
     - [UI: Selector](#ui-selector)
     - [UI: Ask for Password](#ui-ask-for-password)
+  - [Semver - Semantic Versioning](#semver---semantic-versioning)
+  - [Self-Update](#self-update)
   - [Profile BASH script execution](#profile-bash-script-execution)
   - [Colors support in my terminal](#colors-support-in-my-terminal)
   - [References](#references)
@@ -25,6 +27,7 @@
 - [ ] Telemetry module (report metrics to CI or DataDog)
 - [ ] Globals module (declarative way of defining script dependencies to global environment variables)
 - [ ] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
+- [ ] Copyright headers composing/parsing (extract from the file, update, insert)
 
 ## Local Dev Environment - Requirements
 
@@ -56,6 +59,20 @@ watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
 
 ## Usage
 
+Installation into your project:
+
+```bash
+# subtree approach (TODO: fix me!)
+git subtree --squash -P vendor/bats-all add https://github.com/hyperupcall/bats-all HEAD
+```
+
+refs:
+- https://gist.github.com/SKempin/b7857a6ff6bddb05717cc17a44091202
+- https://github.com/epcim/git-cross
+- https://github.com/ingydotnet/git-subrepo
+- https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3 [article](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
+- 
+
 ### Colors
 
 ```bash
@@ -85,6 +102,14 @@ dependency watchman "2023.07.*.*" "brew install watchman"
 Requirements:
 - [x] zero dependencies, pure BASH
 - [x] prefix for all logger messages
+- [ ] work in pipe mode (forward logs to the named pipe)
+  - [ ] write logs to pipe; single line or multiple lines in '|' pipe mode
+  - [ ] read logs from the named pipe and output to the console (or file). Required PID and log tag.
+  - [ ] run logs to file/stream in background process mode 
+- [ ] support prefix for each log message
+- [x] listen to DEBUG environment variable for enabling/disabling logs
+  - [x] enable/disable log by tag name or tag name prefix (support wildcards)
+- [ ] execute command with logging the command and it parameters first (ref: https://bpkg.sh/pkg/echo-eval)
 
 ```bash
 source ".scripts/_logger.sh"
@@ -99,9 +124,24 @@ export DEBUG=*,-common  # enable logger output for all tags except common
 
 # advanced functions
 config:logger:Common "$@" # re-configure logger enable/disable for common tag
+
+# echo in pipe mode
+find . -type d -max-depth 1 | echo:Common
+
+# echo in output redirect
+find . -type d -max-depth 1 >echo:Common
 ```
 
 ### Arguments Parsing
+
+Requirements:
+- [x] zero dependencies, pure BASH
+- [x] support short and long arguments
+- [x] support default values
+- [x] support required arguments
+- [x] support aliases for arguments
+- [x] support destination variables for argument
+- [ ] compose help documentation from arguments definition
 
 ```bash
 # pattern: "{argument},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
@@ -165,6 +205,12 @@ password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
 
 ## Semver - Semantic Versioning
+
+Requirements:
+- [x] parse version code, according to semver specification
+- [x] compare version code
+- [x] verify version constraints
+- [x] compose version code from array of segments
 
 ```bash
 source ".scripts/_semver.sh"
@@ -297,4 +343,6 @@ demos/demo.colors.sh
 - PV - https://manpages.ubuntu.com/manpages/focal/man1/pv.1.html
 - https://catern.com/posts/pipes.html
 - https://stackoverflow.com/questions/238073/how-to-add-a-progress-bar-to-a-shell-script
--
+- [bash-core](https://github.com/bash-bastion/bash-core/blob/main/pkg/src/util/util.sh#L17-L38), trap enhancement
+- [bash-bastion](https://github.com/bash-bastion) BASH helpers
+- https://github.com/dylanaraps/writing-a-tui-in-bash
