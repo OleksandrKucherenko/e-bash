@@ -74,7 +74,7 @@ function dependency() {
   local version_message=$($tool_name $tool_version_flag 2>&1)
   local version_cleaned=$(echo "'$version_message'" | sed -n "s#.*\($tool_version\).*#\1#p" | head -1)
 
-  printf:Dependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\nver.   : %s\n-------\n" \
+  printf:Dependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\\\1#g\"\nver.   : %s\n-------\n" \
     "$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
   if [ "$version_cleaned" == "" ]; then
@@ -83,6 +83,7 @@ function dependency() {
       return 0
     else
       echo "${cl_red}Error: dependency version \`$tool_name\` is wrong."
+      echo " Captured : ${cl_grey}$version_message${cl_red}"
       echo " Extracted: \`$version_cleaned\`"
       echo " Expected : \`$tool_version_pattern\`${cl_reset}"
 
