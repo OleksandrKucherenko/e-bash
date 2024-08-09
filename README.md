@@ -113,17 +113,17 @@ echo "$wHead" | grep 'Error' &>/dev/null && echo "$wStab" || echo "$wHead"
 ### Logger
 
 Requirements:
-
-- [x] zero dependencies, pure BASH
+- [x] zero dependencies, pure BASH (optional: _colors.sh)
 - [x] prefix for all logger messages
 - [x] work in pipe mode (forward logs to the named pipe)
   - [x] write logs to pipe; single line or multiple lines in '|' pipe mode
-  - [x] read logs from the named pipe and output to the console (or file). Required PID and log tag.
-  - [x] run logs to file/stream in background process mode
+  - [x] read logs from the named pipe and output to the console (or file).
+  - [x] redirect logs to file/stream/pipe/tty 
 - [x] support prefix for each log message
 - [x] listen to DEBUG environment variable for enabling/disabling logs
   - [x] enable/disable log by tag name or tag name prefix (support wildcards)
-- [ ] execute command with logging the command and it parameters first (ref: https://bpkg.sh/pkg/echo-eval)
+- [*] execute command with logging the command and it parameters first (ref: https://bpkg.sh/pkg/echo-eval)
+  - [x] can be easily self-made (ref: https://github.com/kj4ezj/echo-eval/blob/main/ee.sh)
 
 ```bash
 source ".scripts/_logger.sh"
@@ -140,10 +140,12 @@ export DEBUG=*,-common  # enable logger output for all tags except common
 config:logger:Common "$@" # re-configure logger enable/disable for common tag
 
 # echo in pipe mode
-find . -type d -max-depth 1 | echo:Common
+find . -type d -max-depth 1 | log:Common
 
 # echo in output redirect
-find . -type d -max-depth 1 >echo:Common
+find . -type d -max-depth 1 >log:Common
+
+# more samples of usage are in `demos/demo.logs.sh` file
 ```
 
 Complete demo: [Logger Demo](demos/demo.logs.sh)
@@ -164,7 +166,8 @@ Requirements:
 # pattern: "{argument},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
 # example: "-h,--help=args_help:true:0", on --help or -h set $args_help variable to true, expect no arguments;
 # example: "$1,--id=args_id::1", expect first unnamed argument to be assigned to $args_id variable; can be also provided as --id=123
-export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
+export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0"
+export ARGS_DEFINITION+=" --debug=DEBUG:*"
 
 # will automatically parse script arguments with definition from $ARGS_DEFINITION global variable
 source ".scripts/_arguments.sh"
@@ -190,10 +193,6 @@ env:variable:or:secret:file "new_value" \
   "{user friendly message}"
 
 echo "Extracted: ${new_value}"
-
-# validate/confirm input parameter by user input
-# string
-# Yes/No
 ```
 
 ### UI: Selector
@@ -281,7 +280,7 @@ refs:
 - https://github.com/fsaintjacques/semver-tool
 - https://github.com/Masterminds/semver
 - https://stackoverflow.com/questions/356100/how-to-wait-in-bash-for-several-subprocesses-to-finish-and-return-exit-code-0
--
+
 
 ```bash
 source ".scripts/_self-update.sh"
