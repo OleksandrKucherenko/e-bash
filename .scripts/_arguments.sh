@@ -17,7 +17,7 @@ source "$E_BASH/_logger.sh"
 source "$E_BASH/_commons.sh"
 
 # array of script arguments cleaned from flags (e.g. --help)
-if [ -z "$ARGS_NO_FLAGS" ]; then export ARGS_NO_FLAGS=(); fi
+[ -z "$ARGS_NO_FLAGS" ] && export ARGS_NO_FLAGS=()
 function parse:exclude_flags_from_args() {
   local args=("$@")
 
@@ -32,7 +32,7 @@ function parse:exclude_flags_from_args() {
   ARGS_NO_FLAGS=($(echo "${args[*]}"))
 }
 
-if [ -z "$ARGS_DEFINITION" ]; then export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"; fi
+[ -z "$ARGS_DEFINITION" ] && export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
 
 # Utility function, that extract output definition for parse:arguments function
 function parse:extract_output_definition() {
@@ -215,28 +215,76 @@ function parse:arguments() {
   done
 }
 
-# global associative array for flag-to-description mapping
-if [ -z "$args_to_description" ]; then declare -A -g args_to_description=(); fi
-if [ -z "$args_to_group" ]; then declare -A -g args_to_group=(); fi
+# for argument to description mapping
+[ -z "$args_to_description" ] && declare -A -g args_to_description=()
 
-function parse:descr() {
+# argument to group name mapping
+[ -z "$args_to_group" ] && declare -A -g args_to_group=()
+
+# argument to environment variable mapping
+[ -z "$args_to_envs" ] && declare -A -g args_to_envs=()
+
+# compose argument description
+function args:d() {
   local flag=$1
   local description=$2
   local group=${3:-"common"}
   local order=${4:-100}
 
-  args_to_description[flag]="${description}"
-  args_to_group[flag]="${group}"
+  args_to_description["$flag"]="${description}"
+  args_to_group["$flag"]="${group}"
+
+  [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
+}
+
+# compose argument variable mapping, function can be used in pipeline
+function args:e() {
+  local flag=$1
+  local env=$2
+
+  # extract from STDIN provided value
+  [[ ! -t 0 ]] && { env="$flag"; read -r -t 0.1 flag; }
+
+  # update mapping
+  args_to_envs["$flag"]="${env}"
+
+  # echo flag only if we in pipeline mode
+  [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
 }
 
 # print help for ARGS_DEFINITION parameters
 function print:help() {
-  # if multiple groups defined in $args_to_group then print each group separately
-  if [ ${#args_to_group[@]} -gt 1 ]; then
-    : # TODO (olku): implement me, compose HELP documentation from definitions
-  fi
+  # collect unique group names
+  local groups=() group=""
+  for group in "${args_to_group[@]}"; do
+    # shellcheck disable=SC2199,SC2076
+    [[ ! " ${groups[@]} " =~ " ${group} " ]] && groups+=("$group")
+  done
 
-  # print help for each argument
+  # print help for each group
+  for group in "${groups[@]}"; do
+    echo "group: ${cl_lwhite}$group${cl_reset}"
+
+    # find all flags that belongs to the group
+    local one_group=() flag=""
+    for flag in "${!args_to_group[@]}"; do
+      [ "${args_to_group[$flag]}" == "$group" ] && one_group+=("$flag")
+    done
+
+    # print each flag description
+    #  16 chars -->  0123456789012345678901234567890123456789
+    local separator="                "
+    for flag in "${one_group[@]}"; do
+      local length=${#flag}
+      local padding="${separator:$((length - 1))}"
+
+      printf "  %s%s%s %s\n" "${cl_cyan}${flag}${cl_reset}" "$padding" \
+        "${args_to_description[$flag]}" \
+        "${cl_grey}${args_to_envs[$flag]}${cl_reset}"
+    done
+
+    echo ""
+  done
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
@@ -253,6 +301,9 @@ parse:exclude_flags_from_args "$@" # pre-filter arguments from flags
 parse:arguments "$@"               # parse arguments and assign them to output variables
 
 # common descriptions for arguments
-parse:descr "-h" "Print utility help"
-parse:descr "-v" "Display tool version and exit"
-parse:descr "--debug" "Force debug output of the tool"
+args:d "-h" "Print utility help;"
+args:d "-v" "Display tool version and exit;" "global"
+args:d "--debug" "Force debug output of the tool;" "global"
+args:e "--debug" "DEBUG=*"
+
+print:help

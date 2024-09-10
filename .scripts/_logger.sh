@@ -133,7 +133,7 @@ function logger() {
     mkfifo "${pipe}" || echo "Failed to create named pipe: ${pipe}" >&2
     TAGS_PIPE+=([$tag]="${pipe}")
 
-    # run background process to wait for parent proces exit and delete the named pipe
+    # run background process to wait for parent process exit and delete the named pipe
     bash <(pipe:killer:compose "$pipe" "$myPid") &
   fi
 
