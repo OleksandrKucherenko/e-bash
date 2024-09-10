@@ -32,6 +32,7 @@ function parse:exclude_flags_from_args() {
   ARGS_NO_FLAGS=($(echo "${args[*]}"))
 }
 
+# pattern: "{argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 [ -z "$ARGS_DEFINITION" ] && export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
 
 # Utility function, that extract output definition for parse:arguments function
@@ -105,7 +106,7 @@ function parse:mapping() {
 
 }
 
-# pattern: "{argument},-{short},--{alias}={output}:{init_value}:{args_quantity}"
+# pattern: "{argument_index},-{short},--{alias}={output}:{init_value}:{args_quantity}"
 function parse:arguments() {
   local args=("$@")
 
@@ -224,6 +225,9 @@ function parse:arguments() {
 # argument to environment variable mapping
 [ -z "$args_to_envs" ] && declare -A -g args_to_envs=()
 
+# argument to default value mapping
+[ -z "$args_to_defaults" ] && declare -A -g args_to_defaults=()
+
 # compose argument description
 function args:d() {
   local flag=$1
@@ -243,10 +247,31 @@ function args:e() {
   local env=$2
 
   # extract from STDIN provided value
-  [[ ! -t 0 ]] && { env="$flag"; read -r -t 0.1 flag; }
+  [[ ! -t 0 ]] && {
+    env="$flag"
+    read -r -t 0.1 flag
+  }
 
   # update mapping
   args_to_envs["$flag"]="${env}"
+
+  # echo flag only if we in pipeline mode
+  [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
+}
+
+# compose argument defaults mapping, function can be used in pipeline
+function args:v() {
+  local flag=$1
+  local defaults=$2
+
+  # extract from STDIN provided value
+  [[ ! -t 0 ]] && {
+    defaults="$flag"
+    read -r -t 0.1 flag
+  }
+
+  # update mapping
+  args_to_defaults["$flag"]="${defaults}"
 
   # echo flag only if we in pipeline mode
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
@@ -261,9 +286,13 @@ function print:help() {
     [[ ! " ${groups[@]} " =~ " ${group} " ]] && groups+=("$group")
   done
 
+  # get length of the $groups array
+  local groups_length=${#groups[@]}
+
   # print help for each group
   for group in "${groups[@]}"; do
-    echo "group: ${cl_lwhite}$group${cl_reset}"
+    # print group name only if have multiple groups
+    [ "$groups_length" -gt 1 ] && echo "group: ${cl_lwhite}$group${cl_reset}"
 
     # find all flags that belongs to the group
     local one_group=() flag=""
@@ -277,10 +306,19 @@ function print:help() {
     for flag in "${one_group[@]}"; do
       local length=${#flag}
       local padding="${separator:$((length - 1))}"
+      local description="${args_to_description[$flag]:-""}"
+      local env="${args_to_envs[$flag]:-""}"
+      local defaults="${args_to_defaults[$flag]:-""}"
+      local divider=", "
+      local open="(" close=")"
 
-      printf "  %s%s%s %s\n" "${cl_cyan}${flag}${cl_reset}" "$padding" \
-        "${args_to_description[$flag]}" \
-        "${cl_grey}${args_to_envs[$flag]}${cl_reset}"
+      [ -n "$env" ] && env="env: $env"
+      [ -n "$defaults" ] && defaults="default: $defaults"
+      [[ -z "$env" ]] || [[ -z "$defaults" ]] && divider="" && open="" && close=""
+
+      printf "  %s%s%s %s\n" "${cl_cyan}${flag}${cl_reset}" "${padding}" \
+        "${cl_white}${description}${cl_reset}" \
+        "${cl_grey}${open}${env}${divider}${defaults}${close}${cl_reset}"
     done
 
     echo ""
@@ -299,11 +337,3 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 parse:exclude_flags_from_args "$@" # pre-filter arguments from flags
 parse:arguments "$@"               # parse arguments and assign them to output variables
-
-# common descriptions for arguments
-args:d "-h" "Print utility help;"
-args:d "-v" "Display tool version and exit;" "global"
-args:d "--debug" "Force debug output of the tool;" "global"
-args:e "--debug" "DEBUG=*"
-
-print:help

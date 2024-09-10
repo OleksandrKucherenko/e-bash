@@ -22,6 +22,10 @@ function compare:versions() {
   (semver:constraints:simple "$1<$2") && return 0 || return 1
 }
 
+function compare:strings() {
+  [[ "$1" < "$2" ]] && return 0 || return 1
+}
+
 # Quick-Sort implementation
 function array:qsort() {
   local compare=$1 && shift

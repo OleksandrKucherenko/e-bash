@@ -10,6 +10,7 @@
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# shellcheck source=./_colors.sh
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
 
