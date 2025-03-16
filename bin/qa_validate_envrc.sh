@@ -29,7 +29,6 @@ function print_warning() {
   echo "  #"
   echo "  export VARIABLE={secret}"
   echo ""
-  echo "Note: more than three comment lines upfront the variable declaration will be ignored."
 }
 
 function parse_file() {
@@ -43,18 +42,19 @@ function parse_file() {
     line=${array[$i]}
     if [[ $line == export\ * ]]; then
       variable=$(echo "${line}" | ggrep -oP "export [^=]*" | gsed "s#export \(.*\)#\1#")
-      comment1=$(echo "${array[$((i - 3))]}" | ggrep "^#" | gsed "s/#/¶/g")
-      comment2=$(echo "${array[$((i - 2))]}" | ggrep "^#" | gsed "s/#/¶/g")
-      comment3=$(echo "${array[$((i - 1))]}" | ggrep "^#" | gsed "s/#/¶/g")
-      comment="${cl_red}${NO_DESCRIPTION}${cl_grey}"
-
-      if [[ ${#comment3} -gt 0 && ${#comment2} -gt 0 && ${#comment1} -gt 0 ]]; then
-        comment="$comment1$comment2$comment3"
-      elif [[ ${#comment3} -gt 0 && ${#comment2} -gt 0 ]]; then
-        comment="$comment2$comment3"
-      elif [[ ${#comment3} -gt 0 ]]; then
-        comment=$comment3
-      else
+      
+      # Walk backwards to collect all consecutive comment lines
+      comment=""
+      j=$((i - 1))
+      while [[ $j -ge 0 && "${array[$j]}" == \#* ]]; do
+        # Prepend this comment line (converting # to ¶)
+        tmp_comment=$(echo "${array[$j]}" | gsed "s/#/¶/g")
+        comment="${tmp_comment}${comment}"
+        j=$((j - 1))
+      done
+      
+      if [[ -z "$comment" ]]; then
+        comment="${cl_red}${NO_DESCRIPTION}${cl_grey}"
         isWarning=true
       fi
 
