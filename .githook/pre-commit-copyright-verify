@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+
+# pre-commit hook to verify copyright notices in *.sh files
+
+VERSION="1.0.0"
+
+# Get the current date in YYYY-MM-DD format
+CURRENT_DATE=$(date +%Y-%m-%d)
+
+# Get the repository root directory
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Path to the COPYRIGHT template file
+COPYRIGHT_TEMPLATE="$REPO_ROOT/COPYRIGHT"
+
+# Get list of staged .sh files that are not deleted
+STAGED_SH_FILES=$(git diff --cached --name-only --diff-filter=ACMR -- "*.sh")
+
+# Function to load the copyright template and replace placeholders
+get_copyright_template() {
+  local version="$VERSION"
+
+  # Try to extract version from the file
+  if [[ -f "$1" ]]; then
+    local extracted_version=$(grep -E "^## Version: [0-9]+\.[0-9]+\.[0-9]+" "$1" | sed -E 's/^## Version: ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+    if [[ -n "$extracted_version" ]]; then
+      version="$extracted_version"
+    fi
+  fi
+
+  # Load the template and replace variables
+  if [[ -f "$COPYRIGHT_TEMPLATE" ]]; then
+    cat "$COPYRIGHT_TEMPLATE" | sed "s/{{DATE}}/$CURRENT_DATE/g" | sed "s/{{VERSION}}/$version/g"
+  else
+    echo "## Copyright (C) 2017-present, Oleksandr Kucherenko"
+    echo "## Last revisit: $CURRENT_DATE"
+    echo "## Version: $version"
+    echo "## License: MIT"
+    echo "## Source: https://github.com/OleksandrKucherenko/e-bash"
+  fi
+}
+
+# Check if any .sh files are staged
+if [[ -z "$STAGED_SH_FILES" ]]; then
+  exit 0
+fi
+
+# Flag to track if we should abort the commit
+ABORT_COMMIT=0
+
+for FILE in $STAGED_SH_FILES; do
+  # Skip if file doesn't exist
+  [[ ! -f "$FILE" ]] && continue
+
+  # Check if file already has copyright notice with ## prefix
+  if grep -q "^## Copyright" "$FILE"; then
+    # File has proper copyright, continue to next file
+    continue
+  fi
+
+  # Check if file has copyright notice without ## prefix (old format)
+  if grep -q "Copyright" "$FILE"; then
+    echo "⚠️  WARNING: File '$FILE' has a copyright notice in an old format."
+    echo "    Please review and update to use ## prefix format."
+    echo "    Commit aborted. Update the copyright and try again."
+    ABORT_COMMIT=1
+    continue
+  fi
+
+  # No copyright found, let's prepare one
+  COPYRIGHT_CONTENT=$(get_copyright_template "$FILE")
+
+  # Insert copyright after shebang and any tool-specific comments
+  TEMP_FILE=$(mktemp)
+
+  # Check if file has shebang
+  if head -1 "$FILE" | grep -q "^#!/"; then
+    # Extract shebang
+    SHEBANG=$(head -1 "$FILE")
+
+    # Check for tool-specific comments after shebang
+    TOOL_COMMENTS=""
+    while IFS= read -r line; do
+      if [[ "$line" =~ ^#\ shellcheck || "$line" =~ ^#\ shellspec || "$line" == "" ]]; then
+        TOOL_COMMENTS+="$line"$'\n'
+      else
+        break
+      fi
+    done < <(tail -n +2 "$FILE" | head -10)
+
+    # Write shebang, tool comments, copyright, and rest of file
+    echo "$SHEBANG" >"$TEMP_FILE"
+    echo "$TOOL_COMMENTS" >>"$TEMP_FILE"
+    echo "$COPYRIGHT_CONTENT" >>"$TEMP_FILE"
+    echo "" >>"$TEMP_FILE"
+    tail -n +$(($(echo "$TOOL_COMMENTS" | wc -l) + 2)) "$FILE" >>"$TEMP_FILE"
+  else
+    # No shebang, just add copyright at the top
+    echo "$COPYRIGHT_CONTENT" >"$TEMP_FILE"
+    echo "" >>"$TEMP_FILE"
+    cat "$FILE" >>"$TEMP_FILE"
+  fi
+
+  # Ask user for confirmation
+  echo "⚠️  File '$FILE' is missing a copyright notice."
+  echo "Proposed copyright:"
+  echo "-------------------------------------------------"
+  echo "$COPYRIGHT_CONTENT"
+  echo "-------------------------------------------------"
+
+  # Interactive prompt
+  exec </dev/tty
+  read -p "Add this copyright to '$FILE'? (y/n/e[dit]): " RESPONSE
+
+  case "$RESPONSE" in
+  y | Y)
+    # Add copyright
+    mv "$TEMP_FILE" "$FILE"
+    git add "$FILE"
+    echo "✅ Added copyright to '$FILE'"
+    ;;
+  e | E)
+    # Open in editor for manual editing
+    ${EDITOR:-vi} "$FILE"
+    echo "Please stage your changes and try committing again."
+    ABORT_COMMIT=1
+    ;;
+  *)
+    echo "❌ Skipped adding copyright to '$FILE'"
+    ABORT_COMMIT=1
+    ;;
+  esac
+
+  # Clean up temp file if it still exists
+  [[ -f "$TEMP_FILE" ]] && rm "$TEMP_FILE"
+done
+
+# Abort if any issues were found
+if [[ "$ABORT_COMMIT" -eq 1 ]]; then
+  echo "Commit aborted. Please fix the copyright issues and try again."
+  exit 1
+fi
+
+exit 0

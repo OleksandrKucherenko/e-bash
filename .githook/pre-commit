@@ -6,27 +6,25 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# pre-commit hook to update "Last revisit" date in modified files
+# Main pre-commit hook that orchestrates multiple pre-commit checks
 
-# Get current date in YYYY-MM-DD format
-CURRENT_DATE=$(date +%Y-%m-%d)
+# First, run copyright verification
+HOOK_DIR="$(dirname "$0")"
+"$HOOK_DIR/pre-commit-copyright-verify"
+COPYRIGHT_VERIFY_EXIT_CODE=$?
 
-# Get list of staged files that are not deleted
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+# If copyright verification failed, abort commit
+if [ $COPYRIGHT_VERIFY_EXIT_CODE -ne 0 ]; then
+  exit $COPYRIGHT_VERIFY_EXIT_CODE
+fi
 
-for FILE in $STAGED_FILES; do
-  # Skip if file doesn't exist (could happen with some git operations)
-  [ ! -f "$FILE" ] && continue
+# Continue with updating "Last revisit" date in modified files
+"$HOOK_DIR/pre-commit-copyright-refresh-date"
+REFRESH_DATE_EXIT_CODE=$?
 
-  # Check if file contains "Last revisit:" line
-  if grep -q "Last revisit:" "$FILE"; then
-    # Update the "Last revisit:" line with current date
-    sed -i "s/Last revisit: [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}/Last revisit: $CURRENT_DATE/g" "$FILE"
-
-    # Re-stage the file if it was modified
-    git add "$FILE"
-    echo "Updated 'Last revisit' date in $FILE"
-  fi
-done
+# If date refresh failed, abort commit
+if [ $REFRESH_DATE_EXIT_CODE -ne 0 ]; then
+  exit $REFRESH_DATE_EXIT_CODE
+fi
 
 exit 0
