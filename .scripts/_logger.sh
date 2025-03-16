@@ -207,10 +207,11 @@ function logger:prefix() {
 
   if [ -z "${prefix}" ]; then
     # reset to default the prefix
-    unset TAGS_PREFIX[$tag]
+    # shellcheck disable=SC2184
+    unset TAGS_PREFIX["$tag"]
   else
     # setup the prefix
-    TAGS_PREFIX[$tag]="${prefix}"
+    TAGS_PREFIX["$tag"]="${prefix}"
   fi
 }
 

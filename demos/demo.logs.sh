@@ -10,10 +10,11 @@
 DEBUG=demo,loader # enable debug mode
 
 # shellcheck source=../.scripts/_colors.sh
+source /dev/null # trick shellcheck
+
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
-scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../.scripts"
 # shellcheck disable=SC1090 source=../.scripts/_commons.sh
-source "$scripts_dir/_logger.sh"
+source "$E_BASH/_logger.sh"
 
 # define prefixes for pipe's steps
 red=" ${cl_red}#${cl_reset} "

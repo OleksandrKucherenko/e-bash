@@ -2,18 +2,16 @@
 # shellcheck disable=SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../.scripts"
-
 # include other scripts
 # shellcheck disable=SC1090 source=../.scripts/_dependencies.sh
-source "$SCRIPT_DIR/_dependencies.sh"
+source "$E_BASH/_dependencies.sh"
 # shellcheck disable=SC1090 source=../.scripts/_commons.sh
-source "$SCRIPT_DIR/_commons.sh"
+source "$E_BASH/_commons.sh"
 
 NO_DESCRIPTION="no description found"
 
