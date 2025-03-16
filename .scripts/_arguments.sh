@@ -86,6 +86,7 @@ function parse:mapping() {
   declare -A -g index_to_outputs && index_to_outputs=() # index-to-variable_name, e.g. -c,--cookies -> 0=cookies
   declare -A -g index_to_args_qt && index_to_args_qt=() # index-to-argument_quantity, e.g. -c,--cookies -> 0="0"
   declare -A -g index_to_default && index_to_default=() # index-to-argument_default, e.g. -c,--cookies -> 0="", -c=:default:1 -> 0="default"
+  declare -A -g index_to_keys && index_to_keys=()       # index-to-keys_definition
 
   # build parameters mapping
   for i in "${!definitions[@]}"; do
@@ -101,6 +102,7 @@ function parse:mapping() {
       index_to_outputs[$i]=$(echo "$helper" | awk -F'|' '{print $1}')
       index_to_args_qt[$i]=$(echo "$helper" | awk -F'|' '{print $3}')
       index_to_default[$i]=$(echo "$helper" | awk -F'|' '{print $2}')
+      index_to_keys[$i]=$(echo "${keys[*]}" | awk -F= '{print $1}')
     done
   done
 
@@ -221,6 +223,7 @@ function parse:arguments() {
 
 # argument to group name mapping
 [ -z "$args_to_group" ] && declare -A -g args_to_group=()
+[ -z "$group_to_order" ] && declare -A -g group_to_order=()
 
 # argument to environment variable mapping
 [ -z "$args_to_envs" ] && declare -A -g args_to_envs=()
@@ -233,12 +236,14 @@ function args:d() {
   local flag=$1
   local description=$2
   local group=${3:-"common"}
-  local order=${4:-100}
+  local known_order=${group_to_order["$group"]}
+  local order=${4:-${known_order:-100}}
 
   args_to_description["$flag"]="${description}"
   args_to_group["$flag"]="${group}"
+  group_to_order["$group"]="${order}"
 
-  echo:Common "$flag -> desc:$description, group:$group, order:$order"
+  echo:Parser "$flag -> desc:$description, group:$group, order:$order"
 
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
 }
@@ -257,7 +262,7 @@ function args:e() {
   # update mapping
   args_to_envs["$flag"]="${env}"
 
-  echo:Common "$flag -> env:$env"
+  echo:Parser "$flag -> env:$env"
 
   # echo flag only if we in pipeline mode
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
@@ -277,7 +282,7 @@ function args:v() {
   # update mapping
   args_to_defaults["$flag"]="${defaults}"
 
-  echo:Common "$flag -> defaults:$defaults"
+  echo:Parser "$flag -> defaults:$defaults"
 
   # echo flag only if we in pipeline mode
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
@@ -295,6 +300,20 @@ function print:help() {
   # get length of the $groups array
   local groups_length=${#groups[@]}
 
+  # sort groups by order stored in group_to_order array
+  # create "group:order" pairs first
+  local unsorted_groups=()
+  for group in "${groups[@]}"; do
+    unsorted_groups+=("$group:${group_to_order[$group]}")
+  done
+  echo:Parser "unsorted groups: ${unsorted_groups[*]}"
+
+  # sort groups by order
+  # shellcheck disable=SC2207
+  local sorted_groups=($(printf '%s\n' "${unsorted_groups[@]}" | sort -k2,2n -k1,1 -t: | awk -F: '{print $1}'))
+  echo:Parser "sorted groups: ${sorted_groups[*]}"
+  groups=("${sorted_groups[@]}")
+
   # print help for each group
   for group in "${groups[@]}"; do
     # print group name only if have multiple groups
@@ -306,11 +325,34 @@ function print:help() {
       [ "${args_to_group[$flag]}" == "$group" ] && one_group+=("$flag")
     done
 
-    # print each flag description
-    #  16 chars -->  0123456789012345678901234567890123456789
-    local separator="                "
+    # get max length of aliases inside one group
+    local max_length=0
     for flag in "${one_group[@]}"; do
-      local length=${#flag}
+      local aliases="${index_to_keys[${lookup_arguments[$flag]}]}"
+      aliases="${aliases// /, }"
+      local length=${#aliases}
+      [ "$length" -gt "$max_length" ] && max_length="$length"
+    done
+
+    # make separator of max_length
+    local separator="   " # 3 spaces at least
+    for ((i = 0; i < max_length; i++)); do
+      separator+=" "
+    done
+
+    # sort flags inside one_group alphabetically
+    # shellcheck disable=SC2207
+    IFS=$'\n' one_group=($(sort <<<"${one_group[*]}")) && unset IFS
+
+    # print each flag description
+    for flag in "${one_group[@]}"; do
+      # get aliases for flag
+      # lookup_arguments (resolve flag to index), index_to_keys (resolve index to keys)
+      # replace " " by ", " in aliases
+      local aliases="${index_to_keys[${lookup_arguments[$flag]}]}"
+      aliases="${aliases// /, }"
+
+      local length=${#aliases}
       local padding="${separator:$((length - 1))}"
       local description="${args_to_description[$flag]:-""}"
       local env="${args_to_envs[$flag]:-""}"
@@ -322,7 +364,7 @@ function print:help() {
       [ -n "$defaults" ] && defaults="default: $defaults"
       [[ -z "$env" ]] || [[ -z "$defaults" ]] && divider="" && open="" && close=""
 
-      printf "  %s%s%s %s\n" "${cl_cyan}${flag}${cl_reset}" "${padding}" \
+      printf "  %s%s%s %s\n" "${cl_cyan}${aliases}${cl_reset}" "${padding}" \
         "${cl_white}${description}${cl_reset}" \
         "${cl_grey}${open}${env}${divider}${defaults}${close}${cl_reset}"
     done
@@ -337,6 +379,8 @@ function print:help() {
 ${__SOURCED__:+return}
 
 logger common "$@" # register own logger
+logger parser "$@" # initialize parser
+logger:prefix "parser" "${cl_blue}[parser]${cl_reset}: "
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"

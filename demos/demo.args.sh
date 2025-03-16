@@ -6,18 +6,22 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-export DEBUG="-loader,common"
+export DEBUG=${DEBUG:-"-loader,-parser,-common"}
+
+# pre-declare variables to make shellcheck happy
+declare help version args_init args_new args_switch args_command args_sub_command args_subsub_command
 
 # pattern: "{argument_index},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
 ARGS_DEFINITION=""
 ARGS_DEFINITION+=" -h,--help"
 ARGS_DEFINITION+=" --version=version:1.0.0"
+ARGS_DEFINITION+=" -d,--debug=DEBUG:demo"
 ARGS_DEFINITION+=" -i,--init,--initialize=args_init"
 ARGS_DEFINITION+=" -n,--new,--new-environment=args_new::1"
 ARGS_DEFINITION+=" -s,--switch=args_switch::1"
-ARGS_DEFINITION+=" \$1,-c,--command=args_command:dummy:1"
-ARGS_DEFINITION+=" \$2,--sub-command=args_sub_command:sub_dummy:1"
-ARGS_DEFINITION+=" -d,--debug=DEBUG:*"
+ARGS_DEFINITION+=" \$1,<command>=args_command:dummy:1"
+ARGS_DEFINITION+=" \$2,<sub-command>=args_sub_command:sub_dummy:1"
+ARGS_DEFINITION+=" \$3,<sub-sub-command>=args_subsub_command:sub_sub_dummy:1"
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 # shellcheck source=../.scripts/_colors.sh
@@ -28,12 +32,21 @@ logger "demo" "$@"
 logger:redirect "demo" ">&2"
 logger:prefix "demo" "[${cl_grey}demo${cl_reset}] "
 
-# compose help instructions
-args:d '-h' 'Show help and exit.'
-args:d '--version' 'Show version and exit.' "global"
-args:d '-i' 'Initialize the environment.'
-args:d '-n' 'Create a new environment.'
+# register commands as a group/collection
+args:d "\$1" "Main command." "commands" 1
+args:d "\$2" "Sub-command." "commands"
+args:d "\$3" "More nested level of sub-commands." "commands"
+
+# compose help instructions, use the shortest name as identifier
+args:d '-h' 'Show help and exit.' "global"
+args:d '--version' 'Show version and exit.' "global" 2
 args:d '-s' 'Switch to another environment.'
+
+args:d '-i' 'Initialize the environment.'
+args:e '-i' 'PROJECT_NAME'
+
+args:d '-n' 'Create a new environment.'
+args:v '-s' 'staging'
 
 # configure in pipe
 # WARNING: pipe force execution in sub-shell, which makes all changes
@@ -47,22 +60,29 @@ args:d '-s' 'Switch to another environment (pipe).' | (
 args:d "--debug" "Force debug output of the tool;" "global"
 
 # specify environment variable, defaults and description of the "--debug" argument
-args:e "--debug" "DEBUG=*"
+args:e "--debug" "DEBUG=demo"
 args:v "--debug" "<empty>"
 
 # print help instructions
 [[ "$help" == "1" ]] && {
+  echo "${BASH_SOURCE[0]} - Demo application of arguments parsing."
+  echo ""
+  echo "Usage: ${BASH_SOURCE[0]} [global's] [command] [subcommand] [subsubcommand] [flags/options]"
   echo ""
   print:help
+  # developer decide what to do next, or exit or continue
 }
 
+echo "Definitions: ${cl_red}$(echo "${ARGS_DEFINITION}" | sed 's/ /\n\t/g')${cl_reset}"
+echo ""
 echo "Parsed call arguments/options:"
 echo "  -h, --help: $help"
 echo "  --version: $version"
 echo "  -i, --init: $args_init"
 echo "  -n, --new: $args_new"
 echo "  -s, --switch: $args_switch"
-echo "  <1,2>: $args_command $args_sub_command"
+echo "  <1-3>: 1:$args_command 2:$args_sub_command 3:$args_subsub_command"
+echo "  DEBUG: $DEBUG"
 
 # Examples how to use:
 echo ""
@@ -75,3 +95,4 @@ echo "  demos/demo.args.sh -n test       # create new environment"
 echo "  demos/demo.args.sh -s one -s two # override argument by second value"
 echo "  demos/demo.args.sh try           # positional argument as a command"
 echo "  demos/demo.args.sh try sub       # command with sub-command"
+echo "  DEBUG=- demos/demo.args.sh try   # no logs"
