@@ -55,10 +55,9 @@ get_copyright_template() {
   # Load the template and replace variables
   if [[ -f "$COPYRIGHT_TEMPLATE" ]]; then
     if [[ "$resolve" == true ]]; then
-      # shellcheck disable=SC2002
-      cat "$COPYRIGHT_TEMPLATE" | gsed -e "s/{{DATE}}/$CURRENT_DATE/g; s/{{VERSION}}/$version/g"
+      ggrep "## " "$COPYRIGHT_TEMPLATE" | gsed -e "s/{{DATE}}/$CURRENT_DATE/g; s/{{VERSION}}/$version/g"
     else
-      cat "$COPYRIGHT_TEMPLATE"
+      ggrep "## " "$COPYRIGHT_TEMPLATE"
     fi
   else
     echo "Error: $COPYRIGHT_TEMPLATE not found" >&2
