@@ -41,6 +41,7 @@ fi
 
 # Function to load the copyright template and replace placeholders
 get_copyright_template() {
+  local resolve=${1:-true}
   local version="$VERSION"
 
   # Try to extract version from the file
@@ -53,14 +54,15 @@ get_copyright_template() {
 
   # Load the template and replace variables
   if [[ -f "$COPYRIGHT_TEMPLATE" ]]; then
-    # shellcheck disable=SC2002
-    cat "$COPYRIGHT_TEMPLATE" | gsed -e "s/{{DATE}}/$CURRENT_DATE/g; s/{{VERSION}}/$version/g"
+    if [[ "$resolve" == true ]]; then
+      # shellcheck disable=SC2002
+      cat "$COPYRIGHT_TEMPLATE" | gsed -e "s/{{DATE}}/$CURRENT_DATE/g; s/{{VERSION}}/$version/g"
+    else
+      cat "$COPYRIGHT_TEMPLATE"
+    fi
   else
-    echo "## Copyright (C) 2017-present, Oleksandr Kucherenko"
-    echo "## Last revisit: $CURRENT_DATE"
-    echo "## Version: $version"
-    echo "## License: MIT"
-    echo "## Source: https://github.com/OleksandrKucherenko/e-bash"
+    echo "Error: $COPYRIGHT_TEMPLATE not found" >&2
+    exit 1 # COPYRIGHT_TEMPLATE not found
   fi
 }
 
@@ -87,9 +89,16 @@ verify_copyright() {
 
   # Check each line for proper format
   for line in $(seq 1 "$expected_lines"); do
-    local expected_line=$(echo "$expected_copyright" | gsed -n "${line}p" | gsed 's/{{DATE}}/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}/g')
+    local expected_line=$(echo "$expected_copyright" | gsed -n "${line}p")
     local actual_line=$(echo "$actual_copyright" | gsed -n "${line}p")
+    echo "pre-diff: '$actual_line' vs '$expected_line'" >&2
+
+    # replace "Key: Value" in template string by "Key: " without Value.
+    expected_line=$(echo "$expected_line" | gawk -F: '{print $1 ": "}')
+    actual_line=$(echo "$actual_line" | gawk -F: '{print $1 ": "}')
+
     if ! echo "$actual_line" | ggrep -q "$(echo "$expected_line" | gsed 's/{{VERSION}}/[0-9]\+\.[0-9]\+\.[0-9]\+/g')"; then
+      echo "diff: '$actual_line' vs '$expected_line'" >&2
       return 3 # Format mismatch
     fi
   done

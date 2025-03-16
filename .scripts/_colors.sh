@@ -37,9 +37,21 @@ export cl_black=$(tput setaf 16)
 
 export cl_selected=$(tput setab 241 && tput setaf 15)
 
+# styles bold, italic, underline
+export st_bold=$(tput bold)
+export st_b="${st_bold}"
+export st_no_b=$(printf "\033[22m")
+export st_italic=$(tput sitm)
+export st_i="${st_italic}"
+export st_no_i=$(tput ritm)
+export st_underline=$(tput smul)
+export st_u="${st_underline}"
+export st_no_u=$(tput rmul)
+
 # unset colors, to prevent coloring in the output
 function cl:unset() {
   unset cl_reset cl_selected
   unset cl_red cl_green cl_yellow cl_blue cl_purple cl_cyan cl_white cl_grey cl_gray cl_black
   unset cl_lred cl_lgreen cl_lyellow cl_lblue cl_lpurple cl_lcyan cl_lwhite
+  unset st_bold st_b st_no_b st_italic st_i st_no_i st_underline st_u st_no_u
 }

@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -199,11 +199,27 @@ function logger:redirect() {
   eval "$(logger:compose "$tag" "$suffix")"
 }
 
+# force logger prefix
+function logger:prefix() {
+  local tag=${1}
+  local prefix=${2:-""}
+  local suffix=${1^} # capitalize first letter
+
+  if [ -z "${prefix}" ]; then
+    # reset to default the prefix
+    unset TAGS_PREFIX[$tag]
+  else
+    # setup the prefix
+    TAGS_PREFIX[$tag]="${prefix}"
+  fi
+}
+
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
 
-logger loader "$@" # initialize logger
+logger loader "$@"             # initialize logger
+logger:redirect "loader" ">&2" # redirect to STDERR
 
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

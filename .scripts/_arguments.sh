@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -238,10 +238,12 @@ function args:d() {
   args_to_description["$flag"]="${description}"
   args_to_group["$flag"]="${group}"
 
+  echo:Common "$flag -> desc:$description, group:$group, order:$order"
+
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
 }
 
-# compose argument variable mapping, function can be used in pipeline
+# compose argument 'variable' mapping, function can be used in pipeline
 function args:e() {
   local flag=$1
   local env=$2
@@ -255,11 +257,13 @@ function args:e() {
   # update mapping
   args_to_envs["$flag"]="${env}"
 
+  echo:Common "$flag -> env:$env"
+
   # echo flag only if we in pipeline mode
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
 }
 
-# compose argument defaults mapping, function can be used in pipeline
+# compose argument "defaults" mapping, function can be used in pipeline
 function args:v() {
   local flag=$1
   local defaults=$2
@@ -272,6 +276,8 @@ function args:v() {
 
   # update mapping
   args_to_defaults["$flag"]="${defaults}"
+
+  echo:Common "$flag -> defaults:$defaults"
 
   # echo flag only if we in pipeline mode
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes

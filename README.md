@@ -163,7 +163,7 @@ Requirements:
 - [ ] compose help documentation from arguments definition
 
 ```bash
-# pattern: "{argument},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
+# pattern: "{argument_index},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
 # example: "-h,--help=args_help:true:0", on --help or -h set $args_help variable to true, expect no arguments;
 # example: "$1,--id=args_id::1", expect first unnamed argument to be assigned to $args_id variable; can be also provided as --id=123
 export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0"

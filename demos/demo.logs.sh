@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-02
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -86,7 +86,7 @@ echo "---"
 FIFO=$(log:Demo) # get named pipe path/name
 echo:Demo "sample-17. named_pipe: $FIFO"
 # critical to add "&" to run in background, otherwise we will freeze on writing to named pipe
-echo "sample-18. named pipe demo, background process (line: $LINENO)" >"$FIFO" & # write to named pipe
+echo "sample-18. named pipe demo, background process (line: $LINENO)" >"$FIFO" &# write to named pipe
 
 ## test GLOBAL redirects
 
@@ -129,6 +129,15 @@ logger:redirect demo ">> /tmp/demo.log"
 echo:Demo "This message will be redirected to /tmp/demo.log, first line"
 echo:Demo "This message will be redirected to /tmp/demo.log, second line appended to the first one"
 echo "--- sample-25: /tmp/demo.log ---"
+cat /tmp/demo.log && rm /tmp/demo.log
+echo "---"
+
+# redirect to STDERR and file at the same time
+logger:redirect demo "| tee -a /tmp/demo.log >&2"
+logger:prefix "demo" "${cl_cyan}[demo]${cl_reset} "
+echo:Demo "This is the first line of demo 26"
+echo:Demo "This message will be redirected to /tmp/demo.log, second line appended to the first one"
+echo "--- sample-26: /tmp/demo.log ---"
 cat /tmp/demo.log && rm /tmp/demo.log
 echo "---"
 
