@@ -466,7 +466,7 @@ function input:selector() {
 ${__SOURCED__:+return}
 
 logger common "$@"             # register own logger
-logger:redirect "common" "&>2" # redirect to STDERR
+logger:redirect "common" ">&2" # redirect to STDERR
 
 # old version of function names
 alias now=time:now

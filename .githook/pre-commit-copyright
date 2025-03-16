@@ -90,14 +90,14 @@ verify_copyright() {
   for line in $(seq 1 "$expected_lines"); do
     local expected_line=$(echo "$expected_copyright" | gsed -n "${line}p")
     local actual_line=$(echo "$actual_copyright" | gsed -n "${line}p")
-    echo "pre-diff: '$actual_line' vs '$expected_line'" >&2
+    #echo "pre-diff: '$actual_line' vs '$expected_line'" >&2
 
     # replace "Key: Value" in template string by "Key: " without Value.
     expected_line=$(echo "$expected_line" | gawk -F: '{print $1 ": "}')
     actual_line=$(echo "$actual_line" | gawk -F: '{print $1 ": "}')
 
     if ! echo "$actual_line" | ggrep -q "$(echo "$expected_line" | gsed 's/{{VERSION}}/[0-9]\+\.[0-9]\+\.[0-9]\+/g')"; then
-      echo "diff: '$actual_line' vs '$expected_line'" >&2
+      #echo "diff: '$actual_line' vs '$expected_line'" >&2
       return 3 # Format mismatch
     fi
   done
