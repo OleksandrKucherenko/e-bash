@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -34,7 +34,7 @@ function time:diff() {
 # ref: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
 
 # get cursor position in "row;col" format
-function cursor:position {
+function cursor:position() {
   local CURPOS
   read -sdR -p $'\E[6n' CURPOS
   CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
@@ -42,7 +42,7 @@ function cursor:position {
 }
 
 # get cursor position in row
-function cursor:position:row {
+function cursor:position:row() {
   local COL
   local ROW
   IFS=';' read -sdR -p $'\E[6n' ROW COL
@@ -50,7 +50,7 @@ function cursor:position:row {
 }
 
 # get cursor position in column
-function cursor:position:col {
+function cursor:position:col() {
   local COL
   local ROW
   IFS=';' read -sdR -p $'\E[6n' ROW COL
@@ -465,7 +465,8 @@ function input:selector() {
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
 
-logger common "$@" # register own logger
+logger common "$@"             # register own logger
+logger:redirect "common" ">&2" # redirect to STDERR
 
 # old version of function names
 alias now=time:now

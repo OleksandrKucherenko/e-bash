@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-02
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -10,9 +10,8 @@
 export DEBUG=dependencies
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
-scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.scripts" && pwd)"
 # shellcheck disable=SC1090 source=../.scripts/_dependencies.sh
-source "$scripts_dir/_dependencies.sh"
+source "$E_BASH/_dependencies.sh"
 
 ## Tests:
 #dependency bash "5.0.18(1)-release" "brew install bash" "--version"

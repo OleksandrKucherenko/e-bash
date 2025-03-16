@@ -38,3 +38,6 @@ version.properties
 
 # openapi experiments
 bin/bitbucket
+
+# symbolic links (for Linux only)
+bin/gnubin

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+# Main pre-commit hook that orchestrates multiple pre-commit checks
+
+# First, run copyright verification
+HOOK_DIR="$(dirname "$0")"
+"$HOOK_DIR/pre-commit-copyright"
+COPYRIGHT_VERIFY_EXIT_CODE=$?
+
+# If copyright verification failed, abort commit
+if [ $COPYRIGHT_VERIFY_EXIT_CODE -ne 0 ]; then
+  exit $COPYRIGHT_VERIFY_EXIT_CODE
+fi
+
+# Continue with updating "Last revisit" date in modified files
+"$HOOK_DIR/pre-commit-copyright-last-revisit"
+REFRESH_DATE_EXIT_CODE=$?
+
+# If date refresh failed, abort commit
+if [ $REFRESH_DATE_EXIT_CODE -ne 0 ]; then
+  exit $REFRESH_DATE_EXIT_CODE
+fi
+
+exit 0

@@ -14,6 +14,7 @@
     - [UI: Ask for Password](#ui-ask-for-password)
   - [Semver - Semantic Versioning](#semver---semantic-versioning)
   - [Self-Update](#self-update)
+    - [Troubleshooting](#troubleshooting)
   - [Profile BASH script execution](#profile-bash-script-execution)
   - [Colors support in my terminal](#colors-support-in-my-terminal)
   - [References](#references)
@@ -67,11 +68,12 @@ git subtree --squash -P vendor/bats-all add https://github.com/hyperupcall/bats-
 ```
 
 refs:
+
 - https://gist.github.com/SKempin/b7857a6ff6bddb05717cc17a44091202
 - https://github.com/epcim/git-cross
 - https://github.com/ingydotnet/git-subrepo
 - https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3 [article](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
-- 
+-
 
 ### Colors
 
@@ -95,21 +97,33 @@ optional kcov "42" "brew install kcov"
 dependency shellcheck "0.9.*" "curl -sS https://webi.sh/shellcheck | sh"
 dependency shfmt "3.*.*" "curl -sS https://webi.sh/shfmt | sh"
 dependency watchman "2023.07.*.*" "brew install watchman"
+
+# different return codes for success and failure
+dependency watchman "2023.07.*.*" "brew install watchman" && echo "OK!" || echo "FAIL!"
+
+# optional always return success
+optional watchman "2023.07.*.*" "brew install watchman" && echo "OK!" || echo "never happens!"
+
+# Allow of HEAD or stable versions of the watchman tool
+wHead=$(dependency watchman "HEAD-[a-f0-9]{1,8}" "brew install watchman")
+wStab=$(dependency watchman "2024.*.*.*" "brew install watchman")
+echo "$wHead" | grep 'Error' &>/dev/null && echo "$wStab" || echo "$wHead"
 ```
 
 ### Logger
 
 Requirements:
-- [x] zero dependencies, pure BASH
+- [x] zero dependencies, pure BASH (optional: _colors.sh)
 - [x] prefix for all logger messages
-- [ ] work in pipe mode (forward logs to the named pipe)
-  - [ ] write logs to pipe; single line or multiple lines in '|' pipe mode
-  - [ ] read logs from the named pipe and output to the console (or file). Required PID and log tag.
-  - [ ] run logs to file/stream in background process mode 
-- [ ] support prefix for each log message
+- [x] work in pipe mode (forward logs to the named pipe)
+  - [x] write logs to pipe; single line or multiple lines in '|' pipe mode
+  - [x] read logs from the named pipe and output to the console (or file).
+  - [x] redirect logs to file/stream/pipe/tty 
+- [x] support prefix for each log message
 - [x] listen to DEBUG environment variable for enabling/disabling logs
   - [x] enable/disable log by tag name or tag name prefix (support wildcards)
-- [ ] execute command with logging the command and it parameters first (ref: https://bpkg.sh/pkg/echo-eval)
+- [*] execute command with logging the command and it parameters first (ref: https://bpkg.sh/pkg/echo-eval)
+  - [x] can be easily self-made (ref: https://github.com/kj4ezj/echo-eval/blob/main/ee.sh)
 
 ```bash
 source ".scripts/_logger.sh"
@@ -126,15 +140,20 @@ export DEBUG=*,-common  # enable logger output for all tags except common
 config:logger:Common "$@" # re-configure logger enable/disable for common tag
 
 # echo in pipe mode
-find . -type d -max-depth 1 | echo:Common
+find . -type d -max-depth 1 | log:Common
 
 # echo in output redirect
-find . -type d -max-depth 1 >echo:Common
+find . -type d -max-depth 1 >log:Common
+
+# more samples of usage are in `demos/demo.logs.sh` file
 ```
+
+Complete demo: [Logger Demo](demos/demo.logs.sh)
 
 ### Arguments Parsing
 
 Requirements:
+
 - [x] zero dependencies, pure BASH
 - [x] support short and long arguments
 - [x] support default values
@@ -144,10 +163,11 @@ Requirements:
 - [ ] compose help documentation from arguments definition
 
 ```bash
-# pattern: "{argument},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
+# pattern: "{argument_index},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
 # example: "-h,--help=args_help:true:0", on --help or -h set $args_help variable to true, expect no arguments;
 # example: "$1,--id=args_id::1", expect first unnamed argument to be assigned to $args_id variable; can be also provided as --id=123
-export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
+export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0"
+export ARGS_DEFINITION+=" --debug=DEBUG:*"
 
 # will automatically parse script arguments with definition from $ARGS_DEFINITION global variable
 source ".scripts/_arguments.sh"
@@ -173,10 +193,6 @@ env:variable:or:secret:file "new_value" \
   "{user friendly message}"
 
 echo "Extracted: ${new_value}"
-
-# validate/confirm input parameter by user input
-# string
-# Yes/No
 ```
 
 ### UI: Selector
@@ -207,6 +223,7 @@ password=$(input:readpwd) && echo "" && echo "Password: $password"
 ## Semver - Semantic Versioning
 
 Requirements:
+
 - [x] parse version code, according to semver specification
 - [x] compare version code
 - [x] verify version constraints
@@ -225,7 +242,7 @@ semver:constraints:simple "1.0.0-beta.10 != 1.0.0-beta.2" && echo "OK!" || echo 
 semver:parse "2.0.0-rc.1+build.123" "V" \
   && for i in "${!V[@]}"; do echo "$i: ${V[$i]}"; done \
   && semver:recompose "V"
-  
+
 # test version code
 echo "1" | grep -E "${SEMVER_LINE}" --color=always --ignore-case || echo "OK!"
 ```
@@ -233,6 +250,7 @@ echo "1" | grep -E "${SEMVER_LINE}" --color=always --ignore-case || echo "OK!"
 ## Self-Update
 
 Requirements:
+
 - [x] detect a new version of the script
 - [x] download multiple versions into folder and do a symbolic link to a specific version
 - [x] download from GIT repo (git clone)
@@ -244,7 +262,7 @@ Requirements:
 - [ ] partial update of the scripts, different versions of scripts from different version sub-folders
   - [x] developer can bind file to a specific version by calling function `self-update:version:bind`
 - [x] verify SHA1 hash of the scripts
-  - [x] compute file SHA1 hash and store it in *.sha1 file
+  - [x] compute file SHA1 hash and store it in \*.sha1 file
 - [x] understand version expressions
   - [ ] `latest` - latest stable version
   - [ ] `*` or `next` - any highest version tag (INCLUDING: alpha, beta, rc etc)
@@ -256,12 +274,13 @@ Requirements:
   - [x] `>1.0.0 <=1.5.0` - version in range `> 1.0.0 && <= 1.5.0`
   - [x] `>1.0.0 <1.1.0 || >1.5.0` - version in range `(> 1.0.0 < 1.1.0) || (> 1.5.0)`
 
-refs: 
+refs:
+
 - https://classic.yarnpkg.com/lang/en/docs/dependency-versions/
 - https://github.com/fsaintjacques/semver-tool
 - https://github.com/Masterminds/semver
 - https://stackoverflow.com/questions/356100/how-to-wait-in-bash-for-several-subprocesses-to-finish-and-return-exit-code-0
-- 
+
 
 ```bash
 source ".scripts/_self-update.sh"
@@ -277,7 +296,7 @@ self-update "latest" ".scripts/_colors.sh"    # latest stable
 self-update "*" ".scripts/_colors.sh"         # any highest version tag
 
 # update specific file to MASTER version (can be used any branch name)
-self-update "branch:master" ".scripts/_colors.sh"   
+self-update "branch:master" ".scripts/_colors.sh"
 self-update "tag:v1.0.0" ".scripts/_colors.sh"
 
 # bind file to a specific version

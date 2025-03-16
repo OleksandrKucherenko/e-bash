@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-02
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
-scripts_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../.scripts"
 # shellcheck disable=SC1090 source=../.scripts/_semver.sh
-source "$scripts_dir/_semver.sh"
+source "$E_BASH/_semver.sh"
 
 ## constraints Expressions
-semver:constraints "1.0.0-alpha" "1.0.0-alpha" && echo "OK!" || echo "$? - FAIL!" # EQUAL
+semver:constraints "1.0.0-alpha" "1.0.0-alpha" && echo "OK!" || echo "$? - FAIL!"                # EQUAL
 semver:constraints "1.0.0-alpha" ">1.0.0-beta || <1.0.0" && echo "$? - OK!" || echo "$? - FAIL!" # expected OK
 semver:constraints "1.0.0-beta.10" "~1.0.0-beta.2" && echo "OK!" || echo "$? - FAIL!"
 semver:constraints "1.0.0-beta.10" "^1.0.0-beta.2" && echo "OK!" || echo "$? - FAIL!"

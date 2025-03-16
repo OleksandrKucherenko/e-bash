@@ -2,20 +2,13 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-03-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # one time initialization, CUID
 if type logger | grep -q "is a function"; then return 0; fi
-# if [[ "${clr0li2550002og38iiryffm8}" == "yes" ]]; then return 0; else export clr0li2550002og38iiryffm8="yes"; fi
-
-# shellcheck disable=SC2155
-[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# shellcheck disable=SC1090  source=_colors.sh
-source "${E_BASH}/_colors.sh"
 
 # global helpers
 export __SESSION=$(uuidgen)
@@ -93,11 +86,6 @@ function pipe:killer:compose() {
   local pipe=${1}
   local myPid=${2:-"${BASHPID}"}
 
-    # cat <"${pipe}" >/dev/tty &
-    # pid=$!; echo "${cl_grey}Background process started: ${myPid}/\${BASHPID}/\${pid} ${cl_blue}${pipe}${cl_reset}" >/dev/tty
-    # echo "killing child process: \${pid}" >/dev/tty
-    # kill -9 "\${pid}" 2>/dev/null
-
   cat <<EOF
     trap "rm -f \"${pipe}\" >/dev/null" HUP INT QUIT ABRT TERM KILL EXIT
     while kill -0 "${myPid}" 2>/dev/null; do sleep 0.1; done
@@ -145,7 +133,7 @@ function logger() {
     mkfifo "${pipe}" || echo "Failed to create named pipe: ${pipe}" >&2
     TAGS_PIPE+=([$tag]="${pipe}")
 
-    # run background process to wait for parent proces exit and delete the named pipe
+    # run background process to wait for parent process exit and delete the named pipe
     bash <(pipe:killer:compose "$pipe" "$myPid") &
   fi
 
@@ -211,9 +199,33 @@ function logger:redirect() {
   eval "$(logger:compose "$tag" "$suffix")"
 }
 
+# force logger prefix
+function logger:prefix() {
+  local tag=${1}
+  local prefix=${2:-""}
+  local suffix=${1^} # capitalize first letter
+
+  if [ -z "${prefix}" ]; then
+    # reset to default the prefix
+    # shellcheck disable=SC2184
+    unset TAGS_PREFIX["$tag"]
+  else
+    # setup the prefix
+    TAGS_PREFIX["$tag"]="${prefix}"
+  fi
+}
+
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
 
-logger loader "$@" # initialize logger
+logger loader "$@"             # initialize logger
+logger:redirect "loader" ">&2" # redirect to STDERR
+
+# shellcheck disable=SC2155
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck disable=SC1090  source=_colors.sh
+[ -f "${E_BASH}/_colors.sh" ] && source "${E_BASH}/_colors.sh" # load if available
+
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
