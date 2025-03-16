@@ -1,0 +1,216 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2155
+
+# pre-commit hook to verify copyright notices in *.sh files
+
+VERSION="1.0.0"
+
+# Get the current date in YYYY-MM-DD format
+CURRENT_DATE=$(date +%Y-%m-%d)
+
+# Get the repository root directory
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Path to the COPYRIGHT template file
+COPYRIGHT_TEMPLATE="$REPO_ROOT/COPYRIGHT"
+
+# Declare STAGED_SH_FILES as an array
+declare -a STAGED_SH_FILES
+
+readonly cl_grey=$(tput setaf 8)
+readonly cl_gray=$cl_grey # alias to the same color
+readonly cl_reset=$(tput sgr0)
+
+# Check if HOOK_TEST environment variable is set (TEST mode)
+# or not set (PRODUCTION mode via git hook)
+if [[ -n "${HOOK_TEST}" ]]; then
+  # TEST mode - use command line arguments as file list
+  echo "${cl_gray}Running in TEST mode with files from command line arguments${cl_reset}" >&2
+  # Use command line arguments as the file list
+  # shellcheck disable=SC2206
+  STAGED_SH_FILES=("$@")
+
+  # in TEST mode replace `git` command by `echo`
+  git() {
+    echo "${cl_gray}## git" "$@" "${cl_reset}" >&2
+  }
+else
+  # Use readarray to populate the array from git diff output
+  readarray -t STAGED_SH_FILES < <(git diff --cached --name-only --diff-filter=ACMR -- "*.sh")
+fi
+
+# Function to load the copyright template and replace placeholders
+get_copyright_template() {
+  local version="$VERSION"
+
+  # Try to extract version from the file
+  if [[ -f "$1" ]]; then
+    local extracted_version=$(ggrep -E "^## Version: [0-9]+\.[0-9]+\.[0-9]+" "$1" | gsed -E 's/^## Version: ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+    if [[ -n "$extracted_version" ]]; then
+      version="$extracted_version"
+    fi
+  fi
+
+  # Load the template and replace variables
+  if [[ -f "$COPYRIGHT_TEMPLATE" ]]; then
+    # shellcheck disable=SC2002
+    cat "$COPYRIGHT_TEMPLATE" | gsed -e "s/{{DATE}}/$CURRENT_DATE/g; s/{{VERSION}}/$version/g"
+  else
+    echo "## Copyright (C) 2017-present, Oleksandr Kucherenko"
+    echo "## Last revisit: $CURRENT_DATE"
+    echo "## Version: $version"
+    echo "## License: MIT"
+    echo "## Source: https://github.com/OleksandrKucherenko/e-bash"
+  fi
+}
+
+# Function to verify if the copyright notice in the file is valid
+verify_copyright() {
+  local file=$1
+
+  # Check if file has a copyright notice with ## prefix
+  if ! ggrep -q "^## Copyright" "$file"; then
+    return 1 # No copyright found
+  fi
+
+  # Get expected copyright content for comparison
+  local expected_copyright=$(get_copyright_template "$file")
+  local expected_lines=$(echo "$expected_copyright" | wc -l)
+
+  # Extract actual copyright lines from file
+  local actual_copyright=$(ggrep -A $((expected_lines - 1)) "^## Copyright" "$file" | head -n "$expected_lines" | grep "## ")
+
+  # Compare line count first
+  if [[ $(echo "$actual_copyright" | wc -l) -ne "$expected_lines" ]]; then
+    return 2 # Different number of lines
+  fi
+
+  # Check each line for proper format
+  for line in $(seq 1 "$expected_lines"); do
+    local expected_line=$(echo "$expected_copyright" | gsed -n "${line}p" | gsed 's/{{DATE}}/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}/g')
+    local actual_line=$(echo "$actual_copyright" | gsed -n "${line}p")
+    if ! echo "$actual_line" | ggrep -q "$(echo "$expected_line" | gsed 's/{{VERSION}}/[0-9]\+\.[0-9]\+\.[0-9]\+/g')"; then
+      return 3 # Format mismatch
+    fi
+  done
+
+  return 0 # Copyright is valid
+}
+
+# Function to prepare a file with copyright content
+prepare_file_with_copyright() {
+  local source_file=$1
+  local temp_file=$2
+  local copyright_content=$(get_copyright_template "$source_file")
+
+  # copy as is all comments (and shebang) from the begining of the file
+  skip_lines=0
+  while IFS= read -r line; do
+    # process all comments at the begining of the file till empty line or "##"
+    if [[ "$line" == "##"* || -z "$line" || "$line" != "#"* ]]; then
+      break
+    fi
+    # on first line do the "write" instead of "append"
+    [[ $skip_lines -eq 0 ]] && (echo "$line" >"$temp_file") || (echo "$line" >>"$temp_file")
+    ((skip_lines++))
+  done <"$source_file"
+
+  # Write the copyright content after the shebang
+  echo "" >>"$temp_file"
+  echo "$copyright_content" >>"$temp_file"
+  echo "" >>"$temp_file"
+
+  # Append the rest of the original file (excluding the processed lines)
+  tail -n +$((skip_lines + 1)) "$source_file" >>"$temp_file"
+}
+
+# Check if any .sh files are staged
+if [[ ${#STAGED_SH_FILES[@]} -eq 0 ]]; then
+  echo "${cl_grey}No .sh files to process (pre-commit-copyright)${cl_reset}"
+  exit 0
+fi
+
+# Flag to track if we should abort the commit
+ABORT_COMMIT=0
+
+# Arrays to store files with issues
+declare -a INVALID_COPYRIGHT_FILES=()
+declare -a OLD_FORMAT_FILES=()
+
+# Process all files
+for FILE in "${STAGED_SH_FILES[@]}"; do
+  # Skip if file doesn't exist
+  [[ ! -f "$FILE" ]] && continue
+
+  # Verify copyright in file
+  verify_copyright "$FILE"
+  copyright_status=$?
+
+  # If copyright is valid (return code 0), continue to next file
+  if [[ $copyright_status -eq 0 ]]; then
+    echo "✅ $FILE - valid copyright"
+    continue
+  fi
+
+  # If return code is not 1, it means copyright exists but is invalid
+  if [[ $copyright_status -ne 1 ]]; then
+    INVALID_COPYRIGHT_FILES+=("$FILE, code: ${copyright_status}")
+    ABORT_COMMIT=1
+    continue
+  fi
+
+  # Check if file has copyright notice without ## prefix (old format)
+  if ggrep -q "Copyright" "$FILE"; then
+    OLD_FORMAT_FILES+=("$FILE")
+    ABORT_COMMIT=1
+    continue
+  fi
+
+  # Create a temporary file for the new content
+  TEMP_FILE=$(mktemp)
+
+  # Prepare the file with copyright
+  prepare_file_with_copyright "$FILE" "$TEMP_FILE"
+
+  # Use GNU mv with backup option
+  gmv --backup=numbered --force "$TEMP_FILE" "$FILE"
+
+  # Restage the file
+  git add "$FILE"
+
+  # Print success message
+  echo "📝 $FILE - added copyright"
+done
+
+# Display summary of issues
+
+if [[ ${#INVALID_COPYRIGHT_FILES[@]} -gt 0 ]]; then
+  echo "⚠️  Files with non standard copyright (fix manually):"
+  for FILE in "${INVALID_COPYRIGHT_FILES[@]}"; do
+    echo "   - $FILE"
+  done
+  echo ""
+  echo "Codes:"
+  echo "   2 - Different number of lines"
+  echo "   3 - Format mismatch"
+  echo ""
+  echo "Expected format:"
+  get_copyright_template
+  echo ""
+fi
+
+if [[ ${#OLD_FORMAT_FILES[@]} -gt 0 ]]; then
+  echo "⚠️  Files with old copyright format (fix manually):"
+  for FILE in "${OLD_FORMAT_FILES[@]}"; do
+    echo "   - $FILE"
+  done
+  echo ""
+fi
+
+# Abort if any issues were found
+if [[ "$ABORT_COMMIT" -eq 1 ]]; then
+  echo "Commit aborted. Please fix the copyright issues and try again."
+  exit 1
+fi
+
+exit 0
