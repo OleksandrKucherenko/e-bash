@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-03-16
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
+# pre-commit hook to update "Last revisit" date in modified files
+
+# Get current date in YYYY-MM-DD format
+CURRENT_DATE=$(date +%Y-%m-%d)
+
+# Get list of staged files that are not deleted
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)
+
+for FILE in $STAGED_FILES; do
+  # Skip if file doesn't exist (could happen with some git operations)
+  [ ! -f "$FILE" ] && continue
+
+  # Check if file contains "Last revisit:" line
+  if grep -q "Last revisit:" "$FILE"; then
+    # Update the "Last revisit:" line with current date
+    sed -i "s/Last revisit: [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}/Last revisit: $CURRENT_DATE/g" "$FILE"
+
+    # Re-stage the file if it was modified
+    git add "$FILE"
+    echo "Updated 'Last revisit' date in $FILE"
+  fi
+done
+
+exit 0
