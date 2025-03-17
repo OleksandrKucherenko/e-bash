@@ -27,17 +27,20 @@ jobs:
           shellspec
   shellspec-ubuntu:
     name: "Ubuntu"
-    runs-on: ubuntu-latest
+    # kcov only works on ubuntu 22.04, on ubuntu-latest installation fails
+    runs-on: ubuntu-22.04
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install shellspec
+      - name: Install kcov
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kcov
+      - name: Install extra tools
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
-          curl -fsSL https://git.io/shellspec | sh -s ${{ env.SHELLSPEC_VERSION }} --yes
-          sudo apt-get update
-          sudo apt-get install kcov
+          curl -fsSL https://git.io/shellspec | sh -s -- --yes
       - name: Run shellspec tests
         run: |
           shellspec
