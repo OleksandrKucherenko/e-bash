@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-03-18
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -133,11 +133,19 @@ echo "--- sample-25: /tmp/demo.log ---"
 cat /tmp/demo.log && rm /tmp/demo.log
 echo "---"
 
+<<<<<<< Updated upstream
 # redirect to STDERR and file at the same time
 logger:redirect demo "| tee -a /tmp/demo.log >&2"
 logger:prefix "demo" "${cl_cyan}[demo]${cl_reset} "
 echo:Demo "This is the first line of demo 26"
 echo:Demo "This message will be redirected to /tmp/demo.log, second line appended to the first one"
+=======
+# redirect to file (append mode) and STDERR
+logger:redirect demo "| tee -a /tmp/demo.log >&2"
+TAGS_PREFIX["demo"]="[tee,stderr] "
+echo:Demo "This message will be redirected to /tmp/demo.log and STDERR"
+echo:Demo "Second line, confirming append logic"
+>>>>>>> Stashed changes
 echo "--- sample-26: /tmp/demo.log ---"
 cat /tmp/demo.log && rm /tmp/demo.log
 echo "---"
