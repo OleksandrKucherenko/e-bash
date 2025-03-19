@@ -160,7 +160,7 @@ Requirements:
 - [x] support required arguments
 - [x] support aliases for arguments
 - [x] support destination variables for argument
-- [ ] compose help documentation from arguments definition
+- [x] compose help documentation from arguments definition
 
 ```bash
 # pattern: "{argument_index},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
@@ -170,7 +170,7 @@ export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0"
 export ARGS_DEFINITION+=" --debug=DEBUG:*"
 
 # will automatically parse script arguments with definition from $ARGS_DEFINITION global variable
-source ".scripts/_arguments.sh"
+source "$E_BASH/_arguments.sh"
 
 # check variables that are extracted
 echo "Is --help: $help"
@@ -180,6 +180,8 @@ echo "Is --debug: $DEBUG"
 # advanced run. parse provided arguments with definition from $ARGS_DEFINITION global variable
 parse:arguments "$@"
 ```
+
+More details: [Arguments Parsing](docs/arguments.md), [Demo script](demos/demo.args.sh).
 
 ### Common(s) Functions And Inputs
 

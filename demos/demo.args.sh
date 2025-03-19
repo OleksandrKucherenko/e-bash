@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-03-19
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -9,7 +9,9 @@
 export DEBUG=${DEBUG:-"-loader,-parser,-common"}
 
 # pre-declare variables to make shellcheck happy
-declare help version args_init args_new args_switch args_command args_sub_command args_subsub_command
+declare help version \
+  args_init args_pno args_new args_switch \
+  args_command args_sub_command args_subsub_command
 
 # pattern: "{argument_index},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
 ARGS_DEFINITION=""
@@ -19,8 +21,9 @@ ARGS_DEFINITION+=" -d,--debug=DEBUG:demo"
 ARGS_DEFINITION+=" -i,--init,--initialize=args_init"
 ARGS_DEFINITION+=" -n,--new,--new-environment=args_new::1"
 ARGS_DEFINITION+=" -s,--switch=args_switch::1"
+ARGS_DEFINITION+=" --id=args_pno::1"
 ARGS_DEFINITION+=" \$1,<command>=args_command:dummy:1"
-ARGS_DEFINITION+=" \$2,<sub-command>=args_sub_command:sub_dummy:1"
+ARGS_DEFINITION+=" \$2,[sub-command]=args_sub_command:sub_dummy:1"
 ARGS_DEFINITION+=" \$3,<sub-sub-command>=args_subsub_command:sub_sub_dummy:1"
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
@@ -81,6 +84,7 @@ echo "  --version: $version"
 echo "  -i, --init: $args_init"
 echo "  -n, --new: $args_new"
 echo "  -s, --switch: $args_switch"
+echo "  --id: $args_pno"
 echo "  <1-3>: 1:$args_command 2:$args_sub_command 3:$args_subsub_command"
 echo "  DEBUG: $DEBUG"
 
@@ -96,3 +100,8 @@ echo "  demos/demo.args.sh -s one -s two # override argument by second value"
 echo "  demos/demo.args.sh try           # positional argument as a command"
 echo "  demos/demo.args.sh try sub       # command with sub-command"
 echo "  DEBUG=- demos/demo.args.sh try   # no logs"
+echo ""
+echo "Special cases:"
+echo "  demos/demo.args.sh --id=            # <empty> value"
+echo "  demos/demo.args.sh first -- second  # -- is ignored"
+echo "  demos/demo.args.sh -ih              # -h and -i combined but not recognised"
