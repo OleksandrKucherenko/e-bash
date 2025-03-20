@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-03-20
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -55,3 +55,9 @@ function cl:unset() {
   unset cl_lred cl_lgreen cl_lyellow cl_lblue cl_lpurple cl_lcyan cl_lwhite
   unset st_bold st_b st_no_b st_italic st_i st_no_i st_underline st_u st_no_u
 }
+
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+${__SOURCED__:+return}
+
+# logger is not available in this script!

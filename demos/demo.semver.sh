@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-03-20
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+
+DEBUG=${DEBUG:-"loader,-parser"}
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 # shellcheck disable=SC1090 source=../.scripts/_semver.sh
