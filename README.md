@@ -60,11 +60,46 @@ watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
 
 ## Usage
 
-Installation into your project:
+Installation into your project with helper script:
 
 ```bash
-# subtree approach (TODO: fix me!)
-git subtree --squash -P vendor/bats-all add https://github.com/hyperupcall/bats-all HEAD
+# install latest version
+curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+```
+
+Alternatives:
+
+```bash
+# OR: install latest version
+wget -qO- https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+# OR: install latest version (httpie)
+http -b https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+
+# install specific version
+curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+# OR: install specific version
+wget -qO- https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+# OR: install specific version (httpie)
+http -b https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+```
+
+### Manual installation
+
+```bash
+git remote add -f e-bash https://github.com/OleksandrKucherenko/e-bash.git  
+git checkout -b e-bash-temp e-bash/master  
+git subtree split -P .scripts -b e-bash-scripts  
+git checkout master # or main - depends on your main branch in repo
+```
+
+Upgrade `.scripts` to the latest version:
+
+```bash
+git fetch e-bash master  
+git checkout e-bash-temp && git reset --hard e-bash/master  
+git subtree split -P .scripts -b e-bash-scripts  
+git checkout <your-main-branch>  
+git subtree pull --prefix .scripts e-bash-scripts --squash
 ```
 
 refs:
@@ -73,7 +108,6 @@ refs:
 - https://github.com/epcim/git-cross
 - https://github.com/ingydotnet/git-subrepo
 - https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3 [article](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
--
 
 ### Colors
 
