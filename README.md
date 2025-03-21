@@ -51,6 +51,11 @@ brew install kcov
 ## TDD - Test Driven Development, run tests on file change
 
 ```bash
+# make tool required python in hidden dependencies
+# ref1: https://docs.astral.sh/uv/guides/install-python/
+# ref2: https://github.com/astral-sh/uv
+uv python install 
+
 # run all unit tests on file change
 watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec"
 

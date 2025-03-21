@@ -113,7 +113,7 @@ function check_prerequisites() {
     echo "  git stash pop               ${GRAY}# pop last stash changes${NC}"
     exit 1
   fi
-  
+
   # Get untracked directories with trailing slashes
   local untracked_dirs=()
   readarray -t untracked_dirs < <(git ls-files --others --directory --exclude-standard | grep '/$' | grep -v '^$')
@@ -135,7 +135,7 @@ function check_prerequisites() {
     echo -e "  rm -rf <directory>              ${GRAY}# Remove directory${NC}"
     echo ""
     exit 1
-  fi  
+  fi
 }
 
 ## Check if e-bash scripts are already installed. Retrun codes: 0 - true, 1 - false
@@ -167,7 +167,7 @@ function configure_remote() {
   fi
 
   echo -e "${BLUE}Adding remote repository...${NC}"
-  execute_git remote add -f "$REMOTE_NAME" "$REMOTE_URL"
+  execute_git remote add --fetch "$REMOTE_NAME" "$REMOTE_URL"
   return 0
 }
 
@@ -184,11 +184,11 @@ function create_temp_branch() {
   # FIXME: should we support alias `latest` to point to master?
 
   if [ "$version" = "master" ]; then
-    execute_git checkout -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
+    execute_git checkout --quiet -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
     return 0
   fi
 
-  execute_git checkout -b "$TEMP_BRANCH" "$version"
+  execute_git checkout --quiet -b "$TEMP_BRANCH" "$version"
   return 0
 }
 
@@ -198,7 +198,7 @@ function configure_local_branches() {
   execute_git config branch."$SCRIPTS_BRANCH".remote ""
 
   echo -e "${GREEN}Created local branch '$SCRIPTS_BRANCH' with the scripts content${NC}"
-  echo -e "${BLUE}Configured branches to remain local only${NC}"
+  echo -e "${BLUE}Configured e-bash temporary branches to remain local only${NC}"
 }
 
 ## Return to original branch if possible. Exit code.
@@ -207,7 +207,7 @@ function return_to_original_branch() {
   has_commits=$(git rev-parse --quiet --verify HEAD >/dev/null 2>&1 && echo "true" || echo "false")
 
   if [ "$has_commits" = "true" ]; then
-    execute_git checkout "$MAIN_BRANCH"
+    execute_git checkout --quiet "$MAIN_BRANCH"
     return 0
   fi
 
@@ -224,13 +224,15 @@ function setup_remote() {
   configure_remote
 
   # Setup temporary branch
-  echo -e "${BLUE}Setting up temporary branch...${NC}"
+  echo -e "${BLUE}Setting up temporary e-bash-temp branch...${NC}"
   clean_temp_branches
   create_temp_branch "$version"
 
   # Split the scripts subtree
   echo -e "${BLUE}Extracting scripts...${NC}"
-  execute_git subtree split -P "$SCRIPTS_DIR" -b "$SCRIPTS_BRANCH"
+
+  # Redirect output to /dev/null for hiding output of commit hash
+  execute_git subtree split --quiet -P "$SCRIPTS_DIR" -b "$SCRIPTS_BRANCH" >/dev/null
 
   # Configure branches to remain local and not be pushed to remote
   configure_local_branches
@@ -327,7 +329,7 @@ function upgrade_scripts() {
   # FIXME: should we resolve alias `latest` to point to `master`?
 
   echo -e "${YELLOW}=== UPGRADE STARTED (version: $version) ===${NC}"
-  
+
   # Save current version for potential rollback
   save_current_version
 
@@ -438,10 +440,10 @@ function copy_installer_to_bin() {
     # we can copy itself to the bin directory
     cp "$0" "bin/install.e-bash.sh"
   fi
-  
+
   # Set executable attribute if file exists
   [ -f "bin/install.e-bash.sh" ] && chmod +x "bin/install.e-bash.sh"
-  
+
   echo -e "${GREEN}Placed installation script to bin/install.e-bash.sh${NC}"
   set +x
   return 0
@@ -730,7 +732,7 @@ function repo_versions() {
   if [ "$has_remote" = "true" ]; then
     execute_git fetch "$REMOTE_NAME" --tags
   else
-    execute_git remote add -f "$REMOTE_NAME" "$REMOTE_URL"
+    execute_git remote add --fetch "$REMOTE_NAME" "$REMOTE_URL"
   fi
 
   # Determine current version if installed

@@ -1,18 +1,18 @@
-# E-Bash Installation Guide
+# e-Bash Installation Guide
 
-This document provides detailed test scenarios for installing, upgrading, and managing the E-Bash script utility in your projects. Each scenario includes step-by-step instructions in Gherkin format (Given-When-Then) along with the exact commands to execute.
+This document provides detailed test scenarios for installing, upgrading, and managing the e-Bash script utility in your projects. Each scenario includes step-by-step instructions in Gherkin format (Given-When-Then) along with the exact commands to execute.
 
 ## Table of Contents
 
 - [Positive Test Scenarios](#positive-test-scenarios)
-  - [Scenario 1: Installing E-Bash in a new Git repository](#scenario-1-installing-e-bash-in-a-new-git-repository)
-  - [Scenario 2: Installing E-Bash in an existing repository with content](#scenario-2-installing-e-bash-in-an-existing-repository-with-content)
-  - [Scenario 3: Upgrading E-Bash in an existing installation](#scenario-3-upgrading-e-bash-in-an-existing-installation)
-  - [Scenario 4: Rolling back E-Bash to a previous version](#scenario-4-rolling-back-e-bash-to-a-previous-version)
-  - [Scenario 5: Viewing available versions of E-Bash](#scenario-5-viewing-available-versions-of-e-bash)
-  - [Scenario 6: Installing a specific version of E-Bash](#scenario-6-installing-a-specific-version-of-e-bash)
-  - [Scenario 7: Installing E-Bash in a repository with custom main branch name](#scenario-7-installing-e-bash-in-a-repository-with-custom-main-branch-name)
-  - [Scenario 8: Uninstalling E-Bash from a repository](#scenario-8-uninstalling-e-bash-from-a-repository)
+  - [Scenario 1: Installing e-Bash in a new Git repository](#scenario-1-installing-e-bash-in-a-new-git-repository)
+  - [Scenario 2: Installing e-Bash in an existing repository with content](#scenario-2-installing-e-bash-in-an-existing-repository-with-content)
+  - [Scenario 3: Upgrading e-Bash in an existing installation](#scenario-3-upgrading-e-bash-in-an-existing-installation)
+  - [Scenario 4: Rolling back e-Bash to a previous version](#scenario-4-rolling-back-e-bash-to-a-previous-version)
+  - [Scenario 5: Viewing available versions of e-Bash](#scenario-5-viewing-available-versions-of-e-bash)
+  - [Scenario 6: Installing a specific version of e-Bash](#scenario-6-installing-a-specific-version-of-e-bash)
+  - [Scenario 7: Installing e-Bash in a repository with custom main branch name](#scenario-7-installing-e-bash-in-a-repository-with-custom-main-branch-name)
+  - [Scenario 8: Uninstalling e-Bash from a repository](#scenario-8-uninstalling-e-bash-from-a-repository)
 - [Negative Test Scenarios](#negative-test-scenarios)
   - [Scenario 9: Attempting to install in a non-git directory](#scenario-9-attempting-to-install-in-a-non-git-directory)
   - [Scenario 10: Attempting to rollback without a previous version](#scenario-10-attempting-to-rollback-without-a-previous-version)
@@ -22,7 +22,7 @@ This document provides detailed test scenarios for installing, upgrading, and ma
 
 ## Passing results
 
-- [x] Scenario 1: Installing E-Bash in a new Git repository
+- [x] Scenario 1: Installing e-Bash in a new Git repository
   - [x] Fresh installation in a new repository
   - [x] `.scripts` directory exists
   - [x] Main branch detected correctly
@@ -32,14 +32,14 @@ This document provides detailed test scenarios for installing, upgrading, and ma
   - [x] `git status` shows no untracked files
   - [x] `git tag -l | tee` shows tags fetched from `e-bash` remote
   - [x] `versions` command marks correct branch/tag as `[CURRENT]`
-- [ ] Scenario 2: Installing E-Bash in an existing repository with content
-- [ ] Scenario 3: Upgrading E-Bash in an existing installation
-- [ ] Scenario 4: Rolling back E-Bash to a previous version
-- [ ] Scenario 5: Viewing available versions of E-Bash
-- [ ] Scenario 6: Installing a specific version of E-Bash
-- [ ] Scenario 7: Installing E-Bash in a repository with custom main branch name
-- [ ] Scenario 8: Uninstalling E-Bash from a repository
-- [ ] Scenario 9: Attempting to install in a non-git directory
+- [x] Scenario 2: Installing e-Bash in an existing repository with content
+- [ ] Scenario 3: Upgrading e-Bash in an existing installation
+- [ ] Scenario 4: Rolling back e-Bash to a previous version
+- [ ] Scenario 5: Viewing available versions of e-Bash
+- [x] Scenario 6: Installing a specific version of e-Bash
+- [x] Scenario 7: Installing e-Bash in a repository with custom main branch name
+- [ ] Scenario 8: Uninstalling e-Bash from a repository
+- [x] Scenario 9: Attempting to install in a non-git directory
 - [ ] Scenario 10: Attempting to rollback without a previous version
 - [ ] Scenario 11: Installing with an invalid version tag
 - [ ] Scenario 12: Installation with insufficient permissions
@@ -58,9 +58,9 @@ mkdir -p bin && touch bin/.gitkeep && git add bin && git commit -m "bin folder"
 
 ## Positive Test Scenarios
 
-### Scenario 1: Installing E-Bash in a new Git repository
+### Scenario 1: Installing e-Bash in a new Git repository
 
-**Feature**: E-Bash Installation in a New Repository
+**Feature**: e-Bash Installation in a New Repository
 - As a developer
 - I want to install e-bash in a new repository
 - So that I can use e-bash utilities in my project
@@ -79,9 +79,9 @@ mkdir -p /tmp && cd /tmp && git init
 curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
 ```
 
-### Scenario 2: Installing E-Bash in an existing repository with content
+### Scenario 2: Installing e-Bash in an existing repository with content
 
-**Feature**: E-Bash Installation in Existing Repository
+**Feature**: e-Bash Installation in Existing Repository
 - As a developer
 - I want to install e-bash in my existing project
 - So that I can use e-bash utilities in my existing codebase
@@ -106,9 +106,9 @@ git commit -m "Initial commit"
 curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
 ```
 
-### Scenario 3: Upgrading E-Bash in an existing installation
+### Scenario 3: Upgrading e-Bash in an existing installation
 
-**Feature**: E-Bash Upgrade
+**Feature**: e-Bash Upgrade
 - As a developer
 - I want to upgrade my e-bash installation to the latest version
 - So that I can use the newest features and fixes
@@ -130,9 +130,9 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 ./bin/install.e-bash.sh upgrade
 ```
 
-### Scenario 4: Rolling back E-Bash to a previous version
+### Scenario 4: Rolling back e-Bash to a previous version
 
-**Feature**: E-Bash Rollback
+**Feature**: e-Bash Rollback
 - As a developer
 - I want to rollback to a previous version of e-bash
 - So that I can revert if the latest version has issues
@@ -155,9 +155,9 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 ./bin/install.e-bash.sh rollback
 ```
 
-### Scenario 5: Viewing available versions of E-Bash
+### Scenario 5: Viewing available versions of e-Bash
 
-**Feature**: E-Bash Version Management
+**Feature**: e-Bash Version Management
 - As a developer
 - I want to see all available versions of e-bash
 - So that I can choose which version to install
@@ -179,9 +179,9 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 ./bin/install.e-bash.sh --versions
 ```
 
-### Scenario 6: Installing a specific version of E-Bash
+### Scenario 6: Installing a specific version of e-Bash
 
-**Feature**: E-Bash Specific Version Installation
+**Feature**: e-Bash Specific Version Installation
 - As a developer
 - I want to install a specific version of e-bash
 - So that I can use a version that I know works for my project
@@ -201,9 +201,9 @@ git init
 curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- v1.0.0
 ```
 
-### Scenario 7: Installing E-Bash in a repository with custom main branch name
+### Scenario 7: Installing e-Bash in a repository with custom main branch name
 
-**Feature**: E-Bash with Custom Branch Names
+**Feature**: e-Bash with Custom Branch Names
 - As a developer
 - I want to install e-bash in a repository with a custom main branch name
 - So that it works correctly regardless of my git branch naming convention
@@ -226,9 +226,9 @@ git commit -m "Initial commit"
 curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
 ```
 
-### Scenario 8: Uninstalling E-Bash from a repository
+### Scenario 8: Uninstalling e-Bash from a repository
 
-**Feature**: E-Bash Uninstallation
+**Feature**: e-Bash Uninstallation
 - As a developer
 - I want to uninstall e-bash from my repository
 - So that I can clean up if I no longer need it
@@ -256,7 +256,7 @@ if [ -f .envrc ]; then sed -i '/e-bash/d' .envrc; fi
 
 ### Scenario 9: Attempting to install in a non-git directory
 
-**Feature**: E-Bash Installation Error Handling
+**Feature**: e-Bash Installation Error Handling
 - As a developer
 - I want to see proper error messages when installing in invalid environments
 - So that I can understand and fix the issue
@@ -279,7 +279,7 @@ echo $?
 
 ### Scenario 10: Attempting to rollback without a previous version
 
-**Feature**: E-Bash Rollback Error Handling
+**Feature**: e-Bash Rollback Error Handling
 - As a developer
 - I want to see proper error messages when rollback is not possible
 - So that I can understand the limitation
@@ -302,7 +302,7 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 
 ### Scenario 11: Installing with an invalid version tag
 
-**Feature**: E-Bash Invalid Version Handling
+**Feature**: e-Bash Invalid Version Handling
 - As a developer
 - I want to see proper error messages when specifying invalid versions
 - So that I can correct my input
@@ -326,7 +326,7 @@ echo $?
 
 ### Scenario 12: Installation with insufficient permissions
 
-**Feature**: E-Bash Permission Error Handling
+**Feature**: e-Bash Permission Error Handling
 - As a developer
 - I want to see proper error messages when there are permission issues
 - So that I can fix the permissions
@@ -354,7 +354,7 @@ chmod +w .
 
 ### Scenario 13: Network failure during installation
 
-**Feature**: E-Bash Network Error Handling
+**Feature**: e-Bash Network Error Handling
 - As a developer
 - I want to see proper error messages when network issues occur
 - So that I can diagnose and resolve connectivity problems
