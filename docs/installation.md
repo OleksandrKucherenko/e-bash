@@ -20,6 +20,42 @@ This document provides detailed test scenarios for installing, upgrading, and ma
   - [Scenario 12: Installation with insufficient permissions](#scenario-12-installation-with-insufficient-permissions)
   - [Scenario 13: Network failure during installation](#scenario-13-network-failure-during-installation)
 
+## Passing results
+
+- [x] Scenario 1: Installing E-Bash in a new Git repository
+  - [x] Fresh installation in a new repository
+  - [x] `.scripts` directory exists
+  - [x] Main branch detected correctly
+  - [x] README.md file created with e-bash install/update instructions
+  - [x] `git remote -v` shows `e-bash` remote
+  - [x] `git branch -v | tee` shows `e-bash-scripts` and `e-bash-temp` branches
+  - [x] `git status` shows no untracked files
+  - [x] `git tag -l | tee` shows tags fetched from `e-bash` remote
+  - [x] `versions` command marks correct branch/tag as `[CURRENT]`
+- [ ] Scenario 2: Installing E-Bash in an existing repository with content
+- [ ] Scenario 3: Upgrading E-Bash in an existing installation
+- [ ] Scenario 4: Rolling back E-Bash to a previous version
+- [ ] Scenario 5: Viewing available versions of E-Bash
+- [ ] Scenario 6: Installing a specific version of E-Bash
+- [ ] Scenario 7: Installing E-Bash in a repository with custom main branch name
+- [ ] Scenario 8: Uninstalling E-Bash from a repository
+- [ ] Scenario 9: Attempting to install in a non-git directory
+- [ ] Scenario 10: Attempting to rollback without a previous version
+- [ ] Scenario 11: Installing with an invalid version tag
+- [ ] Scenario 12: Installation with insufficient permissions
+- [ ] Scenario 13: Network failure during installation
+
+## Commands Snippets
+
+```bash
+# delete empty git repo files after tests, to make it ready for next test
+rm -rf .git .scripts README.md bin .e-bash-previous-version
+
+# create and commit empty bin folder
+mkdir -p bin && touch bin/.gitkeep && git add bin && git commit -m "bin folder"
+```
+
+
 ## Positive Test Scenarios
 
 ### Scenario 1: Installing E-Bash in a new Git repository
@@ -39,8 +75,7 @@ This document provides detailed test scenarios for installing, upgrading, and ma
 **Commands to execute**:
 
 ```bash
-mkdir -p /tmp/e-bash-test/new-repo && cd /tmp/e-bash-test/new-repo
-git init
+mkdir -p /tmp && cd /tmp && git init
 curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
 ```
 

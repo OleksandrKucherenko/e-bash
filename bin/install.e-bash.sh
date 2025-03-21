@@ -9,11 +9,10 @@
 #
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-20
+## Last revisit: 2025-03-21
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-
 
 set -e
 
@@ -36,7 +35,7 @@ CYAN=$(tput setaf 6)   # cyan
 GRAY=$(tput setaf 8)   # dark gray
 NC=$(tput sgr0)        # No Color
 
-## Usage information
+## Usage information, print to STDOUT
 function show_usage() {
   echo -e "${BLUE}E-Bash Scripts Installer${NC}"
   echo ""
@@ -64,7 +63,7 @@ function show_usage() {
   echo -e "  $0 versions             ${GRAY}# List available versions${NC}"
 }
 
-## Try to determine the main branch name, with fallbacks for new repos
+## Try to determine the main branch name, with fallbacks for new repos. Result to STDOUT.
 function current_branch() {
   if git rev-parse --quiet --verify HEAD >/dev/null 2>&1; then
     # Repository has commits
@@ -82,8 +81,9 @@ function current_branch() {
   fi
 }
 
-## Check if git is available
+## Check if git is available. Exit on error.
 function check_prerequisites() {
+  # if git is not available, exit with error
   if ! command -v git &>/dev/null; then
     echo -e "${RED}Error: git is not installed or not in PATH${NC}"
     exit 1
@@ -97,9 +97,12 @@ function check_prerequisites() {
 
   # ensure that we are executed on top of git repository without unstaged/uncommited changes
   # user should have guaranty to track installation changes and rollback on git level if needed
-  if ! git diff --quiet; then
+  if ! git diff --staged --quiet; then
     echo -e "${RED}Error: Unstaged or uncommited changes detected${NC}"
     echo -e "${YELLOW}Please commit or stash your changes before running this script${NC}"
+    echo ""
+    echo "Unstaged changes:"
+    git diff --staged --name-only | awk '{print "  " $0}'
     echo ""
     echo "Hints:"
     echo "  git add . && git stash      ${GRAY}# stash changes${NC}"
@@ -110,9 +113,32 @@ function check_prerequisites() {
     echo "  git stash pop               ${GRAY}# pop last stash changes${NC}"
     exit 1
   fi
+  
+  # Get untracked directories with trailing slashes
+  local untracked_dirs=()
+  readarray -t untracked_dirs < <(git ls-files --others --directory --exclude-standard | grep '/$' | grep -v '^$')
+
+  # If there are untracked directories, warn the user and exit
+  if [ ${#untracked_dirs[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${RED}Error: Detected untracked directories that would be lost during install operations:${NC}"
+    echo "${CYAN}" "${untracked_dirs[@]}" "${NC}"
+    echo ""
+    echo -e "${YELLOW}Please create .gitkeep files in directories that you want to keep or delete them.${NC}"
+    echo -e "${YELLOW}If you select .gitkeep, dont forget to commit those files and run install script again.${NC}"
+    echo -e "\nHints:"
+    echo -e "  touch <directory>/.gitkeep      ${GRAY}# Create .gitkeep file${NC}"
+    echo -e "  git add <directory>/.gitkeep    ${GRAY}# Stage the file${NC}"
+    echo -e "  git commit -m \"Add .gitkeep\"    ${GRAY}# Commit the file${NC}"
+    echo ""
+    echo "OR remove the directory:"
+    echo -e "  rm -rf <directory>              ${GRAY}# Remove directory${NC}"
+    echo ""
+    exit 1
+  fi  
 }
 
-## Check if e-bash scripts are already installed
+## Check if e-bash scripts are already installed. Retrun codes: 0 - true, 1 - false
 function is_installed() {
   if [ -d "$SCRIPTS_DIR" ] && [ -f "$SCRIPTS_DIR/_colors.sh" ]; then
     return 0 # true
@@ -129,7 +155,7 @@ function save_current_version() {
   fi
 }
 
-## Check if repository remote exists, add if missing
+## Check if repository remote exists, add if missing. Exit code.
 function configure_remote() {
   local remote_exists
   remote_exists=$(git remote | grep -q "$REMOTE_NAME" && echo "true" || echo "false")
@@ -145,15 +171,17 @@ function configure_remote() {
   return 0
 }
 
-## Clean up existing temporary branches
+## Clean up existing temporary branches. Exit code.
 function clean_temp_branches() {
   execute_git branch -D "$TEMP_BRANCH" 2>/dev/null || true
   execute_git branch -D "$SCRIPTS_BRANCH" 2>/dev/null || true
 }
 
-## Create temporary branch based on version
+## Create temporary branch based on version. Exit code.
 function create_temp_branch() {
   local version="$1"
+
+  # FIXME: should we support alias `latest` to point to master?
 
   if [ "$version" = "master" ]; then
     execute_git checkout -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
@@ -164,7 +192,7 @@ function create_temp_branch() {
   return 0
 }
 
-## Configure branches to be local-only
+## Configure branches to be local-only. Exit code.
 function configure_local_branches() {
   execute_git config branch."$TEMP_BRANCH".remote ""
   execute_git config branch."$SCRIPTS_BRANCH".remote ""
@@ -173,7 +201,7 @@ function configure_local_branches() {
   echo -e "${BLUE}Configured branches to remain local only${NC}"
 }
 
-## Return to original branch if possible
+## Return to original branch if possible. Exit code.
 function return_to_original_branch() {
   local has_commits
   has_commits=$(git rev-parse --quiet --verify HEAD >/dev/null 2>&1 && echo "true" || echo "false")
@@ -188,7 +216,7 @@ function return_to_original_branch() {
   return 0
 }
 
-## Setup the remote repository
+## Setup the remote repository. Exit code.
 function setup_remote() {
   local version="$1"
 
@@ -211,15 +239,13 @@ function setup_remote() {
   return_to_original_branch
 }
 
-## Install e-bash scripts
 ## Display installation success message
 function display_installation_success() {
   echo -e "${GREEN}Installation complete!${NC}"
   echo -e "The e-bash scripts are now available in the ${CYAN}$SCRIPTS_DIR${NC} directory"
-  return 0
 }
 
-## Add e-bash scripts as a git subtree
+## Add e-bash scripts as a git subtree. Exit code.
 function add_scripts_subtree() {
   echo -e "${BLUE}Adding scripts to your repository...${NC}"
   # FIXME: subtree add will fail if there are conflicts with existing files
@@ -227,10 +253,12 @@ function add_scripts_subtree() {
   return $?
 }
 
-## Install e-bash scripts
+## Install e-bash scripts. Exit code.
 function install_scripts() {
   local version="${1:-master}"
   local install_status=0
+
+  # FIXME: should we resolve alias `latest` to point to `master`?
 
   echo -e "${GREEN}Installing e-bash scripts (version: $version)...${NC}"
 
@@ -255,19 +283,20 @@ function install_scripts() {
   return 0
 }
 
-## Upgrade e-bash scripts
-## Perform the subtree merge operation for upgrade
+## Perform the subtree merge operation for upgrade. Exit code.
 function perform_subtree_merge() {
   echo -e "${BLUE}Pulling latest scripts...${NC}"
+
+  # FIXME: Subtree merge might fail if there are conflicts with local changes
+
   # For git subtree pull, we need to reference the local branch
   # This is not a remote pull, but rather merging from the local branch
-  # FIXME: Subtree merge might fail if there are conflicts with local changes
   execute_git subtree merge --prefix="$SCRIPTS_DIR" "$SCRIPTS_BRANCH" --squash
 
   return $?
 }
 
-## Display the result of the subtree merge operation
+## Display the result of the subtree merge operation. Exit code.
 function display_merge_result() {
   local result=$1
 
@@ -288,17 +317,17 @@ function display_upgrade_success() {
   echo -e "${GREEN}Upgrade complete!${NC}"
   echo -e "The e-bash scripts have been upgraded in the ${CYAN}$SCRIPTS_DIR${NC} directory"
   echo -e ""
-
-  return 0
 }
 
-## Upgrade e-bash scripts
+## Upgrade e-bash scripts. Exit code.
 function upgrade_scripts() {
   local version="${1:-master}"
   local merge_result=0
 
-  echo -e "${YELLOW}=== UPGRADE STARTED (version: $version) ===${NC}"
+  # FIXME: should we resolve alias `latest` to point to `master`?
 
+  echo -e "${YELLOW}=== UPGRADE STARTED (version: $version) ===${NC}"
+  
   # Save current version for potential rollback
   save_current_version
 
@@ -328,7 +357,7 @@ function upgrade_scripts() {
   return 0
 }
 
-## Append e-bash configuration to .envrc file
+## Append e-bash configuration to .envrc file. Exit code.
 function update_envrc_configuration() {
   # Check if our configuration is already in .envrc
   if grep -q "export E_BASH=" ".envrc"; then
@@ -353,9 +382,11 @@ function update_envrc_configuration() {
     echo "# Set up Linux-specific aliases for GNU tools"
     echo "#"
     echo "if [[ \"\$(uname -s)\" == \"Linux\" ]]; then"
-    echo "  PATH_add \"\$PWD/bin/gnubin\""
-    # FIXME: This source command assumes the script exists but doesn't check
+    # FIXME: This source command assumes the script exists but doesn't check.
+    #   We rely on sequence of actions, assuming that its a post-installation step.
     echo "  source \"\$PWD/.scripts/_setup_gnu_symbolic_links.sh\""
+    # `bin` folder may not exist, but _setup_gnu_symbolic_links.sh will create it
+    echo "  PATH_add \"\$PWD/bin/gnubin\""
     echo "fi"
   } >>".envrc"
 
@@ -364,31 +395,55 @@ function update_envrc_configuration() {
   return 0
 }
 
-## Download installation script to bin directory
+## Download installation script to bin directory. Exit code.
 function copy_installer_to_bin() {
   # Check if we can download the script
   local has_curl
   local has_wget
 
-  has_curl=$(command -v curl &>/dev/null && echo "true" || echo "false")
-  has_wget=$(command -v wget &>/dev/null && echo "true" || echo "false")
+  has_curl="$(command -v curl &>/dev/null && echo "true" || echo "false")"
+  has_wget="$(command -v wget &>/dev/null && echo "true" || echo "false")"
 
   echo -e "${BLUE}Downloading installation script...${NC}"
 
+  set -x
+  # detect are we a file or in pipe execution
+  local isPipe="$([[ ! -t 1 ]] && echo "true" || echo "false")"
+  local fallback=0
+
   if [ "$has_curl" = "true" ]; then
-    curl -sSL "$REMOTE_INSTALL_SH" -o "bin/install.e-bash.sh"
+    # --fail --silent --show-error --location
+    curl -fsSL "$REMOTE_INSTALL_SH" -o "bin/install.e-bash.sh"
+    result=$?
+    if [ "$result" -ne 0 ]; then
+      echo -e "${RED}Error: Failed to download script CURL${NC}"
+      rm -rf "bin/install.e-bash.sh" # delete, it will contain error message instead of script
+      fallback=1
+    fi # try-fallback instead
   elif [ "$has_wget" = "true" ]; then
     wget -q -O "bin/install.e-bash.sh" "$REMOTE_INSTALL_SH"
+    result=$?
+    if [ "$result" -ne 0 ]; then
+      echo -e "${RED}Error: Failed to download script WGET${NC}"
+      fallback=1
+    fi # try-fallback instead
   else
     echo -e "${RED}Error: Neither curl nor wget found to download the script${NC}"
     echo -e "${YELLOW}Download manually by url: $REMOTE_INSTALL_SH${NC}"
     return 1
   fi
 
+  if [ "$fallback" -eq 1 ] && [ "$isPipe" = "false" ]; then
+    echo -e "${YELLOW}Failed to download script, copying self instead${NC}"
+    # we can copy itself to the bin directory
+    cp "$0" "bin/install.e-bash.sh"
+  fi
+  
   # Set executable attribute if file exists
   [ -f "bin/install.e-bash.sh" ] && chmod +x "bin/install.e-bash.sh"
-
-  echo -e "${GREEN}Copied installation script to bin/install.e-bash.sh${NC}"
+  
+  echo -e "${GREEN}Placed installation script to bin/install.e-bash.sh${NC}"
+  set +x
   return 0
 }
 
@@ -409,6 +464,29 @@ function post_installation_steps() {
   fi
 }
 
+## Compose README.md file with e-bash installation instructions
+function compose_readme() {
+  {
+    echo "# E-bash Scripts"
+    echo ""
+    echo "This repository includes e-bash scripts for automation and productivity."
+    echo ""
+    echo "## Installation"
+    echo ""
+    echo "To install or upgrade e-bash scripts, use the following commands:"
+    echo -e "\n\`\`\`bash"
+    echo "# Install latest version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- install"
+    echo -e "\n# Install specific version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- install v1.0.0"
+    echo -e "\n# Upgrade to latest version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- upgrade"
+    echo -e "\n# Rollback to previous version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- rollback"
+    echo -e "\`\`\`"
+  } >README.md
+}
+
 ## Initialize empty repository
 function initialize_empty_repository() {
   # Check if repository is empty and initialize if needed
@@ -417,25 +495,7 @@ function initialize_empty_repository() {
 
     # Create README.md if it doesn't exist
     if [ ! -f "README.md" ]; then
-      {
-        echo "# E-bash Scripts"
-        echo ""
-        echo "This repository includes e-bash scripts for automation and productivity."
-        echo ""
-        echo "## Installation"
-        echo ""
-        echo "To install or upgrade e-bash scripts, use the following commands:"
-        echo -e "\n\`\`\`bash"
-        echo "# Install latest version"
-        echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- install"
-        echo -e "\n# Install specific version"
-        echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- install v1.0.0"
-        echo -e "\n# Upgrade to latest version"
-        echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- upgrade"
-        echo -e "\n# Rollback to previous version"
-        echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- rollback"
-        echo -e "\`\`\`"
-      } >README.md
+      compose_readme
     fi
 
     # Initialize the repository with the README
@@ -448,39 +508,7 @@ function initialize_empty_repository() {
   fi
 }
 
-## Install e-bash scripts
-function repo_install() {
-  local version="${1:-master}"
-
-  # Initialize empty repository if needed before installation
-  initialize_empty_repository
-
-  if is_installed; then
-    echo -e "${YELLOW}e-bash scripts already installed. Use 'upgrade' to update.${NC}"
-    echo -e "Run: $0 upgrade [$version]"
-    exit 0
-  fi
-
-  install_scripts "$version"
-}
-
-## Upgrade existing installation
-function repo_upgrade() {
-  local version="${1:-master}"
-
-  # Initialize empty repository if needed before upgrade
-  initialize_empty_repository
-
-  if ! is_installed; then
-    echo -e "${YELLOW}e-bash scripts not installed. Installing instead.${NC}"
-    install_scripts "$version"
-  else
-    upgrade_scripts "$version"
-  fi
-
-}
-
-## Check if a previous version exists for rollback
+## Check if a previous version exists for rollback. Exit code.
 function check_previous_version_exists() {
   if [ ! -f "${SCRIPTS_PREV_VERSION}" ]; then
     echo -e "${RED}Error: No previous version found to rollback to${NC}"
@@ -490,22 +518,22 @@ function check_previous_version_exists() {
   return 0
 }
 
-## Get the previous version from the version file
+## Get the previous version from the version file. Result to STDOUT.
 function get_previous_version() {
   # shellcheck disable=SC2155
   local previous_version=$(cat "${SCRIPTS_PREV_VERSION}")
 
   # FIXME: Should validate that previous_version is a valid commit hash/tag
-  echo -e "${BLUE}Found previous version: $previous_version${NC}"
+  echo -e "${BLUE}Found previous version: $previous_version${NC}" >&2
 
   echo "$previous_version"
 }
 
-## Perform the actual rollback operation
+## Perform the actual rollback operation. Exit code.
 function perform_rollback() {
   local previous_version=$1
 
-  echo -e "${RED}Rolling back to previous version...${NC}"
+  echo -e "${RED}Rolling back to previous version: $previous_version${NC}"
   # FIXME: Checkout will fail if the commit no longer exists (e.g., after garbage collection)
   execute_git checkout "$previous_version" -- "$SCRIPTS_DIR"
 
@@ -516,48 +544,12 @@ function perform_rollback() {
 function display_rollback_success() {
   echo -e "${GREEN}Rollback complete!${NC}"
   echo -e "The e-bash scripts have been restored to the previous version"
-
-  return 0
 }
 
 ## Clean up after successful rollback
 function cleanup_after_rollback() {
   # Remove the previous version file after rollback
-  rm "${SCRIPTS_PREV_VERSION}"
-
-  return 0
-}
-
-## Rollback to previous version
-function repo_rollback() {
-  local previous_version=""
-  local rollback_status=0
-
-  echo -e "${RED}=== ROLLBACK STARTED ===${NC}"
-
-  # Check if previous version exists
-  check_previous_version_exists
-  if [ $? -ne 0 ]; then
-    return 1
-  fi
-
-  # Get the previous version
-  previous_version=$(get_previous_version)
-
-  # Perform the rollback
-  perform_rollback "$previous_version"
-  rollback_status=$?
-
-  # If rollback was successful, show success message and clean up
-  if [ $rollback_status -eq 0 ]; then
-    display_rollback_success
-    cleanup_after_rollback
-  else
-    echo -e "${RED}Rollback failed with exit code: $rollback_status${NC}"
-    return 1
-  fi
-
-  return 0
+  rm "${SCRIPTS_PREV_VERSION}" || true
 }
 
 ## Get current version of installed e-bash
@@ -644,6 +636,89 @@ function display_version() {
   echo -e "${PURPLE}$version${NC}${status}"
 }
 
+## Validate version
+function validate_version() {
+  local version=$1
+  # FIXME: This doesn't handle the case where version is 'master' or other branch name
+  if ! git ls-remote --tags $REMOTE_URL | grep -q "refs/tags/$version"; then
+    echo -e "${RED}Error: Version $version does not exist in remote${NC}"
+    exit 1
+  fi
+}
+
+## Updated git command execution
+function execute_git() {
+  if [ "$DRY_RUN" = true ]; then
+    echo -e "${CYAN}dry run: git $*${NC}"
+  else
+    echo -e "${CYAN}execute: git $*${NC}" >&2
+    # FIXME: Should provide more context on failure, perhaps capturing stderr
+    git "$@" || return 1
+  fi
+}
+
+## Install e-bash scripts
+function repo_install() {
+  local version="${1:-master}"
+
+  # Initialize empty repository if needed before installation
+  initialize_empty_repository
+
+  if is_installed; then
+    echo -e "${YELLOW}e-bash scripts already installed. Use 'upgrade' to update.${NC}"
+    echo -e "Run: $0 upgrade [$version]"
+    exit 0
+  fi
+
+  install_scripts "$version"
+}
+
+## Upgrade existing installation
+function repo_upgrade() {
+  local version="${1:-master}"
+
+  # Initialize empty repository if needed before upgrade
+  initialize_empty_repository
+
+  if ! is_installed; then
+    echo -e "${YELLOW}e-bash scripts not installed. Installing instead.${NC}"
+    install_scripts "$version"
+  else
+    upgrade_scripts "$version"
+  fi
+
+}
+
+## Rollback to previous version
+function repo_rollback() {
+  local previous_version=""
+  local rollback_status=0
+
+  echo -e "${RED}=== operation: ROLLBACK ===${NC}"
+
+  # Check if previous version exists
+  check_previous_version_exists
+  if [ $? -ne 0 ]; then return 1; fi
+
+  # Get the previous version
+  previous_version=$(get_previous_version)
+
+  # Perform the rollback
+  perform_rollback "$previous_version"
+  rollback_status=$?
+
+  # If rollback was successful, show success message and clean up
+  if [ $rollback_status -eq 0 ]; then
+    display_rollback_success
+    cleanup_after_rollback
+  else
+    echo -e "${RED}Rollback failed with exit code: $rollback_status${NC}"
+    return 1
+  fi
+
+  return 0
+}
+
 ## List available version tags
 function repo_versions() {
   echo -e "${BLUE}Fetching available versions from remote repository...${NC}"
@@ -711,30 +786,12 @@ function repo_versions() {
   fi
 }
 
-## Validate version
-function validate_version() {
-  local version=$1
-  # FIXME: This doesn't handle the case where version is 'master' or other branch name
-  if ! git ls-remote --tags $REMOTE_URL | grep -q "refs/tags/$version"; then
-    echo -e "${RED}Error: Version $version does not exist in remote${NC}"
-    exit 1
-  fi
-}
-
-## Updated git command execution
-function execute_git() {
-  if [ "$DRY_RUN" = true ]; then
-    echo -e "${CYAN}dry run: git $*${NC}"
-  else
-    echo -e "${CYAN}execute: git $*${NC}" >&2
-    # FIXME: Should provide more context on failure, perhaps capturing stderr
-    git "$@" || return 1
-  fi
-}
-
 ## Main function
 function main() {
-  echo -e "${PURPLE}installer: e-bash scripts, arguments: ${YELLOW}$*${NC}" >&2
+  local args="$*"
+  # if $args are empty, print <empty>
+  [ -z "$args" ] && args="<empty>"
+  echo -e "${PURPLE}installer: e-bash scripts, arguments: ${YELLOW}$args${NC}" >&2
 
   check_prerequisites
 
@@ -742,12 +799,7 @@ function main() {
   local version="${2:-master}"
 
   # Process version to handle aliases like 'latest' -> 'master'
-  if [ "$version" = "latest" ]; then
-    version="master"
-  fi
-
-  echo -e "${BLUE}command  : $command${NC}" >&2
-  echo -e "${BLUE}version  : $version${NC}" >&2
+  [ "$version" = "latest" ] && version="master"
 
   # If command is "auto", determine whether to install or upgrade
   if [ "$command" == "auto" ]; then
@@ -801,8 +853,6 @@ done
 
 # Execute main function with all passed arguments
 main "$@"
-
-exit 0
 
 # =============================================================================
 # TEST SCENARIOS
