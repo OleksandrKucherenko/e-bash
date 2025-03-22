@@ -101,6 +101,7 @@ git remote add -f e-bash https://github.com/OleksandrKucherenko/e-bash.git
 git checkout -b e-bash-temp e-bash/master  
 git subtree split -P .scripts -b e-bash-scripts  
 git checkout master # or main - depends on your main branch in repo
+git subtree merge --prefix .scripts e-bash-scripts --squash
 ```
 
 Upgrade `.scripts` to the latest version:

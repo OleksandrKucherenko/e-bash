@@ -76,7 +76,7 @@ mkdir -p bin && touch bin/.gitkeep && git add bin && git commit -m "bin folder"
 
 ```bash
 mkdir -p /tmp && cd /tmp && git init
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s --
 ```
 
 ### Scenario 2: Installing e-Bash in an existing repository with content
@@ -103,7 +103,7 @@ mkdir -p src
 echo "console.log('Hello World');" > src/index.js
 git add .
 git commit -m "Initial commit"
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s --
 ```
 
 ### Scenario 3: Upgrading e-Bash in an existing installation
@@ -125,9 +125,7 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 # First install e-bash
 mkdir -p /tmp/e-bash-test/upgrade-repo && cd /tmp/e-bash-test/upgrade-repo
 git init
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
-# Then upgrade it
-./bin/install.e-bash.sh upgrade
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- upgrade
 ```
 
 ### Scenario 4: Rolling back e-Bash to a previous version
@@ -149,9 +147,14 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 # First install and upgrade e-bash
 mkdir -p /tmp/e-bash-test/rollback-repo && cd /tmp/e-bash-test/rollback-repo
 git init
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
+
+# install 
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+
+# upgrade to latest
 ./bin/install.e-bash.sh upgrade
-# Then rollback
+
+# Then rollback to v1.0.0
 ./bin/install.e-bash.sh rollback
 ```
 
@@ -171,12 +174,10 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 **Commands to execute**:
 
 ```bash
-# First install e-bash
-mkdir -p /tmp/e-bash-test/versions-repo && cd /tmp/e-bash-test/versions-repo
-git init
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
-# Then check versions
-./bin/install.e-bash.sh --versions
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- versions
+
+# Or local script if it installed:
+./bin/install.e-bash.sh versions
 ```
 
 ### Scenario 6: Installing a specific version of e-Bash
@@ -197,8 +198,9 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 ```bash
 mkdir -p /tmp/e-bash-test/specific-version-repo && cd /tmp/e-bash-test/specific-version-repo
 git init
+
 # Replace v1.0.0 with an actual tag that exists in the repository
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- v1.0.0
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
 ```
 
 ### Scenario 7: Installing e-Bash in a repository with custom main branch name
@@ -223,7 +225,9 @@ git checkout -b main-custom
 echo "# Custom Branch Repo" > README.md
 git add .
 git commit -m "Initial commit"
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
+
+# Install e-bash
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
 ```
 
 ### Scenario 8: Uninstalling e-Bash from a repository
@@ -244,10 +248,12 @@ curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/b
 # First install e-bash
 mkdir -p /tmp/e-bash-test/uninstall-repo && cd /tmp/e-bash-test/uninstall-repo
 git init
-curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash
+curl -fsSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+
 # Then uninstall it
 rm -rf .scripts
 rm -f bin/install.e-bash.sh
+
 # Optional: Remove from .envrc if it exists
 if [ -f .envrc ]; then sed -i '/e-bash/d' .envrc; fi
 ```

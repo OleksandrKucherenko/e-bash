@@ -11,6 +11,7 @@
 
 eval "$(shellspec - -c) exit 1"
 
+# shellcheck disable=SC2288
 % TEST_DIR: "$SHELLSPEC_TMPBASE/tmprepo"
 
 #
@@ -21,7 +22,7 @@ eval "$(shellspec - -c) exit 1"
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
 
-fDescribe 'install.e-bash.sh /'
+Describe 'install.e-bash.sh /'
   temp_repo() {
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR" || return 1
@@ -32,7 +33,7 @@ fDescribe 'install.e-bash.sh /'
   git_config_user() { git config --local user.name "Test User"; }
   git_config_email() { git config --local user.email "test@example.com"; }
   git_config() { git_config_user && git_config_email; }
-  git_commit() { git commit -q -m "Initial commit$1"; }
+  git_commit() { git commit -q -m "Initial commit"; }
   git_amend() { git commit --amend -q --no-edit; }
   git_ignore() { echo "install.e-bash.sh" >.gitignore; }
   git_add_all() { git add .; }
@@ -122,6 +123,7 @@ fDescribe 'install.e-bash.sh /'
     End
   End
 
+  # Test installation of e-bash scripts
   Describe 'install_scripts /'
     git_rename_custom() { git branch -m custom; }
     git_rename_main() { git branch -m main; }
@@ -211,13 +213,21 @@ fDescribe 'install.e-bash.sh /'
       The file .e-bash-previous-version should be present
     End
 
-    It 'should upgrade to the latest version with lost tracking'
-      # use has repo with e-bash script installed manually... something in .scripts folder
-      # run upgrade script
-      # option 1: script should fail with instructions how to fix
-      # option 2: script should overwrite
+    It 'should print uninstall instructions on merge conflict'
+      # user has repo with e-bash script installed manually...
 
-      Skip # not implemented
+      # I mean something in .scripts folder
+      mkdir -p .scripts                        # create out destination folder
+      echo "fake content" >.scripts/_colors.sh # is_installed() == true
+      git_add_all
+      git_amend
+
+      When run ./install.e-bash.sh
+
+      The status should be failure
+      The output should include "Resolve Conflict by Aborting GIT Merge"
+      The output should include "Manual Uninstall Guide"
+      The error should be present # logs output
     End
   End
 
@@ -246,7 +256,7 @@ fDescribe 'install.e-bash.sh /'
     End
   End
 
-  # Scenario 5
+  # Scenario 5: Viewing available versions of e-Bash
   Describe 'repo_versions /'
 
     Before 'temp_repo; cp_install'
@@ -344,14 +354,6 @@ fDescribe 'install.e-bash.sh /'
       The status should be success
       The output should include "Usage:"
       The error should include "Regular folder detected"
-    End
-
-    xIt 'should correctly detect if e-bash is installed'
-      Skip # To be implemented
-    End
-
-    xIt 'should correctly get the installed version'
-      Skip # To be implemented
     End
   End
 End

@@ -1,12 +1,4 @@
 #!/usr/bin/env bash
-#
-# Script to install, upgrade, or rollback e-bash .scripts folder
-# Usage: ./install.e-bash.sh [install|upgrade|rollback] [version]
-#
-# Where:
-#   - First argument is the command: install (default), upgrade, rollback
-#   - Second argument is the version: master (default) or a specific tag like v1.0.0
-#
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-03-22
@@ -14,8 +6,10 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# fail if any error is encountered
 set -e
 
+# Configuration.
 REMOTE_NAME="e-bash"
 REMOTE_URL="https://github.com/OleksandrKucherenko/e-bash.git"
 REMOTE_INSTALL_SH="https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh"
@@ -24,6 +18,7 @@ SCRIPTS_BRANCH="e-bash-scripts"
 SCRIPTS_DIR=".scripts"
 SCRIPTS_PREV_VERSION=".e-bash-previous-version"
 DEFAULT_BRANCH="main"
+INSTALL_SCRIPT="bin/install.e-bash.sh"
 
 # Colors for better readability. should we use tput instead?
 RED=$(tput setaf 1)    # red
@@ -34,6 +29,12 @@ PURPLE=$(tput setaf 5) # purple
 CYAN=$(tput setaf 6)   # cyan
 GRAY=$(tput setaf 8)   # dark gray
 NC=$(tput sgr0)        # No Color
+ITALIC=$(tput sitm)
+NOI=$(tput ritm)
+
+# Global flags.
+DRY_RUN=false
+FORCE=false # Not Implemented! But Reserved.
 
 ## Usage information, print to STDOUT
 function show_usage() {
@@ -49,6 +50,7 @@ function show_usage() {
   echo -e "  ${YELLOW}upgrade${NC}   - Upgrade existing e-bash scripts"
   echo -e "  ${RED}rollback${NC}  - Rollback to previous version"
   echo -e "  ${BLUE}versions${NC}  - List available remote versions"
+  echo -e "  ${RED}uninstall${NC} - Uninstall e-bash scripts (manual instructions)"
   echo ""
   echo -e "Version:"
   echo -e "  ${PURPLE}master${NC}   - Latest version from master branch (default), alias to: latest"
@@ -62,6 +64,27 @@ function show_usage() {
   echo -e "  $0 rollback             ${GRAY}# Rollback to previous version${NC}"
   echo -e "  $0 versions             ${GRAY}# List available versions${NC}"
   exit 0
+}
+
+## Print manual instructions how to uninstall e-bash scripts
+function show_manual_uninstall() {
+  local exit_code=${1:-0}
+
+  echo -e "${BLUE}Manual Uninstall Guide:${NC}"
+  echo ""
+  echo -e "To uninstall e-bash scripts, run the following commands one-by-one:"
+  echo ""
+  echo -e "  rm -rf ${SCRIPTS_DIR}                          ${GRAY}# remove .scripts dir${NC}"
+  echo -e "  rm -rf ${SCRIPTS_PREV_VERSION}          ${GRAY}# remove .e-bash-previous-version${NC}"
+  echo -e "  git branch -D ${SCRIPTS_BRANCH} ${TEMP_BRANCH} ${GRAY}# remove local branches${NC}"
+  echo -e "  git remote remove ${REMOTE_NAME}                 ${GRAY}# remove e-bash remote${NC}"
+  echo -e "  rm -rf ${INSTALL_SCRIPT}             ${GRAY}# remove installation script${NC}"
+  echo "${GRAY}${ITALIC}" # run git gc, maybe?
+  echo "Please check ${YELLOW}README.md${GRAY} for e-bash additional instructions that you may want to remove."
+  echo "Please check ${YELLOW}.envrc${GRAY} file for E_BASH variable that you may want to remove."
+  echo "${NOI}${NC}"
+
+  exit "${exit_code}"
 }
 
 ## Try to determine the main branch name, with fallbacks for new repos. Result to STDOUT.
@@ -139,6 +162,11 @@ function check_prerequisites() {
     echo -e "  rm -rf <directory>              ${GRAY}# Remove directory${NC}"
     echo ""
     exit 1
+  fi
+
+  # check it .scripts destination folder exists, warning user about possible merge conflict
+  if [ -d "$SCRIPTS_DIR" ]; then
+    echo -e "${RED}Warning: found destination folder ${YELLOW}.scripts${RED}. It may cause merge conflicts.${NC}"
   fi
 }
 
@@ -291,15 +319,29 @@ function install_scripts() {
 
 ## Perform the subtree merge operation for upgrade. Exit code.
 function perform_subtree_merge() {
-  echo -e "${BLUE}Pulling latest scripts...${NC}"
+  echo -e "${BLUE}Pulling latest scripts and merge...${NC}"
 
   # FIXME: Subtree merge might fail if there are conflicts with local changes
 
   # For git subtree pull, we need to reference the local branch
   # This is not a remote pull, but rather merging from the local branch
+  set +e
   execute_git subtree merge --prefix="$SCRIPTS_DIR" "$SCRIPTS_BRANCH" --squash
+  result=$?
+  set -e
 
-  return $?
+  if [ "$result" -ne 0 ]; then
+    echo -e "${RED}Error: Merge problems detected. Please uninstall manually and repeat the installation.${NC}"
+    echo ""
+    echo "${BLUE}Resolve Conflict by Aborting GIT Merge:${NC}"
+    echo ""
+    echo "  git merge --abort ${GRAY}# abort the merge operation${NC}"
+    echo ""
+
+    show_manual_uninstall $result # abort execution with custom exit code
+  fi
+
+  return $result
 }
 
 ## Display the result of the subtree merge operation. Exit code.
@@ -666,20 +708,27 @@ function execute_git_v1() {
 SILENT_GIT=false
 function execute_git_v2() {
   if [ "$DRY_RUN" = true ]; then
-    echo -e "${CYAN}dry run: git $*${NC}"
-  else
-    set +e # disable immediate exit on error
-    echo -n -e "${CYAN}execute: git $*" >&2
-    local output result
-    output=$(git "$@" 2>&1)
-    result=$?
-    echo -e " code: ${YELLOW}$result${NC}" >&2
-    [ -n "$output" ] && [ "$SILENT_GIT" = false ] && echo -e "$output" >&2
-    set -e # re-enable immediate exit on error
-    return $result
+    echo -e "${CYAN}dry run: git $*${NC}" >&2
+    return 0
   fi
+
+  # is immediate exit on error is enabled? remember the state
+  local immediate_exit_on_error
+  [[ $- == *e* ]] && immediate_exit_on_error=true || immediate_exit_on_error=false
+  set +e # disable immediate exit on error
+
+  echo -n -e "${CYAN}execute: git $*" >&2
+  local output result
+  output=$(git "$@" 2>&1)
+  result=$?
+  echo -e " code: ${YELLOW}$result${NC}" >&2
+  [ -n "$output" ] && [ "$SILENT_GIT" = false ] && echo -e "$output" >&2
+
+  [ "$immediate_exit_on_error" = "true" ] && set -e # recover state
+  return $result
 }
 
+## Execute git command of selected dry_run wrapper version
 function execute_git() { execute_git_v2 "$@"; }
 
 ## Install e-bash scripts
@@ -861,6 +910,9 @@ function main() {
   "versions")
     repo_versions
     ;;
+  "uninstall")
+    show_manual_uninstall
+    ;;
   "help" | "-h" | "--help")
     show_usage
     ;;
@@ -872,32 +924,36 @@ function main() {
   esac
 }
 
-# Add dry-run flag parsing at start of script
-DRY_RUN=false
-for arg in "$@"; do
-  case $arg in
-  --dry-run)
-    DRY_RUN=true
-    shift
-    ;;
-  esac
-done
+ARGS=()
+
+# Pre-parse arguments for special flags before main processing.
+function preparse_args() {
+  local args=("$@")
+
+  for i in "${!args[@]}"; do
+    key="${args[i]}"
+
+    if [[ "$key" == "--dry-run" ]]; then
+      DRY_RUN=true && unset 'args[i]'
+    elif [[ "$key" == "--force" || "$key" == "-f" ]]; then
+      FORCE=true && unset 'args[i]'
+    fi
+  done
+
+  # Report flags
+  [ "$DRY_RUN" = true ] && echo "dry run mode ON: $DRY_RUN" >&2
+  [ "$FORCE" = true ] && echo "forced override: $FORCE" >&2
+
+  # Return remaining arguments
+  # shellcheck disable=SC2206
+  ARGS=(${args[@]})
+}
+
+# Process special flags
+preparse_args "$@"
 
 # Execute main function with all passed arguments
-main "$@"
+main "${ARGS[@]}"
 
-# =============================================================================
-# TEST SCENARIOS
-# =============================================================================
-# All test scenarios have been moved to the documentation file: docs/installation.md
-# Refer to that file for comprehensive testing instructions covering both
-# positive scenarios (standard usage) and negative scenarios (error handling).
-#
-# The documentation includes:
-# - 8 positive test scenarios (installation, upgrade, rollback, etc.)
-# - 5 negative test scenarios (error handling cases)
-#
-# Each scenario is written in Cucumber/Gherkin format with detailed steps and commands.
-# For more information on the Gherkin format, see: https://cucumber.io/docs/gherkin/reference/
-#
-# =============================================================================
+# [TEST SCENARIOS](../docs/installation.md)
+# [UNIT TESTS](../spec/installation_spec.sh)
