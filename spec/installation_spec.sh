@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-21
+## Last revisit: 2025-03-22
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -22,7 +22,7 @@ eval "$(shellspec - -c) exit 1"
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
 
-Describe 'install.e-bash.sh /'
+fDescribe 'install.e-bash.sh /'
   temp_repo() {
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR" || return 1
@@ -47,6 +47,7 @@ Describe 'install.e-bash.sh /'
     Before 'temp_repo; cp_install'
     After 'cleanup_temp_repo'
 
+    # Scenario 9
     It 'should detect when not in a git repository'
       # Run the script, should fail since it's not a git repository
       When run ./install.e-bash.sh
@@ -119,6 +120,7 @@ Describe 'install.e-bash.sh /'
     Before 'temp_repo; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
+    # Scenario 1
     It 'should install e-bash scripts successfully'
       When run ./install.e-bash.sh install
 
@@ -150,6 +152,7 @@ Describe 'install.e-bash.sh /'
       The error should include "git checkout --quiet custom"
     End
 
+    # Scenario 2
     It 'should work on "new_branch" branch correctly'
       git_ignore
       git_add_all
@@ -224,9 +227,17 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test version management
-  Describe 'repo_versions():'
-    It 'should list all available versions'
-      Skip # To be implemented
+  Describe 'repo_versions /'
+    Before 'temp_repo; cp_install'
+    After 'cleanup_temp_repo'
+
+    fIt 'should list all available versions'
+      When run ./install.e-bash.sh versions
+
+      The status should be success
+      The output should include "Available stable versions:"
+      The output should include "Non-stable versions (pre-releases, development versions)"
+      The error should be present # logs output
     End
 
     It 'should mark current installed version'
@@ -235,7 +246,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test specific version installation
-  Describe 'install with specific version:'
+  xDescribe 'install with specific version:'
     It 'should install the specified version'
       Skip # To be implemented
     End
@@ -245,28 +256,32 @@ Describe 'install.e-bash.sh /'
     End
   End
 
-  # Test error scenarios
-  Describe 'error handling:'
-    It 'should handle installation with insufficient permissions'
-      Skip # To be implemented
-    End
-
-    It 'should handle network failures gracefully'
-      Skip # To be implemented
-    End
-  End
-
   # Test helper functions
-  Describe 'helper functions:'
-    It 'should correctly determine current branch'
+  Describe 'help functions /'
+    Before 'temp_repo; cp_install'
+    After 'cleanup_temp_repo'
+
+    It 'should correctly show --help message'
+      When run ./install.e-bash.sh --help
+
+      The status should be success
+      The output should include "Usage:"
+      The error should include "Regular folder detected"
+    End
+
+    It 'should correctly show help message'
+      When run ./install.e-bash.sh help
+
+      The status should be success
+      The output should include "Usage:"
+      The error should include "Regular folder detected"
+    End
+
+    xIt 'should correctly detect if e-bash is installed'
       Skip # To be implemented
     End
 
-    It 'should correctly detect if e-bash is installed'
-      Skip # To be implemented
-    End
-
-    It 'should correctly get the installed version'
+    xIt 'should correctly get the installed version'
       Skip # To be implemented
     End
   End

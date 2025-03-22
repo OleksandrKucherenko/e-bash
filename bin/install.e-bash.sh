@@ -9,7 +9,7 @@
 #
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-21
+## Last revisit: 2025-03-22
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -61,24 +61,28 @@ function show_usage() {
   echo -e "  $0 upgrade v2.0.0       ${GRAY}# Upgrade to specific version${NC}"
   echo -e "  $0 rollback             ${GRAY}# Rollback to previous version${NC}"
   echo -e "  $0 versions             ${GRAY}# List available versions${NC}"
+  exit 0
 }
 
 ## Try to determine the main branch name, with fallbacks for new repos. Result to STDOUT.
 function current_branch() {
-  if git rev-parse --quiet --verify HEAD >/dev/null 2>&1; then
-    # Repository has commits
-    git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "${DEFAULT_BRANCH}"
+  local branch="${DEFAULT_BRANCH}"
+
+  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    echo -e "${YELLOW}Regular folder detected...${NC}" >&2
+  elif git rev-parse --quiet --verify HEAD >/dev/null 2>&1; then
+    echo -e "${YELLOW}Repository with commits detected...${NC}" >&2
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   else
     echo -e "${YELLOW}New repository with no commits detected...${NC}" >&2
-
-    local branch="${DEFAULT_BRANCH}"
 
     # Check if there's a default branch configured
     if git config init.defaultBranch >/dev/null 2>&1; then
       branch=$(git config init.defaultBranch)
     fi
-    echo "$branch"
   fi
+
+  echo "$branch"
 }
 
 ## Check if git is available. Exit on error.
@@ -231,8 +235,8 @@ function setup_remote() {
   # Split the scripts subtree
   echo -e "${BLUE}Extracting scripts...${NC}"
 
-  # Redirect output to /dev/null for hiding output of commit hash
-  execute_git subtree split --quiet -P "$SCRIPTS_DIR" -b "$SCRIPTS_BRANCH" >/dev/null
+  # we do not need any output from this command
+  SILENT_GIT=true execute_git subtree split --quiet -P "$SCRIPTS_DIR" -b "$SCRIPTS_BRANCH"
 
   # Configure branches to remain local and not be pushed to remote
   configure_local_branches
@@ -493,17 +497,16 @@ function compose_readme() {
 function initialize_empty_repository() {
   # Check if repository is empty and initialize if needed
   if ! git rev-parse --quiet --verify HEAD >/dev/null 2>&1; then
-    echo "Empty repository detected. Creating initial commit..."
+    echo -e "${YELLOW}Empty repository detected. Creating initial commit...${NC}" >&2
 
     # Create README.md if it doesn't exist
-    if [ ! -f "README.md" ]; then
-      compose_readme
-    fi
+    if [ ! -f "README.md" ]; then compose_readme; fi
 
     # Initialize the repository with the README
-    execute_git add README.md
+    SILENT_GIT=true execute_git add README.md
+
     # FIXME: Git commit will fail if user.name and user.email are not configured
-    execute_git commit -m "Initial commit before installing e-bash scripts"
+    SILENT_GIT=true execute_git commit -m "Initial commit before installing e-bash scripts"
 
     # Update MAIN_BRANCH after initial commit
     MAIN_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
@@ -649,7 +652,7 @@ function validate_version() {
 }
 
 ## Updated git command execution
-function execute_git() {
+function execute_git_v1() {
   if [ "$DRY_RUN" = true ]; then
     echo -e "${CYAN}dry run: git $*${NC}"
   else
@@ -659,9 +662,31 @@ function execute_git() {
   fi
 }
 
+## Updated git command execution
+SILENT_GIT=false
+function execute_git_v2() {
+  if [ "$DRY_RUN" = true ]; then
+    echo -e "${CYAN}dry run: git $*${NC}"
+  else
+    set +e # disable immediate exit on error
+    echo -n -e "${CYAN}execute: git $*" >&2
+    local output result
+    output=$(git "$@" 2>&1)
+    result=$?
+    echo -e " code: ${YELLOW}$result${NC}" >&2
+    [ -n "$output" ] && [ "$SILENT_GIT" = false ] && echo -e "$output" >&2
+    set -e # re-enable immediate exit on error
+    return $result
+  fi
+}
+
+function execute_git() { execute_git_v2 "$@"; }
+
 ## Install e-bash scripts
 function repo_install() {
   local version="${1:-master}"
+
+  check_prerequisites
 
   # Initialize empty repository if needed before installation
   initialize_empty_repository
@@ -679,6 +704,8 @@ function repo_install() {
 function repo_upgrade() {
   local version="${1:-master}"
 
+  check_prerequisites
+
   # Initialize empty repository if needed before upgrade
   initialize_empty_repository
 
@@ -695,6 +722,8 @@ function repo_upgrade() {
 function repo_rollback() {
   local previous_version=""
   local rollback_status=0
+
+  check_prerequisites
 
   echo -e "${RED}=== operation: ROLLBACK ===${NC}"
 
@@ -726,10 +755,13 @@ function repo_versions() {
   echo -e "${BLUE}Fetching available versions from remote repository...${NC}"
 
   # Fetch tags from remote repository
-  local has_remote
+  local has_remote has_git_repo
+  has_git_repo=$(git rev-parse --is-inside-work-tree 2>/dev/null && echo "true" || echo "false")
   has_remote=$(git remote | grep -q "$REMOTE_NAME" && echo "true" || echo "false")
 
-  if [ "$has_remote" = "true" ]; then
+  if [ "$has_git_repo" = "false" ]; then
+    echo -e "${YELLOW}Not a git repository. remote request...${NC}"
+  elif [ "$has_remote" = "true" ]; then
     execute_git fetch "$REMOTE_NAME" --tags
   else
     execute_git remote add --fetch "$REMOTE_NAME" "$REMOTE_URL"
@@ -743,7 +775,7 @@ function repo_versions() {
 
   # Get all tags from remote
   local all_remote_tags
-  all_remote_tags=$(git ls-remote --tags "$REMOTE_NAME" | grep -o 'refs/tags/v[0-9]\+\.[0-9]\+\.[0-9]\+.*$' | sed 's|refs/tags/||')
+  all_remote_tags=$(git ls-remote --tags "$REMOTE_URL" | grep -o 'refs/tags/v[0-9]\+\.[0-9]\+\.[0-9]\+.*$' | sed 's|refs/tags/||')
 
   # Separate stable and non-stable version tags
   local stable_tags
@@ -795,8 +827,6 @@ function main() {
   [ -z "$args" ] && args="<empty>"
   echo -e "${PURPLE}installer: e-bash scripts, arguments: ${YELLOW}$args${NC}" >&2
 
-  check_prerequisites
-
   local command="${1:-auto}"
   local version="${2:-master}"
 
@@ -813,6 +843,10 @@ function main() {
       echo -e "${GREEN}Auto-detected: e-bash scripts not installed. Switching to 'install' mode.${NC}"
     fi
   fi
+
+  # Main repository branch
+  # FIXME: This assumes current_branch will succeed, but there's no error handling if it fails
+  MAIN_BRANCH=$(current_branch)
 
   case "$command" in
   "install")
@@ -837,10 +871,6 @@ function main() {
     ;;
   esac
 }
-
-# Main repository branch
-# FIXME: This assumes current_branch will succeed, but there's no error handling if it fails
-MAIN_BRANCH=$(current_branch)
 
 # Add dry-run flag parsing at start of script
 DRY_RUN=false
