@@ -71,9 +71,10 @@ watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick --no-
 
 Installation into your project with helper script:
 
+> install/upgrade to latest version
+
 ```bash
-# install latest version
-curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s --
 ```
 
 Alternatives:
