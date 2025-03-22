@@ -55,12 +55,16 @@ brew install kcov
 # ref1: https://docs.astral.sh/uv/guides/install-python/
 # ref2: https://github.com/astral-sh/uv
 uv python install 
+# alternative: pyenv install 3.13.2 && pyenv global 3.13.2
 
 # run all unit tests on file change
 watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec"
 
 # run failed only unit tests on file change
 watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
+
+# run failed only unit tests on file change without coverage
+watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick --no-kcov --"
 ```
 
 ## Usage
@@ -87,6 +91,8 @@ wget -qO- https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bi
 # OR: install specific version (httpie)
 http -b https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
 ```
+
+[More details](./docs/installation.md)
 
 ### Manual installation
 

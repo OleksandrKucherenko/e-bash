@@ -15,8 +15,7 @@ eval "$(shellspec - -c) exit 1"
 
 #
 # TDD:
-#  watchman-make -p 'spec/installation_spec.sh' 'bin/*.sh' --run \
-#    "clear && shellspec --no-kcov --focus spec/installation_spec.sh -- "
+#  watchman-make -p 'spec/installation_spec.sh' 'bin/*.sh' --run "clear && shellspec --no-kcov --focus spec/installation_spec.sh -- "
 #
 
 # Path to the installation script
@@ -30,18 +29,29 @@ fDescribe 'install.e-bash.sh /'
   cleanup_temp_repo() { rm -rf "$TEST_DIR"; }
   cp_install() { cp "$SHELLSPEC_PROJECT_ROOT/$INSTALL_SCRIPT" ./; }
   git_init() { git init -q; }
-  git_config() {
-    git config --local user.email "test@example.com"
-    git config --local user.name "Test User"
-  }
-  git_commit() { git commit -q -m "Initial commit"; }
+  git_config_user() { git config --local user.name "Test User"; }
+  git_config_email() { git config --local user.email "test@example.com"; }
+  git_config() { git_config_user && git_config_email; }
+  git_commit() { git commit -q -m "Initial commit$1"; }
+  git_amend() { git commit --amend -q --no-edit; }
   git_ignore() { echo "install.e-bash.sh" >.gitignore; }
   git_add_all() { git add .; }
+  mkdir_bin() { mkdir -p bin; }
+  git_keep_bin() { touch bin/.gitkeep && git add bin/.gitkeep; }
+  git_add_bindir() { mkdir_bin && git_keep_bin && git_amend; }
+  install_latest() { ./install.e-bash.sh install 2>/dev/null >/dev/null; }
+  install_alpha() { ./install.e-bash.sh install v1.0.1-alpha.1 2>/dev/null >/dev/null; }
+  install_stable() { ./install.e-bash.sh install v1.0.0 2>/dev/null >/dev/null; }
+  upgrade_latest() { ./install.e-bash.sh upgrade 2>/dev/null >/dev/null; }
+  upgrade_alpha() { ./install.e-bash.sh upgrade v1.0.1-alpha.1 2>/dev/null >/dev/null; }
+  upgrade_stable() { ./install.e-bash.sh upgrade v1.0.0 2>/dev/null >/dev/null; }
+  do_rollback() { ./install.e-bash.sh rollback 2>/dev/null >/dev/null; }
+  do_versions() { ./install.e-bash.sh versions 2>/dev/null >/dev/null; }
 
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
-  no_colors_stderr() { echo -n "$2" | sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g'; }
-  no_colors_stdout() { echo -n "$1" | sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g'; }
+  no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
+  no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
 
   Describe 'check_prerequisites /'
     Before 'temp_repo; cp_install'
@@ -177,19 +187,6 @@ fDescribe 'install.e-bash.sh /'
       The error should include "git checkout --quiet -b e-bash-temp v1.0.1-alpha.1"
     End
 
-    It 'should not install not-existing version of e-bash'
-      When run ./install.e-bash.sh install v0.0.0-alpha
-
-      The status should be failure
-      The output should include "Installing e-bash scripts (version: v0.0.0-alpha)"
-      The error should be present # logs output
-      The error should include "fatal: 'v0.0.0-alpha' is not a commit and a branch 'e-bash-temp' cannot be created from it"
-
-      # FIXME: should we rollback to the initial state of repo?
-
-      # Dump
-    End
-
     It 'should create README.md with instructions'
       When run ./install.e-bash.sh install
 
@@ -201,37 +198,61 @@ fDescribe 'install.e-bash.sh /'
   End
 
   # Test upgrading e-bash
-  Describe 'upgrade_scripts():'
+  Describe 'upgrade_scripts /'
+    Before 'temp_repo; git_init; git_config; cp_install; install_stable'
+    After 'cleanup_temp_repo'
+
     It 'should upgrade to the latest version successfully'
-      Skip # To be implemented
+      When run ./install.e-bash.sh upgrade
+
+      The status should be success
+      The output should include "Upgrade complete!"
+      The error should be present # logs output
+      The file .e-bash-previous-version should be present
     End
 
-    It 'should save current version before upgrading'
-      Skip # To be implemented
-    End
+    It 'should upgrade to the latest version with lost tracking'
+      # use has repo with e-bash script installed manually... something in .scripts folder
+      # run upgrade script
+      # option 1: script should fail with instructions how to fix
+      # option 2: script should overwrite
 
-    It 'should report the version change'
-      Skip # To be implemented
+      Skip # not implemented
     End
   End
 
   # Test rollback functionality
-  Describe 'repo_rollback():'
+  Describe 'repo_rollback /'
+    Before 'temp_repo; git_init; git_config; cp_install; install_stable'
+    After 'cleanup_temp_repo'
+
     It 'should rollback to previous version successfully'
-      Skip # To be implemented
+      upgrade_alpha
+
+      When run ./install.e-bash.sh rollback
+
+      The status should be success
+      The output should include "Rollback complete!"
+      The error should be present # logs output
+      The file .e-bash-previous-version should not be empty file
     End
 
     It 'should fail when no previous version exists'
-      Skip # To be implemented
+      When run ./install.e-bash.sh rollback
+
+      The status should be failure
+      The output should include "Error: No previous version found to rollback to"
+      The error should be present # logs output
     End
   End
 
-  # Test version management
+  # Scenario 5
   Describe 'repo_versions /'
+
     Before 'temp_repo; cp_install'
     After 'cleanup_temp_repo'
 
-    fIt 'should list all available versions'
+    It 'should list all available versions'
       When run ./install.e-bash.sh versions
 
       The status should be success
@@ -240,19 +261,67 @@ fDescribe 'install.e-bash.sh /'
       The error should be present # logs output
     End
 
-    It 'should mark current installed version'
-      Skip # To be implemented
+    Describe 'on top of existing repo /'
+      Before 'temp_repo; git_init; git_config; cp_install'
+
+      It 'should mark current alpha installed version'
+        install_alpha
+
+        When run ./install.e-bash.sh versions
+
+        The status should be success
+        The result of function no_colors_stdout should include "v1.0.0 [LATEST]"
+        The result of function no_colors_stdout should include "v1.0.1-alpha.1 [CURRENT]"
+        The error should be present # logs output
+      End
+
+      It 'should mark current stable installed version'
+        install_stable
+
+        When run ./install.e-bash.sh versions
+
+        The status should be success
+        The result of function no_colors_stdout should include "v1.0.0 [CURRENT] [LATEST]"
+        The error should be present # logs output
+      End
+
+      It 'should mark latest stable installed version'
+        install_latest
+
+        When run ./install.e-bash.sh versions
+
+        The status should be success
+        The result of function no_colors_stdout should include "master - Development version (alias to: latest) [CURRENT]"
+        The error should be present # logs output
+      End
+
     End
   End
 
   # Test specific version installation
-  xDescribe 'install with specific version:'
+  Describe 'install with specific version:'
+    Before 'temp_repo; git_init; git_config; cp_install'
+    After 'cleanup_temp_repo'
+
     It 'should install the specified version'
-      Skip # To be implemented
+      When run ./install.e-bash.sh install v1.0.0
+
+      The status should be success
+      The output should include "Installing e-bash scripts (version: v1.0.0)"
+      The output should include "Installation complete!"
+      The error should be present # logs output
     End
 
-    It 'should fail with invalid version'
-      Skip # To be implemented
+    It 'should not install not-existing version of e-bash'
+      When run ./install.e-bash.sh install v0.0.0-alpha
+
+      The status should be failure
+      The output should include "Installing e-bash scripts (version: v0.0.0-alpha)"
+      The error should be present # logs output
+      The error should include "fatal: 'v0.0.0-alpha' is not a commit and a branch 'e-bash-temp' cannot be created from it"
+
+      # FIXME: should we rollback to the initial state of repo? Uncomment Dump to preview.
+      # Dump
     End
   End
 

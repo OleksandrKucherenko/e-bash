@@ -33,15 +33,15 @@ This document provides detailed test scenarios for installing, upgrading, and ma
   - [x] `git tag -l | tee` shows tags fetched from `e-bash` remote
   - [x] `versions` command marks correct branch/tag as `[CURRENT]`
 - [x] Scenario 2: Installing e-Bash in an existing repository with content
-- [ ] Scenario 3: Upgrading e-Bash in an existing installation
-- [ ] Scenario 4: Rolling back e-Bash to a previous version
-- [ ] Scenario 5: Viewing available versions of e-Bash
+- [x] Scenario 3: Upgrading e-Bash in an existing installation
+- [x] Scenario 4: Rolling back e-Bash to a previous version
+- [x] Scenario 5: Viewing available versions of e-Bash
 - [x] Scenario 6: Installing a specific version of e-Bash
 - [x] Scenario 7: Installing e-Bash in a repository with custom main branch name
 - [ ] Scenario 8: Uninstalling e-Bash from a repository
 - [x] Scenario 9: Attempting to install in a non-git directory
-- [ ] Scenario 10: Attempting to rollback without a previous version
-- [ ] Scenario 11: Installing with an invalid version tag
+- [x] Scenario 10: Attempting to rollback without a previous version
+- [x] Scenario 11: Installing with an invalid version tag
 - [ ] Scenario 12: Installation with insufficient permissions
 - [ ] Scenario 13: Network failure during installation
 
