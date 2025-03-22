@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-03-20
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -32,7 +32,7 @@ function parse:exclude_flags_from_args() {
   ARGS_NO_FLAGS=($(echo "${args[*]}"))
 }
 
-# pattern: "{argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
+# pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 [ -z "$ARGS_DEFINITION" ] && export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
 
 # Utility function, that extract output definition for parse:arguments function

@@ -2,10 +2,11 @@
 # shellcheck disable=SC2155,SC1090
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-03-20
 ## Version: 2.0.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+
 ## Fix: 2023-10-01, prefix for initial INIT_VERSION was not applied
 ## Fix: 2023-10-01, correct extraction of latest tag that match version pattern
 ## Added: 2023-09-30, @mrares prefix modification implemented
@@ -19,68 +20,79 @@
 #  http://tldp.org/LDP/abs/html/comparison-ops.html
 #  https://misc.flogisoft.com/bash/tip_colors_and_formatting
 
+DEBUG=${DEBUG:-"loader,ver,-parser"}
+
 #region Arguments
+declare help version \
+	args_release args_alpha args_beta args_rc \
+	args_major args_minor args_patch args_revision \
+	args_git_revision args_stay args_default args_apply args_prefix
+
+# pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 ARGS_DEFINITION=""
 ARGS_DEFINITION+=" -h,--help"
 ARGS_DEFINITION+=" --version=version:1.0.0"
-ARGS_DEFINITION+=" -r,--release"
-ARGS_DEFINITION+=" -a,--alpha"
-ARGS_DEFINITION+=" -b,--beta"
-ARGS_DEFINITION+=" -c,--release-candidate"
-ARGS_DEFINITION+=" -m,--major"
-ARGS_DEFINITION+=" -i,--minor"
-ARGS_DEFINITION+=" -p,--patch"
-ARGS_DEFINITION+=" -e,--revision"
-ARGS_DEFINITION+=" -g,--git-revision"
-ARGS_DEFINITION+=" --stay"
-ARGS_DEFINITION+=" --default"
-ARGS_DEFINITION+=" --apply"
-ARGS_DEFINITION+=" --prefix=:sub-folder:1"
+ARGS_DEFINITION+=" -r,--release=args_release"
+ARGS_DEFINITION+=" -a,--alpha=args_alpha"
+ARGS_DEFINITION+=" -b,--beta=args_beta"
+ARGS_DEFINITION+=" -c,--release-candidate=args_rc"
+ARGS_DEFINITION+=" -m,--major=args_major"
+ARGS_DEFINITION+=" -i,--minor=args_minor"
+ARGS_DEFINITION+=" -p,--patch=args_patch"
+ARGS_DEFINITION+=" -e,--revision=args_revision"
+ARGS_DEFINITION+=" -g,--git-revision=args_git_revision"
+ARGS_DEFINITION+=" --stay=args_stay"
+ARGS_DEFINITION+=" --default=args_default"
+ARGS_DEFINITION+=" --apply=args_apply"
+ARGS_DEFINITION+=" --prefix=args_prefix:sub-folder:1" # sub-folder|root|{any_string_prefix}
 #endregion
 
-# shellcheck source=../.scripts/_colors.sh
-# shellcheck source=../.scripts/_commons.sh
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
+
+# shellcheck source=../.scripts/_colors.sh
+source /dev/null # trick to make shellcheck happy
+
+# shellcheck source=../.scripts/_commons.sh
+source /dev/null # trick to make shellcheck happy
+
+# shellcheck source=../.scripts/_logger.sh
+source /dev/null # trick to make shellcheck happy
+
+# shellcheck source=../.scripts/_arguments.sh
 source "$E_BASH/_arguments.sh"
 
-args:d '-h' 'Show help and exit.'
-args:d '--version' 'Show version and exit.'
-args:d '-r' 'Switch stage to release, no suffix.'
-args:d '-a' 'Switch stage to alpha.'
-args:d '-b' 'Switch stage to beta.'
-args:d '-c' 'Switch stage to release-candidate.'
-args:d '-m' 'Increment MAJOR version part.'
-args:d '-i' 'Increment MINOR version part.'
-args:d '-p' 'Increment PATCH version part.'
-args:d '-e' 'Increment REVISION version part.'
-args:d '-g' 'Use git revision number as a revision part.'
-args:d '--stay' "Compose ${cl_yellow}version.properties${cl_white} but do not do any increments."
-args:d '--default' 'Increment last found part of version, keeping the stage. Increment applied up to MINOR part.'
-args:d '--apply' 'Run GIT command to apply version upgrade.'
-args:d '--prefix' 'Provide tag prefix or use on of the strategies: root, sub-folder (default), any_string'
+# shellcheck source=../.scripts/_semver.sh
+source "$E_BASH/_semver.sh" # connect advanced version parser
+
+logger ver "$@"           # echo:Ver and printf:Ver - loggers
+logger:redirect ver ">&2" # redirect Ver to stderr
 
 ## display help
 function help() {
+	args:d '-h' 'Show help and exit.' 'global'                # --help
+	args:d '--version' 'Show version and exit.' 'global'      # version
+	args:d '-r' 'switch stage to release, no suffix.'         # --release
+	args:d '-a' 'switch stage to alpha.'                      # --alpha
+	args:d '-b' 'switch stage to beta.'                       # --beta
+	args:d '-c' 'switch stage to release-candidate.'          # --release-candidate
+	args:d '-m' 'Increment MAJOR version part.'               # --major
+	args:d '-i' 'Increment MINOR version part.'               # --minor
+	args:d '-p' 'Increment PATCH version part.'               # --patch
+	args:d '-e' 'Increment REVISION version part.'            # --revision
+	args:d '-g' 'Use git revision number as a revision part.' # --git-revision
+
+	args:d '--stay' "Compose ${cl_yellow}version.properties${cl_white} but do not do any increments."
+	args:d '--default' 'Increment last found part of version, keeping the stage. Increment applied up to MINOR part.'
+	args:d '--apply' 'Run GIT command to apply version upgrade.'
+	args:d '--prefix' 'Provide tag prefix or use on of the strategies: root, sub-folder (default), any_string'
+
 	echo 'usage: ./version-up.sh [-r|--release] [-a|--alpha] [-b|--beta] [-c|--release-candidate]'
 	echo '                      [-m|--major] [-i|--minor] [-p|--patch] [-e|--revision] [-g|--git-revision]'
 	echo '                      [--prefix root|sub-folder|any] [--stay] [--default] [--help]'
 	echo ''
+	echo 'Switches:'
 	print:help
-#	echo 'Switches:'
-#	echo '  --release           switch stage to release, no suffix, -r'
-#	echo '  --alpha             switch stage to alpha, -a'
-#	echo '  --beta              switch stage to beta, -b'
-#	echo '  --release-candidate switch stage to rc, -c'
-#	echo '  --major             increment MAJOR version part, -m'
-#	echo '  --minor             increment MINOR version part, -i'
-#	echo '  --patch             increment PATCH version part, -p'
-#	echo '  --revision          increment REVISION version part, -e'
-#	echo '  --git-revision      use git revision number as a revision part, -g'
-#	echo '  --stay              compose version.properties but do not do any increments, -s'
-#	echo '  --default           increment last found part of version, keeping the stage. Increment applied up to MINOR part.'
-#	echo '  --apply             run GIT command to apply version upgrade'
-#	echo '  --prefix            provide tag prefix or use on of the strategies: root, sub-folder (default), any_string'
-#	echo ''
+	echo ''
 	echo 'Version: [PREFIX]MAJOR.MINOR[.PATCH[.REVISION]][-STAGE]'
 	echo ''
 	echo 'Reference:'
@@ -91,7 +103,7 @@ function help() {
 	exit 0
 }
 
-## find the monorepo root folder
+## find the monorepo root folder, print it to STDOUT
 function monorepo_root() {
 	# Navigate up from the script directory until we find the .git sub-folder to determine the monorepo root
 	local monorepoRootDir=$(
@@ -123,7 +135,7 @@ function get_relative_path() {
 	echo "${result#./}"
 }
 
-## get monorepo sub-folder
+## get monorepo sub-folder, print it to STDOUT
 function prefix_sub_folder() {
 	local tmpFileName="temp.file"
 	local repoDir=$(realpath "$(monorepo_root)")
@@ -133,7 +145,7 @@ function prefix_sub_folder() {
 	echo "${relativePath/$tmpFileName/}"
 }
 
-## resolve income parameter into prefix
+## resolve income parameter into prefix, print it to STDOUT
 function prefix_strategy() {
 	local strategy=${1:-"sub-folder"}
 	local resolution=""
@@ -149,20 +161,20 @@ function prefix_strategy() {
 	echo "$resolution"
 }
 
-## calculate the prefix based on the strategy
+## calculate the prefix based on the strategy. Modifies PREFIX variable.
 function use_prefix() {
 	PREFIX=$(prefix_strategy "$1")
 
-	echo "Tag prefix: '$PREFIX'"
+	echo:Ver "Tag prefix: '$PREFIX'"
 }
 
-## get the highest version tag for all branches
+## get the highest version tag for all branches, print it to STDOUT
 function highest_tag() {
 	local gitTag=$(git tag --list 2>/dev/null | sort -V | tail -n1 2>/dev/null)
 	echo "$gitTag"
 }
 
-## extract current branch name
+## extract current branch name, print it to STDOUT
 function current_branch() {
 	## expected: heads/{branch_name}
 	## expected: {branch_name}
@@ -170,27 +182,25 @@ function current_branch() {
 	echo "$gitBranch"
 }
 
-## get latest/head commit hash number
+## get latest/head commit hash number, print it to STDOUT
 function head_hash() {
 	local commitHash=$(git rev-parse --verify HEAD)
 	echo "$commitHash"
 }
 
-## extract tag commit hash code, tag name provided by argument
+## extract tag commit hash code, tag name provided by argument, print it to STDOUT
 function tag_hash() {
 	local tagHash=$(git log -1 --format=format:"%H" "$1" 2>/dev/null | tail -n1)
 	echo "$tagHash"
 }
 
-## extract prefix argument before the actual parsing of flags is done
+## resolve prefix argument before the actual processing is done
 function preparse_prefix_argument() {
-	local args=("$@")
 	local resolved_prefix=$(prefix_strategy)
 
 	# if --prefix provided, then required filtering of the tags by provided prefix pattern
-	if [[ "${args[*]}" =~ "--prefix" ]]; then
-		local prefix=$(echo "${args[*]}" | sed 's/.*--prefix \([^ ]*\).*/\1/')
-		resolved_prefix=$(prefix_strategy "$prefix")
+	if [[ -n "$args_prefix" ]]; then
+		resolved_prefix=$(prefix_strategy "$args_prefix")
 	fi
 
 	echo "$resolved_prefix"
@@ -199,14 +209,14 @@ function preparse_prefix_argument() {
 ## get latest tag in specified branch
 # shellcheck disable=SC2001
 function latest_tag() {
-	local resolved_prefix=$(preparse_prefix_argument "$@")
+	local resolved_prefix=$(preparse_prefix_argument)
 
 	# extract from git latest tag that started from number (OR from prefix and number)
 	local tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
 	echo "$tag"
 }
 
-## get latest revision number
+## get latest revision number, print it to STDOUT
 function latest_revision() {
 	local gitRevision=$(git rev-list --count HEAD 2>/dev/null)
 	echo "$gitRevision"
@@ -406,13 +416,62 @@ function report_current_state() {
 
 }
 
-PREFIX=$(preparse_prefix_argument "$@")
+function handle_stage_shift() {
+	stage=${PARTS[4]}
+	PARTS[4]=''
+
+	# detect first run on repository, INIT_VERSION was used
+	if [[ "$(compose)" == "0.0" ]]; then
+		increment_minor
+	fi
+
+	PARTS[4]=$stage
+}
+
+function main() {
+	# print current state of the repository on screen
+	report_current_state
+
+	# detected shift between stages, but no increment applied
+	[[ "$IS_SHIFT" == "1" ]] && handle_stage_shift
+
+	# no increment applied yet and no shift of state, do minor increase
+	[[ "$IS_DIRTY$IS_SHIFT" == "" ]] && increment_minor
+
+	# instruct user how to apply new TAG
+	echo -e "Proposed TAG: \033[32m$(compose)\033[0m"
+	echo ''
+
+	# is proposed tag in conflict with any other TAG
+	PROPOSED_HASH=$(tag_hash "$(compose)")
+	if [[ "${#PROPOSED_HASH}" -gt 0 && "$NO_APPLY_MSG" == "" ]]; then
+		error_conflict_tag
+	fi
+
+	if [[ "$NO_APPLY_MSG" == "" ]]; then
+		help_manual_apply
+	fi
+
+	# compose version override file
+	if [[ "$TAG" == "$INIT_VERSION" ]]; then
+		TAG='0.0'
+	fi
+
+	publish_version_file
+
+	# should we apply the changes
+	if [[ "$DO_APPLY" == "1" ]]; then
+		apply_git_changes
+	fi
+}
+
+PREFIX=$(preparse_prefix_argument)
 
 # initial version used for repository without tags
 INIT_VERSION="${PREFIX}0.0.0.0-alpha"
 
 # do GIT data extracting, globals
-TAG=$(latest_tag "$@")
+TAG=$(latest_tag)
 REVISION=$(latest_revision)
 BRANCH=$(current_branch)
 TOP_TAG=$(highest_tag)
@@ -420,8 +479,6 @@ TAG_HASH=$(tag_hash "$TAG")
 HEAD_HASH=$(head_hash)
 PROPOSED_HASH=""
 VERSION_FILE=version.properties
-
-report_current_state
 
 # if tag and branch commit hashes are different, then print info about that
 #echo $HEAD_HASH vs $TAG_HASH
@@ -455,6 +512,8 @@ fi
 #    beta --> rc
 #    rc --> {VERSION}
 #
+semver:parse "${TAG}" "PARTS" && echo "${PARTS[@]}" || echo "$? - FAIL!"
+
 # shellcheck disable=SC2206
 PARTS=(${TAG//./ })
 parse_first
@@ -469,107 +528,32 @@ if [[ "$@" == "" ]]; then
 fi
 
 # parse input parameters
-for i in "$@"; do
-	key="$i"
+if [[ "$help" == "1" ]]; then
+	help
+elif [[ -n "$version" ]]; then
+	echo "version: ${version}"
+	exit 0
+else
+	[[ "$args_alpha" == "1" ]] && PARTS[4]="alpha" && IS_SHIFT=1
+	[[ "$args_beta" == "1" ]] && PARTS[4]="beta" && IS_SHIFT=1
+	[[ "$args_rc" == "1" ]] && PARTS[4]="rc" && IS_SHIFT=1
+	[[ "$args_release" == "1" ]] && PARTS[4]="" && IS_SHIFT=1
 
-	case $key in
-	-a | --alpha) # switched to ALPHA
-		PARTS[4]="alpha"
-		IS_SHIFT=1
-		;;
-	-b | --beta) # switched to BETA
-		PARTS[4]="beta"
-		IS_SHIFT=1
-		;;
-	-c | --release-candidate) # switched to RC
-		PARTS[4]="rc"
-		IS_SHIFT=1
-		;;
-	-r | --release) # switched to RELEASE
-		PARTS[4]=""
-		IS_SHIFT=1
-		;;
-	-p | --patch) # increment of PATCH
-		increment_patch
-		;;
-	-e | --revision) # increment of REVISION
-		increment_revision
-		;;
-	-g | --git-revision) # use git revision number as a revision part§
-		PARTS[3]=$((REVISION))
-		IS_DIRTY=1
-		;;
-	-i | --minor) # increment of MINOR by default
-		increment_minor
-		;;
-	--default) # stay on the same stage, but increment only last found PART of version code
-		increment_last_found
-		;;
-	-m | --major) # increment of MAJOR
-		increment_major
-		;;
-	-s | --stay) # extract version info
-		IS_DIRTY=1
-		NO_APPLY_MSG=1
-		;;
-	--prefix) # version tag prefix provided
-		use_prefix "$2"
-		shift # expected one more argument with prefix name
-		;;
-	--apply)
-		DO_APPLY=1
-		;;
-	-h | --help)
-		help
-		;;
-	esac
-	shift
-done
+	[[ "$args_patch" == "1" ]] && increment_patch
+	[[ "$args_revision" == "1" ]] && increment_revision
+	[[ "$args_git_revision" == "1" ]] && PARTS[3]=$((REVISION)) && IS_DIRTY=1
+	[[ "$args_minor" == "1" ]] && increment_minor
 
-# detected shift, but no increment
-if [[ "$IS_SHIFT" == "1" ]]; then
-	# temporary disable stage shift
-	stage=${PARTS[4]}
-	PARTS[4]=''
+	[[ "$args_default" == "1" ]] && increment_last_found
+	[[ "$args_major" == "1" ]] && increment_major
+	[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
 
-	# detect first run on repository, INIT_VERSION was used
-	if [[ "$(compose)" == "0.0" ]]; then
-		increment_minor
-	fi
+	[[ "$args_apply" == "1" ]] && DO_APPLY=1
 
-	PARTS[4]=$stage
+	[[ -n "$args_prefix" ]] && use_prefix "$args_prefix"
 fi
 
-# no increment applied yet and no shift of state, do minor increase
-if [[ "$IS_DIRTY$IS_SHIFT" == "" ]]; then
-	increment_minor
-fi
-
-# instruct user how to apply new TAG
-echo -e "Proposed TAG: \033[32m$(compose)\033[0m"
-echo ''
-
-# is proposed tag in conflict with any other TAG
-PROPOSED_HASH=$(tag_hash "$(compose)")
-if [[ "${#PROPOSED_HASH}" -gt 0 && "$NO_APPLY_MSG" == "" ]]; then
-	error_conflict_tag
-fi
-
-if [[ "$NO_APPLY_MSG" == "" ]]; then
-	help_manual_apply
-fi
-
-# compose version override file
-if [[ "$TAG" == "$INIT_VERSION" ]]; then
-	TAG='0.0'
-fi
-
-publish_version_file
-
-# should we apply the changes
-if [[ "$DO_APPLY" == "1" ]]; then
-	apply_git_changes
-fi
+main
 
 #
 # Major logic of the script - "on each run script propose future version of the product".

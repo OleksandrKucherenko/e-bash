@@ -41,7 +41,7 @@ fi
 
 # Function to load the copyright template and replace placeholders
 get_copyright_template() {
-  local resolve=${1:-true}
+  local resolve=${1:-"true"}
   local version="$VERSION"
 
   # Try to extract version from the file
@@ -54,7 +54,7 @@ get_copyright_template() {
 
   # Load the template and replace variables
   if [[ -f "$COPYRIGHT_TEMPLATE" ]]; then
-    if [[ "$resolve" == true ]]; then
+    if [[ "$resolve" == "true" ]]; then
       ggrep "## " "$COPYRIGHT_TEMPLATE" | gsed -e "s/{{DATE}}/$CURRENT_DATE/g; s/{{VERSION}}/$version/g"
     else
       ggrep "## " "$COPYRIGHT_TEMPLATE"
@@ -75,7 +75,7 @@ verify_copyright() {
   fi
 
   # Get expected copyright content for comparison
-  local expected_copyright=$(get_copyright_template "$file")
+  local expected_copyright=$(get_copyright_template false)
   local expected_lines=$(echo "$expected_copyright" | wc -l)
 
   # Extract actual copyright lines from file
@@ -109,7 +109,7 @@ verify_copyright() {
 prepare_file_with_copyright() {
   local source_file=$1
   local temp_file=$2
-  local copyright_content=$(get_copyright_template "$source_file")
+  local copyright_content=$(get_copyright_template)
 
   # copy as is all comments (and shebang) from the begining of the file
   skip_lines=0

@@ -51,20 +51,67 @@ brew install kcov
 ## TDD - Test Driven Development, run tests on file change
 
 ```bash
+# make tool required python in hidden dependencies
+# ref1: https://docs.astral.sh/uv/guides/install-python/
+# ref2: https://github.com/astral-sh/uv
+uv python install 
+# alternative: pyenv install 3.13.2 && pyenv global 3.13.2
+
 # run all unit tests on file change
 watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec"
 
 # run failed only unit tests on file change
 watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
+
+# run failed only unit tests on file change without coverage
+watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick --no-kcov --"
 ```
 
 ## Usage
 
-Installation into your project:
+Installation into your project with helper script:
 
 ```bash
-# subtree approach (TODO: fix me!)
-git subtree --squash -P vendor/bats-all add https://github.com/hyperupcall/bats-all HEAD
+# install latest version
+curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+```
+
+Alternatives:
+
+```bash
+# OR: install latest version
+wget -qO- https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+# OR: install latest version (httpie)
+http -b https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+
+# install specific version
+curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+# OR: install specific version
+wget -qO- https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+# OR: install specific version (httpie)
+http -b https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+```
+
+[More details](./docs/installation.md)
+
+### Manual installation
+
+```bash
+git remote add -f e-bash https://github.com/OleksandrKucherenko/e-bash.git  
+git checkout -b e-bash-temp e-bash/master  
+git subtree split -P .scripts -b e-bash-scripts  
+git checkout master # or main - depends on your main branch in repo
+git subtree merge --prefix .scripts e-bash-scripts --squash
+```
+
+Upgrade `.scripts` to the latest version:
+
+```bash
+git fetch e-bash master  
+git checkout e-bash-temp && git reset --hard e-bash/master  
+git subtree split -P .scripts -b e-bash-scripts  
+git checkout <your-main-branch>  
+git subtree pull --prefix .scripts e-bash-scripts --squash
 ```
 
 refs:
@@ -73,7 +120,6 @@ refs:
 - https://github.com/epcim/git-cross
 - https://github.com/ingydotnet/git-subrepo
 - https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3 [article](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
--
 
 ### Colors
 
@@ -160,7 +206,7 @@ Requirements:
 - [x] support required arguments
 - [x] support aliases for arguments
 - [x] support destination variables for argument
-- [ ] compose help documentation from arguments definition
+- [x] compose help documentation from arguments definition
 
 ```bash
 # pattern: "{argument_index},-{short},--{alias}={output_variable}:{default_initialize_value}:{reserved_args_quantity}"
@@ -170,7 +216,7 @@ export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0"
 export ARGS_DEFINITION+=" --debug=DEBUG:*"
 
 # will automatically parse script arguments with definition from $ARGS_DEFINITION global variable
-source ".scripts/_arguments.sh"
+source "$E_BASH/_arguments.sh"
 
 # check variables that are extracted
 echo "Is --help: $help"
@@ -180,6 +226,8 @@ echo "Is --debug: $DEBUG"
 # advanced run. parse provided arguments with definition from $ARGS_DEFINITION global variable
 parse:arguments "$@"
 ```
+
+More details: [Arguments Parsing](docs/arguments.md), [Demo script](demos/demo.args.sh).
 
 ### Common(s) Functions And Inputs
 
