@@ -6,15 +6,20 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+DEBUG=${DEBUG:-"-ipv6,-regex"}
+
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
 # shellcheck source=../.scripts/_colors.sh
 source "$E_BASH/_colors.sh"
+# shellcheck source=../.scripts/_logger.sh
+source "$E_BASH/_logger.sh"
 
-function color_ipv6() {
-  local line=$1
-  local ipv6s ipv4s
+# compose logger for debugging
+logger ipv6 "$@" && logger:prefix ipv6 "[${cl_gray}ipv6${cl_reset}] " && logger:redirect ipv6 ">&2"
 
+# compose regex for matching ipv6 in GNU grep style, print it to STDOUT
+function ipv6:grep() {
   local ipv6_zone="fe80:(:[0-9a-f]{1,4}){0,7}%[a-z0-9_.-]+"                                            # Link-local IPv6 addresses with zone identifiers
   local ipv4_mapped="::ffff:[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"                            # IPv4-mapped addresses in IPv6 format
   local ipv4_mapped_alt="(0{0,4}:){0,5}ffff:(([0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-f]{1,4}:[0-9a-f]{1,4})" # Alternative IPv4-mapped notation with optional leading zeros
@@ -23,55 +28,86 @@ function color_ipv6() {
   local ipv6_loopback="(::)"                                                                           # IPv6 loopback (::)
 
   # Combine all IPv6 patterns
-  local ipv6_regex="${ipv6_zone}|${ipv4_mapped}|${ipv4_mapped_alt}|${ipv6_full}|${ipv6_compressed}|${ipv6_loopback}"
+  local grep_regex="${ipv6_zone}|${ipv4_mapped}|${ipv4_mapped_alt}|${ipv6_full}|${ipv6_compressed}|${ipv6_loopback}"
 
-  # Extract IPv6 addresses
-  ipv6s=$(echo "$line" | grep -oPI "${ipv6_regex}")
-  ipv4s=$(echo "$line" | grep -oPI '([0-9]{1,3}\.){3}[0-9]{1,3}')
-
-  echo "${cl_gray}$line${cl_reset}"
-  echo "v3: $line" | sed -E 's/(::ffff:[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|(0{0,4}:){0,5}ffff:(([0-9]{1,3}\.){3}[0-9]{1,3}|[0-9a-f]{1,4}:[0-9a-f]{1,4})|(([0-9a-f]{1,4}:){7}[0-9a-f]{1,4}|([0-9a-f]{1,4}:)*[0-9a-f]{0,4}::[0-9a-f]{0,4}(:[0-9a-f]{1,4})*|(::)))/\{IPv6\}/Ig'
-  echo "ipv6: ${cl_yellow}${ipv6s/$'\n'/ }${cl_reset}"
-  echo "ipv4: ${cl_red}${ipv4s/$'\n'/ }${cl_reset}"
-  echo ""
+  echo "${grep_regex}"
+  
+  # debug output
+  if type echo:Regex &>/dev/null; then
+    echo:Regex "${grep_regex}" >&2
+  fi
 }
 
-# fully expanded
-color_ipv6 "test #01: 2001:0db8:0000:0000:0000:0000:0000:0001" # PASSED!
-color_ipv6 "test #02: fe80:0000:0000:0000:0202:b3ff:fe1e:8329" # PASSED!
+# ref1: https://regex101.com/r/uwPxJf/10
+function color:ipv6() {
+  local line=$1
+  local ipv6s ipv4s seeds
 
-# fully expanded with mask
-color_ipv6 "test #03: 2001:0db8:0000:0000:0000:0000:0000:0001/64" # PASSED!
+  # Combine all IPv6 patterns
+  local grep_regex=$(ipv6:grep)
+  local sed_regex="${grep_regex}"
 
-# Leading zero omission
-color_ipv6 "test #04: 2001:db8:0:0:0:0:0:1"          # PASSED!
-color_ipv6 "test #05: fe80:0:0:0:202:b3ff:fe1e:8329" # PASSED!
-color_ipv6 "test #06: fe80::202:b3ff:fe1e:8329/20"   # PASSED!
+  # Extract IPv6 addresses
+  ipv6s=$(echo "$line" | ggrep -oPI "${grep_regex}")
+  ipv4s=$(echo "$line" | ggrep -oPI '([0-9]{1,3}\.){3}[0-9]{1,3}') # IPv4 addresses format
 
-# Zero compression (::)
-color_ipv6 "test #07: 2001:db8::1"              # PASSED!
-color_ipv6 "test #08: fe80::202:b3ff:fe1e:8329" # PASSED!
-color_ipv6 "test #09: ::1 (loopback)"           # PASSED!
-color_ipv6 "test #10: :: (unspecified)"         # PASSED!
+  echo:Ipv6 "${cl_gray}$line${cl_reset}"
+  
+  # Break down regex into components for readability
+  local marker="\{IPv6\}"
+  local sed_replace="s/(${sed_regex})/${cl_lgreen}${marker}${cl_reset}/Ig"
+  
+  # Combine all patterns into a single regex
+  local seeds=$(echo "$line" | gsed -E "$sed_replace")
+  
+  # Use the combined regex in the sed command
+  echo:Ipv6 "$seeds"
+  echo:Ipv6 "ipv6: ${cl_yellow}${ipv6s/$'\n'/ }${cl_reset}"
+  echo:Ipv6 "ipv4: ${cl_red}${ipv4s/$'\n'/ }${cl_reset}"
 
-# Mixed formats
-color_ipv6 "test #11: 2001:0db8::0001"        # PASSED!
-color_ipv6 "test #12: 2001:db8:0:0:8d3:0:0:0" # PASSED!
-color_ipv6 "test #13: 2001:db8::8d3:0:0:0"    # PASSED!
+  # iterate on seeds string until we replace all {IPv6} (marker) tags with proper ipv6 addresses
+  # ipv6s may contain multiple ipv6 addresses separated by space
+  local final="${seeds}"
+  for ipv6 in $ipv6s; do
+    # Replace only the first occurrence of the marker with the current IPv6 address
+    final=$(echo "$final" | gsed -E "0,/${marker}/s/${marker}/${ipv6}/")
+  done
+  echo "$final"
+}
 
-# IPv4-embedded
-color_ipv6 "test #14: ::ffff:192.168.1.1 0:0:0:0:0:ffff:192.168.1.1"                   # PASSED!
-color_ipv6 "test #15: 0:0:0:0:0:ffff:c000:280 0000:0000:0000:0000:0000:ffff:c0a8:0101" # PASSED!
+# convert ipv6 from `2001:0db8:0000:0000:0000:0000:0000:0001` to `2001:db8::1` form.
+function ipv6:compress() {
+  echo "$1" | gsed -E 's/(0{1,4}:){1,}/::/g; s/:{2,}/::/g; s/:0{1,}/:/g'
+}
 
-# Link-local addresses
-color_ipv6 "test #16: fe80::1%eth0 fe80::a1b2:3c4d%en0"          # PASSED, SED - FAILED
-color_ipv6 "test #17: fe80::1%1234567890 (same as above in hex)" # PASSED, SED - FAILED
+# convert ipv6 from `2001:db8::1` to `2001:0db8:0000:0000:0000:0000:0000:0001` form.
+function ipv6:expand() {
+  local line="$1" final
+  local grep_regex=$(ipv6:grep)
+  local sub=":0000"
 
-# Multicast
-color_ipv6 "test #18: ff00::"  # PASSED!
-color_ipv6 "test #19: ff02::1" # PASSED!
-color_ipv6 "test #20: ff02::2" # PASSED!
+  # count how many ':' we have in $line, excluding '::'. 
+  # example: 2001:db8::1 --> 3 (sub-sections is available)
+  # example: 20::1 --> 2 (sub-sections is available)
+  # example: 2001:db8::8d3:0:0:0 --> 6 (sub-sections is available)
+  local sections=$(echo "$line" | gsed -E 's/::/:/g' | tr -cd ':' | wc -c)
+  local missing=$((7 - sections))
+  echo:Ipv6 "sections: $((sections + 1)), missing: $missing"
 
-# Documentation/Test ranges
-color_ipv6 "test #21: 2001:db8:: (reserved for documentation/examples)" # PASSED!
-color_ipv6 "test #22: 2001:db8:1234:ffff:ffff:ffff:ffff:ffff"           # PASSED!
+  # start from 7 sub-sections and go down to 2, until we catch that grep returns a captured value
+  local replacer="$(printf "%0.s$sub" $(seq 1 $missing)):"
+  local sed_replace="s/::/${replacer}/g"
+  final=$(echo "$line" | gsed -E "$sed_replace" | ggrep -oPI "${grep_regex}")
+
+  # now its time to add leading zeros to each sub-section of ipv6
+  IFS=':' read -ra parts <<< "$final" && unset IFS
+  final=$(printf '0000%s\n' "${parts[@]}" | gsed -E 's/.*([0-9a-f]{4}$)/\1/gi' | tr '\n' ':' | gsed 's/:$//g')
+  echo "$final"
+}
+
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+${__SOURCED__:+return}
+
+logger regex "$@" # declare echo:Regex & printf:Regex functions
+logger:redirect regex ">&2" # redirect regex to STDERR
