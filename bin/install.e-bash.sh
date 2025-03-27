@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-22
+## Last revisit: 2025-03-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -213,12 +213,12 @@ function clean_temp_branches() {
 function create_temp_branch() {
   local version="$1"
 
-  # FIXME: should we support alias `latest` to point to master?
-
   if [ "$version" = "master" ]; then
-    execute_git checkout --quiet -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
+    execute_git checkout --quiet --force -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
     return 0
   fi
+
+  # FIXME: potentially we can have git error message that we can loose some files
 
   execute_git checkout --quiet -b "$TEMP_BRANCH" "$version"
   return 0
