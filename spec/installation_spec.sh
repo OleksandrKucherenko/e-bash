@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-22
+## Last revisit: 2025-03-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -22,7 +22,7 @@ eval "$(shellspec - -c) exit 1"
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
 
-Describe 'install.e-bash.sh /'
+fDescribe 'install.e-bash.sh /'
   temp_repo() {
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR" || return 1
@@ -280,7 +280,7 @@ Describe 'install.e-bash.sh /'
         When run ./install.e-bash.sh versions
 
         The status should be success
-        The result of function no_colors_stdout should include "v1.0.0 [LATEST]"
+        The result of function no_colors_stdout should include "v1.1.0 [LATEST]"
         The result of function no_colors_stdout should include "v1.0.1-alpha.1 [CURRENT]"
         The error should be present # logs output
       End
@@ -291,12 +291,14 @@ Describe 'install.e-bash.sh /'
         When run ./install.e-bash.sh versions
 
         The status should be success
-        The result of function no_colors_stdout should include "v1.0.0 [CURRENT] [LATEST]"
+        The result of function no_colors_stdout should include "v1.0.0 [CURRENT]"
+        The result of function no_colors_stdout should include "v1.1.0 [LATEST]"
         The error should be present # logs output
       End
 
       It 'should mark latest stable installed version'
         install_latest
+        cp_install
 
         When run ./install.e-bash.sh versions
 

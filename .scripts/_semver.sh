@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-02
+## Last revisit: 2025-03-26
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -468,6 +468,8 @@ ${__SOURCED__:+return}
 logger semver "$@" # declare echo:Semver & printf:Semver functions
 logger regex "$@"  # declare echo:Regex & printf:Regex functions
 logger simple "$@" # declare echo:Simple & printf:Simple functions
+
+logger:redirect regex ">&2" # redirect regex to STDERR
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
