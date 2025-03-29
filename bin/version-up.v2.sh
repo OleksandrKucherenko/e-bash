@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC1090
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-20
+## Last revisit: 2025-03-29
 ## Version: 2.0.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -20,7 +20,7 @@
 #  http://tldp.org/LDP/abs/html/comparison-ops.html
 #  https://misc.flogisoft.com/bash/tip_colors_and_formatting
 
-DEBUG=${DEBUG:-"loader,ver,-parser"}
+DEBUG=${DEBUG:-"-loader,ver,-parser"}
 
 #region Arguments
 declare help version \
@@ -64,8 +64,8 @@ source "$E_BASH/_arguments.sh"
 # shellcheck source=../.scripts/_semver.sh
 source "$E_BASH/_semver.sh" # connect advanced version parser
 
-logger ver "$@"           # echo:Ver and printf:Ver - loggers
-logger:redirect ver ">&2" # redirect Ver to stderr
+# create custom logger echo:Ver, printf:Ver
+logger ver "$@" && logger:redirect ver ">&2"
 
 ## display help
 function help() {
@@ -108,17 +108,20 @@ function monorepo_root() {
 	# Navigate up from the script directory until we find the .git sub-folder to determine the monorepo root
 	local monorepoRootDir=$(
 		dir="$(dirname "${BASH_SOURCE[0]}")"
+		[ "$dir" = "." ] && dir="$(pwd)"
 		while [[ "$dir" != '/' && ! -d "$dir/.git" ]]; do dir="$(dirname "$dir")"; done
 		echo "$dir"
 	)
+
 	echo "$monorepoRootDir"
 }
 
 # https://stackoverflow.com/a/67449155
 function get_relative_path() {
 	local targetFilename=$(basename "$1")
-	local targetFolder=$(cd "$(dirname "$1")" && pwd) # absolute target folder path
-	local currentFolder=$(cd "$2" && pwd)             # absolute source folder
+	# Use realpath to resolve symbolic links in both paths
+	local targetFolder=$(realpath "$(dirname "$1")")
+	local currentFolder=$(realpath "$2")
 	local result=.
 
 	while [ "$currentFolder" != "$targetFolder" ]; do
@@ -164,8 +167,6 @@ function prefix_strategy() {
 ## calculate the prefix based on the strategy. Modifies PREFIX variable.
 function use_prefix() {
 	PREFIX=$(prefix_strategy "$1")
-
-	echo:Ver "Tag prefix: '$PREFIX'"
 }
 
 ## get the highest version tag for all branches, print it to STDOUT
@@ -188,13 +189,13 @@ function head_hash() {
 	echo "$commitHash"
 }
 
-## extract tag commit hash code, tag name provided by argument, print it to STDOUT
+## extract tag commit hash code, tag name provided by argument, print it to STDOUT.
 function tag_hash() {
 	local tagHash=$(git log -1 --format=format:"%H" "$1" 2>/dev/null | tail -n1)
 	echo "$tagHash"
 }
 
-## resolve prefix argument before the actual processing is done
+## resolve prefix argument before the actual processing is done. result print to STDOUT.
 function preparse_prefix_argument() {
 	local resolved_prefix=$(prefix_strategy)
 
@@ -206,10 +207,72 @@ function preparse_prefix_argument() {
 	echo "$resolved_prefix"
 }
 
-## get latest tag in specified branch
+## auto-detect tag prefix from existing tags in repository
+# shellcheck disable=SC2155,SC2001
+function auto_detect_prefix() {
+	# Limit analysis to 25 most recent tags for performance
+	local all_tags=$(git tag --sort=-creatordate -l | head -n 25)
+
+	# If no tags found, return empty prefix
+	if [[ -z "$all_tags" ]]; then
+		echo:Ver "Auto-detected prefix: No tags found in the repository."
+		echo ""
+		return
+	fi
+
+	# Get semver regex pattern
+	local semver_pattern=$(semver:grep)
+
+	# Key-value storage for prefixes
+	declare -A prefixes
+
+	# Process each tag
+	while read -r tag; do
+		# Use semver regex to extract the prefix
+		# Expected pattern: {prefix}{semver}{suffix}
+		local semver_part=$(echo "$tag" | grep -oE "$semver_pattern")
+
+		# If we found a semver part in the tag
+		if [[ -n "$semver_part" ]]; then
+			# Extract prefix by removing semver part (and anything after) from the tag
+			local prefix=$(echo "$tag" | sed "s/${semver_part}.*//")
+
+			# Count occurrences of this prefix
+			if [[ -n "${prefixes[$prefix]}" ]]; then
+				prefixes[$prefix]=$((prefixes[$prefix] + 1))
+			else
+				prefixes[$prefix]=1
+			fi
+		fi
+	done <<<"$all_tags"
+
+	# Find the most common prefix
+	local mostUsed=""
+	local max=0
+
+	for prefix in "${!prefixes[@]}"; do
+		if [[ ${prefixes[$prefix]} -gt $max ]]; then
+			mostUsed="$prefix"
+			max=${prefixes[$prefix]}
+		fi
+	done
+
+	# Format tags as comma-separated list
+	local csvTags=$(echo "$all_tags" | tr '\n' ',' | gsed 's/,$//; s/,/, /g')
+	echo:Ver "Auto-detected prefix: ${mostUsed} from tags: ${cl_gray}${csvTags}${cl_reset}"
+
+	echo "${mostUsed}"
+}
+
+## get latest tag in specified branch. result to STDOUT.
 # shellcheck disable=SC2001
 function latest_tag() {
 	local resolved_prefix=$(preparse_prefix_argument)
+
+	# If no explicit prefix was provided, try to auto-detect it
+	if [[ -z "$resolved_prefix" ]]; then
+		resolved_prefix=$(auto_detect_prefix)
+	fi
 
 	# extract from git latest tag that started from number (OR from prefix and number)
 	local tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
@@ -439,7 +502,7 @@ function main() {
 	[[ "$IS_DIRTY$IS_SHIFT" == "" ]] && increment_minor
 
 	# instruct user how to apply new TAG
-	echo -e "Proposed TAG: \033[32m$(compose)\033[0m"
+	echo -e "Proposed TAG: ${cl_green}$(compose)${cl_reset}"
 	echo ''
 
 	# is proposed tag in conflict with any other TAG
@@ -465,13 +528,13 @@ function main() {
 	fi
 }
 
-PREFIX=$(preparse_prefix_argument)
+PREFIX=$(preparse_prefix_argument "$@")
 
 # initial version used for repository without tags
 INIT_VERSION="${PREFIX}0.0.0.0-alpha"
 
 # do GIT data extracting, globals
-TAG=$(latest_tag)
+TAG=$(latest_tag "$@")
 REVISION=$(latest_revision)
 BRANCH=$(current_branch)
 TOP_TAG=$(highest_tag)
@@ -512,7 +575,7 @@ fi
 #    beta --> rc
 #    rc --> {VERSION}
 #
-semver:parse "${TAG}" "PARTS" && echo "${PARTS[@]}" || echo "$? - FAIL!"
+semver:parse "${TAG}" "PARTS" && echo "${PARTS[@]}" || echo "$? - FAIL parsing '${TAG}'!"
 
 # shellcheck disable=SC2206
 PARTS=(${TAG//./ })
