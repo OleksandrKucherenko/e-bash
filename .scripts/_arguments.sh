@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-20
+## Last revisit: 2025-04-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -78,8 +78,12 @@ function parse:mapping() {
   # TODO (olku): trim whitespaces in $ARGS_DEFINITION, no spaces in beginning or end, no double spaces
   echo:Common "${cl_grey}Definition: $ARGS_DEFINITION${cl_reset}" >&2
 
+  # Remove Windows line endings, replace newlines with spaces, convert multiple spaces to single space
+  local preParsed="$(echo -n -e "$ARGS_DEFINITION" | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g') "
+
   # extract definition of each argument, separated by space, remove last empty element
-  readarray -td ' ' definitions <<<"$ARGS_DEFINITION " && unset 'definitions[-1]'
+  readarray -td ' ' definitions <<<"$preParsed" && unset 'definitions[-1]'
+  echo:Common "${cl_grey}Extracted: ${definitions[*]}${cl_reset}" >&2
 
   # build lookup map of arguments, extract the longest name of each argument
   declare -A -g lookup_arguments && lookup_arguments=() # key-to-index_of_definition. e.g. -c -> 0, --cookies -> 0
@@ -108,7 +112,7 @@ function parse:mapping() {
 
 }
 
-# pattern: "{argument_index},-{short},--{alias}={output}:{init_value}:{args_quantity}"
+# pattern: "\${argument_index},-{short},--{alias}={output}:{init_value}:{args_quantity}"
 function parse:arguments() {
   local args=("$@")
 
@@ -144,7 +148,7 @@ function parse:arguments() {
 
       # assign aggregated value to output variable
       local tmp_index=${lookup_arguments[$last_processed]}
-      echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='$tmpValue'"
+      echo:Common "[L1] export ${index_to_outputs[$tmp_index]}='$tmpValue'"
       eval "export ${index_to_outputs[$tmp_index]}='$tmpValue'"
     fi
 
@@ -155,7 +159,7 @@ function parse:arguments() {
       local expected=${index_to_args_qt[$tmp_index]}
 
       # assign default value to the output variable first
-      echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
+      echo:Common "[L2] export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
       eval "export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
 
       # if expected more arguments than provided, configure skip_next_counter
@@ -170,7 +174,7 @@ function parse:arguments() {
       else
         # default value is re-assigned by provided value
         if [ -n "$value" ]; then
-          echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='$value'"
+          echo:Common "[L3] export ${index_to_outputs[$tmp_index]}='$value'"
           eval "export ${index_to_outputs[$tmp_index]}='$value'"
         fi
       fi
@@ -183,7 +187,7 @@ function parse:arguments() {
           last_processed=$by_index
           local tmp_index=${lookup_arguments[$by_index]}
 
-          echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='$argument'"
+          echo:Common "[L4] export ${index_to_outputs[$tmp_index]}='$argument'"
           eval "export ${index_to_outputs[$tmp_index]}='$argument'"
         else
           echo:Common "${cl_grey}ignored: $argument [$by_index] vs $last_processed:$skip_next_counter:$skip_aggregated:$value ${cl_reset}" >&2
@@ -214,7 +218,7 @@ function parse:arguments() {
   printf:Common '\"%s\"\n' "${!index_to_outputs[@]}" "${index_to_outputs[@]}" "${index_to_args_qt[@]}" "${index_to_default[@]}" | pr -4t | sort
   for variable in "${index_to_outputs[@]}"; do
     declare -n var_ref=$variable
-    echo:Common "${cl_grey}extracted: $variable=$var_ref${cl_reset}"
+    echo:Parser "${cl_grey}extracted: $variable=$var_ref${cl_reset}"
   done
 }
 
@@ -243,7 +247,7 @@ function args:d() {
   args_to_group["$flag"]="${group}"
   group_to_order["$group"]="${order}"
 
-  echo:Parser "$flag -> desc:$description, group:$group, order:$order"
+  printf:Parser "%12s -> %s ${cl_grey}group:%s order:%s${cl_reset}\n" "$flag" "$description" "$group" "$order"
 
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
 }
@@ -286,6 +290,111 @@ function args:v() {
 
   # echo flag only if we in pipeline mode
   [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
+}
+
+# Compose argument definition string by pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
+function args:i() {
+  local output="" description="" aliases=()
+  local init_value="" args_quantity="" group="common"
+
+  # Parse positional output
+  output="$1" && shift
+
+  # Manual option parsing: support both short and long flags, always treat next positional as value
+  while [[ $# -gt 0 ]]; do
+    # TODO (olku): we can more options, for example automatic negation parameter registration
+    # `--test=test:1` -> `--no-test=test:0`
+    case $1 in
+    -g | --group)
+      shift
+      group="$1"
+      shift
+      ;;
+    -h | --help)
+      shift
+      description="$1"
+      shift
+      ;;
+    -a | --alias)
+      shift
+      # Split CSV into multiple aliases
+      IFS=',' read -ra alias_arr <<<"$1"
+      for alias in "${alias_arr[@]}"; do
+        alias="${alias## }"
+        alias="${alias%% }"
+        aliases+=("$alias")
+      done
+      shift
+      ;;
+    -q | --quantity)
+      shift
+      args_quantity="$1"
+      shift
+      ;;
+    -d | --default)
+      shift
+      init_value="$1"
+      shift
+      ;;
+    --*)
+      echo "Error: Unknown option: $1" >&2
+      shift
+      ;;
+    -*)
+      echo "Error: Unknown option: $1" >&2
+      shift
+      ;;
+    *)
+      # Unexpected positional, ignore
+      shift
+      ;;
+    esac
+  done
+
+  local short="" alias_str="" separator="" positional=""
+
+  # Extract short flag if present in aliases
+  for alias in "${aliases[@]}"; do
+    if [[ $alias == -? ]]; then short="${alias:1}"; fi
+    if [[ $alias == "\$"* ]]; then positional="${alias}"; fi
+  done
+
+  # Compose alias string
+  for alias in "${aliases[@]}"; do
+    if [[ $alias == --* ]]; then
+      alias_str+="${separator}${alias}"
+      separator=","
+    elif [[ $alias == -? ]]; then
+      : # already handled as short
+    fi
+  done
+  alias_str="${alias_str%,}"
+
+  # Compose the result pattern
+  local result="${positional}"
+  [[ -n $short ]] && result+="$([ ! -z "$result" ] && echo ",")-$short"
+  [[ -n $alias_str ]] && result+="$([ ! -z "$result" ] && echo ",")${alias_str}"
+  result+="=${output}:"
+  [[ -n $init_value ]] && result+="${init_value}:" || result+=":"
+  [[ -n $args_quantity ]] && result+="${args_quantity}"
+
+  # Optionally, register description mapping if provided (use first alias or short flag)
+  if [[ -n $description ]]; then
+    local desc_flag=""
+    if [[ ${#aliases[@]} -gt 0 ]]; then
+      desc_flag="${aliases[0]}"
+    elif [[ -n $short ]]; then
+      desc_flag="-$short"
+    fi
+    if [[ -n $desc_flag ]]; then
+      # shellcheck disable=SC2294
+      echo "args:d \"${desc_flag}\" \"${description}\" \"${group}\""
+      #args:d "${desc_flag}" "${description}" "${group}"
+    fi
+  fi
+
+  # print result with trimming trailing colons at the end of line
+  echo "export ARGS_DEFINITION+=\" $(echo "$result" | sed 's/:\{1,\}$//g') \""
 }
 
 # print help for ARGS_DEFINITION parameters
@@ -379,11 +488,10 @@ function print:help() {
 ${__SOURCED__:+return}
 
 logger common "$@" # register own logger
-logger parser "$@" # initialize parser
-logger:prefix "parser" "${cl_blue}[parser]${cl_reset}: "
+logger:init parser "${cl_blue}[parser]${cl_reset} "
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
-parse:exclude_flags_from_args "$@" # pre-filter arguments from flags
-parse:arguments "$@"               # parse arguments and assign them to output variables
+parse:exclude_flags_from_args "$@"                  # pre-filter arguments from flags
+[ -z "$SKIP_ARGS_PARSING" ] && parse:arguments "$@" # parse arguments and assign them to output variables

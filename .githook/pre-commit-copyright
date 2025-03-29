@@ -39,6 +39,17 @@ else
   readarray -t STAGED_SH_FILES < <(git diff --cached --name-only --diff-filter=ACMR -- "*.sh")
 fi
 
+# Prefer custom GNU tools from bin/gnubin if available, then fallback to Linux aliases
+if [[ -d "$REPO_ROOT/bin/gnubin" ]]; then
+  export PATH="$REPO_ROOT/bin/gnubin:$PATH"
+fi
+
+# Fallback to Linux aliases if custom GNU tools are not available
+if [[ "$(uname)" == "Linux" ]]; then
+  command -v ggrep >/dev/null 2>&1 || alias ggrep='grep'
+  command -v gsed >/dev/null 2>&1 || alias gsed='sed'
+fi
+
 # Function to load the copyright template and replace placeholders
 get_copyright_template() {
   local resolve=${1:-"true"}

@@ -1,6 +1,6 @@
 --require spec_helper
 --shell bash
---format documentation
+--format t
 --skip-message quiet
 --pending-message quiet
 --output junit
@@ -16,3 +16,4 @@
 
 ## Example: Only specified files/directories
 --kcov-options "--include-pattern=.scripts/"
+--kcov-options "--include-pattern=bin/version-up.v2.sh"

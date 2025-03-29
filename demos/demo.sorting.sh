@@ -2,14 +2,18 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-04-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+DEBUG=${DEBUG:-"dbg,-semver"}
+
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 # shellcheck disable=SC1090 source=../.scripts/_semver.sh
 source "$E_BASH/_semver.sh"
+
+logger:init dbg
 
 function compare:numbers() {
   local a=$1 b=$2
@@ -18,6 +22,8 @@ function compare:numbers() {
 }
 
 function compare:versions() {
+  #echo:Dbg "${cl_green}$1${cl_reset} < ${cl_blue}$2${cl_reset}: $( (semver:constraints:simple "$1<$2") && echo 'yes' || echo 'no')"
+
   (semver:constraints:simple "$1<$2") && return 0 || return 1
 }
 
@@ -63,6 +69,13 @@ function test:version-strings() {
   versions+=("1.0.0-alpha")
   versions+=("1.0.0-alpha.1")
   versions+=("1.0.0-alpha.beta")
+  versions+=("2.2.3-rc.1+build.123")
+  versions+=("2.2.3-rc.1")
+  versions+=("2.2.3-1")       # pre-release
+  versions+=("2.2.3-rc+1")    # pre-release and build meta
+  versions+=("2.2.3-rc.10+1") # pre-release and build meta
+  versions+=("2.2.3+1")       # build meta
+  versions+=("2.2.3")
 
   echo "input:" "${versions[@]}"
 
@@ -98,3 +111,4 @@ function test:git-tags() {
 }
 
 test:git-tags
+test:version-strings

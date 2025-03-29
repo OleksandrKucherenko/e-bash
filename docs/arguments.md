@@ -28,6 +28,9 @@ The `_arguments.sh` script provides a powerful yet simple command-line argument 
   - [Advanced Usage](#advanced-usage)
     - [Pipeline Usage](#pipeline-usage)
     - [Handling Special Cases](#handling-special-cases)
+    - [Compose Argument Definition by Function](#compose-argument-definition-by-function)
+      - [Usage](#usage)
+      - [Example](#example)
 
 <!-- /TOC -->
 
@@ -354,3 +357,54 @@ source "$E_BASH/_arguments.sh"
 ./script.sh --id=""
 # Result: args_pno="<empty>"
 ```
+
+### Compose Argument Definition by Function
+
+You can programmatically compose argument definition strings using the `args:i` function. This is useful for scripts that need to build ARGS_DEFINITION dynamically or in a more readable way.
+
+> Note: By default `source _arguments.sh` will trigger parsing of the script parameters and ARGS_DEFINITION.
+> Usually this should be done later, when we compose script arguments definition with the `args:i` function.
+> So to skip initial parsing, you should set `export SKIP_ARGS_PARSING=1` before sourcing the script. 
+> Can be used any value for `SKIP_ARGS_PARSING` variable, we check only if variable defined and not empty.
+
+#### Usage
+
+```bash
+args:i "output_variable" [options]
+```
+
+- `output_variable`: Name of the variable to store the argument value. Will be dynamically created by eval during parsing.
+- Options (can use short or long form):
+  - `-h <desc>`, `--help <desc>`: Description for help output
+  - `-a <alias>`, `--alias <alias>`: Add an alias/flag (repeatable, e.g. `-a "-f" -a "--foo"`)
+  - `-q <quantity>`, `--quantity <quantity>`: Number of arguments this option expects
+  - `-d <default>`, `--default <default>`: Initial/default value
+
+#### Example
+
+```bash
+# Compose a definition for an argument with short and long flags, default value, and description
+args:i FORCE -a "-f" -a "--force" -q 1 -d "0" \
+  -h "Use this flag to force potentially harmful actions without confirmation" 
+
+# or equivalently with long options:
+args:i FORCE --alias "\$1,-f,--force" --quantity 1 --default "0" \
+  --help "Use this flag to force potentially harmful actions without confirmation"
+
+# Output:
+# $1,-f,--force=FORCE:0:1
+```
+
+You can use this in a script to build ARGS_DEFINITION, for example:
+
+```bash
+export COMPOSED_ARGS_DEFINITION="
+  $(args:i VERBOSE  -a "-v" -a "--verbose" -d "" -h "Enable verbose mode") 
+  $(args:i OUTPUT   -a "-o" -a "--output"  -d "result.txt" -h "Output file")
+  $(args:i DEBUG    -a "-d" -a "--debug"   -d "*" -h "Enable debug mode")
+  $(args:i DEBUG    -a "--no-debug" -d "-*" -h "Disable Any debug output")
+"
+eval "$COMPOSED_ARGS_DEFINITION" >/dev/null
+```
+
+This approach improves maintainability and readability, especially for scripts with many arguments.
