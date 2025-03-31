@@ -2,18 +2,13 @@
 # shellcheck disable=SC2155,SC1090
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-29
-## Version: 2.0.2
+## Last revisit: 2025-03-31
+## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-## Fix: 2023-10-01, prefix for initial INIT_VERSION was not applied
-## Fix: 2023-10-01, correct extraction of latest tag that match version pattern
-## Added: 2023-09-30, @mrares prefix modification implemented
-## Bug fixes: 2021-06-09, @slmingol changes applied
-
 # For help:
-#   ./version-up.sh --help
+#   ./version-up.v2.sh --help
 
 # For developer / references:
 #  https://ryanstutorials.net/bash-scripting-tutorial/bash-functions.php
@@ -44,9 +39,10 @@ ARGS_DEFINITION+=" -g,--git-revision=args_git_revision"
 ARGS_DEFINITION+=" --stay=args_stay"
 ARGS_DEFINITION+=" --default=args_default"
 ARGS_DEFINITION+=" --apply=args_apply"
-ARGS_DEFINITION+=" --prefix=args_prefix:sub-folder:1" # sub-folder|root|{any_string_prefix}
+ARGS_DEFINITION+=" --prefix=args_prefix:sub-folder:1" # sub-folder|root|{any_string}
 #endregion
 
+#region Helper scripts attaching
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
 # shellcheck source=../.scripts/_colors.sh
@@ -63,11 +59,12 @@ source "$E_BASH/_arguments.sh"
 
 # shellcheck source=../.scripts/_semver.sh
 source "$E_BASH/_semver.sh" # connect advanced version parser
+#endregion
 
 # create custom logger echo:Ver, printf:Ver
 logger ver "$@" && logger:redirect ver ">&2"
 
-## display help
+# display help
 function help() {
 	args:d '-h' 'Show help and exit.' 'global'                # --help
 	args:d '--version' 'Show version and exit.' 'global'      # version
@@ -103,7 +100,7 @@ function help() {
 	exit 0
 }
 
-## find the monorepo root folder, print it to STDOUT
+# find the monorepo root folder, print it to STDOUT
 function monorepo_root() {
 	# Navigate up from the script directory until we find the .git sub-folder to determine the monorepo root
 	local monorepoRootDir=$(
@@ -138,7 +135,7 @@ function get_relative_path() {
 	echo "${result#./}"
 }
 
-## get monorepo sub-folder, print it to STDOUT
+# get monorepo sub-folder, print it to STDOUT
 function prefix_sub_folder() {
 	local tmpFileName="temp.file"
 	local repoDir=$(realpath "$(monorepo_root)")
@@ -148,7 +145,8 @@ function prefix_sub_folder() {
 	echo "${relativePath/$tmpFileName/}"
 }
 
-## resolve income parameter into prefix, print it to STDOUT
+# resolve prefix income parameter into prefix calue, and print it to STDOUT
+# strategy: root|sub-folder|{any-string}
 function prefix_strategy() {
 	local strategy=${1:-"sub-folder"}
 	local resolution=""
@@ -164,18 +162,18 @@ function prefix_strategy() {
 	echo "$resolution"
 }
 
-## calculate the prefix based on the strategy. Modifies PREFIX variable.
+# calculate the prefix based on the strategy. Modifies PREFIX variable.
 function use_prefix() {
 	PREFIX=$(prefix_strategy "$1")
 }
 
-## get the highest version tag for all branches, print it to STDOUT
+# get the highest version tag for all branches, print it to STDOUT
 function highest_tag() {
 	local gitTag=$(git tag --list 2>/dev/null | sort -V | tail -n1 2>/dev/null)
 	echo "$gitTag"
 }
 
-## extract current branch name, print it to STDOUT
+# extract current branch name, print it to STDOUT
 function current_branch() {
 	## expected: heads/{branch_name}
 	## expected: {branch_name}
@@ -183,23 +181,23 @@ function current_branch() {
 	echo "$gitBranch"
 }
 
-## get latest/head commit hash number, print it to STDOUT
+# get latest/head commit hash number, print it to STDOUT
 function head_hash() {
 	local commitHash=$(git rev-parse --verify HEAD)
 	echo "$commitHash"
 }
 
-## extract tag commit hash code, tag name provided by argument, print it to STDOUT.
+# extract tag commit hash code, tag name provided by argument, print it to STDOUT.
 function tag_hash() {
 	local tagHash=$(git log -1 --format=format:"%H" "$1" 2>/dev/null | tail -n1)
 	echo "$tagHash"
 }
 
-## resolve prefix argument before the actual processing is done. result print to STDOUT.
-function preparse_prefix_argument() {
-	local resolved_prefix=$(prefix_strategy)
+# resolve prefix argument before the actual processing is done. result print to STDOUT.
+function prepare_prefix() {
+	local resolved_prefix=$(prefix_strategy) # extract default strategy first
 
-	# if --prefix provided, then required filtering of the tags by provided prefix pattern
+	# if --prefix provided, then required re-evaluation of the prefix
 	if [[ -n "$args_prefix" ]]; then
 		resolved_prefix=$(prefix_strategy "$args_prefix")
 	fi
@@ -207,9 +205,9 @@ function preparse_prefix_argument() {
 	echo "$resolved_prefix"
 }
 
-## auto-detect tag prefix from existing tags in repository
+# auto-detect tag prefix from existing tags in repository
 # shellcheck disable=SC2155,SC2001
-function auto_detect_prefix() {
+function auto_detect_prefix_from_tags() {
 	# Limit analysis to 25 most recent tags for performance
 	local all_tags=$(git tag --sort=-creatordate -l | head -n 25)
 
@@ -248,7 +246,7 @@ function auto_detect_prefix() {
 
 	# Find the most common prefix
 	local mostUsed=""
-	local max=0
+	local max=0 # most used prefix
 
 	for prefix in "${!prefixes[@]}"; do
 		if [[ ${prefixes[$prefix]} -gt $max ]]; then
@@ -257,6 +255,17 @@ function auto_detect_prefix() {
 		fi
 	done
 
+	# print detected patterns top-5, if we have more than 1
+	if [[ ${#prefixes[@]} -gt 1 ]]; then
+		for prefix in "${!prefixes[@]}"; do
+			echo:Ver "Auto-detected prefix: ${prefix}, Count: ${prefixes[$prefix]}"
+		done | head -n 5
+	fi
+
+	# TODO: depends on the strategy we may select another prefix from the list.
+	# sub-folder - means that we have a sub-folder path as a prefix, even if tags with
+	#   such pattern are not very often.
+
 	# Format tags as comma-separated list
 	local csvTags=$(echo "$all_tags" | tr '\n' ',' | gsed 's/,$//; s/,/, /g')
 	echo:Ver "Auto-detected prefix: ${mostUsed} from tags: ${cl_gray}${csvTags}${cl_reset}"
@@ -264,28 +273,31 @@ function auto_detect_prefix() {
 	echo "${mostUsed}"
 }
 
-## get latest tag in specified branch. result to STDOUT.
-# shellcheck disable=SC2001
+# get latest tag in specified branch. result to STDOUT.
 function latest_tag() {
-	local resolved_prefix=$(preparse_prefix_argument)
-
-	# If no explicit prefix was provided, try to auto-detect it
-	if [[ -z "$resolved_prefix" ]]; then
-		resolved_prefix=$(auto_detect_prefix)
-	fi
+	local resolved_prefix=$(prepare_prefix)
 
 	# extract from git latest tag that started from number (OR from prefix and number)
 	local tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
+
+	# if tag is empty then try to autodetect the prefix and try extaction again
+	if [[ -z "$tag" ]]; then
+		echo:Ver "No tag found, trying to auto-detect prefix..."
+		resolved_prefix=$(auto_detect_prefix_from_tags)
+		tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
+	fi
+
+	echo:Ver "Latest tag: ${tag}"
 	echo "$tag"
 }
 
-## get latest revision number, print it to STDOUT
+# get latest revision number, print it to STDOUT
 function latest_revision() {
 	local gitRevision=$(git rev-list --count HEAD 2>/dev/null)
 	echo "$gitRevision"
 }
 
-## parse first PART of the tage, extract PREFIX if any provided
+# parse first PART of the tage, extract PREFIX if any provided
 # shellcheck disable=SC2001
 function parse_first() {
 	# extract into PREFIX variable all non digits chars from the beginning of the PARTS[0]
@@ -298,7 +310,7 @@ function parse_first() {
 	PARTS[0]=$clean_part
 }
 
-## parse last found tag, extract it PARTS
+# parse last found tag, extract it PARTS
 function parse_last() {
 	local position=$(($1 - 1))
 
@@ -318,20 +330,20 @@ function parse_last() {
 	fi
 }
 
-## increment REVISION part, don't touch STAGE
+# increment REVISION part, don't touch STAGE
 function increment_revision() {
 	PARTS[3]=$((PARTS[3] + 1))
 	IS_DIRTY=1
 }
 
-## increment PATCH part, reset all others lower PARTS, don't touch STAGE
+# increment PATCH part, reset all others lower PARTS, don't touch STAGE
 function increment_patch() {
 	PARTS[2]=$((PARTS[2] + 1))
 	PARTS[3]=0
 	IS_DIRTY=1
 }
 
-## increment MINOR part, reset all others lower PARTS, don't touch STAGE
+# increment MINOR part, reset all others lower PARTS, don't touch STAGE
 function increment_minor() {
 	PARTS[1]=$((PARTS[1] + 1))
 	PARTS[2]=0
@@ -339,7 +351,7 @@ function increment_minor() {
 	IS_DIRTY=1
 }
 
-## increment MAJOR part, reset all others lower PARTS, don't touch STAGE
+# increment MAJOR part, reset all others lower PARTS, don't touch STAGE
 function increment_major() {
 	PARTS[0]=$((PARTS[0] + 1))
 	PARTS[1]=0
@@ -348,7 +360,7 @@ function increment_major() {
 	IS_DIRTY=1
 }
 
-## increment the number only of last found PART: REVISION --> PATCH --> MINOR. don't touch STAGE
+# increment the number only of last found PART: REVISION --> PATCH --> MINOR. don't touch STAGE
 function increment_last_found() {
 	if [[ "${#PARTS[3]}" == 0 || "${PARTS[3]}" == "0" ]]; then
 		if [[ "${#PARTS[2]}" == 0 || "${PARTS[2]}" == "0" ]]; then
@@ -366,7 +378,7 @@ function increment_last_found() {
 	fi
 }
 
-## compose version from PARTS
+# compose version from PARTS
 function compose() {
 	local major="${PARTS[0]}"
 	local minor=".${PARTS[1]}"
@@ -405,7 +417,7 @@ function compose() {
 	echo "${PREFIX}${major}${minor}${patch}${revision}${suffix}" #full format
 }
 
-## print error message about conflict with existing tag and proposed tag
+# print error message about conflict with existing tag and proposed tag
 function error_conflict_tag() {
 	local red=$(tput setaf 1)
 	local end=$(tput sgr0)
@@ -420,7 +432,7 @@ function error_conflict_tag() {
 	echo ""
 }
 
-## print help message how to apply changes manually
+# print help message how to apply changes manually
 function help_manual_apply() {
 	echo 'To apply changes manually execute the command(s):'
 	echo -e "\033[90m"
@@ -429,10 +441,11 @@ function help_manual_apply() {
 	echo -e "\033[0m"
 }
 
-## save all support information into version.properties file
+# save all support information into version.properties file
 function publish_version_file() {
 	echo "# $(date)" >${VERSION_FILE}
 	{
+		echo "## Version: 3.0.0"
 		echo "snapshot.version=$(compose)"
 		echo "snapshot.lasttag=$TAG"
 		echo "snapshot.revision=$REVISION"
@@ -442,7 +455,7 @@ function publish_version_file() {
 	} >>"${VERSION_FILE}"
 }
 
-## apply changes to GIT repository, local changes only
+# apply changes to GIT repository, local changes only
 function apply_git_changes() {
 	echo ''
 	echo "Applying git repository version up... no push, only local tag assignment!"
@@ -459,7 +472,7 @@ function apply_git_changes() {
 	echo ''
 }
 
-## print current state of the repository
+# print current state of the repository
 function report_current_state() {
 	# do we have any GIT tag for parsing?!
 	echo ""
@@ -491,7 +504,64 @@ function handle_stage_shift() {
 	PARTS[4]=$stage
 }
 
+function parse_arguments() {
+	local args=("$@")
+
+	local isNoArgs=false
+	[ "${#args[@]}" -eq 0 ] && isNoArgs=true
+
+	# parse input parameters
+	if [[ "$help" == "1" ]]; then
+		help
+	elif [[ -n "$version" ]]; then
+		echo "version: ${version}"
+		exit 0
+	else
+		if $isNoArgs; then
+			if [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
+				echo "Tag $TAG and HEAD are aligned. We will stay on the TAG version."
+				# TODO: should we re-create the version.properties file?
+				exit 0
+			fi
+
+			# are we in the branch that has version tag or name that matches the pattern?
+			local semver_grep=$(semver:grep)
+			local semver_part=$(echo "$BRANCH" | grep -oE "$semver_grep")
+
+			if [[ -n "$semver_part" ]]; then
+				echo "Detected version branch '$BRANCH'. We will auto-increment the last version PART."
+				args_default=1
+			else
+				echo "Detected branch name '$BRANCH' than does not match version pattern. We will increase MINOR."
+				args_minor=1
+			fi
+		fi
+
+		[[ "$args_alpha" == "1" ]] && PARTS[4]="alpha" && IS_SHIFT=1
+		[[ "$args_beta" == "1" ]] && PARTS[4]="beta" && IS_SHIFT=1
+		[[ "$args_rc" == "1" ]] && PARTS[4]="rc" && IS_SHIFT=1
+		[[ "$args_release" == "1" ]] && PARTS[4]="" && IS_SHIFT=1
+
+		[[ "$args_patch" == "1" ]] && increment_patch
+		[[ "$args_revision" == "1" ]] && increment_revision
+		[[ "$args_git_revision" == "1" ]] && PARTS[3]=$((REVISION)) && IS_DIRTY=1
+		[[ "$args_minor" == "1" ]] && increment_minor
+
+		[[ "$args_default" == "1" ]] && increment_last_found
+		[[ "$args_major" == "1" ]] && increment_major
+		[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
+
+		[[ "$args_apply" == "1" ]] && DO_APPLY=1
+
+		[[ -n "$args_prefix" ]] && use_prefix "$args_prefix"
+	fi
+
+}
+
 function main() {
+	# configure the global variables for triggering proper actions
+	parse_arguments "$@"
+
 	# print current state of the repository on screen
 	report_current_state
 
@@ -528,12 +598,18 @@ function main() {
 	fi
 }
 
-PREFIX=$(preparse_prefix_argument "$@")
+# try to detect the prefix in versioning tags/branches names. expected pattern: {PREFIX}{SEMVER}{SUFFIX}
+# PREFIX in this case can be:
+#   - '{any-string}' - something defined by user;
+#   - '{sub-folder}' - sub-folder path used as a prefix;
+#   - '{root}' - empty string;
+PREFIX=$(prepare_prefix "$@")
+AUTO_DETECTED_PREFIX=$(auto_detect_prefix_from_tags)
 
 # initial version used for repository without tags
 INIT_VERSION="${PREFIX}0.0.0.0-alpha"
 
-# do GIT data extracting, globals
+# do GIT data extracting into globals
 TAG=$(latest_tag "$@")
 REVISION=$(latest_revision)
 BRANCH=$(current_branch)
@@ -543,85 +619,39 @@ HEAD_HASH=$(head_hash)
 PROPOSED_HASH=""
 VERSION_FILE=version.properties
 
-# if tag and branch commit hashes are different, then print info about that
-#echo $HEAD_HASH vs $TAG_HASH
-# shellcheck disable=SC2199
-if [[ "$@" == "" ]]; then
-	if [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
-		echo "Tag $TAG and HEAD are aligned. We will stay on the TAG version."
-		echo ""
-		NO_ARGS_VALUE='--stay'
-	else
-		PATTERN="^[0-9]+.[0-9]+(.[0-9]+)*(-(alpha|beta|rc))*$"
-
-		if [[ "$BRANCH" =~ $PATTERN ]]; then
-			echo "Detected version branch '$BRANCH'. We will auto-increment the last version PART."
-			echo ""
-			NO_ARGS_VALUE='--default'
-		else
-			echo "Detected branch name '$BRANCH' than does not match version pattern. We will increase MINOR."
-			echo ""
-			NO_ARGS_VALUE='--minor'
-		fi
-	fi
-fi
-
-#
-# [PREFIX]{MAJOR}.{MINOR}[.{PATCH}[.{REVISION}][-(.*)]
-#
-#  Suffix: alpha, beta, rc
-#    No Suffix --> {NEW_VERSION}-alpha
-#    alpha --> beta
-#    beta --> rc
-#    rc --> {VERSION}
-#
+# parse the tag into parts
 semver:parse "${TAG}" "PARTS" && echo "${PARTS[@]}" || echo "$? - FAIL parsing '${TAG}'!"
 
-# shellcheck disable=SC2206
-PARTS=(${TAG//./ })
-parse_first
-parse_last ${#PARTS[@]} # array size as argument
-#echo ${PARTS[@]}
-
-# if no parameters than emulate --default parameter
-# shellcheck disable=SC2199
-if [[ "$@" == "" ]]; then
-	# shellcheck disable=SC2086
-	set -- ${NO_ARGS_VALUE}
-fi
-
-# parse input parameters
-if [[ "$help" == "1" ]]; then
-	help
-elif [[ -n "$version" ]]; then
-	echo "version: ${version}"
-	exit 0
-else
-	[[ "$args_alpha" == "1" ]] && PARTS[4]="alpha" && IS_SHIFT=1
-	[[ "$args_beta" == "1" ]] && PARTS[4]="beta" && IS_SHIFT=1
-	[[ "$args_rc" == "1" ]] && PARTS[4]="rc" && IS_SHIFT=1
-	[[ "$args_release" == "1" ]] && PARTS[4]="" && IS_SHIFT=1
-
-	[[ "$args_patch" == "1" ]] && increment_patch
-	[[ "$args_revision" == "1" ]] && increment_revision
-	[[ "$args_git_revision" == "1" ]] && PARTS[3]=$((REVISION)) && IS_DIRTY=1
-	[[ "$args_minor" == "1" ]] && increment_minor
-
-	[[ "$args_default" == "1" ]] && increment_last_found
-	[[ "$args_major" == "1" ]] && increment_major
-	[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
-
-	[[ "$args_apply" == "1" ]] && DO_APPLY=1
-
-	[[ -n "$args_prefix" ]] && use_prefix "$args_prefix"
-fi
-
-main
+main "$@"
 
 #
 # Major logic of the script - "on each run script propose future version of the product".
-#
 #  - if no tags on project --> propose '0.1-alpha'
 #  - do multiple build iterations until you become satisfied with result
 #  - run 'version-up.v2.sh --apply' to save result in GIT
 #
+# Several initial states are possible:
+# 1. no tags on repository, young repo
+# 2. tags exists, but they may present something else instead of release version
+# 3. tags exists and present release version (one pattern in use)
+# 4. tags of different kind presented in a repository (maybe a monorepo with sub-projects)
+#
+# What should we do in each case:
+# (1) - propose our default strategy for versioning (simplified semver);
+# (2) - try to find tags with SEMVER pattern and use it as a base, otherwise fallback to (1);
+# (3) - detect the pattern and continue to use it, otherwise fallback to (1);
+# (4) - try to detect the pattern from location in the repo,
+#  	    (root) - are we using empty string as a prefix? [AUTOMATIC]
+# 		  (sub-folder) - are we using sub-folder path as a prefix? [AUTOMATIC]
+# 		  (any-string) - are we using user provided string as a prefix? [USER defined]
+#
+# algorithm of script:
+# 1. do we have tags on repository? YES - next step 2; NO - default strategy;
+# 2. are we in sub-folder of the repository? YES - next step 3; NO - next step {N};
+# 3. can we detect prefix automatically? YES - next step 4; NO - next step {M};
+# 4. is prefix === sub-folder path? YES - next step 5; NO - next step {M};
+# 5. extract latest version from tags with specific prefix;
+# 6. apply minor increment to the version;
+# 7. save new version in version.properties;
+# 8. END
+# 9.
