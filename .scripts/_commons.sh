@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-04-05
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -210,9 +210,26 @@ function validate:input:masked() {
   local __resultvar=$variable
   eval $__resultvar="'$user_in'"
 }
-
 # shellcheck disable=SC2086,SC2059
 function validate:input:yn() {
+  # Prompts the user for a yes/no input and stores the result as a boolean value
+  # 
+  # Arguments:
+  #   $1 - variable: Name of the variable to store the result in (passed by reference)
+  #   $2 - default: Default value to suggest to the user (optional)
+  #   $3 - hint: Prompt text to display to the user (optional)
+  #
+  # Returns:
+  #   Sets the variable named in $1 to 'true' for yes responses or 'false' for no/other responses
+  #
+  # Example:
+  #   validate:input:yn result "y" "Do you want to continue?"
+  #   if $result; then
+  #     echo "User selected yes"
+  #   else
+  #     echo "User selected no"
+  #   fi
+  
   local variable=$1
   local default=${2:-""}
   local hint=${3:-""}
@@ -467,6 +484,9 @@ ${__SOURCED__:+return}
 
 logger common "$@"             # register own logger
 logger:redirect "common" ">&2" # redirect to STDERR
+
+logger loader "$@" # initialize logger
+echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 # old version of function names
 alias now=time:now
