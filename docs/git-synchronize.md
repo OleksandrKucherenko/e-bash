@@ -122,7 +122,50 @@ To identify the correct base commit (`<last_integrated_hash>`):
 3. Identify the last commit that represents a merge or integration from the source repository
 4. Copy the full commit hash of this commit - this is your `<last_integrated_hash>`
 
-#### Generate Patches
+#### Step-by-Step Guide to Generate Patches and Changes Log
+
+Follow these steps in the source repository:
+
+1. **Identify the Base Commit:**
+   Determine the commit hash in the source repository that corresponds to the last change from that source repo that was successfully integrated into the target subdirectory. Let's call this `<last_integrated_hash>`. Finding this might involve inspecting the commit history of the subdirectory in the final-repo and tracing it back to the source repo.
+   Example: `git log final-repo/repo1_subfolder` and find the latest relevant commit.
+
+2. **Navigate to the Source Repository:**
+   ```bash
+   cd /path/to/your/source/repo1
+   ```
+
+3. **Ensure You Are on the Correct Branch and Up-to-Date:**
+   ```bash
+   git checkout main # Or your primary development branch
+   git pull origin main
+   ```
+
+4. **Create the Patches Directory (if it doesn't exist):**
+   ```bash
+   mkdir -p patches
+   ```
+
+5. **Generate Patch Files (Sequential Naming):**
+   Generate one patch file for each commit between `<last_integrated_hash>` and the current HEAD. The files will be named like 0001-....patch, 0002-....patch etc. Use --output-directory to place them in the 'patches' folder.
+
+   ```bash
+   git format-patch <last_integrated_hash>..HEAD --output-directory=patches
+   # This creates files like patches/0001-Commit-subject.patch, patches/0002-....patch
+   ```
+
+6. **Generate the Changes Log (`changes.log`):**
+   Create a log file listing the commits in the same range and same order as the generated patches. The format should be "<hash> <commit_message_subject>". Use `--reverse` to ensure the log matches the patch order (oldest first).
+
+   ```bash
+   git log --pretty="format:%H %s" --reverse <last_integrated_hash>..HEAD > changes.log
+   ```
+
+7. **Transfer Files:**
+   Make the `patches` directory and `changes.log` file accessible to the synchronization script, either by copying them or providing the correct path when running the script.
+   Example paths used in script args: `/path/to/source/repo1/patches` and `/path/to/source/repo1/changes.log`
+
+#### Generate Patches (Simplified)
 
 ```bash
 # Example: Get patches for commits after abc1234
@@ -130,7 +173,7 @@ HASH="abc1234"
 git format-patch ${HASH}..HEAD --output-directory=patches
 ```
 
-#### Generate changes.log
+#### Generate changes.log (Simplified)
 
 Use the same commit range with `--reverse`:
 

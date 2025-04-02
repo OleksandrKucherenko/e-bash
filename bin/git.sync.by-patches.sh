@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-04-02
@@ -7,6 +8,7 @@
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 DEBUG=${DEBUG:-"sync,error,info,success,warning,dump"}
+readonly VERSION="1.0.0"
 
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.scripts" && pwd)"
@@ -25,73 +27,7 @@ logger:init error "[${cl_red}errr${cl_reset}] " ">&2"
 logger:init info "[${cl_cyan}info${cl_reset}] " ">&2"
 logger:init success "[${cl_green}done${cl_reset}] "
 logger:init warning "[${cl_yellow}warn${cl_reset}] " ">&2"
-logger:init dump "  ${cl_gray}|${cl_reset}  " ">&2"
-
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# Script to apply patches from ONE source repository (e.g., repo1 OR repo2)
-# into a specific subdirectory of this final monolithic repository.
-#
-# !!! IMPORTANT !!!
-# This script MUST be executed from the ROOT directory of the final monorepo.
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-# --- Prerequisites ---
-# 1. Ensure 'git' command-line tool is installed.
-# 2. Ensure you are in the root directory of the final monorepo when running this script.
-# 3. Ensure the patch directory and log file (generated from the source repo) exist
-#    at the paths specified in the command-line arguments.
-# 4. IMPORTANT: Configure your Git user name and email in this repository
-#    or globally, as these will be used for the new commits:
-#      git config user.name "Your Name"
-#      git config user.email "your.email@example.com"
-# 5. Make sure the script has execute permissions: chmod +x apply_patches_single.sh
-
-# --- How to Generate Patches and changes.log in the Source Repository ---
-#
-# Before running this script, you need to generate the patch files and the log file
-# from the *source* repository (e.g., repo1).
-#
-# 1. Identify the Base Commit:
-#    Determine the commit hash in the *source* repository (e.g., repo1) that corresponds
-#    to the *last* change from that source repo that was successfully integrated into
-#    the target subdirectory (e.g., final-repo/repo1_subfolder). Let's call this
-#    <last_integrated_hash>. Finding this might involve inspecting the commit history
-#    of the subdirectory in the final-repo and tracing it back to the source repo.
-#    Example: `git log final-repo/repo1_subfolder` and find the latest relevant commit.
-#
-# 2. Navigate to the Source Repository:
-#    cd /path/to/your/source/repo1
-#
-# 3. Ensure You Are on the Correct Branch and Up-to-Date:
-#    git checkout main # Or your primary development branch
-#    git pull origin main
-#
-# 4. Create the Patches Directory (if it doesn't exist):
-#    mkdir -p patches
-#
-# 5. Generate Patch Files (Sequential Naming):
-#    Generate one patch file for each commit between <last_integrated_hash> and the
-#    current HEAD. The files will be named like 0001-....patch, 0002-....patch etc.
-#    Use --output-directory to place them in the 'patches' folder.
-#
-#    git format-patch <last_integrated_hash>..HEAD --output-directory=patches
-#    # This creates files like patches/0001-Commit-subject.patch, patches/0002-....patch
-#
-# 6. Generate the Changes Log (`changes.log`):
-#    Create a log file listing the commits in the *same range* and *same order*
-#    as the generated patches. The format should be "<hash> <commit_message_subject>".
-#    Use `--reverse` to ensure the log matches the patch order (oldest first).
-#
-#    git log --pretty="format:%H %s" --reverse <last_integrated_hash>..HEAD > changes.log
-#
-# 7. Transfer Files:
-#    Make the `patches` directory and `changes.log` file accessible to this script,
-#    either by copying them or providing the correct path when running the script.
-#    Example paths used in script args: /path/to/source/repo1/patches and /path/to/source/repo1/changes.log
-#
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-readonly VERSION="1.0.0"
+logger:init dump "${cl_gray}|${cl_reset} " ">&2"
 
 ## Error codes
 readonly WRONG_PARAMS_NUMBER=1 # Error code for wrong number of parameters
@@ -147,14 +83,14 @@ function show_progress() {
 # Function to validate input parameters for patch processing
 # Arguments:
 #   $1: log_file (string, path to log file)
-#   $2: patch_dir (string, path to patch directory)
-#   $3: target_subdir (string, path to target subdirectory)
+#   $2: target_subdir (string, path to target subdirectory)
+#   $3: patch_dir (string, path to patch directory)
 # Returns:
 #   0 on success, 1 on failure
 function validate_patch_inputs() {
   local log_file="$1"
-  local patch_dir="$2"
-  local target_subdir="$3"
+  local target_subdir="$2"
+  local patch_dir="$3"
 
   if [ ! -f "${log_file}" ]; then
     echo:Error "Log file not found: ${log_file}"
@@ -164,10 +100,11 @@ function validate_patch_inputs() {
     echo:Error "Patch directory not found: ${patch_dir}"
     return 1
   fi
+
   if [ ! -d "${target_subdir}" ]; then
-    echo:Error "Target subdirectory '${target_subdir}' not found in the current directory ($(pwd))."
-    echo:Sync "Make sure you are running this script from the root of the final monorepo."
-    return 1
+    echo:Warning "Target subdirectory ${cl_yellow}${target_subdir}${cl_reset} not found in the current directory (${cl_yellow}$(pwd)${cl_reset})."
+    echo:Warning "Make sure you are running this script from the root of the final monorepo."
+    echo:Info "Will be created the destination directory: ${cl_yellow}$(pwd)/${target_subdir}${cl_reset}"
   fi
 
   return 0
@@ -226,19 +163,25 @@ function is_commit_applied() {
   local target_subdir="$2"
   local result=""
 
-  if [ "$DRY_RUN" = true ]; then
-    echo -e "${cl_cyan}dry run: git log --grep="^${commit_message_subject}$" -F --format=%h -- "${target_subdir}"${cl_reset}" >&2
-    # In dry-run mode, we simulate that no commits match
-    return 0
-  fi
+  # FIXME (olku): subject should be properly escaped for using in grep command (otherwise use -F)
+  # local escaped_subject=$(echo "$commit_message_subject" | gsed 's#[][\^$.|?*+(){}\\-]#\\&#g')
+
+  # FIXME (olku): what if git contains multiple commits with the same subject?
 
   # Check if a commit with this exact message subject already exists
   # -F: Use fixed string matching (treat subject literally)
-  # --grep="^${commit_message_subject}$": Match the entire subject line exactly
+  # --grep="^${escaped_subject}$": Match the entire subject line exactly
   # --format=%h: Output only the abbreviated commit hash if found
   # --: Separator indicating paths follow
   # "${target_subdir}": Limit the log search to this specific subdirectory
-  result=$(git log --grep="^${commit_message_subject}$" -F --format=%h -- "${target_subdir}")
+
+  # we execute it anyway, its a search operation read-only and safe
+  result=$(git log --grep="${commit_message_subject}" -F --format=%h -- "${target_subdir}")
+
+  [ "$DRY_RUN" = true ] && exec:git log --grep="${commit_message_subject}" -F --format=%h -- "${target_subdir}"
+
+  #result=$(git log --grep="${commit_message_subject}" -F --format=%h)
+  #echo:Dump "found in logs: ${cl_purple}${result/$'\n'/$', '}${cl_reset}"
 
   # Output the result - will be captured by the caller
   echo "$result"
@@ -249,7 +192,7 @@ function is_commit_applied() {
 #   $@: All arguments are passed to git command
 # Returns:
 #   Command exit code or 0 if in dry-run mode
-function execute_git() {
+function exec:git() {
   if [ "$DRY_RUN" = true ]; then
     echo -e "${cl_cyan}dry run: git $*${cl_reset}" >&2
     return 0
@@ -284,15 +227,18 @@ function execute_git() {
 function apply_single_patch() {
   local patch_file="$1"
   local target_subdir="$2"
+  local commit_message_subject="$3"
   local commit_hash="$4"
   local repo_name="$5"
   local patch_basename
+
+  echo:Info "${cl_red}Applying${cl_reset}   : ${cl_yellow}${patch_file}${cl_reset}"
 
   patch_basename=$(basename "${patch_file}")
   echo "  Commit subject not found in ${target_subdir}. Applying patch..."
 
   # Step 1: Check if the patch applies cleanly
-  if ! execute_git apply --check --directory="${target_subdir}" "${patch_file}"; then
+  if ! exec:git apply --check --directory="${target_subdir}" "${patch_file}"; then
     echo:Error "Patch ${patch_basename} (Commit ${commit_hash}) does not apply cleanly. Aborting ${repo_name} processing."
     # Echo the error info that will be captured as failed_patch_info
     echo "${patch_basename} (Commit ${commit_hash})"
@@ -300,11 +246,11 @@ function apply_single_patch() {
   fi
 
   # Step 2: Apply the patch
-  if ! execute_git apply --directory="${target_subdir}" "${patch_file}"; then
+  if ! exec:git apply --directory="${target_subdir}" "${patch_file}"; then
     echo:Error "Failed to apply patch ${patch_basename} (Commit ${commit_hash}) even after check."
     echo "  Attempting to clean working directory..."
-    execute_git restore "${target_subdir}"
-    execute_git restore --staged "${target_subdir}"
+    exec:git restore "${target_subdir}"
+    exec:git restore --staged "${target_subdir}"
     # Echo the error info that will be captured as failed_patch_info
     echo "${patch_basename} (Commit ${commit_hash})"
     return 1
@@ -332,21 +278,21 @@ function stage_and_commit_patch() {
   patch_basename=$(basename "${patch_file}")
 
   # Stage the changes
-  if ! execute_git add "${target_subdir}"; then
+  if ! exec:git add "${target_subdir}"; then
     echo:Error "Failed to stage changes for patch ${patch_basename} (Commit ${commit_hash})."
     echo "  Attempting to clean working directory and index..."
-    execute_git restore --staged "${target_subdir}"
-    execute_git restore "${target_subdir}"
+    exec:git restore --staged "${target_subdir}"
+    exec:git restore "${target_subdir}"
     # Echo the error info that will be captured as failed_patch_info
     echo "${patch_basename} (Commit ${commit_hash})"
     return 1
   fi
 
   # Commit the changes
-  if ! execute_git commit -m "${commit_message_subject}"; then
+  if ! exec:git commit -m "${commit_message_subject}"; then
     echo:Error "Failed to commit changes for patch ${patch_basename} (Commit ${commit_hash})."
     echo "  Attempting to clean index..."
-    execute_git restore --staged "${target_subdir}"
+    exec:git restore --staged "${target_subdir}"
     # Echo the error info that will be captured as failed_patch_info
     echo "${patch_basename} (Commit ${commit_hash})"
     return 1
@@ -395,17 +341,17 @@ function print_patch_summary() {
 # Main function to process patches for a single source repository
 # Arguments:
 #   $1: repo_name (string, for logging)
-#   $2: patch_dir (string, path)
-#   $3: log_file (string, path)
-#   $4: target_subdir (string, path relative to current dir)
+#   $2: target_subdir (string, path relative to current dir)
+#   $3: patch_dir (string, path)
+#   $4: log_file (string, path)
 # Returns:
 #   0 on success, 1 on failure
 function apply_patches() {
   # Assign arguments to named local variables for clarity
   local repo_name="$1"
-  local patch_dir="$2"
-  local log_file="$3"
-  local target_subdir="$4"
+  local target_subdir="$2"
+  local patch_dir="$3"
+  local log_file="$4"
   local status=0
 
   # Initialize counters and state variables
@@ -424,11 +370,10 @@ function apply_patches() {
 
   # Count total patches for progress tracking
   total_patches=$(wc -l <"$log_file")
-
-  echo:Sync "Processing patches for ${repo_name} into ${target_subdir}"
+  echo:Sync "Total patches: ${cl_green}${total_patches}${cl_reset}"
 
   # Validate inputs
-  if ! validate_patch_inputs "$log_file" "$patch_dir" "$target_subdir"; then
+  if ! validate_patch_inputs "$log_file" "$target_subdir" "$patch_dir"; then
     return 1
   fi
 
@@ -455,8 +400,8 @@ function apply_patches() {
 
     # Print info about current patch
     echo ""
-    echo:Sync "Processing Commit ${commit_hash} (Patch ${patch_index}: $(basename "${patch_file}"))"
-    echo:Sync "  Subject: ${commit_message_subject:0:70}..."
+    echo:Sync "Commit Hash: ${st_b}${commit_hash:0:7}${st_no_b} (Patch ${cl_green}${patch_index}${cl_reset}: ${cl_yellow}$(basename "${patch_file}")${cl_reset})"
+    echo:Sync "Commit Subj: ${st_i}${cl_gray}${commit_message_subject:0:70}${cl_reset}${st_no_i}"
 
     # Check if commit already exists
     existing_commit_hash=$(is_commit_applied "$commit_message_subject" "$target_subdir")
@@ -477,7 +422,8 @@ function apply_patches() {
       applied_count=$((applied_count + 1))
     else
       # Skip patch - already applied
-      echo:Sync "  Skipping: Commit subject already found in history for ${target_subdir} (Example commit: ${existing_commit_hash})."
+      local hashes=$(echo "$existing_commit_hash" | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+      echo:Info "${cl_gray}skipping${cl_reset}: subject found in commit(s): ${cl_purple}${hashes}${cl_reset}"
       skipped_count=$((skipped_count + 1))
     fi
   done <"${log_file}"
@@ -497,9 +443,9 @@ function cleanup() {
 
   if [ -n "$target_dir" ] && [ -d "$target_dir" ]; then
     echo:Sync "Cleaning up working directory..."
-    # Use execute_git to honor dry-run mode
-    execute_git restore --staged "$target_dir" 2>/dev/null
-    execute_git restore "$target_dir" 2>/dev/null
+    # Use exec:git to honor dry-run mode
+    exec:git restore --staged "$target_dir" 2>/dev/null
+    exec:git restore "$target_dir" 2>/dev/null
   fi
 
   echo:Sync "Script exiting with code: ${exit_code}"
@@ -641,9 +587,9 @@ function generate_patches() {
 # Main execution function
 # Arguments:
 #   $1: Repository name (string) or path to repository when using --patches
-#   $2: Path to patch directory (string)
-#   $3: Path to changes log file (string)
-#   $4: Target subdirectory (string)
+#   $2: Target subdirectory (string)
+#   $3: Path to patch directory (string)
+#   $4: Path to changes log file (string)
 main() {
   # First, verify dependencies
   verify_dependencies >&2 # to stderr
@@ -656,6 +602,7 @@ main() {
       ;;
     -d | --dry-run)
       DRY_RUN=true
+      echo:Info "${cl_yellow}Running in DRY-RUN mode. No changes will be made.${cl_reset}"
       shift
       ;;
     -v | --verbose)
@@ -688,9 +635,9 @@ main() {
 
   # Assign command-line arguments to descriptive variables
   ARG_REPO_NAME="$1"
-  ARG_PATCH_DIR="${2:-"patches"}"
-  ARG_LOG_FILE="${3:-"patches/commits.log"}"
-  ARG_TARGET_SUBDIR="${4:-"repo1"}"
+  ARG_TARGET_SUBDIR="${2:-"repo1"}"
+  ARG_PATCH_DIR="${3:-"patches"}"
+  ARG_LOG_FILE="${4:-"${ARG_PATCH_DIR}/commits.log"}"
 
   # If we're generating patches
   if [ "$PATCHES_COUNT" -gt 0 ]; then
@@ -707,23 +654,28 @@ main() {
     exit 0
   fi
 
+  # verify that ARG_REPO_NAME is provided
+  if [ -z "$ARG_REPO_NAME" ]; then
+    echo:Error "Repository name is required"
+    print_help $WRONG_PARAMS_NUMBER
+  elif [ "$ARG_REPO_NAME" == "." ]; then
+    # resolve . to current directory name
+    ARG_REPO_NAME=$(basename "$(pwd)")
+  fi
+
   # --- Pre-Execution Checks and Info ---
   echo:Sync "Starting patch application process..."
-  echo:Sync "Repository Name: ${ARG_REPO_NAME}"
-  echo:Sync "Patch Directory: ${ARG_PATCH_DIR}"
+  echo:Sync "Repository Name: ${cl_green}${ARG_REPO_NAME}${cl_reset}"
+  echo:Sync "Patch Directory: ${cl_yellow}${ARG_PATCH_DIR}${cl_reset}"
 
-  # Print dry-run warning if enabled
-  if [ "$DRY_RUN" = true ]; then
-    echo:Sync "${cl_yellow}Running in DRY-RUN mode. No changes will be made.${cl_reset}"
-  fi
-  echo:Sync "Log File:        ${ARG_LOG_FILE}"
-  echo:Sync "Target Subdir:   ${ARG_TARGET_SUBDIR}"
-  echo:Sync "Current Dir:     $(pwd)" # Verify script is running in the expected directory
+  echo:Sync "Log File:        ${cl_yellow}${ARG_LOG_FILE}${cl_reset}"
+  echo:Sync "Target Subdir:   ${cl_yellow}${ARG_TARGET_SUBDIR}${cl_reset}"
+  echo:Sync "Current Dir:     ${cl_yellow}$(pwd)${cl_reset}" # Verify script is running in the expected directory
   echo:Sync ""
 
   # --- Execute Patch Application ---
   # Call the main processing function with the provided arguments
-  apply_patches "${ARG_REPO_NAME}" "${ARG_PATCH_DIR}" "${ARG_LOG_FILE}" "${ARG_TARGET_SUBDIR}"
+  apply_patches "${ARG_REPO_NAME}" "${ARG_TARGET_SUBDIR}" "${ARG_PATCH_DIR}" "${ARG_LOG_FILE}"
   local status=$?
 
   # --- Post-Execution Reporting ---
