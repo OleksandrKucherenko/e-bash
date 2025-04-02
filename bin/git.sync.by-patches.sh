@@ -6,6 +6,8 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+DEBUG=${DEBUG:-"sync,error,info,success,warning,dump"}
+
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.scripts" && pwd)"
 
@@ -18,11 +20,12 @@ source "${E_BASH}/_dependencies.sh"
 source "${E_BASH}/_logger.sh"
 
 # Initialize logger for this script
-logger "sync" "$@" && logger:prefix "sync" "[${cl_blue}sync${cl_reset}] " && logger:redirect "sync" ">&2"
-logger "error" "$@" && logger:prefix "error" "[${cl_red}error${cl_reset}] " && logger:redirect "error" ">&2"
-logger "info" "$@" && logger:prefix "info" "[${cl_cyan}info${cl_reset}] " && logger:redirect "info" ">&2"
-logger "success" "$@" && logger:prefix "success" "[${cl_green}success${cl_reset}] " && logger:redirect "success" ">&2"
-logger "warning" "$@" && logger:prefix "warning" "[${cl_yellow}warning${cl_reset}] " && logger:redirect "warning" ">&2"
+logger:init sync "[${cl_blue}sync${cl_reset}] "
+logger:init error "[${cl_red}errr${cl_reset}] " ">&2"
+logger:init info "[${cl_cyan}info${cl_reset}] " ">&2"
+logger:init success "[${cl_green}done${cl_reset}] "
+logger:init warning "[${cl_yellow}warn${cl_reset}] " ">&2"
+logger:init dump "  ${cl_gray}|${cl_reset}  " ">&2"
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Script to apply patches from ONE source repository (e.g., repo1 OR repo2)
@@ -98,6 +101,9 @@ DRY_RUN=false
 
 ## Flag for controlling git command output verbosity
 SILENT_GIT=false
+
+## Number of patches to generate (when --patches is specified)
+PATCHES_COUNT=0
 
 # --- Function Definitions ---
 
@@ -374,7 +380,7 @@ function print_patch_summary() {
   local status=0
 
   echo ""
-  info:GitSync "Finished processing for ${repo_name}"
+  echo:Sync "Finished processing for ${repo_name}"
   echo:Sync "  Applied: ${applied_count}"
   echo:Sync "  Skipped: ${skipped_count}"
 
@@ -419,7 +425,7 @@ function apply_patches() {
   # Count total patches for progress tracking
   total_patches=$(wc -l <"$log_file")
 
-  info:GitSync "Processing patches for ${repo_name} into ${target_subdir}"
+  echo:Sync "Processing patches for ${repo_name} into ${target_subdir}"
 
   # Validate inputs
   if ! validate_patch_inputs "$log_file" "$patch_dir" "$target_subdir"; then
@@ -525,7 +531,7 @@ function print_help() {
   echo "Usage: $0 [options] <RepoName> <PathToPatchDir> <PathToChangesLog> <TargetSubdir>"
   echo ""
   echo "Where:"
-  echo "  <RepoName>         The name of the source repository (for logging)"
+  echo "  <RepoName>         The name of the source repository (for logging) or path to repository"
   echo "  <PathToPatchDir>   Directory containing the numbered patch files"
   echo "  <PathToChangesLog> File containing commit hashes and messages"
   echo "  <TargetSubdir>     Target subdirectory in the monorepo"
@@ -535,13 +541,16 @@ function print_help() {
   echo "  -d, --dry-run      Show what would be done without making any changes"
   echo "  -v, --verbose      Show detailed git command output"
   echo "      --version      Show version information and exit"
+  echo "      --patches N    Generate patches from the last N commits in RepoName repository"
   echo ""
   echo "Example:"
   echo "  $0 \"Repo1\" \"/path/to/source/repo1/patches\" \"/path/to/source/repo1/changes.log\" \"repo1_subfolder\""
   echo "  $0 --dry-run \"Repo1\" \"/path/to/source/repo1/patches\" \"/path/to/source/repo1/changes.log\" \"repo1_subfolder\""
+  echo "  $0 --patches 5 \"/path/to/repo\" \"patches\" \"changes.log\" \"target_folder\""
   echo ""
   echo "Arguments:"
-  echo "  <RepoName>:         A name for logging purposes (e.g., \"Repo1\"). Enclose in quotes if it contains spaces."
+  echo "  <RepoName>:         A name for logging purposes or path to repository when using --patches."
+  echo "                      Enclose in quotes if it contains spaces."
   echo "  <PathToPatchDir>:   Absolute or relative path to the directory containing sequentially named .patch files."
   echo "  <PathToChangesLog>: Absolute or relative path to the changes.log file (format: '<hash> <subject>')."
   echo "  <TargetSubdir>:     The subdirectory within this repository (relative path) to apply patches to."
@@ -554,10 +563,84 @@ function print_help() {
   fi
 }
 
-# --- Main Function ---
+# --- Main Functions ---
+
+# Function to generate patches from the last N commits in a repository
+# Arguments:
+#   $1: repo_path (string, path to repository on disk)
+#   $2: patch_dir (string, output directory for patches)
+#   $3: log_file (string, output file for commit log)
+#   $4: count (integer, number of commits to process)
+# Returns:
+#   0 on success, 1 on failure
+function generate_patches() {
+  local repo_path="$1"
+  local patch_dir="$2"
+  local log_file="$3"
+  local count="$4"
+  local current_dir
+  local status=0
+
+  # Save current directory to return to it later
+  current_dir=$(pwd)
+
+  absolute_repo_path=$(cd "${repo_path}" && pwd)
+  echo:Sync "Generating ${cl_green}${count}${cl_reset} patches from last commits of the repo: ${cl_yellow}${absolute_repo_path}${cl_reset}"
+
+  # Verify repository path exists and is a git repository
+  if [ ! -d "${repo_path}" ]; then
+    echo:Error "Repository path does not exist: ${repo_path}"
+    return 1
+  fi
+
+  # Change to repository directory
+  cd "${repo_path}" || {
+    echo:Error "Failed to change to repository directory: ${repo_path}"
+    return 1
+  }
+
+  # Verify it's a git repository
+  if [ ! -d ".git" ] && ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo:Error "Not a git repository: ${repo_path}"
+    cd "${current_dir}" || true
+    return 1
+  fi
+
+  # Create patches directory if it doesn't exist
+  mkdir -p "${patch_dir}" || {
+    echo:Error "Failed to create patches directory: ${patch_dir}"
+    cd "${current_dir}" || true
+    return 1
+  }
+
+  # Remove any existing patches
+  rm -f "${patch_dir}"/*.patch 2>/dev/null
+
+  # Generate patches
+  if ! git format-patch -${count} --output-directory="${patch_dir}" | log:Dump; then
+    echo:Error "Failed to generate patches"
+    status=1
+  else
+    echo:Success "Successfully generated ${cl_green}$(wc -l <"${log_file}")${cl_reset} patches in ${cl_yellow}${patch_dir}${cl_reset}"
+  fi
+
+  # Generate changes.log
+  if ! git log --pretty="format:%H %s" --reverse -${count} >"${log_file}"; then
+    echo:Error "Failed to generate commit log"
+    status=1
+  else
+    echo:Success "Successfully generated commit log at ${cl_yellow}${log_file}${cl_reset}"
+  fi
+
+  # Change back to original directory
+  cd "${current_dir}" || true
+
+  return ${status}
+}
+
 # Main execution function
 # Arguments:
-#   $1: Repository name (string)
+#   $1: Repository name (string) or path to repository when using --patches
 #   $2: Path to patch directory (string)
 #   $3: Path to changes log file (string)
 #   $4: Target subdirectory (string)
@@ -582,6 +665,16 @@ main() {
     --version)
       print_version
       ;;
+    --patches)
+      shift
+      if [[ $1 =~ ^[0-9]+$ ]]; then
+        PATCHES_COUNT="$1"
+        shift
+      else
+        echo:Error "--patches <N> requires a numeric argument"
+        print_help $WRONG_PARAMS_NUMBER
+      fi
+      ;;
     -*)
       echo:Error "Unknown option: $1"
       print_help $WRONG_PARAMS_NUMBER
@@ -593,17 +686,26 @@ main() {
     esac
   done
 
-  # Check if the correct number of command-line arguments is provided
-  if [ "$#" -ne 4 ]; then
-    # Print usage instructions if arguments are incorrect and exit with error code
-    print_help $WRONG_PARAMS_NUMBER
-  fi
-
   # Assign command-line arguments to descriptive variables
   ARG_REPO_NAME="$1"
   ARG_PATCH_DIR="${2:-"patches"}"
-  ARG_LOG_FILE="${3:-"commits.log"}"
-  ARG_TARGET_SUBDIR="${4:-"repo1_subfolder"}"
+  ARG_LOG_FILE="${3:-"patches/commits.log"}"
+  ARG_TARGET_SUBDIR="${4:-"repo1"}"
+
+  # If we're generating patches
+  if [ "$PATCHES_COUNT" -gt 0 ]; then
+    # In this case, ARG_REPO_NAME is a path to the repository
+    if ! generate_patches "${ARG_REPO_NAME}" "${ARG_PATCH_DIR}" "${ARG_LOG_FILE}" "$PATCHES_COUNT"; then
+      echo:Error "Failed to generate patches"
+      return 1
+    fi
+
+    # Extract repo name for logging from repo path
+    local repo_dir_name
+    repo_dir_name=$(basename "${ARG_REPO_NAME}")
+    ARG_REPO_NAME="${repo_dir_name}"
+    exit 0
+  fi
 
   # --- Pre-Execution Checks and Info ---
   echo:Sync "Starting patch application process..."
@@ -617,7 +719,6 @@ main() {
   echo:Sync "Log File:        ${ARG_LOG_FILE}"
   echo:Sync "Target Subdir:   ${ARG_TARGET_SUBDIR}"
   echo:Sync "Current Dir:     $(pwd)" # Verify script is running in the expected directory
-  echo:Sync "(Ensure git user.name and user.email are correctly configured)"
   echo:Sync ""
 
   # --- Execute Patch Application ---

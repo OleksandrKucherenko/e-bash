@@ -23,18 +23,47 @@ The synchronization process occurs in two main phases:
 
 ## Methods for Generating Patches
 
-The following instructions should be executed from within the source repository after switching to the correct branch and pulling the latest changes:
+There are two primary ways to generate patches:
+
+1. **Using the integrated `--patches` flag (recommended)** - Automatically generates patches and changes.log
+2. **Manual preparation** - Generate patches and changes.log yourself
+
+### 1. Using the Integrated `--patches` Flag (Recommended)
+
+The `git.sync.by-patches.sh` script now includes a `--patches N` flag that automates patch generation and synchronization in one step:
+
+```bash
+# From the monorepo root directory
+./bin/git.sync.by-patches.sh \
+  --patches 5 \
+  "/path/to/source/repo" \
+  "patches" \
+  "changes.log" \
+  "subfolder/in/monorepo"
+```
+
+In this case, the script will:
+1. Navigate to the source repository (`/path/to/source/repo`)
+2. Generate patch files for the last 5 commits in the `patches` directory
+3. Create a `changes.log` file with the commit history
+4. Apply these patches to the specified subdirectory in the monorepo
+
+This approach is faster and less error-prone than manually generating patches.
+
+### 2. Manual Patch Generation
+
+If you prefer to generate patches manually, follow these instructions from within the source repository after switching to the correct branch and pulling the latest changes:
 
 ```bash
 git checkout main  # Or your primary development branch
 git pull origin main
 ```
 
-### 1. Patches for the Last N Commits
+#### 2.1 Patches for the Last N Commits
 
 This method is useful when you know exactly how many recent commits you need to transfer.
 
-#### Generate Patches
+##### Generate Patches
 
 Replace `N` with the number of commits:
 
@@ -46,7 +75,7 @@ git format-patch -${N} --output-directory=patches
 
 This creates files like `patches/0001-....patch` through `patches/000N-....patch`.
 
-#### Generate changes.log
+##### Generate changes.log
 
 Use the same `N`. The `--reverse` flag ensures the commits in the changes.log are in the same order as the patches (oldest first), which is required by the `git.sync.by-patches.sh` script:
 
@@ -113,16 +142,34 @@ git log --pretty="format:%H %s" --reverse ${HASH}..HEAD > changes.log
 
 ## Using the Synchronization Script
 
-Once you have generated the patches and changes.log, you can use the `git.sync.by-patches.sh` script to apply them to your target monorepo:
+### Standard Usage (With Pre-Generated Patches)
+
+If you've generated patches manually, you can use the `git.sync.by-patches.sh` script to apply them to your target monorepo:
 
 ```bash
 # Run from the ROOT directory of your target monorepo
 ./bin/git.sync.by-patches.sh \
-  --repo-name="source-repo-name" \
-  --patch-dir="/path/to/source/repo/patches" \
-  --log-file="/path/to/source/repo/changes.log" \
-  --target-subdir="subfolder/in/monorepo"
+  "source-repo-name" \
+  "/path/to/source/repo/patches" \
+  "/path/to/source/repo/changes.log" \
+  "subfolder/in/monorepo"
 ```
+
+### Automated Patch Generation and Application
+
+To generate patches and apply them in a single command, use the `--patches` flag:
+
+```bash
+# Run from the ROOT directory of your target monorepo
+./bin/git.sync.by-patches.sh \
+  --patches 5 \
+  "/path/to/source/repo" \
+  "patches" \
+  "changes.log" \
+  "subfolder/in/monorepo"
+```
+
+With this method, the first parameter is the path to the source repository on disk instead of just a name for logging.
 
 ### Important Notes
 
