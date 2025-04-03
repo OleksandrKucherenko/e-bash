@@ -56,13 +56,36 @@ function verify_dependencies() {
   dependency gawk "5.*.*" "brew install gawk"
 }
 
-# Function to show progress percentage
+# Track if we've entered alternate screen mode
+PROGRESS_USING_ALT_SCREEN=false
+
+# Function to enter alternate screen for progress display
+function enter_progress_screen() {
+  if [ "$PROGRESS_USING_ALT_SCREEN" = false ]; then
+    tput smcup # Save current screen and enter alternate screen buffer
+    PROGRESS_USING_ALT_SCREEN=true
+  fi
+}
+
+# Function to exit alternate screen and return to normal
+function exit_progress_screen() {
+  if [ "$PROGRESS_USING_ALT_SCREEN" = true ]; then
+    tput rmcup # Return to normal screen buffer
+    PROGRESS_USING_ALT_SCREEN=false
+  fi
+}
+
+# Function to show progress percentage at top right of terminal
 # Arguments:
 #   $1: current (number)
 #   $2: total (number)
+#   $3: (optional) output_to_stderr - set to 'true' to output to stderr, default is stdout
+#   $4: (optional) use_alt_screen - set to 'true' to use alternate screen buffer, default is false
 function show_progress() {
   local current=$1
   local total=$2
+  local output_to_stderr=${3:-false}
+  local use_alt_screen=${4:-false}
   local width=50
   local percent=$((current * 100 / total))
   local completed=$((width * current / total))
@@ -76,8 +99,70 @@ function show_progress() {
     progress+=" "
   done
 
-  # Print progress bar with percentage
-  printf "\r[%s] %d%% (%d/%d)" "$progress" "$percent" "$current" "$total"
+  # Create the progress message
+  local progress_msg
+  progress_msg=$(printf "[%s] %d%% (%d/%d)" "$progress" "$percent" "$current" "$total")
+  local msg_length=${#progress_msg}
+
+  # If we've reached 100%, print it as normal output and exit alternate screen if using it
+  if [ "$percent" -eq 100 ]; then
+    # Exit alternate screen if we were using it
+    if [ "$use_alt_screen" = true ]; then
+      exit_progress_screen
+    fi
+
+    # Print final progress in normal screen
+    if [ "$output_to_stderr" = true ]; then
+      printf "\n%s\n" "$progress_msg" >&2
+    else
+      printf "\n%s\n" "$progress_msg"
+    fi
+    return
+  fi
+
+  # Enter alternate screen if requested
+  if [ "$use_alt_screen" = true ]; then
+    enter_progress_screen
+  fi
+
+  # Get terminal width
+  local term_width
+  term_width=$(tput cols)
+
+  # Calculate position for right alignment (column position)
+  local col=$((term_width - msg_length))
+
+  # If we're in alternate screen, we can position centrally
+  if [ "$use_alt_screen" = true ]; then
+    # Get terminal height and center the progress bar
+    local term_height
+    term_height=$(tput lines)
+    local mid_line=$((term_height / 2))
+
+    # Clear the screen once we're in alternate mode
+    tput clear
+
+    # Position cursor at center of screen
+    tput cup "$mid_line" "$((term_width / 2 - msg_length / 2))"
+  else
+    # Using the original top-right corner method
+    # Save current cursor position
+    tput sc
+    # Move to the top right position
+    tput cup 0 "$col"
+  fi
+
+  # Print progress bar with percentage using the selected output stream
+  if [ "$output_to_stderr" = true ]; then
+    printf "%s" "$progress_msg" >&2
+  else
+    printf "%s" "$progress_msg"
+  fi
+
+  # Restore cursor position if not using alternate screen
+  if [ "$use_alt_screen" = false ]; then
+    tput rc
+  fi
 }
 
 # Function to validate input parameters for patch processing
