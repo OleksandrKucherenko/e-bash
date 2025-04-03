@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-02
+## Last revisit: 2025-04-03
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -161,12 +161,15 @@ function parse_commit_line() {
 function is_commit_applied() {
   local commit_message_subject="$1"
   local target_subdir="$2"
-  local result=""
+  local resultMatch="" resultGrep=""
 
   # FIXME (olku): subject should be properly escaped for using in grep command (otherwise use -F)
-  # local escaped_subject=$(echo "$commit_message_subject" | gsed 's#[][\^$.|?*+(){}\\-]#\\&#g')
+  # git log --grep - has different escape rules in compare to GNU grep command, `#()` - are allowed as is
+  # GNU grep escaping - gsed 's#[][\#\^$.|?*+(){}\\-]#\\&#g'
+  local escaped_subject=$(echo "$commit_message_subject" | gsed 's#[][\^$.|?*+{}\\-]#\\&#g')
 
-  # FIXME (olku): what if git contains multiple commits with the same subject?
+  # FIXME (olku): what if git contains multiple commits with the same subject (first
+  # part of commit message is the same)?
 
   # Check if a commit with this exact message subject already exists
   # -F: Use fixed string matching (treat subject literally)
@@ -175,16 +178,21 @@ function is_commit_applied() {
   # --: Separator indicating paths follow
   # "${target_subdir}": Limit the log search to this specific subdirectory
 
-  # we execute it anyway, its a search operation read-only and safe
-  result=$(git log --grep="${commit_message_subject}" -F --format=%h -- "${target_subdir}")
+  # we execute it anyway, its a search operation, read-only and safe (filter by sub-folder)
+  resultMatch=$(git log --grep="${commit_message_subject}" -F --format=%h -- "${target_subdir}")
+  resultGrep=$(git log --grep="^${escaped_subject}$" --format=%h -- "${target_subdir}")
 
-  [ "$DRY_RUN" = true ] && exec:git log --grep="${commit_message_subject}" -F --format=%h -- "${target_subdir}"
+  [ "$DRY_RUN" = true ] && exec:git log --grep="${commit_message_subject}" -F --format=%h
+  [ "$DRY_RUN" = true ] && exec:git log --grep="^${escaped_subject}$" --format=%h
 
-  #result=$(git log --grep="${commit_message_subject}" -F --format=%h)
-  #echo:Dump "found in logs: ${cl_purple}${result/$'\n'/$', '}${cl_reset}"
+  # we execute it anyway, its a search operation, read-only and safe (from the root of repo)
+  root=$(TZ=UTC git log --grep="${commit_message_subject}" -F --date=format:'%Y-%m-%d' --format="%h::%cr::%cd")
+  regex=$(TZ=UTC git log --grep="^${escaped_subject}$" --date=format:'%Y-%m-%d' --format="%h::%cr::%cd")
+  echo:Dump "found in root logs: ${cl_purple}$(echo "$root" | tr '\n' ',' | sed 's/,$//g; s/,/, /g')${cl_reset}"
+  echo:Dump "found in via regex: ${cl_purple}$(echo "$regex" | tr '\n' ',' | sed 's/,$//g; s/,/, /g')${cl_reset}"
 
   # Output the result - will be captured by the caller
-  echo "$result"
+  echo "$resultMatch"
 }
 
 # Execute git command with dry-run support
