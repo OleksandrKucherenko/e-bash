@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-03
+## Last revisit: 2025-04-05
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -14,7 +14,7 @@ source "$E_BASH/_dependencies.sh"
 # Verify dependencies
 dependency tmux "3.5a" "brew install tmux" "-VV"
 
-readonly PROGRESS_HEIGHT=5
+readonly PROGRESS_HEIGHT=2 # minimal is 2 lines, otherwise last line will be not visible
 
 # Generate a unique session name using PID to avoid duplicates
 SESSION_NAME="progress_demo_$$"

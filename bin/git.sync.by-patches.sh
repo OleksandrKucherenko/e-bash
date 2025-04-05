@@ -2,24 +2,28 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-03
+## Last revisit: 2025-04-05
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-DEBUG=${DEBUG:-"sync,error,info,success,warning,dump"}
+DEBUG=${DEBUG:-"sync,error,info,success,warning,dump,tmux,loader"}
 readonly VERSION="1.0.0"
 
 # shellcheck disable=SC2155
-[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.scripts" && pwd)"
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "$(realpath "${BASH_SOURCE[0]}")")/../.scripts" && pwd)"
 
 # Load e-bash dependencies management
 # shellcheck disable=SC1090 source=../.scripts/_colors.sh
 source /dev/null
+# shellcheck disable=SC1090 source=../.scripts/_logger.sh
+source /dev/null
+# shellcheck disable=SC1090 source=../.scripts/_commons.sh
+source /dev/null
 # shellcheck disable=SC1090 source=../.scripts/_dependencies.sh
 source "${E_BASH}/_dependencies.sh"
-# shellcheck disable=SC1090 source=../.scripts/_logger.sh
-source "${E_BASH}/_logger.sh"
+# shellcheck disable=SC1090 source=../.scripts/_tmux.sh
+source "${E_BASH}/_tmux.sh"
 
 # Initialize logger for this script
 logger:init sync "[${cl_blue}sync${cl_reset}] "
@@ -41,51 +45,76 @@ SILENT_GIT=false
 ## Number of patches to generate (when --patches is specified)
 PATCHES_COUNT=0
 
+# Flag to track if we're using tmux progress display
+USE_TMUX_PROGRESS=true
+
+# FIFO path for tmux progress display
+readonly TMUX_PROGRESS_FIFO="$(mktemp --dry-run -t "git_sync_progress_$$")"
+
+# redefine the TMUX session name for tmux:ensure_session
+#readonly TMUX_SESSION_NAME="git_sync_$$"
+
 # --- Function Definitions ---
 
 # Function to verify dependencies
 # Returns:
 #   none
 function verify_dependencies() {
-  echo:Sync "Verifying dependencies..."
-
-  # Git is required for all operations
   dependency git "2.*.*" "brew install git"
   dependency ggrep "3.*" "brew install grep"
   dependency gsed "4.*" "brew install gnu-sed"
   dependency gawk "5.*.*" "brew install gawk"
 }
 
-# Track if we've entered alternate screen mode
-PROGRESS_USING_ALT_SCREEN=false
-
-# Function to enter alternate screen for progress display
-function enter_progress_screen() {
-  if [ "$PROGRESS_USING_ALT_SCREEN" = false ]; then
-    tput smcup # Save current screen and enter alternate screen buffer
-    PROGRESS_USING_ALT_SCREEN=true
+# Function to initialize progress display (either tmux or standard)
+# Arguments:
+#   $1: session_name (string, optional) - Session name for tmux
+# Returns:
+#   0 on success, 1 on failure
+function init_progress() {
+  local args=$@
+  
+  if [ "$USE_TMUX_PROGRESS" = true ]; then
+    # Try to initialize tmux session if needed
+    if ! tmux:ensure_session $args; then
+      # If tmux session failed, fall back to standard
+      USE_TMUX_PROGRESS=false
+      echo:Warning "Failed to start tmux session. Using standard progress display."
+      return 1
+    fi
+    
+    # If now in tmux, initialize the progress display
+    if [ -n "$TMUX" ]; then
+      # initialize with custom FIFO name
+      tmux:init_progress "$TMUX_PROGRESS_FIFO"
+      return 0
+    fi
   fi
+  
+  # If we're not using tmux or tmux init failed
+  echo:Info "Using standard progress display."
+  return 0
 }
 
-# Function to exit alternate screen and return to normal
-function exit_progress_screen() {
-  if [ "$PROGRESS_USING_ALT_SCREEN" = true ]; then
-    tput rmcup # Return to normal screen buffer
-    PROGRESS_USING_ALT_SCREEN=false
-  fi
-}
-
-# Function to show progress percentage at top right of terminal
+# Function to show progress percentage 
 # Arguments:
 #   $1: current (number)
 #   $2: total (number)
-#   $3: (optional) output_to_stderr - set to 'true' to output to stderr, default is stdout
-#   $4: (optional) use_alt_screen - set to 'true' to use alternate screen buffer, default is false
+#   $3: prefix (string, optional) - Prefix for the progress message
+# Returns:
+#   0 on success
 function show_progress() {
   local current=$1
   local total=$2
-  local output_to_stderr=${3:-false}
-  local use_alt_screen=${4:-false}
+  local prefix="${3:-"Progress"}"
+  
+  # If we're using tmux progress, delegate to tmux:show_progress_bar
+  if [ "$USE_TMUX_PROGRESS" = true ] && [ -n "$TMUX" ]; then
+    tmux:show_progress_bar "$current" "$total" "$prefix"
+    return 0
+  fi
+  
+  # Fall back to standard terminal progress display
   local width=50
   local percent=$((current * 100 / total))
   local completed=$((width * current / total))
@@ -99,70 +128,25 @@ function show_progress() {
     progress+=" "
   done
 
-  # Create the progress message
-  local progress_msg
-  progress_msg=$(printf "[%s] %d%% (%d/%d)" "$progress" "$percent" "$current" "$total")
-  local msg_length=${#progress_msg}
-
-  # If we've reached 100%, print it as normal output and exit alternate screen if using it
+  # Create and display the progress message
+  printf "\r%s: [%s] %d%% (%d/%d)" "$prefix" "$progress" "$percent" "$current" "$total"
+  
+  # Print newline if we've reached 100%
   if [ "$percent" -eq 100 ]; then
-    # Exit alternate screen if we were using it
-    if [ "$use_alt_screen" = true ]; then
-      exit_progress_screen
-    fi
-
-    # Print final progress in normal screen
-    if [ "$output_to_stderr" = true ]; then
-      printf "\n%s\n" "$progress_msg" >&2
-    else
-      printf "\n%s\n" "$progress_msg"
-    fi
-    return
+    printf "\n"
   fi
+  
+  return 0
+}
 
-  # Enter alternate screen if requested
-  if [ "$use_alt_screen" = true ]; then
-    enter_progress_screen
+# Function to clean up progress display resources
+# Returns:
+#   0 on success
+function cleanup_progress() {
+  if [ "$USE_TMUX_PROGRESS" = true ] && [ -n "$TMUX" ]; then
+    tmux:cleanup_progress
   fi
-
-  # Get terminal width
-  local term_width
-  term_width=$(tput cols)
-
-  # Calculate position for right alignment (column position)
-  local col=$((term_width - msg_length))
-
-  # If we're in alternate screen, we can position centrally
-  if [ "$use_alt_screen" = true ]; then
-    # Get terminal height and center the progress bar
-    local term_height
-    term_height=$(tput lines)
-    local mid_line=$((term_height / 2))
-
-    # Clear the screen once we're in alternate mode
-    tput clear
-
-    # Position cursor at center of screen
-    tput cup "$mid_line" "$((term_width / 2 - msg_length / 2))"
-  else
-    # Using the original top-right corner method
-    # Save current cursor position
-    tput sc
-    # Move to the top right position
-    tput cup 0 "$col"
-  fi
-
-  # Print progress bar with percentage using the selected output stream
-  if [ "$output_to_stderr" = true ]; then
-    printf "%s" "$progress_msg" >&2
-  else
-    printf "%s" "$progress_msg"
-  fi
-
-  # Restore cursor position if not using alternate screen
-  if [ "$use_alt_screen" = false ]; then
-    tput rc
-  fi
+  return 0
 }
 
 # Function to validate input parameters for patch processing
@@ -264,20 +248,22 @@ function is_commit_applied() {
   # "${target_subdir}": Limit the log search to this specific subdirectory
 
   # we execute it anyway, its a search operation, read-only and safe (filter by sub-folder)
-  resultMatch=$(git log --grep="${commit_message_subject}" -F --format=%h -- "${target_subdir}")
-  resultGrep=$(git log --grep="^${escaped_subject}$" --format=%h -- "${target_subdir}")
+  # resultMatch=$(git log --grep="${commit_message_subject}" -F --format=%h -- "${target_subdir}")
+  # resultGrep=$(git log --grep="^${escaped_subject}$" --format=%h -- "${target_subdir}")
+  # echo:Dump "found in sub-folder via match: ${cl_purple}${resultMatch}${cl_reset}"
+  # echo:Dump "found in sub-folder via regex: ${cl_purple}${resultGrep}${cl_reset}"
 
-  [ "$DRY_RUN" = true ] && exec:git log --grep="${commit_message_subject}" -F --format=%h
+  #[ "$DRY_RUN" = true ] && exec:git log --grep="${commit_message_subject}" -F --format=%h
   [ "$DRY_RUN" = true ] && exec:git log --grep="^${escaped_subject}$" --format=%h
 
   # we execute it anyway, its a search operation, read-only and safe (from the root of repo)
-  root=$(TZ=UTC git log --grep="${commit_message_subject}" -F --date=format:'%Y-%m-%d' --format="%h::%cr::%cd")
+  # root=$(TZ=UTC git log --grep="${commit_message_subject}" -F --date=format:'%Y-%m-%d' --format="%h::%cr::%cd")
   regex=$(TZ=UTC git log --grep="^${escaped_subject}$" --date=format:'%Y-%m-%d' --format="%h::%cr::%cd")
-  echo:Dump "found in root logs: ${cl_purple}$(echo "$root" | tr '\n' ',' | sed 's/,$//g; s/,/, /g')${cl_reset}"
-  echo:Dump "found in via regex: ${cl_purple}$(echo "$regex" | tr '\n' ',' | sed 's/,$//g; s/,/, /g')${cl_reset}"
+  # echo:Dump "found in root logs: ${cl_purple}$(echo "$root" | tr '\n' ',' | sed 's/,$//g; s/,/, /g')${cl_reset}"
+  #echo:Dump "found in via regex: ${cl_purple}$(echo "$regex" | tr '\n' ',' | sed 's/,$//g; s/,/, /g')${cl_reset}"
 
   # Output the result - will be captured by the caller
-  echo "$resultMatch"
+  echo "$regex"
 }
 
 # Execute git command with dry-run support
@@ -330,25 +316,31 @@ function apply_single_patch() {
   patch_basename=$(basename "${patch_file}")
   echo "  Commit subject not found in ${target_subdir}. Applying patch..."
 
+  pushd "${target_subdir}" 2>/dev/null # jump into directory where patch should be applied
+  echo:Dump "current dir: $(pwd)"
+
   # Step 1: Check if the patch applies cleanly
-  if ! exec:git apply --check --directory="${target_subdir}" "${patch_file}"; then
+  if ! exec:git apply --verbose --check "${patch_file}"; then
     echo:Error "Patch ${patch_basename} (Commit ${commit_hash}) does not apply cleanly. Aborting ${repo_name} processing."
     # Echo the error info that will be captured as failed_patch_info
-    echo "${patch_basename} (Commit ${commit_hash})"
+    echo:Error "${patch_basename} (Commit ${commit_hash})"
+    popd &>/dev/null # jump back to previous directory
     return 1
   fi
 
   # Step 2: Apply the patch
-  if ! exec:git apply --directory="${target_subdir}" "${patch_file}"; then
+  if ! exec:git apply --verbose "${patch_file}"; then
     echo:Error "Failed to apply patch ${patch_basename} (Commit ${commit_hash}) even after check."
     echo "  Attempting to clean working directory..."
     exec:git restore "${target_subdir}"
     exec:git restore --staged "${target_subdir}"
     # Echo the error info that will be captured as failed_patch_info
-    echo "${patch_basename} (Commit ${commit_hash})"
+    echo:Error "${patch_basename} (Commit ${commit_hash})"
+    popd &>/dev/null # jump back to previous directory
     return 1
   fi
 
+  popd &>/dev/null # jump back to previous directory
   return 0
 }
 
@@ -369,29 +361,42 @@ function stage_and_commit_patch() {
   local patch_basename
 
   patch_basename=$(basename "${patch_file}")
+  echo:Dump "curent dir: $(pwd)"
 
   # Stage the changes
   if ! exec:git add "${target_subdir}"; then
     echo:Error "Failed to stage changes for patch ${patch_basename} (Commit ${commit_hash})."
-    echo "  Attempting to clean working directory and index..."
+    echo:Info "Attempting to clean working directory and index..."
     exec:git restore --staged "${target_subdir}"
     exec:git restore "${target_subdir}"
     # Echo the error info that will be captured as failed_patch_info
-    echo "${patch_basename} (Commit ${commit_hash})"
+    echo:Error "${patch_basename} (Commit ${commit_hash})"
     return 1
+  fi
+
+  # confirm that we have something to commit before running the command, otherwise ask user what to do next
+  if [ "$(exec:git status --porcelain ${target_subdir})" = "" ]; then
+    echo:Info "${cl_red}No changes${cl_reset} to commit after patching ${cl_yellow}${patch_basename}${cl_reset} (${st_b}${commit_hash:0:7}${st_no_b})."
+    if [ "$DRY_RUN" = true ]; then return 0; fi # dry run, skip commit
+
+    return 1 # skip commit or do it?
+    # validate:input:yn response no "Proceed with next patch?"
+    # if [ "$response" = false ]; then return 1; fi
+  else
+    echo:Sync "Files changes detected from patch ${cl_yellow}${patch_basename}${cl_reset}."
   fi
 
   # Commit the changes
-  if ! exec:git commit -m "${commit_message_subject}"; then
+  if ! exec:git commit --allow-empty -m "${commit_message_subject}"; then
     echo:Error "Failed to commit changes for patch ${patch_basename} (Commit ${commit_hash})."
-    echo "  Attempting to clean index..."
+    echo:Info "Attempting to clean index..."
     exec:git restore --staged "${target_subdir}"
     # Echo the error info that will be captured as failed_patch_info
-    echo "${patch_basename} (Commit ${commit_hash})"
+    echo:Error "${patch_basename} (Commit ${commit_hash})"
     return 1
   fi
 
-  echo "  ${cl_green}Successfully applied and committed patch ${patch_basename}.${cl_reset}"
+  echo:Success "Applied and committed patch ${cl_yellow}${patch_basename}${cl_reset}."
   return 0
 }
 
@@ -418,7 +423,7 @@ function print_patch_summary() {
   local failed_patch_info="$4"
   local status=0
 
-  echo ""
+  echo:Sync ""
   echo:Sync "Finished processing for ${repo_name}"
   echo:Sync "  Applied: ${applied_count}"
   echo:Sync "  Skipped: ${skipped_count}"
@@ -469,6 +474,9 @@ function apply_patches() {
   if ! validate_patch_inputs "$log_file" "$target_subdir" "$patch_dir"; then
     return 1
   fi
+  
+  # Display initial progress
+  show_progress 0 "$total_patches" "$repo_name"
 
   # Process log file line by line
   while IFS= read -r line || [[ -n "$line" ]]; do
@@ -476,7 +484,7 @@ function apply_patches() {
     [ -z "$line" ] && continue
 
     patch_index=$((patch_index + 1))
-    show_progress "$patch_index" "$total_patches"
+    show_progress "$patch_index" "$total_patches" "$repo_name"
 
     # Parse commit info
     commit_info=$(parse_commit_line "$line")
@@ -523,6 +531,7 @@ function apply_patches() {
 
   # Print summary and return status
   status=$(print_patch_summary "$repo_name" "$applied_count" "$skipped_count" "$failed_patch_info")
+  echo:Dump "status: $status"
   return $status
 }
 
@@ -539,6 +548,19 @@ function cleanup() {
     # Use exec:git to honor dry-run mode
     exec:git restore --staged "$target_dir" 2>/dev/null
     exec:git restore "$target_dir" 2>/dev/null
+  fi
+  
+  # Clean up progress display
+  cleanup_progress
+  
+  # If using tmux and we started the session, handle exit gracefully
+  if [ "$USE_TMUX_PROGRESS" = true ] && [ -n "$TMUX" ] && [ "$TMUX_STARTED_BY_SCRIPT" = "1" ]; then
+    echo:Info "Press Ctrl+C to exit the tmux session."
+    # For EXIT signal, don't exit the session automatically
+    if [ "${BASH_SIGNAL:-}" = "EXIT" ]; then
+      trap - EXIT
+      tmux:setup_trap false
+    fi
   fi
 
   echo:Sync "Script exiting with code: ${exit_code}"
@@ -660,7 +682,8 @@ function generate_patches() {
     echo:Error "Failed to generate patches"
     status=1
   else
-    echo:Success "Successfully generated ${cl_green}$(wc -l <"${log_file}")${cl_reset} patches in ${cl_yellow}${patch_dir}${cl_reset}"
+    local countFiles=$(ls -1 "${patch_dir}"/*.patch | wc -l)
+    echo:Success "Successfully generated ${cl_green}${countFiles}${cl_reset} patches in ${cl_yellow}${patch_dir}${cl_reset}"
   fi
 
   # Generate changes.log
@@ -683,7 +706,11 @@ function generate_patches() {
 #   $2: Target subdirectory (string)
 #   $3: Path to patch directory (string)
 #   $4: Path to changes log file (string)
-main() {
+function main() {
+  local args="$@" # Save all arguments for TMUX
+
+  echo:Sync "Starting script with arguments($#): $(echo "$@" | tr ' ' '\n')"
+
   # First, verify dependencies
   verify_dependencies >&2 # to stderr
 
@@ -726,6 +753,9 @@ main() {
     esac
   done
 
+  # Initialize tmux progress display with a session name based on repo name
+  init_progress ${args} # switch to TMUX pane with progress display
+
   # Assign command-line arguments to descriptive variables
   ARG_REPO_NAME="$1"
   ARG_TARGET_SUBDIR="${2:-"repo1"}"
@@ -756,6 +786,13 @@ main() {
     ARG_REPO_NAME=$(basename "$(pwd)")
   fi
 
+  # if ARG_LOG_FILE is '.' resolve it to "${ARG_PATCH_DIR}/commits.log"
+  if [ "$ARG_LOG_FILE" == "./commits.log" ]; then
+    if [ ! -f "./commits.log" ]; then
+      ARG_LOG_FILE="${ARG_PATCH_DIR}/commits.log"
+    fi
+  fi
+
   # --- Pre-Execution Checks and Info ---
   echo:Sync "Starting patch application process..."
   echo:Sync "Repository Name: ${cl_green}${ARG_REPO_NAME}${cl_reset}"
@@ -768,6 +805,7 @@ main() {
 
   # --- Execute Patch Application ---
   # Call the main processing function with the provided arguments
+  echo:Sync "Resolved arguments: ${ARG_REPO_NAME}, ${ARG_TARGET_SUBDIR}, ${ARG_PATCH_DIR}, ${ARG_LOG_FILE}"
   apply_patches "${ARG_REPO_NAME}" "${ARG_TARGET_SUBDIR}" "${ARG_PATCH_DIR}" "${ARG_LOG_FILE}"
   local status=$?
 
@@ -792,4 +830,8 @@ main() {
 # --- Script Execution ---
 # Call the main function with all command line arguments and exit with its return code
 main "$@"
-exit $?
+result=$?
+
+# wait for user permission to exit
+read -p "Press Enter to exit with code: $result..."
+exit $result
