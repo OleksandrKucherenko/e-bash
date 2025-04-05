@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2155,SC1090
+# shellcheck shell=bash
+# shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-31
+## Last revisit: 2025-04-05
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -45,6 +46,7 @@ ARGS_DEFINITION+=" --prefix=args_prefix:sub-folder:1" # sub-folder|root|{any_str
 #region Helper scripts attaching
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
 
+# Import all required modules
 # shellcheck source=../.scripts/_colors.sh
 source /dev/null # trick to make shellcheck happy
 
@@ -443,7 +445,23 @@ function help_manual_apply() {
 
 # save all support information into version.properties file
 function publish_version_file() {
-	echo "# $(date)" >${VERSION_FILE}
+	local publish_path="${VERSION_FILE}"
+
+	# Determine where to publish version.properties file
+	# If we're using a subfolder prefix and we're in that subfolder, publish there
+	if [[ -n "${SUB_FOLDER_PREFIX}" && "${SUB_FOLDER_PREFIX}" == "$(prefix_sub_folder)" ]]; then
+		publish_path="${VERSION_FILE}"
+		echo "Publishing version file to subfolder: $(pwd)/${VERSION_FILE}"
+	else
+		# Use existing version.properties location if found
+		if [[ -n "${VERSION_PROPS_PATH}" ]]; then
+			publish_path="${VERSION_PROPS_PATH}"
+			echo "Updating existing version file: ${VERSION_PROPS_PATH}"
+		fi
+		# Default behavior remains the same - current directory
+	fi
+
+	echo "# $(date)" >${publish_path}
 	{
 		echo "## Version: 3.0.0"
 		echo "snapshot.version=$(compose)"
@@ -451,8 +469,12 @@ function publish_version_file() {
 		echo "snapshot.revision=$REVISION"
 		echo "snapshot.hightag=$TOP_TAG"
 		echo "snapshot.branch=$BRANCH"
+		echo "snapshot.prefix=$PREFIX"
 		echo '# end of file'
-	} >>"${VERSION_FILE}"
+	} >>"${publish_path}"
+
+	echo ""
+	echo "File ${cl_yellow}${publish_path}${cl_reset} is successfully created."
 }
 
 # apply changes to GIT repository, local changes only
@@ -558,44 +580,329 @@ function parse_arguments() {
 
 }
 
-function main() {
-	# configure the global variables for triggering proper actions
+# Check if version.properties exists and process it
+# Inputs: none
+# Outputs: STDOUT - logs about version properties status
+# Side effects: sets VERSION_PROPS_EXISTS global variable, sources properties file
+function check_version_properties() {
+	local version_props_exists=0
+
+	if [[ -n "${VERSION_PROPS_PATH}" ]]; then
+		echo:Ver "Found version.properties file: ${VERSION_PROPS_PATH}"
+		process_version_properties "${VERSION_PROPS_PATH}"
+		version_props_exists=1
+	else
+		echo:Ver "No version.properties found. Using default version logic."
+		version_props_exists=0
+	fi
+
+	# Return for main function to use
+	return ${version_props_exists}
+}
+
+# Check if we can detect version tags
+# Inputs: TAG - current tag, INIT_VERSION - initial version placeholder
+# Outputs: STDOUT - logs about version tag detection
+# Returns: 0 if version tags detected, 1 otherwise
+# Side effects: none
+function has_version_tags() {
+	local result=1
+
+	if [[ -n "${TAG}" && "${TAG}" != "${INIT_VERSION}" ]]; then
+		echo:Ver "Version tags detected: ${TAG}"
+		result=0
+	fi
+
+	return ${result}
+}
+
+# Handle multiple prefix detection
+# Inputs: AUTO_DETECTED_PREFIX - comma-separated list of detected prefixes
+# Outputs: STDOUT - logs about prefix handling
+# Side effects: sets SUB_FOLDER_PREFIX and PREFIX global variables
+function handle_multiple_prefixes() {
+	local sub_folder_prefix=""
+	local sub_folder=""
+	local -a prefixes=() # Initialize as empty array
+
+	# Split comma-separated prefixes into array
+	IFS=',' read -ra prefixes <<<"${AUTO_DETECTED_PREFIX}"
+
+	echo:Ver "Multiple prefixes detected: ${AUTO_DETECTED_PREFIX}"
+
+	# Check if any prefix matches current subfolder
+	for prefix in "${prefixes[@]}"; do
+		if is_prefix_matching_current_folder "${prefix}"; then
+			echo:Ver "Matched prefix is a sub-folder path: ${prefix}"
+			sub_folder_prefix="${prefix}"
+			break
+		fi
+	done
+
+	# Set global for later use
+	SUB_FOLDER_PREFIX="${sub_folder_prefix}"
+
+	if [[ -n "${SUB_FOLDER_PREFIX}" ]]; then
+		echo:Ver "STRONG: Using subfolder prefix: ${SUB_FOLDER_PREFIX}"
+		PREFIX="${SUB_FOLDER_PREFIX}"
+	else
+		# Check if we're in a sub-folder
+		sub_folder=$(prefix_sub_folder)
+		if [[ -n "${sub_folder}" && "${sub_folder}" != "/" ]]; then
+			echo:Ver "WEAK: Using current folder path as prefix: ${sub_folder}"
+			PREFIX="${sub_folder}"
+			echo:Ver "Detected release of sub-project with own version numbering."
+		fi
+	fi
+}
+
+# Handle single prefix detection
+# Inputs: AUTO_DETECTED_PREFIX - detected prefix string
+# Outputs: STDOUT - logs about prefix handling
+# Side effects: sets PREFIX global variable
+function handle_single_prefix() {
+	local prefix="$1"
+	local sub_folder=""
+
+	if [[ "${prefix}" == "v" ]]; then
+		echo:Ver "Known prefix 'v' detected."
+		PREFIX="v"
+	else
+		# Check if it's a subfolder path
+		sub_folder=$(prefix_sub_folder)
+		if [[ "${prefix}" == "${sub_folder}" ]]; then
+			echo:Ver "Prefix matches current subfolder: ${sub_folder}"
+			PREFIX="${sub_folder}"
+		else
+			echo:Ver "Using detected prefix: ${prefix}"
+			PREFIX="${prefix}"
+		fi
+	fi
+}
+
+# Handle prefix detection and processing
+# Inputs: AUTO_DETECTED_PREFIX - detected prefix or comma-separated prefixes
+# Outputs: STDOUT - logs about prefix handling
+# Side effects: sets PREFIX and potentially SUB_FOLDER_PREFIX global variables
+function handle_prefix_detection() {
+	local prefixes=()
+
+	if [[ -n "${AUTO_DETECTED_PREFIX}" ]]; then
+		echo:Ver "Prefix detected: ${AUTO_DETECTED_PREFIX}"
+
+		# Check if we have multiple prefixes
+		IFS=',' read -ra prefixes <<<"${AUTO_DETECTED_PREFIX}"
+		if [[ "${#prefixes[@]}" -gt 1 ]]; then
+			handle_multiple_prefixes "${prefixes[@]}"
+		else
+			handle_single_prefix "${AUTO_DETECTED_PREFIX}"
+		fi
+	else
+		echo:Ver "No prefix detected. Using empty prefix."
+		PREFIX=""
+	fi
+}
+
+# Handle the case when no version tags are detected
+# Inputs: none
+# Outputs: STDOUT - logs about subfolder strategy
+# Side effects: may set PREFIX global variable after user confirmation
+function handle_no_version_tags() {
+	local sub_folder=""
+
+	echo:Ver "No version tags detected."
+
+	# Propose using subfolder strategy
+	sub_folder=$(prefix_sub_folder)
+	if [[ -n "${sub_folder}" && "${sub_folder}" != "/" ]]; then
+		if ask_user_confirmation "Use subfolder '${sub_folder}' as prefix?" "Y"; then
+			PREFIX="${sub_folder}"
+			echo:Ver "Using subfolder as prefix: ${PREFIX}"
+		fi
+	fi
+}
+
+# Process tag detection and handling
+# Inputs: none
+# Outputs: STDOUT - logs about tag detection and handling
+# Side effects: may set PREFIX, SUB_FOLDER_PREFIX global variables
+function process_tag_detection() {
+	# Check if we have any git tags
+	if [[ -z "$(git tag --list 2>/dev/null)" ]]; then
+		echo:Ver "No tags found in the repository."
+		handle_no_version_tags
+	else
+		echo:Ver "Tags found in the repository."
+
+		# Check if we can detect version tags
+		if has_version_tags; then
+			handle_prefix_detection
+		else
+			handle_no_version_tags
+		fi
+	fi
+}
+
+# Process the proposed version and apply changes if needed
+# Inputs: $@ - command line arguments
+# Outputs: STDOUT - various logs about version processing
+# Side effects: may modify TAG, trigger version application
+function process_version() {
+	# Configure the global variables for triggering proper actions
 	parse_arguments "$@"
 
-	# print current state of the repository on screen
+	# Print current state of the repository on screen
 	report_current_state
 
-	# detected shift between stages, but no increment applied
+	# Detected shift between stages, but no increment applied
 	[[ "$IS_SHIFT" == "1" ]] && handle_stage_shift
 
-	# no increment applied yet and no shift of state, do minor increase
+	# No increment applied yet and no shift of state, do minor increase
 	[[ "$IS_DIRTY$IS_SHIFT" == "" ]] && increment_minor
 
-	# instruct user how to apply new TAG
-	echo -e "Proposed TAG: ${cl_green}$(compose)${cl_reset}"
+	# Instruct user how to apply new TAG
+	echo:Ver "Proposed TAG: ${cl_green}$(compose)${cl_reset}"
 	echo ''
 
-	# is proposed tag in conflict with any other TAG
+	# Is proposed tag in conflict with any other TAG
 	PROPOSED_HASH=$(tag_hash "$(compose)")
 	if [[ "${#PROPOSED_HASH}" -gt 0 && "$NO_APPLY_MSG" == "" ]]; then
 		error_conflict_tag
 	fi
+}
 
+# Handle confirmation and apply version if needed
+# Inputs: none
+# Outputs: STDOUT - logs about applying version
+# Side effects: may set DO_APPLY, output version file, apply git changes
+function handle_version_apply() {
+	# Ask for confirmation if not in CI
 	if [[ "$NO_APPLY_MSG" == "" ]]; then
+		if ! is_ci_environment && ask_user_confirmation "Apply this version?" "Y"; then
+			DO_APPLY=1
+		fi
 		help_manual_apply
 	fi
 
-	# compose version override file
+	# Compose version override file
 	if [[ "$TAG" == "$INIT_VERSION" ]]; then
 		TAG='0.0'
 	fi
 
 	publish_version_file
 
-	# should we apply the changes
+	# Should we apply the changes
 	if [[ "$DO_APPLY" == "1" ]]; then
 		apply_git_changes
 	fi
+}
+
+# Main function that orchestrates the versioning process
+# Inputs: $@ - command line arguments
+# Outputs: STDOUT - logs about version processing
+# Side effects: various, handled by subfunctions
+function main() {
+	echo:Ver "Starting version-up.v2.sh process"
+
+	# Check if version.properties exists and process it
+	check_version_properties
+
+	# Process version tag detection and handling
+	process_tag_detection
+
+	# Process version calculation and potential conflicts
+	process_version "$@"
+
+	# Handle version application
+	handle_version_apply
+
+	echo:Ver "Version-up.v2.sh process completed"
+}
+
+# Check if we're running in a CI environment
+function is_ci_environment() {
+	[[ -n "${CI}" || -n "${GITHUB_ACTIONS}" || -n "${GITLAB_CI}" || -n "${JENKINS_URL}" ]] && return 0 || return 1
+}
+
+# Check if version.properties exists in the current directory or parent directories
+function find_version_properties() {
+	local current_dir="$(pwd)"
+	local root_dir="$(monorepo_root)"
+	local found_file=""
+
+	# Check in current directory first
+	if [[ -f "${current_dir}/version.properties" ]]; then
+		found_file="${current_dir}/version.properties"
+		echo "${found_file}"
+		return 0
+	fi
+
+	# Find upwards until repository root
+	while [[ "${current_dir}" != "${root_dir}" && "${current_dir}" != "/" ]]; do
+		if [[ -f "${current_dir}/version.properties" ]]; then
+			found_file="${current_dir}/version.properties"
+			echo "${found_file}"
+			return 0
+		fi
+		current_dir="$(dirname "${current_dir}")"
+	done
+
+	# Check repository root as last resort
+	if [[ -f "${root_dir}/version.properties" ]]; then
+		found_file="${root_dir}/version.properties"
+		echo "${found_file}"
+		return 0
+	fi
+
+	echo ""
+	return 1
+}
+
+# Process version.properties file if it exists
+function process_version_properties() {
+	local properties_file="$1"
+	if [[ -f "${properties_file}" ]]; then
+		echo "Using version definitions from: ${properties_file}"
+		# Source the properties file to get variables
+		# shellcheck disable=SC1090
+		source "${properties_file}"
+		return 0
+	fi
+	return 1
+}
+
+# Ask user for confirmation
+function ask_user_confirmation() {
+	local message="$1"
+	local default_answer="$2"
+
+	if is_ci_environment; then
+		# In CI, always proceed with default
+		echo "CI environment detected, proceeding with default action."
+		return 0
+	fi
+
+	read -r -p "${message} [Y/n] " answer
+	answer=${answer:-${default_answer}}
+
+	if [[ "${answer}" =~ ^[Yy]$ ]]; then
+		return 0
+	else
+		echo "Operation canceled by user."
+		return 1
+	fi
+}
+
+# Verify if prefix matches current folder path
+function is_prefix_matching_current_folder() {
+	local prefix="$1"
+	local folder_path=$(prefix_sub_folder)
+
+	# Normalize paths for comparison
+	local norm_prefix=${prefix%/}
+	local norm_folder=${folder_path%/}
+
+	[[ "${norm_prefix}" == "${norm_folder}" ]] && return 0 || return 1
 }
 
 # try to detect the prefix in versioning tags/branches names. expected pattern: {PREFIX}{SEMVER}{SUFFIX}
@@ -619,6 +926,9 @@ HEAD_HASH=$(head_hash)
 PROPOSED_HASH=""
 VERSION_FILE=version.properties
 
+# Find version.properties if it exists
+VERSION_PROPS_PATH=$(find_version_properties)
+
 # parse the tag into parts
 semver:parse "${TAG}" "PARTS" && echo "${PARTS[@]}" || echo "$? - FAIL parsing '${TAG}'!"
 
@@ -630,28 +940,39 @@ main "$@"
 #  - do multiple build iterations until you become satisfied with result
 #  - run 'version-up.v2.sh --apply' to save result in GIT
 #
-# Several initial states are possible:
-# 1. no tags on repository, young repo
-# 2. tags exists, but they may present something else instead of release version
-# 3. tags exists and present release version (one pattern in use)
-# 4. tags of different kind presented in a repository (maybe a monorepo with sub-projects)
+# Enhanced version logic based on Excalidraw diagram:
+# 1. Check if we have tags in the repository
+#    - NO: Use default versioning strategy
+#    - YES: Continue to step 2
 #
-# What should we do in each case:
-# (1) - propose our default strategy for versioning (simplified semver);
-# (2) - try to find tags with SEMVER pattern and use it as a base, otherwise fallback to (1);
-# (3) - detect the pattern and continue to use it, otherwise fallback to (1);
-# (4) - try to detect the pattern from location in the repo,
-#  	    (root) - are we using empty string as a prefix? [AUTOMATIC]
-# 		  (sub-folder) - are we using sub-folder path as a prefix? [AUTOMATIC]
-# 		  (any-string) - are we using user provided string as a prefix? [USER defined]
+# 2. Check if we can detect version tags
+#    - NO: Propose using subfolder as prefix (with user confirmation)
+#    - YES: Continue to step 3
 #
-# algorithm of script:
-# 1. do we have tags on repository? YES - next step 2; NO - default strategy;
-# 2. are we in sub-folder of the repository? YES - next step 3; NO - next step {N};
-# 3. can we detect prefix automatically? YES - next step 4; NO - next step {M};
-# 4. is prefix === sub-folder path? YES - next step 5; NO - next step {M};
-# 5. extract latest version from tags with specific prefix;
-# 6. apply minor increment to the version;
-# 7. save new version in version.properties;
-# 8. END
-# 9.
+# 3. Check if we can detect a prefix
+#    - NO: Use empty prefix (root strategy)
+#    - YES: Continue to step 4
+#
+# 4. Check if multiple prefixes are detected
+#    - NO: Check if it's a known prefix (v{SEMVER}) or custom prefix
+#    - YES: Continue to step 5
+#
+# 5. Check if it's a sub-folder prefix
+#    - NO: Use WEAK strategy - use current subfolder path as prefix
+#    - YES: Use STRONG strategy - use the detected prefix
+#
+# 6. Check for version.properties file
+#    - Find in current folder or navigate up to root
+#    - Use definitions from file if found
+#
+# 7. Apply versioning with pattern: {prefix}{SEMVER}
+#
+# 8. Ask for user confirmation if not in CI environment
+#
+# 9. Apply version and generate version.properties file
+#
+# Priority for version configuration:
+# 1. Global environment variables
+# 2. Script arguments
+# 3. Local version.properties file
+# 4. Default values
