@@ -27,8 +27,8 @@
 - [ ] Slack notifications helper scripts
 - [ ] Telemetry module (report metrics to CI or DataDog)
 - [ ] Globals module (declarative way of defining script dependencies to global environment variables)
-- [ ] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
-- [ ] Copyright headers composing/parsing (extract from the file, update, insert)
+- [x] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
+- [x] Copyright headers composing/parsing (extract from the file, update, insert)
 
 ## Local Dev Environment - Requirements
 
@@ -158,6 +158,8 @@ echo "$wHead" | grep 'Error' &>/dev/null && echo "$wStab" || echo "$wHead"
 ```
 
 ### Logger
+
+[Quick Start Guide](docs/logger.md)
 
 Requirements:
 - [x] zero dependencies, pure BASH (optional: _colors.sh)

@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-27
+## Last revisit: 2025-04-06
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -43,10 +43,16 @@ fDescribe 'install.e-bash.sh /'
   install_latest() { ./install.e-bash.sh install 2>/dev/null >/dev/null; }
   install_alpha() { ./install.e-bash.sh install v1.0.1-alpha.1 2>/dev/null >/dev/null; }
   install_stable() { ./install.e-bash.sh install v1.0.0 2>/dev/null >/dev/null; }
+  # Global installation functions need environment variable forwarding to work with temp_home
+  install_global() { HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null; }
+  install_global_version() { HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global 2>/dev/null >/dev/null; }
+  install_global_symlink() { HOME="$TEMP_HOME" ./install.e-bash.sh install --global --create-symlink 2>/dev/null >/dev/null; }
   upgrade_latest() { ./install.e-bash.sh upgrade 2>/dev/null >/dev/null; }
   upgrade_alpha() { ./install.e-bash.sh upgrade v1.0.1-alpha.1 2>/dev/null >/dev/null; }
   upgrade_stable() { ./install.e-bash.sh upgrade v1.0.0 2>/dev/null >/dev/null; }
+  upgrade_global() { HOME="$TEMP_HOME" ./install.e-bash.sh upgrade --global 2>/dev/null >/dev/null; }
   do_rollback() { ./install.e-bash.sh rollback 2>/dev/null >/dev/null; }
+  do_rollback_global() { HOME="$TEMP_HOME" ./install.e-bash.sh rollback --global 2>/dev/null >/dev/null; }
   do_versions() { ./install.e-bash.sh versions 2>/dev/null >/dev/null; }
 
   # Define a helper function to strip ANSI escape sequences
@@ -356,6 +362,99 @@ fDescribe 'install.e-bash.sh /'
       The status should be success
       The output should include "Usage:"
       The error should include "Regular folder detected"
+    End
+  End
+
+  # Test global installation of e-bash scripts
+  Describe 'global_installation /'
+    setup_temp_home() {
+      # Create a temporary directory to act as HOME
+      TEMP_HOME="$TEST_DIR/temp_home"
+      mkdir -p "$TEMP_HOME"
+      
+      # Backup the real HOME
+      REAL_HOME="$HOME"
+      
+      # Override HOME for testing
+      export HOME="$TEMP_HOME"
+      
+      # Create empty shell config files
+      touch "$TEMP_HOME/.bashrc"
+      touch "$TEMP_HOME/.zshrc"
+    }
+    
+    restore_real_home() {
+      # Restore the real HOME
+      export HOME="$REAL_HOME"
+      
+      # Clean up temporary home
+      rm -rf "$TEMP_HOME"
+    }
+
+    Before 'temp_repo; git_init; git_config; cp_install; git_add_all; git_commit; setup_temp_home'
+    After 'cleanup_temp_repo; restore_real_home'
+
+    It 'should install e-bash scripts globally to HOME directory'
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
+
+      The status should be success
+      The output should include "Installation complete!"
+      The output should include "The e-bash scripts have been installed globally in"
+      The output should include "$TEMP_HOME/.e-bash"
+      The dir "$TEMP_HOME/.e-bash" should be present
+      The dir "$TEMP_HOME/.e-bash/.scripts" should be present
+      The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
+    End
+
+    It 'should install specific version globally'
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global
+
+      The status should be success
+      The output should include "Installation complete!"
+      The dir "$TEMP_HOME/.e-bash" should be present
+      The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
+    End
+
+    It 'should update shell configuration files'
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
+
+      The status should be success
+      The file "$TEMP_HOME/.bashrc" should be present
+      The file "$TEMP_HOME/.zshrc" should be present
+      The contents of file "$TEMP_HOME/.bashrc" should include "export E_BASH"
+      The contents of file "$TEMP_HOME/.zshrc" should include "export E_BASH"
+    End
+
+    It 'should support symlink creation with --create-symlink option'
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global --create-symlink
+
+      The status should be success
+      The path ".scripts" should be symlink
+      The contents of file ".scripts/_colors.sh" should be present
+    End
+
+    It 'should upgrade global installation'
+      # First install
+      install_global
+
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh upgrade --global
+
+      The status should be success
+      The output should include "Upgrade complete!"
+      The output should include "$TEMP_HOME/.e-bash"
+    End
+
+    It 'should rollback global installation'
+      # First install
+      install_global
+      
+      # Then upgrade to create a previous version
+      upgrade_global
+
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback --global
+
+      The status should be success
+      The output should include "Successfully rolled back global e-bash installation"
     End
   End
 End
