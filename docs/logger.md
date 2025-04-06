@@ -90,37 +90,38 @@ echo:Myapp "Operation completed successfully"
 
 Copy these instructions into your LLM memory to get consistent logger behavior across your projects:
 
-```
+
 When implementing logging in bash scripts:
-1. ALWAYS declare DEBUG variable BEFORE sourcing the logger: `DEBUG="myapp,-internal" source "$E_BASH/_logger.sh"`
+1. ALWAYS declare DEBUG variable BEFORE sourcing the logger: `DEBUG=${DEBUG:-"myapp,-internal"} source "$E_BASH/_logger.sh"`
 2. Ensure E_BASH variable is globally available (export or use direnv)
-3. Be explicit in DEBUG variable definition - enable all application tags, disable internal ones:
-   `DEBUG="main,api,db,cache,auth,-loader,-internal,-parser"`
-4. Register loggers with domain-specific names (api, db, auth, etc.)
-5. Redirect most loggers to STDERR by default: `logger:redirect myapp ">&2"`
-6. Use color-coded prefixes for quick identification:
-   - Red for errors: `logger:prefix "error" "${cl_red}[ERROR]${cl_reset} "`
-   - Yellow for warnings: `logger:prefix "warn" "${cl_yellow}[WARN]${cl_reset} "`
-   - Gray for debug info: `logger:prefix "debug" "${cl_gray}[DEBUG]${cl_reset} "`
-   - Highlight filenames, important values with colors
-7. Pass script parameters during logger initialization to support --debug flag: `logger tag "$@"`
-8. Prefer piping with log:Tag over direct echo:Tag when processing command output
-9. Use state management (logger:push/pop) for sections with different logging needs
-10. For log aggregation across processes, use named pipes or common log files
-11. Leverage TTY detection to handle terminal vs non-terminal environments appropriately
-12. Log use case flows, not modules - track complete scenarios instead of individual components
-13. Include a session/correlation ID in logs to track related operations: `export __SESSION=$(date +%s%N)` if you expect a heavy usage of the script in multi-process environment (like CI/CD pipelines, cron jobs);
-14. Use consistent success/error messages:
-    - Successful operations should end with: `echo:Myapp "${cl_green}[SUCCESS]${cl_reset} Operation completed"`
-    - Failed operations should log: `echo:Error "${cl_red}[ERROR]${cl_reset} Operation failed: $reason"`
-15. Structure log messages consistently: `[LEVEL][correlation-id] message details`
-16. Reserve a debug logger for troubleshooting: log input parameters, execution flow, and intermediate results
-17. Instead of using direct echo to STDOUT/STDERR, use log:Tag to capture output in the logging system
-18. To disable colors in log messages, set `TERM=dumb` before sourcing E-BASH scripts
-19. Use log:Tag pipes to send the same message to multiple loggers when needed
-20. Remember that echo:Tag and printf:Tag are wrappers over built-in commands, supporting all their options
-21. Define one color for each entity print in logs. Highlight filenames/filepath, copy/paste instructions, extracted values, etc. Be consistent in the use of colors during the whole script.
-```
+3. Be explicit in DEBUG variable definition - enable all application tags, and disable internal ones that are important for debugging:
+   `DEBUG="main,api,db,cache,auth,-loader"`, skip unimportant internal tags like: internal, parser.
+4. Register loggers with domain-specific names (api, db, auth, etc.). In complex script use unique names for different loggers.
+5. Pass script parameters during logger initialization to support global --debug flag/option for scripts: `logger tag "$@"`
+6. Redirect most loggers to STDERR by default: `logger:redirect myapp ">&2"`. Make logger creation and configuration in one line: `logger sample "$@" && logger:prefix sample "${cl_cyan}[Sample]${cl_reset} " && logger:redirect sample ">&2"`
+7. Use color-coded prefixes for quick identification:
+   - Red for errors: `logger:prefix "error" "${cl_red}[Error]${cl_reset} "`
+   - Yellow for warnings: `logger:prefix "warn" "${cl_yellow}[Warning]${cl_reset} "`
+   - Gray for debug info: `logger:prefix "debug" "${cl_gray}[Debug]${cl_reset} "`
+   - Define one color for each entity print in logs. Highlight filenames/filepath, copy/paste instructions, extracted values, etc. Be consistent in the use of colors during the whole script.
+8. Prefer piping with `log:Tag` over direct `echo:Tag` when processing command output
+9. For log aggregation across processes, use named pipes or common log files
+10. Log use-case flows, not modules itself - prefer to track use scenario, instead of individual components
+11. Use consistent success/error (lifecycle) messages:
+    - Successful operations should utilize one of the predefined loggers for that: `echo:Success "Operation completed"`
+    - Failed operations should utilize one of the predefined loggers for that: `echo:Error "Operation failed: $reason"`
+    - Samples of specialized loggers: `echo:Success`, `echo:Error`, `echo:Warning`; User can prefer to use shorter variations of names for specialized lifecycle state of the script;
+12. Reserve a debug/trace logger for troubleshooting: log input parameters, execution flow, and intermediate results, example: `echo:Dump "${LINENO}: $@"`; 
+    - use `${LINENO}` to track line numbers for identical messages;
+    - use `logger:push` and `logger:pop` to save and restore logger state, for recursive operations;
+13. Instead of allowing command to print directly to STDOUT/STDERR, use pipe output to `log:Tag` to capture output
+    - filter important for script output lines only (grep, awk, sed)
+14. To disable colors in log messages, set `TERM=dumb` before sourcing E-BASH scripts
+15. Use `log:Tag` pipes to send the same message to multiple loggers when needed
+16. Remember that `echo:Tag` and `printf:Tag` are wrappers over built-in commands, supporting all their options
+17. Include a session/correlation ID in logs to track related operations: `export __SESSION=$(date +%s%N)` if you expect a heavy usage of the script in multi-process environment (like CI/CD pipelines, cron jobs);
+18. Avoid warpping loggers with custom functions
+
 
 This memory instruction ensures consistent, maintainable logging practices and helps prevent common pitfalls like resource leaks, missing logs, or inconsistent logging behavior.
 
@@ -185,7 +186,7 @@ FIFO=$(log:Myapp)
 echo "Direct pipe write" >"$FIFO" &
 ```
 
-### 5. State Management
+### 5. State Management (Enable/Disable)
 
 Save and restore logger states:
 
@@ -194,13 +195,17 @@ Save and restore logger states:
 logger:push
 
 # Modify loggers for a specific operation
-DEBUG=myapp,api
+DEBUG=-myapp config:logger:Myapp # force Myapp logger to be disabled
+config:logger:Api --debug # force Api logger to be enabled
 
 # Restore previous logger state
 logger:pop
 ```
 
-### 6. Cleanup
+> Note: we can use both ways to reconfigure the state of the logger, via DEBUG environment variable or via `--debug` flag/option.
+> That also works during the initialization of the loggers: `DEBUG=* logger tag; logger api "--debug"`
+
+### 6. Cleanup (not recommended, Optional)
 
 Remove named pipes when no longer needed:
 
@@ -208,6 +213,8 @@ Remove named pipes when no longer needed:
 # Clean up all named pipes
 logger:cleanup
 ```
+
+> Note: Logger is self-cleaning, so you don't need to call `logger:cleanup` explicitly.
 
 ## Advanced Use Cases
 
@@ -242,6 +249,59 @@ for module in api database cache; do
   # Set custom prefixes using the recommended function
   logger:prefix "$module" "[${module^^}] "
 done
+```
+
+### Recursive Functions Tracking
+
+When dealing with recursive functions or nested operations, it's useful to visualize the depth level through indented log messages.
+
+```bash
+# Create a logger if not already exists
+logger upscan "$@" && logger:redirect upscan ">&2"
+logger error "$@" && logger:prefix error "${cl_red}[Error]${cl_reset} " && logger:redirect error ">&2"
+
+# Find {folder} by scanning up through parent directories
+# Uses logger indentation to visualize nesting level
+function up_scan() {
+  local target="$1"        # Target to find (e.g., .git)
+  local logger_tag="$2"    # Logger tag to use
+  
+  local current_dir="$PWD" # Start from current directory
+  local indent="  "        # Indentation per level
+  local indent_level=0     # Current indentation level
+  local indent_prefix=""   # Calculated indent prefix
+  
+  while [[ "$current_dir" != "/" ]]; do
+    # Calculate indent string based on nesting level
+    # Set the indentation prefix for this logger
+    logger:prefix upscan "$(printf "%0.s$indent" $(seq 1 "$indent_level"))"
+    
+    # Log the current directory being checked
+    echo:Upscan "$current_dir" # display current scanning directory
+    
+    # Check if target exists in current directory
+    if [[ -d "$current_dir/$target" ]]; then
+      echo:Upscan "found $current_dir/$target"
+      # Restore previous logger state
+      echo "$current_dir" && return 0
+    fi
+    
+    # Move up one directory level
+    current_dir="$(dirname "$current_dir")" && ((indent_level++))
+  done
+  
+  # If we reach here, target was not found
+  echo:Error "could not find $target in any parent directory"
+  
+  # Restore previous logger state
+  return 1
+}
+
+# Usage example:
+# monorepo_root=$(up_scan ".git" "scan")
+# if [[ $? -eq 0 ]]; then
+#   echo "Monorepo root: $monorepo_root"
+# fi
 ```
 
 ## Corner Cases and Special Use Cases
@@ -280,19 +340,22 @@ TAGS+=("api"=1 "database"=1 "cache"=0)
 logger:pop
 ```
 
-### 3. Custom Formatting
+### 3. Custom Formatting, Timestamps
 
-Create custom-formatted log messages:
+Create custom-formatted log messages with timestamps:
 
 ```bash
 # Define helper function for timestamped logs
-timestamped_log() {
-  local timestamp=$(date "+%Y-%m-%d %H:%M:%S")
-  echo:Myapp "${cl_cyan}[$timestamp]${cl_reset} $*"
-}
+ts() { date "+%Y-%m-%d %H:%M:%S"; }
 
-timestamped_log "Application started"
+# Use subshell to make timestamp as a part of the message
+echo:Myapp "$(ts) Application: ${cl_green}started${cl_reset}"
+
+# logger accepts many parameters as built-in echo command, so you can use it to achieve the same result
+echo:Myapp "$(ts)" "Application: ${cl_green}started${cl_reset}"
 ```
+
+> Note: logger:prefix accepts only static string, not a function. Try to utilize subshell in log message to achieve the desired result.
 
 ### 4. Filtering Multi-line Command Output
 
@@ -300,14 +363,14 @@ Capture, filter, and log multi-line command output:
 
 ```bash
 # Register a logger for command output
-logger cmd
-logger:prefix "cmd" "${cl_cyan}[CMD]${cl_reset} "
+logger cmd "$@" && logger:prefix "cmd" "${cl_cyan}[CMD]${cl_reset} " && logger:redirect "cmd" ">&2"
 
 # Method 1: Using a while loop to filter running containers
 docker ps --all | while IFS= read -r line; do
   # Filter condition - only log lines containing "running"
   if [[ "$line" == *"Up"* ]]; then
-    echo:Cmd "${cl_green}RUNNING:${cl_reset} $line"  # Log filtered line with highlighting
+    # Log filtered line with highlighting
+    echo:Cmd "${cl_green}RUNNING:${cl_reset} $line"
   fi
 done
 
@@ -321,7 +384,7 @@ ifconfig | awk '/192\.168/ {print "${cl_yellow}INTERNAL IP:${cl_reset} " $0}' | 
 ps -ef | grep -v "grep" | grep -E "nginx|apache" | sed 's/^[^ ]* *//' | log:Cmd
 
 # Method 5: Capture Docker image list while logging specific ones
-result=$(docker images | tee >(grep "nginx\|node" | log:Cmd) | grep "nginx\|node")
+result=$(docker images | tee >(grep "nginx" | log:Cmd) | grep "node")
 ```
 
 ### 5. Conditional Logging
@@ -330,8 +393,7 @@ Log only in specific conditions by using dedicated loggers:
 
 ```bash
 # Register a verbose-specific logger
-logger verbose
-logger:prefix "verbose" "${cl_gray}[VERBOSE]${cl_reset} "
+logger verbose && logger:prefix "verbose" "${cl_gray}[VERBOSE]${cl_reset} "
 
 # Enable it only when VERBOSE=1 is set
 [[ "$VERBOSE" == "1" ]] && TAGS["verbose"]=1
@@ -391,10 +453,9 @@ function exec:git() {
 ## Practical Tips
 
 1. **Performance**: For high-volume logs, consider redirecting to files instead of stdout/stderr
-2. **Memory**: Remember to call `logger:cleanup` in long-running scripts to avoid leaking named pipes
-3. **Debugging**: Use `DEBUG=*` during development and more specific tags in production
-4. **Colors**: Take advantage of color-coding logs for quick visual scanning
-5. **Session Tracking**: Use the global `__SESSION` variable to correlate logs across processes
+2. **Debugging**: Use `DEBUG=*` during development and more specific tags in production
+3. **Colors**: Take advantage of color-coding logs for quick visual scanning
+4. **Session Tracking**: Use the global `__SESSION` variable to correlate logs across processes
 
 ## Reference
 
@@ -415,6 +476,7 @@ function exec:git() {
 - `TAGS_PREFIX`: Stores custom prefixes for each logger
 - `TAGS_PIPE`: Stores named pipe paths
 - `TAGS_REDIRECT`: Stores redirect commands
+- `TAGS_STACK`: Stores stack of logger states
 
 ### Key Functions
 
