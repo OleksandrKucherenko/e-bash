@@ -11,6 +11,7 @@ set -e
 
 # Configuration.
 readonly REMOTE_NAME="e-bash"
+readonly REMOTE_MASTER="master"
 readonly REMOTE_URL="https://github.com/OleksandrKucherenko/e-bash.git"
 readonly REMOTE_INSTALL_SH="https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh"
 readonly TEMP_BRANCH="e-bash-temp"
@@ -20,6 +21,8 @@ readonly SCRIPTS_PREV_VERSION=".e-bash-previous-version"
 readonly DEFAULT_BRANCH="main"
 readonly INSTALL_SCRIPT="bin/install.e-bash.sh"
 readonly GLOBAL_INSTALL_DIR="${HOME}/.e-bash"
+readonly __WORKTREES=".versions"
+readonly __REPO_V1="v1.0.0"
 
 # Colors for better readability. should we use tput instead?
 readonly RED=$(tput setaf 1)    # red
@@ -114,15 +117,41 @@ function current_branch() {
 
 ## Check if git is available. Exit on error.
 function check_prerequisites() {
-  # if git is not available, exit with error
+  # If git is not available, exit with error
   if ! command -v git &>/dev/null; then
-    echo -e "${RED}Error: git is not installed or not in PATH${NC}"
+    echo -e "${RED}Error: git is not installed or not in PATH${NC}" >&2
     exit 1
   fi
 
-  # Ensure we're in a git repository
+  # Different behavior based on --global flag
+  if [ "$GLOBAL" = true ]; then
+    echo -e "${BLUE}Checking prerequisites for home installation in ${YELLOW}${GLOBAL_INSTALL_DIR}${NC}" >&2
+
+    # For global installations, we don't need to be in a git repository
+    # We'll clone directly to the HOME directory later
+    if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+      echo -e "${YELLOW}Current directory is not a git repository: $PWD${NC}" >&2
+    else
+      # If in a git repo and using --global, warn that we're still installing to HOME
+      echo -e "${YELLOW}Note: Using --global will install to ${GLOBAL_INSTALL_DIR}${NC}" >&2
+      echo -e "${YELLOW}The current repository will NOT be modified${NC}" >&2
+    fi
+
+    # Check if global install directory exists but is not a git repo
+    if [ -d "${GLOBAL_INSTALL_DIR}" ] && ! git -C "${GLOBAL_INSTALL_DIR}" rev-parse --is-inside-work-tree &>/dev/null; then
+      echo -e "${RED}Error: ${GLOBAL_INSTALL_DIR} exists but is not a git repository.${NC}" >&2
+      exit 1
+    fi
+
+    return 0 # Skip other checks for global installation
+  fi
+
+  # Standard local installation checks (only when not in global mode)
+
+  # Ensure we're in a git repository for local installations
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    echo -e "${RED}Error: Not in a git repository${NC}"
+    echo -e "${RED}Error: Not in a git repository${NC}" >&2
+    echo -e "${YELLOW}Tip: Use --global option to install to HOME directory instead${NC}" >&2
     exit 1
   fi
 
@@ -198,19 +227,19 @@ function configure_remote() {
 
   if [ "$remote_exists" = "true" ]; then
     echo -e "${BLUE}Remote $REMOTE_NAME already exists. Fetching latest changes...${NC}"
-    execute_git fetch "$REMOTE_NAME"
+    exec:git fetch "$REMOTE_NAME"
     return 0
   fi
 
   echo -e "${BLUE}Adding remote repository...${NC}"
-  execute_git remote add --fetch "$REMOTE_NAME" "$REMOTE_URL"
+  exec:git remote add --fetch "$REMOTE_NAME" "$REMOTE_URL"
   return 0
 }
 
 ## Clean up existing temporary branches. Exit code.
 function clean_temp_branches() {
-  execute_git branch -D "$TEMP_BRANCH" 2>/dev/null || true
-  execute_git branch -D "$SCRIPTS_BRANCH" 2>/dev/null || true
+  exec:git branch -D "$TEMP_BRANCH" 2>/dev/null || true
+  exec:git branch -D "$SCRIPTS_BRANCH" 2>/dev/null || true
 }
 
 ## Create temporary branch based on version. Exit code.
@@ -218,20 +247,20 @@ function create_temp_branch() {
   local version="$1"
 
   if [ "$version" = "master" ]; then
-    execute_git checkout --quiet --force -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
+    exec:git checkout --quiet --force -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
     return 0
   fi
 
   # FIXME: potentially we can have git error message that we can loose some files
 
-  execute_git checkout --quiet -b "$TEMP_BRANCH" "$version"
+  exec:git checkout --quiet -b "$TEMP_BRANCH" "$version"
   return 0
 }
 
 ## Configure branches to be local-only. Exit code.
 function configure_local_branches() {
-  execute_git config branch."$TEMP_BRANCH".remote ""
-  execute_git config branch."$SCRIPTS_BRANCH".remote ""
+  exec:git config branch."$TEMP_BRANCH".remote ""
+  exec:git config branch."$SCRIPTS_BRANCH".remote ""
 
   echo -e "${GREEN}Created local branch '$SCRIPTS_BRANCH' with the scripts content${NC}"
   echo -e "${BLUE}Configured e-bash temporary branches to remain local only${NC}"
@@ -243,7 +272,7 @@ function return_to_original_branch() {
   has_commits=$(git rev-parse --quiet --verify HEAD >/dev/null 2>&1 && echo "true" || echo "false")
 
   if [ "$has_commits" = "true" ]; then
-    execute_git checkout --quiet "$MAIN_BRANCH"
+    exec:git checkout --quiet "$MAIN_BRANCH"
     return 0
   fi
 
@@ -268,7 +297,7 @@ function setup_remote() {
   echo -e "${BLUE}Extracting scripts...${NC}"
 
   # we do not need any output from this command
-  SILENT_GIT=true execute_git subtree split --quiet -P "$SCRIPTS_DIR" -b "$SCRIPTS_BRANCH"
+  SILENT_GIT=true exec:git subtree split --quiet -P "$SCRIPTS_DIR" -b "$SCRIPTS_BRANCH"
 
   # Configure branches to remain local and not be pushed to remote
   configure_local_branches
@@ -296,52 +325,120 @@ function add_scripts_subtree() {
     if [ -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
       echo -e "${YELLOW}Git repository already exists in ${GLOBAL_INSTALL_DIR}, updating...${NC}"
       pushd "${GLOBAL_INSTALL_DIR}" >/dev/null || exit 1
-      execute_git pull origin master
+      exec:git pull origin master
       popd >/dev/null || exit 1
     else
       # Clone the repository
-      execute_git clone "${REMOTE_URL}" "${GLOBAL_INSTALL_DIR}"
+      exec:git clone "${REMOTE_URL}" "${GLOBAL_INSTALL_DIR}"
     fi
 
     return $?
   else
     # For local installation, use git subtree
     echo -e "${BLUE}Adding e-bash scripts as a git subtree...${NC}"
-    execute_git subtree add --prefix="${SCRIPTS_DIR}" "${REMOTE_NAME}" "${TEMP_BRANCH}" --squash
+    exec:git subtree add --prefix="${SCRIPTS_DIR}" "${REMOTE_NAME}" "${TEMP_BRANCH}" --squash
     return $?
   fi
+}
+
+## Configure global installation, "$HOME/.e-bash"
+function initialize_global_v1() {
+  echo -e "${BLUE}Preparing e-Bash HOME installation...${NC}"
+
+  # create .e-bash folder if it does not exist
+  mkdir -p "${GLOBAL_INSTALL_DIR}"
+
+  pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || exit 1
+  echo -e "${CYAN}e-bash dir: ${GLOBAL_INSTALL_DIR}${NC}"
+
+  # create git repo if it's not initialized yet
+  if [[ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]]; then
+    exec:git init "${GLOBAL_INSTALL_DIR}"
+  fi
+
+  # register git remote if it's not registered yet, on purpose use name different from origin
+  if ! (git remote -v 2>/dev/null | grep "${REMOTE_NAME}"); then
+    exec:git remote add "${REMOTE_NAME}" "${REMOTE_URL}"
+    exec:git remote set-url --push "${REMOTE_NAME}" no_push
+  fi
+
+  # assumptions:
+  # - repo stay on master branch
+  # - repo not modified by user directly
+
+  # fetch latest changes
+  exec:git fetch --all
+  exec:git checkout "${REMOTE_MASTER}"
+  exec:git reset --hard "${REMOTE_NAME}/${REMOTE_MASTER}"
+  echo -e "${BLUE}Checkout of e-bash ${REMOTE_MASTER} branch${NC}" # latest
+
+  # exclude VERSIONS_DIR folder from git, by updating .gitignore file (if needed)
+  if ! grep "${__WORKTREES}/" .gitignore &>/dev/null; then
+    {
+      echo ""
+      echo "# exclude $__WORKTREES worktree folder from git"
+      echo "$__WORKTREES/"
+    } >>.gitignore
+  fi
+
+  echo -e "${BLUE}Extracting ${__REPO_V1} stable version...${NC}"
+
+  # extract version 1.0.0
+  local tag_or_branch="${__REPO_V1}"
+  local worktree="./${__WORKTREES}/${tag_or_branch}"
+  exec:git worktree add --checkout "$worktree" "${tag_or_branch}"
+
+  popd &>/dev/null || exit 1
+}
+
+## Make a symbolic link to global e-bash .scripts folder
+function bind_ebash_global_version() {
+  local version="${1:-master}"
+  local worktree="./${__WORKTREES}/${version}"
+  local versionedDir="${GLOBAL_INSTALL_DIR}/${__WORKTREES}/${version}"
+
+  # jump to e-bash home dir to make a worktree extraction
+  pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || exit 1
+  exec:git worktree add --checkout "$worktree" "$version"
+  popd &>/dev/null || exit 1
+
+  # Create the .scripts directory symlink in the current directory if requested
+  echo -e "${BLUE}Creating symlink to global e-bash scripts version ${version}...${NC}"
+  ln -sf "${versionedDir}/.scripts" "${SCRIPTS_DIR}"
 }
 
 ## Install e-bash scripts. Exit code.
 function install_scripts() {
   local version="${1:-master}"
-  setup_remote "$version"
 
-  # Validate version
-  if ! validate_version "$version"; then
-    echo -e "${RED}Error: Invalid version '$version'${NC}"
-    return 1
-  fi
+  echo -e "${BLUE}Installing e-bash scripts...${NC}"
 
   # Save current branch for later
   local current_branch
-  current_branch=$(current_branch)
 
   if [ "$GLOBAL" = true ]; then
     # For global installation, we've already cloned the repository
-    echo -e "${GREEN}E-bash scripts installed globally to ${GLOBAL_INSTALL_DIR}${NC}"
+    initialize_global_v1
+    echo -e "${GREEN}e-Bash scripts installed globally to ${GLOBAL_INSTALL_DIR}${NC}"
 
-    # Create the .scripts directory symlink in the current directory if requested
-    if [ "$CREATE_SYMLINK" = true ]; then
-      echo -e "${BLUE}Creating symlink to global e-bash scripts...${NC}"
-      ln -sf "${GLOBAL_INSTALL_DIR}/.scripts" "${SCRIPTS_DIR}"
-    fi
+    # if we have version that is matching a specific version, bind it
+    bind_ebash_global_version "$version"
 
     # Perform post-installation steps for global install
     post_installation_steps_global
 
     return 0
   else
+    setup_remote "$version"
+
+    # Validate version
+    if ! validate_version "$version"; then
+      echo -e "${RED}Error: Invalid version '$version'${NC}"
+      return 1
+    fi
+
+    current_branch=$(current_branch)
+
     # For local installation, we use git subtree
     clean_temp_branches
     create_temp_branch "$version"
@@ -511,7 +608,7 @@ function perform_subtree_merge() {
   # For git subtree pull, we need to reference the local branch
   # This is not a remote pull, but rather merging from the local branch
   set +e
-  execute_git subtree merge --prefix="$SCRIPTS_DIR" "$SCRIPTS_BRANCH" --squash
+  exec:git subtree merge --prefix="$SCRIPTS_DIR" "$SCRIPTS_BRANCH" --squash
   result=$?
   set -e
 
@@ -529,6 +626,52 @@ function perform_subtree_merge() {
   return $result
 }
 
+## Compose README.md file with e-bash installation instructions
+function compose_readme() {
+  {
+    echo "# e-Bash Scripts"
+    echo ""
+    echo "This repository includes e-bash scripts for automation and productivity."
+    echo ""
+    echo "## Installation"
+    echo ""
+    echo "To install or upgrade e-bash scripts, use the following commands:"
+    echo -e "\n\`\`\`bash"
+    echo "# Install latest version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- install"
+    echo -e "\n# Install specific version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- install v1.0.0"
+    echo -e "\n# Upgrade to latest version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- upgrade"
+    echo -e "\n# Rollback to previous version"
+    echo "curl -sSL \"${REMOTE_INSTALL_SH}\" | bash -s -- rollback"
+    echo -e "\`\`\`"
+  } >README.md
+}
+
+## Initialize empty repository
+function initialize_empty_repository() {
+  # for global installation we skip initialization of repository in current dir
+  if [ "$GLOBAL" = true ]; then return 0; fi
+
+  # Check if repository is already initialized
+  if git rev-parse --quiet --verify HEAD &>/dev/null; then return 0; fi
+
+  echo -e "${YELLOW}Empty repository detected. Creating initial commit...${NC}" >&2
+
+  # Create README.md if it doesn't exist
+  if [ ! -f "README.md" ]; then compose_readme; fi
+
+  # Initialize the repository with the README
+  SILENT_GIT=true exec:git add README.md
+
+  # FIXME: Git commit will fail if user.name and user.email are not configured
+  SILENT_GIT=true exec:git commit -m "Initial commit before installing e-bash scripts"
+
+  # Update MAIN_BRANCH after initial commit
+  MAIN_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+}
+
 ## Display the result of the subtree merge operation. Exit code.
 function display_merge_result() {
   local result=$1
@@ -540,7 +683,7 @@ function display_merge_result() {
 
   echo -e "${RED}Subtree merge failed with exit code: $result${NC}"
   echo -e "${YELLOW}Debugging Git Branches:${NC}"
-  execute_git branch
+  exec:git branch
 
   return 1
 }
@@ -617,7 +760,7 @@ function perform_rollback() {
 
   echo -e "${RED}Rolling back to previous version: $previous_version${NC}"
   # FIXME: Checkout will fail if the commit no longer exists (e.g., after garbage collection)
-  execute_git checkout "$previous_version" -- "$SCRIPTS_DIR"
+  exec:git checkout "$previous_version" -- "$SCRIPTS_DIR"
 
   return $?
 }
@@ -729,19 +872,8 @@ function validate_version() {
 }
 
 ## Updated git command execution
-function execute_git_v1() {
-  if [ "$DRY_RUN" = true ]; then
-    echo -e "${CYAN}dry run: git $*${NC}"
-  else
-    echo -e "${CYAN}execute: git $*${NC}" >&2
-    # FIXME: Should provide more context on failure, perhaps capturing stderr
-    git "$@" || return 1
-  fi
-}
-
-## Updated git command execution
 SILENT_GIT=false
-function execute_git_v2() {
+function exec:git() {
   if [ "$DRY_RUN" = true ]; then
     echo -e "${CYAN}dry run: git $*${NC}" >&2
     return 0
@@ -762,9 +894,6 @@ function execute_git_v2() {
   [ "$immediate_exit_on_error" = "true" ] && set -e # recover state
   return $result
 }
-
-## Execute git command of selected dry_run wrapper version
-function execute_git() { execute_git_v2 "$@"; }
 
 ## Install e-bash scripts
 function repo_install() {
@@ -847,9 +976,9 @@ function repo_versions() {
   if [ "$has_git_repo" = "false" ]; then
     reason=", not a git repository"
   elif [ "$has_remote" = "true" ]; then
-    execute_git fetch "$REMOTE_NAME" --tags
+    exec:git fetch "$REMOTE_NAME" --tags
   else
-    execute_git remote add --fetch "$REMOTE_NAME" "$REMOTE_URL"
+    exec:git remote add --fetch "$REMOTE_NAME" "$REMOTE_URL"
   fi
 
   # Determine current version if installed
