@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-06
+## Last revisit: 2025-04-12
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -21,9 +21,10 @@ readonly SCRIPTS_DIR=".scripts"
 readonly SCRIPTS_PREV_VERSION=".e-bash-previous-version"
 readonly DEFAULT_BRANCH="main"
 readonly INSTALL_SCRIPT="bin/install.e-bash.sh"
-readonly GLOBAL_INSTALL_DIR="${HOME}/.e-bash"
 readonly __WORKTREES=".versions"
 readonly __REPO_V1="v1.0.0"
+readonly __GLOBAL_DIR=".e-bash"
+readonly GLOBAL_INSTALL_DIR="${HOME}/${__GLOBAL_DIR}"
 
 # Colors for better readability. should we use tput instead?
 readonly RED=$(tput setaf 1)    # red
@@ -38,10 +39,10 @@ readonly ITALIC=$(tput sitm)    # Italic Style
 readonly NOI=$(tput ritm)       # No Italic Style
 
 # Global flags.
-DRY_RUN=false        # Run in dry run mode (no changes)
-FORCE=false          # Not Implemented! But Reserved.
-GLOBAL=false         # Global installation (to HOME directory)
-CREATE_SYMLINK=false # Create symlink to global e-bash scripts
+DRY_RUN=false       # Run in dry run mode (no changes)
+FORCE=false         # Not Implemented! But Reserved.
+GLOBAL=false        # Global installation (to HOME directory)
+CREATE_SYMLINK=true # Create symlink to global e-bash scripts
 
 # Helpers
 readonly EXIT_OK=0
@@ -70,7 +71,7 @@ trap on_exit EXIT
 trap on_interrupt INT TERM
 
 ## Usage information, print to STDOUT
-function show_usage() {
+function print_usage() {
   local exit_code=${1:-0}
 
   echo -e "${BLUE}e-Bash Scripts Installer${NC}"
@@ -78,10 +79,10 @@ function show_usage() {
   echo -e "Usage: $0 [options] [command] [version]"
   echo ""
   echo -e "Options:"
-  echo -e "  ${YELLOW}--dry-run${NC}        - Run in dry run mode (no changes)"
-  echo -e "  ${YELLOW}--global${NC}         - Install scripts to user's '${HOME}' directory instead of current repository"
-  echo -e "  ${YELLOW}--create-symlink${NC} - Create symlink to global e-bash scripts"
-  echo -e "  ${YELLOW}--force${NC}          - Not Implemented! But Reserved. Should override prev installations."
+  echo -e "  ${YELLOW}--dry-run${NC}             - Run in dry run mode (no changes)"
+  echo -e "  ${YELLOW}--global${NC}              - Install scripts to user's '${HOME}' directory instead of current repository"
+  echo -e "  ${YELLOW}--[no-]create-symlink${NC} - Create symlink to global e-bash scripts (default: true)"
+  echo -e "  ${YELLOW}--force${NC}               - Not Implemented! But Reserved. Should override prev installations."
   echo ""
   echo -e "Commands:"
   echo -e "  ${GREEN}install${NC}   - Install e-bash scripts (default if not already installed)"
@@ -109,7 +110,7 @@ function show_usage() {
 }
 
 ## Print manual instructions how to uninstall e-bash scripts
-function show_manual_uninstall() {
+function print_manual_uninstall() {
   local exit_code=${1:-0}
 
   echo -e "${BLUE}Manual Uninstall Guide:${NC}"
@@ -134,12 +135,12 @@ function current_branch() {
   local branch="${DEFAULT_BRANCH}"
 
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    echo -e "${GRAY}detected:${NC} regular folder..." >&2
+    echo -e "${GRAY}detected:${NC} we are in a regular folder." >&2
   elif git rev-parse --quiet --verify HEAD >/dev/null 2>&1; then
-    echo -e "${GRAY}detected:${NC} repository with commits..." >&2
+    echo -e "${GRAY}detected:${NC} repository with commits." >&2
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   else
-    echo -e "${GRAY}detected:${NC} new repository with no commits..." >&2
+    echo -e "${GRAY}detected:${NC} new repository with NO commits." >&2
 
     # Check if there's a default branch configured
     if git config init.defaultBranch >/dev/null 2>&1; then
@@ -158,6 +159,20 @@ function check_prerequisites() {
     exit 1
   fi
 
+  # is any broken symlinks exist
+  if [ -L "$SCRIPTS_DIR" ] && [ ! -f "$SCRIPTS_DIR/_colors.sh" ]; then
+    # show user the resolution of the symbolic link
+    # shellcheck disable=SC2012
+    symlink=$(ls -la "${SCRIPTS_DIR}" | awk -F ' -> ' '{print $2}')
+    echo -e "${GRAY}detected:${NC} broken symlink: ${YELLOW}${SCRIPTS_DIR}${NC} -> ${RED}${symlink}${NC}" >&2
+    echo -e "${YELLOW}Warning: Found broken symlink to e-bash scripts directory${NC}" >&2
+    echo "" >&2
+    echo -e "${GRAY}Hints:${NC}" >&2
+    echo -e "  rm -rf ${SCRIPTS_DIR}${NC}          ${GRAY}# remove the broken symlink${NC}" >&2
+    echo -e "  mv ${SCRIPTS_DIR} ${SCRIPTS_DIR}.old${NC} ${GRAY}# rename the directory${NC}" >&2
+    echo "" >&2
+  fi
+
   # Different behavior based on --global flag
   if [ "$GLOBAL" = true ]; then
     echo -e "${BLUE}Checking prerequisites for home installation in ${YELLOW}${GLOBAL_INSTALL_DIR}${NC}" >&2
@@ -165,10 +180,10 @@ function check_prerequisites() {
     # For global installations, we don't need to be in a git repository
     # We'll clone directly to the HOME directory later
     if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-      echo -e "${YELLOW}Current directory is not a git repository: $PWD${NC}" >&2
+      echo -e "${GRAY}Installation inside regular folder: ${YELLOW}${PWD}${NC}" >&2
     else
       # If in a git repo and using --global, warn that we're still installing to HOME
-      echo -e "${YELLOW}Note: Using --global will install to ${GLOBAL_INSTALL_DIR}${NC}" >&2
+      echo -e "${GRAY}Note: Using --global will install to ${YELLOW}${GLOBAL_INSTALL_DIR}${NC}" >&2
       echo -e "${YELLOW}The current repository will NOT be modified${NC}" >&2
     fi
 
@@ -185,8 +200,11 @@ function check_prerequisites() {
 
   # Ensure we're in a git repository for local installations
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    echo -e "${RED}Error: Not in a git repository${NC}" >&2
-    echo -e "${YELLOW}Tip: Use --global option to install to HOME directory instead${NC}" >&2
+    echo -e "${RED}Error: Installation is NOT possible. Not a git repository folder: ${YELLOW}${PWD}${NC}" >&2
+    echo "" >&2
+    echo -e "${GRAY}Hints:${NC}" >&2
+    echo -e "  You can install to \$HOME directory instead, add ${GRAY}--global${NC} option${NC}" >&2
+    echo -e "  Or you can create empty git repository: ${GRAY}git init${NC}" >&2
     exit 1
   fi
 
@@ -239,8 +257,10 @@ function check_prerequisites() {
 }
 
 ## Check if e-bash scripts are already installed. Retrun codes: 0 - true, 1 - false
-function is_installed() {
-  if [ -d "$SCRIPTS_DIR" ] && [ -f "$SCRIPTS_DIR/_colors.sh" ]; then
+function is_ebash_installed() {
+  # directory or symlink to directory may exist, but only availability of _colors.sh file
+  # is enough to confirm that e-bash scripts are already installed
+  if { [ -d "$SCRIPTS_DIR" ] || [ -L "$SCRIPTS_DIR" ]; } && [ -f "$SCRIPTS_DIR/_colors.sh" ]; then
     # echo -e "${GRAY}detected:${NC} e-bash scripts are already installed in ${YELLOW}${SCRIPTS_DIR}${NC}" >&2
     return 0 # true
   else
@@ -250,9 +270,9 @@ function is_installed() {
 
 ## Save the current commit hash for potential rollback
 function save_current_version() {
-  if is_installed; then
+  if is_ebash_installed; then
     git rev-parse HEAD >"${SCRIPTS_PREV_VERSION}"
-    echo -e "${BLUE}Saved current version for potential rollback${NC}"
+    echo -e "${BLUE}Saved current version for potential rollback to ${YELLOW}${SCRIPTS_PREV_VERSION}${NC}"
   fi
 }
 
@@ -283,7 +303,7 @@ function create_temp_branch() {
   local version="$1"
 
   if [ "$version" = "master" ]; then
-    exec:git checkout --quiet --force -b "$TEMP_BRANCH" "$REMOTE_NAME/master"
+    exec:git checkout --quiet --force -b "$TEMP_BRANCH" "$REMOTE_NAME/$REMOTE_MASTER"
     return 0
   fi
 
@@ -345,24 +365,29 @@ function setup_remote() {
 ## Display installation success message
 function display_installation_success() {
   echo -e "${GREEN}Installation complete!${NC}"
-  echo -e "The e-bash scripts are now available in the ${CYAN}$SCRIPTS_DIR${NC} directory"
+  echo -e "The e-bash scripts are now available in the ${YELLOW}$SCRIPTS_DIR${NC} directory"
 }
 
 ## Add e-bash scripts as a git subtree. Exit code.
 function add_scripts_subtree() {
   if [ "$GLOBAL" = true ]; then
     # For global installation, we just clone the repository
-    echo -e "${BLUE}Cloning e-bash repository to ${GLOBAL_INSTALL_DIR}...${NC}"
+    echo -e "${BLUE}Cloning e-bash repository to: ${YELLOW}${GLOBAL_INSTALL_DIR}${NC}"
 
     # Create the directory if it doesn't exist
     mkdir -p "${GLOBAL_INSTALL_DIR}"
 
     # Check if directory already has git repository
     if [ -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
-      echo -e "${YELLOW}Git repository already exists in ${GLOBAL_INSTALL_DIR}, updating...${NC}"
+      echo -e "${GRAY}Git repository already exists in ${YELLOW}${GLOBAL_INSTALL_DIR}${GRAY}, updating...${NC}"
+
       pushd "${GLOBAL_INSTALL_DIR}" >/dev/null || exit 1
+      echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
+
       exec:git pull origin master
+
       popd >/dev/null || exit 1
+      echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
     else
       # Clone the repository
       exec:git clone "${REMOTE_URL}" "${GLOBAL_INSTALL_DIR}"
@@ -385,15 +410,15 @@ function initialize_global_v1() {
   mkdir -p "${GLOBAL_INSTALL_DIR}"
 
   pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || exit 1
-  echo -e "${CYAN}e-bash dir: ${GLOBAL_INSTALL_DIR}${NC}"
+  echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
 
   # create git repo if it's not initialized yet
   if [[ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]]; then
-    exec:git init "${GLOBAL_INSTALL_DIR}"
+    exec:git init -b "${REMOTE_MASTER}" "${GLOBAL_INSTALL_DIR}"
   fi
 
   # register git remote if it's not registered yet, on purpose use name different from origin
-  if ! (git remote -v 2>/dev/null | grep "${REMOTE_NAME}"); then
+  if ! (exec:git remote -v 2>/dev/null | grep "${REMOTE_NAME}"); then
     exec:git remote add "${REMOTE_NAME}" "${REMOTE_URL}"
     exec:git remote set-url --push "${REMOTE_NAME}" no_push
   fi
@@ -404,9 +429,10 @@ function initialize_global_v1() {
 
   # fetch latest changes
   exec:git fetch --all
+
+  echo -e "${BLUE}Checkout of e-bash ${PURPLE}${REMOTE_MASTER}${BLUE} branch${NC}" # latest
   exec:git checkout "${REMOTE_MASTER}"
   exec:git reset --hard "${REMOTE_NAME}/${REMOTE_MASTER}"
-  echo -e "${BLUE}Checkout of e-bash ${REMOTE_MASTER} branch${NC}" # latest
 
   # exclude VERSIONS_DIR folder from git, by updating .gitignore file (if needed)
   if ! grep "${__WORKTREES}/" .gitignore &>/dev/null; then
@@ -417,7 +443,7 @@ function initialize_global_v1() {
     } >>.gitignore
   fi
 
-  echo -e "${BLUE}Extracting ${__REPO_V1} stable version...${NC}"
+  echo -e "${BLUE}Checkout ${PURPLE}${__REPO_V1}${BLUE} first known stable version...${NC}"
 
   # extract version 1.0.0
   local tag_or_branch="${__REPO_V1}"
@@ -425,6 +451,35 @@ function initialize_global_v1() {
   exec:git worktree add --checkout "$worktree" "${tag_or_branch}"
 
   popd &>/dev/null || exit 1
+  echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
+}
+
+## Creat a symbolic link to the .scripts folder
+function create_symlink() {
+  local version="${1:-master}"
+  local versionedDir="${GLOBAL_INSTALL_DIR}/${__WORKTREES}/${version}"
+
+  # Create the .scripts directory symlink in the current directory if requested
+  echo -e "${BLUE}Creating symlink to global e-bash scripts version ${PURPLE}${version}${BLUE}...${NC}"
+
+  # FIXME: only GNU LN supports --backup option, that allows to create a backup of symlink.
+  #  macos version of LN does not support this option.
+
+  if [ "$version" = "master" ]; then
+    ln -sf "${GLOBAL_INSTALL_DIR}/${SCRIPTS_DIR}" "${SCRIPTS_DIR}"
+  else
+    ln -sf "${versionedDir}/${SCRIPTS_DIR}" "${SCRIPTS_DIR}"
+  fi
+
+  # shellcheck disable=SC2012
+  symlink=$(ls -la "${SCRIPTS_DIR}" | awk -F ' -> ' '{print $2}')
+
+  # verify that we did not create a broken symlink
+  if [ -L "$SCRIPTS_DIR" ] && [ ! -f "$SCRIPTS_DIR/_colors.sh" ]; then
+    echo -e "${GRAY}detected:${NC} broken symlink: ${YELLOW}${SCRIPTS_DIR}${NC} -> ${RED}${symlink}${NC}" >&2
+  else
+    echo -e "${GREEN}Symlink created: ${YELLOW}${SCRIPTS_DIR}${NC} -> ${PURPLE}${symlink}${NC}"
+  fi
 }
 
 ## Make a symbolic link to global e-bash .scripts folder
@@ -435,12 +490,19 @@ function bind_ebash_global_version() {
 
   # jump to e-bash home dir to make a worktree extraction
   pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || exit 1
-  exec:git worktree add --checkout "$worktree" "$version"
-  popd &>/dev/null || exit 1
+  echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
 
-  # Create the .scripts directory symlink in the current directory if requested
-  echo -e "${BLUE}Creating symlink to global e-bash scripts version ${version}...${NC}"
-  ln -sf "${versionedDir}/${SCRIPTS_DIR}" "${SCRIPTS_DIR}"
+  if [ "$version" = "master" ]; then
+    echo -e "${GRAY}Skipping worktree creation for ${PURPLE}master${GRAY} branch${NC}"
+  else
+    exec:git worktree add --checkout "$worktree" "$version"
+  fi
+
+  popd &>/dev/null || exit 1
+  echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
+
+  # create a symbolic link to the .scripts folder if allowed
+  [ "$CREATE_SYMLINK" = true ] && create_symlink "$version"
 }
 
 ## Install e-bash scripts. Exit code.
@@ -461,7 +523,11 @@ function install_scripts() {
     bind_ebash_global_version "$version"
 
     # Perform post-installation steps for global install
-    post_installation_steps_global
+    post_installation_steps_global "$version" # global changes
+    post_installation_steps                   # local changes
+
+    echo ""
+    echo -e "${GRAY}Note:${NC} You may need to restart your shell or run '${GRAY}source ~/.${SHELL##*/}rc${NC}' to apply the changes"
 
     return 0
   else
@@ -499,61 +565,71 @@ function install_scripts() {
 
 ## Perform post-installation customizations
 function post_installation_steps() {
-  echo -e "${BLUE}Performing post-installation steps...${NC}"
+  echo -e "${BLUE}Performing post-installation steps: [integrate with DIRENV], [copy installer to bin]${NC}"
 
   # Check for .envrc file and update it if found
   if [ -f ".envrc" ]; then
-    echo -e "${BLUE}Detected .envrc file. Adding e-bash configuration...${NC}"
     update_envrc_configuration
+  else
+    echo -e "${GRAY}Skipping DIRENV integration. No ${YELLOW}${PWD}/.envrc${GRAY} file.${NC}" >&2
   fi
 
   # Check for bin directory and copy installer script
   if [ -d "bin" ]; then
-    echo -e "${BLUE}Detected bin directory. Copying installation script...${NC}"
     copy_installer_to_bin
+  else
+    echo -e "${GRAY}Skipping installer script copy. No ${YELLOW}${PWD}/bin${GRAY} directory.${NC}" >&2
   fi
 }
 
 ## Perform post-installation customizations for global install
 function post_installation_steps_global() {
-  echo -e "${BLUE}Performing post-installation steps for global installation...${NC}"
+  local version="$1"
+
+  echo -e "${BLUE}Performing post-installation steps for global installation: [global export E_BASH]${NC}"
 
   # Add global e-bash directory to PATH if needed
-  local bashrc="${HOME}/.bashrc"
-  local zshrc="${HOME}/.zshrc"
+  local shell="${SHELL##*/}"
+  local shellrc="${HOME}/.${shell}rc"
+
+  # TODO: for 'master' version we should skip '${__WORKTREES}/${version}' part
+  local ver_dir="\${HOME}/${__GLOBAL_DIR}/${__WORKTREES}/${version}"
 
   # Configure E_BASH environment variable
-  local env_line="export E_BASH=\"\${HOME}/.e-bash/${SCRIPTS_DIR}\""
+  local env_line="export E_BASH=\"${ver_dir}/${SCRIPTS_DIR}\""
 
   # Add to .bashrc if it exists
-  if [ -f "$bashrc" ] && ! grep -q "export E_BASH=" "$bashrc"; then
-    echo -e "${BLUE}Adding E_BASH environment variable to .bashrc...${NC}"
-    echo "" >>"$bashrc"
-    echo "# E-Bash scripts configuration" >>"$bashrc"
-    echo "$env_line" >>"$bashrc"
-  fi
+  if [ -f "$shellrc" ]; then
+    if ! grep -q "export E_BASH=" "$shellrc"; then
+      echo -e "${BLUE}Adding E_BASH environment variable to ${shellrc}...${NC}"
+      {
+        echo ""
+        echo "# e-Bash scripts configuration"
+        echo "$env_line"
+      } >>"$shellrc"
+      echo -e "${GREEN}E_BASH points to ${YELLOW}${ver_dir}/${SCRIPTS_DIR}${NC}"
+    else
+      echo -e "${GRAY}Skipping E_BASH export, export already exists in ${YELLOW}${shellrc}${NC}"
+      local found_line=$(grep "export E_BASH=" "$shellrc" | head -1)
 
-  # Add to .zshrc if it exists
-  if [ -f "$zshrc" ] && ! grep -q "export E_BASH=" "$zshrc"; then
-    echo -e "${BLUE}Adding E_BASH environment variable to .zshrc...${NC}"
-    echo "" >>"$zshrc"
-    echo "# E-Bash scripts configuration" >>"$zshrc"
-    echo "$env_line" >>"$zshrc"
+      if [ "${found_line}" != "${env_line}" ]; then
+        echo -e "${GRAY}You can add/edit manually: ${YELLOW}${env_line}${NC}"
+        echo -n "Found: " >&2
+        grep "export E_BASH=" "$shellrc" >&2
+      fi
+    fi
+  else
+    echo -e "${GRAY}Skipping E_BASH export configuration. No ${YELLOW}${shellrc}${GRAY} file.${NC}" >&2
   fi
-
-  echo -e "${GREEN}Global E-Bash environment configured${NC}"
-  echo -e "${YELLOW}Note: You may need to restart your shell or run 'source ~/.bashrc' to apply the changes${NC}"
 }
 
 ## Append e-bash configuration to .envrc file. Exit code.
 function update_envrc_configuration() {
   # Check if our configuration is already in .envrc
   if grep -q "export E_BASH=" ".envrc"; then
-    echo -e "${YELLOW}e-bash configuration already exists in .envrc${NC}"
+    echo -e "${GRAY}Skipping DIRENV integration. Configuration already exists in ${YELLOW}${PWD}/.envrc${NC}"
     return 0
   fi
-
-  echo -e "${BLUE}Updating .envrc with e-bash configuration...${NC}"
 
   # Append our configuration to .envrc
   {
@@ -578,7 +654,7 @@ function update_envrc_configuration() {
     echo "fi"
   } >>".envrc"
 
-  echo -e "${GREEN}Updated .envrc file with e-bash configuration${NC}"
+  echo -e "${GREEN}Added e-bash configuration to ${YELLOW}${PWD}/.envrc${NC}"
   echo -e "${YELLOW}Run 'direnv allow' to apply the changes${NC}"
   return 0
 }
@@ -592,9 +668,8 @@ function copy_installer_to_bin() {
   has_curl="$(command -v curl &>/dev/null && echo "true" || echo "false")"
   has_wget="$(command -v wget &>/dev/null && echo "true" || echo "false")"
 
-  echo -e "${BLUE}Downloading installation script...${NC}"
+  echo -e "${BLUE}Downloading installation script: ${YELLOW}${REMOTE_INSTALL_SH}${NC}"
 
-  set -x
   # detect are we a file or in pipe execution
   local isPipe="$([[ ! -t 1 ]] && echo "true" || echo "false")"
   local fallback=0
@@ -622,7 +697,7 @@ function copy_installer_to_bin() {
   fi
 
   if [ "$fallback" -eq 1 ] && [ "$isPipe" = "false" ]; then
-    echo -e "${YELLOW}Failed to download script, copying self instead${NC}"
+    echo -e "${GRAY}Failed to download script, copying self instead${NC}"
     # we can copy itself to the bin directory
     cp "$0" "bin/install.e-bash.sh"
   fi
@@ -630,8 +705,7 @@ function copy_installer_to_bin() {
   # Set executable attribute if file exists
   [ -f "bin/install.e-bash.sh" ] && chmod +x "bin/install.e-bash.sh"
 
-  echo -e "${GREEN}Placed installation script to bin/install.e-bash.sh${NC}"
-  set +x
+  echo -e "${GREEN}Placed installation script to ${YELLOW}${PWD}/bin/install.e-bash.sh${NC}"
   return 0
 }
 
@@ -656,7 +730,7 @@ function perform_subtree_merge() {
     echo "  git merge --abort ${GRAY}# abort the merge operation${NC}"
     echo ""
 
-    show_manual_uninstall $result # abort execution with custom exit code
+    print_manual_uninstall $result # abort execution with custom exit code
   fi
 
   return $result
@@ -740,27 +814,31 @@ function upgrade_scripts() {
 
   echo -e "${YELLOW}=== UPGRADE STARTED (version: $version) ===${NC}"
 
-  # Save current version for potential rollback
-  save_current_version
-
-  # Setup remote and branches
-  setup_remote "$version"
-
-  # Perform the subtree merge
-  perform_subtree_merge
-  merge_result=$?
-
-  # Display the result
-  display_merge_result "$merge_result"
-
-  # If successful, show completion message
-  if [ "$merge_result" -eq 0 ]; then
-    display_upgrade_success
-    echo -e "${YELLOW}If you need to rollback to the previous version, run:${NC}"
-    echo -e "  $0 rollback"
+  if [ "$GLOBAL" = true ]; then
+    ::
   else
-    echo -e "${YELLOW}Upgrade encountered issues. You may want to try again or rollback.${NC}"
-    return 1
+    # Save current version for potential rollback
+    save_current_version
+
+    # Setup remote and branches
+    setup_remote "$version"
+
+    # Perform the subtree merge
+    perform_subtree_merge
+    merge_result=$?
+
+    # Display the result
+    display_merge_result "$merge_result"
+
+    # If successful, show completion message
+    if [ "$merge_result" -eq 0 ]; then
+      display_upgrade_success
+      echo -e "${YELLOW}If you need to rollback to the previous version, run:${NC}"
+      echo -e "  $0 rollback"
+    else
+      echo -e "${YELLOW}Upgrade encountered issues. You may want to try again or rollback.${NC}"
+      return 1
+    fi
   fi
 
   # Run post-installation steps
@@ -820,7 +898,18 @@ function get_installed_version() {
 
   # Check if the .scripts directory is a symbolic link
   if [ -L "$SCRIPTS_DIR" ]; then
-    current_version="$(readlink -f "$SCRIPTS_DIR" | sed -E 's/\/.scripts$//g; s/^.*\/.versions\///g')"
+    resolved_symlink="$(readlink -f "$SCRIPTS_DIR")"
+
+    # if resolved_symlink contains '.versions' and '.scripts' - then specific version installed,
+    # otherwise we have a 'master' binded to the .scripts
+
+    if [[ "$resolved_symlink" == *"${__WORKTREES}"* && "$resolved_symlink" == *"${SCRIPTS_DIR}"* ]]; then
+      # Extract version from the resolved symlink
+      current_version="$(echo "$resolved_symlink" | sed -E 's/\/.scripts$//g; s/^.*\/.versions\///g')"
+    else
+      current_version="${REMOTE_MASTER}"
+    fi
+
     echo "$current_version"
     return 0
   fi
@@ -946,7 +1035,7 @@ function repo_install() {
   # Initialize empty repository if needed before installation
   initialize_empty_repository
 
-  if is_installed; then
+  if is_ebash_installed; then
     echo -e "${YELLOW}e-bash scripts already installed. Use 'upgrade' to update.${NC}"
     echo -e "Run: $0 upgrade [$version]"
     exit 0
@@ -964,7 +1053,7 @@ function repo_upgrade() {
   # Initialize empty repository if needed before upgrade
   initialize_empty_repository
 
-  if ! is_installed; then
+  if ! is_ebash_installed; then
     echo -e "${YELLOW}e-bash scripts not installed. Installing instead.${NC}"
     install_scripts "$version"
   else
@@ -1031,7 +1120,7 @@ function repo_versions() {
   fi
 
   # Determine current version if installed
-  if is_installed; then
+  if is_ebash_installed; then
     local_status=$([ -L "$SCRIPTS_DIR" ] && echo " ${CYAN}[symlink]${NC}")
     current_version=$(get_installed_version)
   fi
@@ -1080,7 +1169,7 @@ function repo_versions() {
   # Now display information about local installation
   echo ""
   echo -e "${GREEN}Installed in current repository (${YELLOW}${PWD}${GREEN}):${NC}"
-  if is_installed; then
+  if is_ebash_installed; then
     echo -e "${PURPLE}${current_version}${local_status}${NC}"
   else
     echo -e "${YELLOW}Not installed in current repository${reason}${NC}"
@@ -1138,14 +1227,16 @@ function main() {
 
   # If command is "auto", determine whether to install or upgrade
   if [ "$command" == "auto" ]; then
-    if is_installed; then
+    if is_ebash_installed; then
       command="upgrade"
-      echo -e "${YELLOW}Auto-detected: e-bash scripts already installed. Switching to 'upgrade' mode.${NC}"
+      echo -e "${GRAY}detected:${NC} e-bash scripts already installed. Switching to '${BLUE}upgrade${NC}' mode." >&2
     else
       command="install"
-      echo -e "${GREEN}Auto-detected: e-bash scripts not installed. Switching to 'install' mode.${NC}"
+      echo -e "${GRAY}detected:${NC} e-bash scripts not installed (or broken). Switching to '${GREEN}install${NC}' mode." >&2
     fi
   fi
+
+  [ "$DRY_RUN" = true ] && echo -e "${GRAY}Dry Run mode. No changes will be applied.${NC}"
 
   # Main repository branch
   # FIXME: This assumes current_branch will succeed, but there's no error handling if it fails
@@ -1165,14 +1256,14 @@ function main() {
     repo_versions
     ;;
   "uninstall")
-    show_manual_uninstall
+    print_manual_uninstall
     ;;
   "help" | "-h" | "--help")
-    show_usage $EXIT_OK
+    print_usage $EXIT_OK
     ;;
   *)
     echo -e "${RED}Unknown command: $command${NC}"
-    show_usage $EXIT_NO
+    print_usage $EXIT_NO
     ;;
   esac
 }
@@ -1194,14 +1285,19 @@ function preparse_args() {
       GLOBAL=true && unset 'args[i]'
     elif [[ "$key" == "--create-symlink" ]]; then
       CREATE_SYMLINK=true && unset 'args[i]'
+    elif [[ "$key" == "--no-create-symlink" ]]; then
+      CREATE_SYMLINK=false && unset 'args[i]'
     fi
   done
 
-  # Report flags
-  [ "$DRY_RUN" = true ] && echo "dry run mode ON    : $DRY_RUN" >&2
-  [ "$FORCE" = true ] && echo "forced override    : $FORCE" >&2
-  [ "$GLOBAL" = true ] && echo "global installation: $GLOBAL" >&2
-  [ "$CREATE_SYMLINK" = true ] && echo "create symlink     : $CREATE_SYMLINK" >&2
+  # if DEBUG variable set
+  if [ -n "$DEBUG" ]; then
+    # Diagnostic report, enabled flags
+    [ "$DRY_RUN" = true ] && echo -e "${GRAY}dry run mode ON    : ${DRY_RUN}${NC}" >&2
+    [ "$FORCE" = true ] && echo -e "${GRAY}forced override    : ${FORCE}${NC}" >&2
+    [ "$GLOBAL" = true ] && echo -e "${GRAY}global installation: ${GLOBAL}${NC}" >&2
+    [ "$CREATE_SYMLINK" = true ] && echo -e "${GRAY}create symlink     : ${CREATE_SYMLINK}${NC}" >&2
+  fi
 
   # Return remaining arguments
   # shellcheck disable=SC2206
