@@ -28,3 +28,13 @@ When implementing logging in bash scripts:
 16. Remember that `echo:Tag` and `printf:Tag` are wrappers over built-in commands, supporting all their options
 17. Include a session/correlation ID in logs to track related operations: `export __SESSION=$(date +%s%N)` if you expect a heavy usage of the script in multi-process environment (like CI/CD pipelines, cron jobs);
 18. Avoid warpping loggers with custom functions
+
+When implementing BASH script functions:
+- use local variables as much as possible;
+- pre-declare local variables at the beginning of the function;
+- safe space and declare multiple local variables on the same line, but no more than 5 variables per line;
+- in commands try to use first expanded version of flags instead of short names, example: instead of `-f` use `--force`
+- try to keep nested code to minimum, reduce code complexity:
+  - avoid nested if statements
+  - avoid nested for loops
+  - do quick return from functions at the beginning of the function only
