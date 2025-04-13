@@ -41,3 +41,6 @@ bin/bitbucket
 
 # symbolic links (for Linux only)
 bin/gnubin
+
+# patches
+patches/
