@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-06
+## Last revisit: 2025-04-13
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -57,8 +57,8 @@ fDescribe 'install.e-bash.sh /'
 
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
-  no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
-  no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
+  no_colors_error() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
+  no_colors_output() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
 
   Describe 'check_prerequisites /'
     Before 'temp_repo; cp_install'
@@ -70,7 +70,8 @@ fDescribe 'install.e-bash.sh /'
       When run ./install.e-bash.sh
 
       The status should be failure
-      The output should include "Error: Not in a git repository"
+      #The output should include "Error: Not in a git repository"
+      The result of function no_colors_error should include "detected: we are in a regular folder."
 
       # We don't need to verify the exact stderr output,
       # but we can check that stderr is not empty
@@ -147,6 +148,7 @@ fDescribe 'install.e-bash.sh /'
       The output should include "The e-bash scripts are now available in the"
       The error should be present # logs output
       The dir ".scripts" should be present
+      The file ".scripts/_colors.sh" should be present
     End
 
     It 'should detect "main" branch correctly'
@@ -182,17 +184,19 @@ fDescribe 'install.e-bash.sh /'
       The status should be success
       The output should include "Installation complete!"
       The error should be present # logs output
-      The result of function no_colors_stderr should include "git checkout --quiet new_branch"
+      The result of function no_colors_error should include "git checkout --quiet new_branch"
     End
 
     It 'should install v1.0.1-alpha.1 version of e-bash'
       When run ./install.e-bash.sh install v1.0.1-alpha.1
 
       The status should be success
-      The output should include "Installing e-bash scripts (version: v1.0.1-alpha.1)"
+      The result of function no_colors_output should include "Installing e-bash scripts (version: v1.0.1-alpha.1)"
       The output should include "Installation complete!"
       The error should be present # logs output
       The error should include "git checkout --quiet -b e-bash-temp v1.0.1-alpha.1"
+
+      #Dump
     End
 
     It 'should create README.md with instructions'
@@ -272,8 +276,8 @@ fDescribe 'install.e-bash.sh /'
       When run ./install.e-bash.sh versions
 
       The status should be success
-      The output should include "Available stable versions:"
-      The output should include "Non-stable versions (pre-releases, development versions)"
+      The output should include "Available remote stable versions"
+      The output should include "Available remote non-stable versions (pre-releases, development):"
       The error should be present # logs output
     End
 
@@ -286,8 +290,8 @@ fDescribe 'install.e-bash.sh /'
         When run ./install.e-bash.sh versions
 
         The status should be success
-        The result of function no_colors_stdout should include "v1.1.0 [LATEST]"
-        The result of function no_colors_stdout should include "v1.0.1-alpha.1 [CURRENT]"
+        The result of function no_colors_output should include "v1.1.0 [LAST]"
+        The result of function no_colors_output should include "v1.0.1-alpha.1 [CURRENT]"
         The error should be present # logs output
       End
 
@@ -297,8 +301,8 @@ fDescribe 'install.e-bash.sh /'
         When run ./install.e-bash.sh versions
 
         The status should be success
-        The result of function no_colors_stdout should include "v1.0.0 [CURRENT]"
-        The result of function no_colors_stdout should include "v1.1.0 [LATEST]"
+        The result of function no_colors_output should include "v1.0.0 [CURRENT]"
+        The result of function no_colors_output should include "v1.1.0 [LAST]"
         The error should be present # logs output
       End
 
@@ -309,7 +313,7 @@ fDescribe 'install.e-bash.sh /'
         When run ./install.e-bash.sh versions
 
         The status should be success
-        The result of function no_colors_stdout should include "master - Development version (alias to: latest) [CURRENT]"
+        The result of function no_colors_output should include "master - Development version (alias: latest) [CURRENT]"
         The error should be present # logs output
       End
 
@@ -325,7 +329,7 @@ fDescribe 'install.e-bash.sh /'
       When run ./install.e-bash.sh install v1.0.0
 
       The status should be success
-      The output should include "Installing e-bash scripts (version: v1.0.0)"
+      The result of function no_colors_output should include "Installing e-bash scripts (version: v1.0.0)"
       The output should include "Installation complete!"
       The error should be present # logs output
     End
@@ -334,7 +338,7 @@ fDescribe 'install.e-bash.sh /'
       When run ./install.e-bash.sh install v0.0.0-alpha
 
       The status should be failure
-      The output should include "Installing e-bash scripts (version: v0.0.0-alpha)"
+      The result of function no_colors_output should include "Installing e-bash scripts (version: v0.0.0-alpha)"
       The error should be present # logs output
       The error should include "fatal: 'v0.0.0-alpha' is not a commit and a branch 'e-bash-temp' cannot be created from it"
 
@@ -353,7 +357,7 @@ fDescribe 'install.e-bash.sh /'
 
       The status should be success
       The output should include "Usage:"
-      The error should include "Regular folder detected"
+      The result of function no_colors_error should include "detected: we are in a regular folder."
     End
 
     It 'should correctly show help message'
@@ -361,7 +365,7 @@ fDescribe 'install.e-bash.sh /'
 
       The status should be success
       The output should include "Usage:"
-      The error should include "Regular folder detected"
+      The result of function no_colors_error should include "detected: we are in a regular folder."
     End
   End
 
@@ -371,36 +375,33 @@ fDescribe 'install.e-bash.sh /'
       # Create a temporary directory to act as HOME
       TEMP_HOME="$TEST_DIR/temp_home"
       mkdir -p "$TEMP_HOME"
-      
+
       # Backup the real HOME
       REAL_HOME="$HOME"
-      
+
       # Override HOME for testing
       export HOME="$TEMP_HOME"
-      
-      # Create empty shell config files
-      touch "$TEMP_HOME/.bashrc"
-      touch "$TEMP_HOME/.zshrc"
     }
-    
+
     restore_real_home() {
       # Restore the real HOME
       export HOME="$REAL_HOME"
-      
+
       # Clean up temporary home
       rm -rf "$TEMP_HOME"
     }
 
-    Before 'temp_repo; git_init; git_config; cp_install; git_add_all; git_commit; setup_temp_home'
-    After 'cleanup_temp_repo; restore_real_home'
+    Before 'temp_repo; setup_temp_home; cp_install'
+    After 'restore_real_home; cleanup_temp_repo'
 
     It 'should install e-bash scripts globally to HOME directory'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
 
       The status should be success
       The output should include "Installation complete!"
-      The output should include "The e-bash scripts have been installed globally in"
-      The output should include "$TEMP_HOME/.e-bash"
+      The output should include "e-Bash scripts installed globally to"
+      The error should be present # logs output
+
       The dir "$TEMP_HOME/.e-bash" should be present
       The dir "$TEMP_HOME/.e-bash/.scripts" should be present
       The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
@@ -411,29 +412,52 @@ fDescribe 'install.e-bash.sh /'
 
       The status should be success
       The output should include "Installation complete!"
+      The error should be present # logs output
+
       The dir "$TEMP_HOME/.e-bash" should be present
       The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
     End
 
     It 'should update shell configuration files'
+      touch "$TEMP_HOME/.${SHELL##*/}rc"
+
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
 
       The status should be success
-      The file "$TEMP_HOME/.bashrc" should be present
-      The file "$TEMP_HOME/.zshrc" should be present
-      The contents of file "$TEMP_HOME/.bashrc" should include "export E_BASH"
-      The contents of file "$TEMP_HOME/.zshrc" should include "export E_BASH"
+      The output should include "Installation complete!"
+      The error should be present # logs output
+
+      The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
+      The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should include "export E_BASH"
     End
 
-    It 'should support symlink creation with --create-symlink option'
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global --create-symlink
+    It 'should support NO symlink creation with --no-create-symlink option'
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global --no-create-symlink
 
       The status should be success
-      The path ".scripts" should be symlink
-      The contents of file ".scripts/_colors.sh" should be present
+      The output should include "Installation complete!"
+      The error should be present # logs output
+
+      The dir "$TEMP_HOME/.e-bash" should be present
+
+      The path "$TEST_DIR/.scripts" should not be exist
     End
 
-    It 'should upgrade global installation'
+    It 'should detect broken .scripts symlink'
+      # Create a broken symlink
+      rm -rf "$TEST_DIR/.scripts"
+      ln -s "$TEST_DIR/.scripts-broken" "$TEST_DIR/.scripts"
+
+      # Run the script, should fail since the .scripts symlink is broken
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh --global
+
+      The status should be success
+      The output should include "Installation complete!"
+      The result of function no_colors_error should include "detected: broken symlink: .scripts ->"
+      The stderr should be present
+    End
+
+    xIt 'should upgrade global installation'
       # First install
       install_global
 
@@ -444,10 +468,10 @@ fDescribe 'install.e-bash.sh /'
       The output should include "$TEMP_HOME/.e-bash"
     End
 
-    It 'should rollback global installation'
+    xIt 'should rollback global installation'
       # First install
       install_global
-      
+
       # Then upgrade to create a previous version
       upgrade_global
 

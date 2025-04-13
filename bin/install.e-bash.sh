@@ -2,13 +2,14 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-12
+## Last revisit: 2025-04-13
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # fail if any error is encountered
 set -e
+shopt -s extdebug # enable extended debugging
 
 # Configuration.
 readonly REMOTE_NAME="e-bash"
@@ -69,6 +70,40 @@ function on_interrupt() {
 # Register trap for normal exit and interrupt
 trap on_exit EXIT
 trap on_interrupt INT TERM
+
+__FUNC_STACK="" # CSV list of functions
+
+function on_entry() {
+  local current_func="${FUNCNAME[1]}"
+  local last_on_stack="${__FUNC_STACK##*,}"
+  local indent_level=$(echo "$__FUNC_STACK" | tr -cd ',' | wc -c)
+  local indent=$(printf '%*s' "$indent_level" '' | tr ' ' '  ')
+
+  # if we got "<<" exit from nested function, then print current new level
+  if [[ "$last_on_stack" == "<<" ]]; then
+    __FUNC_STACK=${__FUNC_STACK%,*}
+    #indent=$(printf '%*s' "$((indent_level - 1))" '' | tr ' ' '  ')
+    #echo -e "${indent}${GRAY}-- ${BLUE}$current_func${NC}" >&2
+  elif [[ "$current_func" != "on_entry" &&
+    "$current_func" != "on_return" &&
+    "$current_func" != "$last_on_stack" ]]; then
+    echo -e "${indent}${GRAY}>> ${BLUE}$current_func${NC}" >&2
+    __FUNC_STACK="$__FUNC_STACK,$current_func"
+  fi
+}
+
+function on_return() {
+  local current_func="${FUNCNAME[1]}"
+
+  __FUNC_STACK=${__FUNC_STACK%,*}
+  local indent_level=$(echo "$__FUNC_STACK" | tr -cd ',' | wc -c)
+  local indent=$(printf '%*s' "$indent_level" '' | tr ' ' '  ')
+  echo -e "${indent}${GRAY}<< ${BLUE}$current_func${NC}" >&2
+
+  __FUNC_STACK="${__FUNC_STACK},<<"
+}
+
+[ -n "$DEBUG" ] && trap on_entry DEBUG && trap on_return RETURN
 
 ## Usage information, print to STDOUT
 function print_usage() {
@@ -302,7 +337,7 @@ function clean_temp_branches() {
 function create_temp_branch() {
   local version="$1"
 
-  if [ "$version" = "master" ]; then
+  if [ "$version" = "$REMOTE_MASTER" ]; then
     exec:git checkout --quiet --force -b "$TEMP_BRANCH" "$REMOTE_NAME/$REMOTE_MASTER"
     return 0
   fi
@@ -333,7 +368,6 @@ function return_to_original_branch() {
   fi
 
   echo -e "${YELLOW}No commits found. Staying in current state.${NC}"
-  : # No-op command
   return 0
 }
 
@@ -397,13 +431,13 @@ function add_scripts_subtree() {
   else
     # For local installation, use git subtree
     echo -e "${BLUE}Adding e-bash scripts as a git subtree...${NC}"
-    exec:git subtree add --prefix="${SCRIPTS_DIR}" "${REMOTE_NAME}" "${TEMP_BRANCH}" --squash
+    exec:git subtree add --prefix "${SCRIPTS_DIR}" "${SCRIPTS_BRANCH}" --squash
     return $?
   fi
 }
 
 ## Configure global installation, "$HOME/.e-bash"
-function initialize_global_v1() {
+function initialize_global_repo() {
   echo -e "${BLUE}Preparing e-Bash HOME installation...${NC}"
 
   # create .e-bash folder if it does not exist
@@ -492,8 +526,9 @@ function bind_ebash_global_version() {
   pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || exit 1
   echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
 
-  if [ "$version" = "master" ]; then
-    echo -e "${GRAY}Skipping worktree creation for ${PURPLE}master${GRAY} branch${NC}"
+  # if version already pre-exists, then skip worktree add operation
+  if [ "$version" = "master" ] || [ -d "$worktree" ]; then
+    echo -e "${GRAY}Skipping worktree creation for ${PURPLE}${version}${GRAY} branch${NC}"
   else
     exec:git worktree add --checkout "$worktree" "$version"
   fi
@@ -502,21 +537,22 @@ function bind_ebash_global_version() {
   echo -e "${CYAN}pwd: ${PWD}${NC}" >&2 # current directory changed
 
   # create a symbolic link to the .scripts folder if allowed
-  [ "$CREATE_SYMLINK" = true ] && create_symlink "$version"
+  if [ "$CREATE_SYMLINK" = true ]; then
+    create_symlink "$version"
+  else
+    echo -e "${GRAY}Skipping symlink creation for ${PURPLE}${version}${GRAY} branch${NC}" >&2
+  fi
 }
 
 ## Install e-bash scripts. Exit code.
 function install_scripts() {
   local version="${1:-master}"
 
-  echo -e "${BLUE}Installing e-bash scripts...${NC}"
-
-  # Save current branch for later
-  local current_branch
+  echo -e "${BLUE}Installing e-bash scripts (version: ${PURPLE}${version}${BLUE})${NC}"
 
   if [ "$GLOBAL" = true ]; then
     # For global installation, we've already cloned the repository
-    initialize_global_v1
+    initialize_global_repo
     echo -e "${GREEN}e-Bash scripts installed globally to ${GLOBAL_INSTALL_DIR}${NC}"
 
     # if we have version that is matching a specific version, bind it
@@ -528,8 +564,8 @@ function install_scripts() {
 
     echo ""
     echo -e "${GRAY}Note:${NC} You may need to restart your shell or run '${GRAY}source ~/.${SHELL##*/}rc${NC}' to apply the changes"
+    echo ""
 
-    return 0
   else
     setup_remote "$version"
 
@@ -539,28 +575,18 @@ function install_scripts() {
       return 1
     fi
 
-    current_branch=$(current_branch)
-
-    # For local installation, we use git subtree
-    clean_temp_branches
-    create_temp_branch "$version"
-    configure_local_branches
-
     # Add scripts as a subtree
     if ! add_scripts_subtree; then
       echo -e "${RED}Failed to add e-bash scripts as subtree${NC}"
-      return_to_original_branch "$current_branch"
       return 1
     fi
 
-    # Return to original branch
-    return_to_original_branch "$current_branch"
-
     # Post-installation customization
     post_installation_steps
-
-    display_installation_success
   fi
+
+  display_installation_success
+  return 0
 }
 
 ## Perform post-installation customizations
@@ -995,11 +1021,23 @@ function display_version() {
 ## Validate version
 function validate_version() {
   local version=$1
-  # FIXME: This doesn't handle the case where version is 'master' or other branch name
-  if ! git ls-remote --tags $REMOTE_URL | grep -q "refs/tags/$version"; then
-    echo -e "${RED}Error: Version $version does not exist in remote${NC}"
-    exit 1
+
+  # NOTE: 'master' is the only one allowed branch name
+  if [ "$version" = "$REMOTE_MASTER" ]; then
+    if ! exec:git ls-remote --heads $REMOTE_URL 2>&1 | grep -q "$REMOTE_MASTER"; then
+      echo -e "${RED}Error: Version ${PURPLE}$version${RED} does not exist in remote${NC}"
+      return 1
+    fi
+
+    return 0
   fi
+
+  if ! exec:git ls-remote --tags $REMOTE_URL 2>&1 | grep -q "refs/tags/$version"; then
+    echo -e "${RED}Error: Version ${PURPLE}$version${RED} does not exist in remote${NC}"
+    return 1
+  fi
+
+  return 0
 }
 
 ## Updated git command execution
@@ -1121,7 +1159,7 @@ function repo_versions() {
 
   # Determine current version if installed
   if is_ebash_installed; then
-    local_status=$([ -L "$SCRIPTS_DIR" ] && echo " ${CYAN}[symlink]${NC}")
+    local_status=$([ -L "$SCRIPTS_DIR" ] && echo " ${CYAN}[symlink]${NC}" || echo "")
     current_version=$(get_installed_version)
   fi
 
@@ -1206,14 +1244,14 @@ function repo_versions() {
   echo -e "${GREEN}Available remote non-stable versions (pre-releases, development):${NC}"
   echo "$non_stable_tags" | sort -V | while read -r version; do
     local version_status=""
-    [ "$version" = "$current_version" ] && version_status="${GREEN}[CURRENT]${NC}"
+    [ "$version" = "$current_version" ] && version_status=" ${GREEN}[CURRENT]${NC}"
 
     echo -e "${PURPLE}${version}${NC}${version_status}"
   done
 }
 
 ## Main function
-function main() {
+function main_ebash() {
   local args="$*"
   # if $args are empty, print <empty>
   [ -z "$args" ] && args="<empty>"
@@ -1308,7 +1346,7 @@ function preparse_args() {
 preparse_args "$@"
 
 # Execute main function with all passed arguments
-main "${ARGS[@]}"
+main_ebash "${ARGS[@]}"
 
 # [TEST SCENARIOS](../docs/installation.md)
 # [UNIT TESTS](../spec/installation_spec.sh)
