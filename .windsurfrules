@@ -1,0 +1,30 @@
+When implementing logging in bash scripts:
+1. ALWAYS declare DEBUG variable BEFORE sourcing the logger: `DEBUG=${DEBUG:-"myapp,-internal"} source "$E_BASH/_logger.sh"`
+2. Ensure E_BASH variable is globally available (export or use direnv)
+3. Be explicit in DEBUG variable definition - enable all application tags, and disable internal ones that are important for debugging:
+   `DEBUG="main,api,db,cache,auth,-loader"`, skip unimportant internal tags like: internal, parser.
+4. Register loggers with domain-specific names (api, db, auth, etc.). In complex script use unique names for different loggers.
+5. Pass script parameters during logger initialization to support global --debug flag/option for scripts: `logger tag "$@"`
+6. Redirect most loggers to STDERR by default: `logger:redirect myapp ">&2"`. Make logger creation and configuration in one line: `logger sample "$@" && logger:prefix sample "${cl_cyan}[Sample]${cl_reset} " && logger:redirect sample ">&2"`
+7. Use color-coded prefixes for quick identification:
+   - Red for errors: `logger:prefix "error" "${cl_red}[Error]${cl_reset} "`
+   - Yellow for warnings: `logger:prefix "warn" "${cl_yellow}[Warning]${cl_reset} "`
+   - Gray for debug info: `logger:prefix "debug" "${cl_gray}[Debug]${cl_reset} "`
+   - Define one color for each entity print in logs. Highlight filenames/filepath, copy/paste instructions, extracted values, etc. Be consistent in the use of colors during the whole script.
+8. Prefer piping with `log:Tag` over direct `echo:Tag` when processing command output
+9. For log aggregation across processes, use named pipes or common log files
+10. Log use-case flows, not modules itself - prefer to track use scenario, instead of individual components
+11. Use consistent success/error (lifecycle) messages:
+    - Successful operations should utilize one of the predefined loggers for that: `echo:Success "Operation completed"`
+    - Failed operations should utilize one of the predefined loggers for that: `echo:Error "Operation failed: $reason"`
+    - Samples of specialized loggers: `echo:Success`, `echo:Error`, `echo:Warning`; User can prefer to use shorter variations of names for specialized lifecycle state of the script;
+12. Reserve a debug/trace logger for troubleshooting: log input parameters, execution flow, and intermediate results, example: `echo:Dump "${LINENO}: $@"`; 
+    - use `${LINENO}` to track line numbers for identical messages;
+    - use `logger:push` and `logger:pop` to save and restore logger state, for recursive operations;
+13. Instead of allowing command to print directly to STDOUT/STDERR, use pipe output to `log:Tag` to capture output
+    - filter important for script output lines only (grep, awk, sed)
+14. To disable colors in log messages, set `TERM=dumb` before sourcing E-BASH scripts
+15. Use `log:Tag` pipes to send the same message to multiple loggers when needed
+16. Remember that `echo:Tag` and `printf:Tag` are wrappers over built-in commands, supporting all their options
+17. Include a session/correlation ID in logs to track related operations: `export __SESSION=$(date +%s%N)` if you expect a heavy usage of the script in multi-process environment (like CI/CD pipelines, cron jobs);
+18. Avoid warpping loggers with custom functions
