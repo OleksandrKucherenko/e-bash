@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-13
+## Last revisit: 2025-04-15
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -59,6 +59,7 @@ foo() {
 
 bar() {
   echo "Inside bar"
+  foo
 }
 
 # ---- Example calls ----
