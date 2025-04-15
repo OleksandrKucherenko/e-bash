@@ -39,6 +39,12 @@ else
   readarray -t STAGED_SH_FILES < <(git diff --cached --name-only --diff-filter=ACMR -- "*.sh")
 fi
 
+# on Linux ggrep and gsed are GNU grep and sed aliases, on MacOs those commands should be installed
+if [[ "$(uname)" == "Linux" ]]; then
+  alias ggrep='grep'
+  alias gsed='sed'
+fi
+
 # Function to load the copyright template and replace placeholders
 get_copyright_template() {
   local resolve=${1:-"true"}
