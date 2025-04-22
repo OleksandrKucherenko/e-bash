@@ -44,3 +44,12 @@ bin/gnubin
 
 # patches
 patches/
+
+# Virtual Hard Drives
+*.vhd
+*.vhdx
+*.vmdk
+*.qcow2
+*.img
+*.dmg
+*.vpc

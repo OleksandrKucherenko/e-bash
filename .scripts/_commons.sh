@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-05
+## Last revisit: 2025-04-22
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -213,7 +213,7 @@ function validate:input:masked() {
 # shellcheck disable=SC2086,SC2059
 function validate:input:yn() {
   # Prompts the user for a yes/no input and stores the result as a boolean value
-  # 
+  #
   # Arguments:
   #   $1 - variable: Name of the variable to store the result in (passed by reference)
   #   $2 - default: Default value to suggest to the user (optional)
@@ -229,7 +229,7 @@ function validate:input:yn() {
   #   else
   #     echo "User selected no"
   #   fi
-  
+
   local variable=$1
   local default=${2:-""}
   local hint=${3:-""}
@@ -372,8 +372,9 @@ function args:isHelp() {
 
 function input:selector() {
   local sourceVariableName=$1
+  local keyOrValue=${2:-"key"}
 
-  tput civis # hide cursor
+  tput civis >&2 # hide cursor
   local pos=0 max=-1 keys=() && declare -A items
   local y_pos=$(cursor:position:row) x_pos=$(cursor:position:col) max_col=$(tput cols)
   local _keys=$(eval "echo \"\${!${sourceVariableName}[@]}\"")
@@ -472,10 +473,16 @@ function input:selector() {
 
   # echo "items: $sourceVariableName" "${items[*]}" "|" "${keys[@]}" "|" "${!items[@]}" >&2
 
-  tput cnorm # show cursor
+  tput cnorm >&2 # show cursor
   reprint "$eraser"
 
-  [ "$pos" -gt "$max" ] && echo "" || echo "${items[${keys[$pos]}]}"
+  if [ "$keyOrValue" = "key" ]; then
+    # return KEY part of the KEY-VALUE pair
+    [ "$pos" -gt "$max" ] && echo "" || echo "${keys[$pos]}"
+  else
+    # return VALUE part of the KEY-VALUE pair
+    [ "$pos" -gt "$max" ] && echo "" || echo "${items[${keys[$pos]}]}"
+  fi
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.

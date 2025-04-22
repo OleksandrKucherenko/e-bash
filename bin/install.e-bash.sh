@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-13
+## Last revisit: 2025-04-22
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -44,6 +44,7 @@ DRY_RUN=false       # Run in dry run mode (no changes)
 FORCE=false         # Not Implemented! But Reserved.
 GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
+ARGS=()             # Clean argument after preparse_args
 
 # Helpers
 readonly EXIT_OK=0
@@ -1306,9 +1307,7 @@ function main_ebash() {
   esac
 }
 
-ARGS=()
-
-# Pre-parse arguments for special flags before main processing.
+## Pre-parse arguments for special flags before main processing.
 function preparse_args() {
   local args=("$@")
 
@@ -1328,9 +1327,8 @@ function preparse_args() {
     fi
   done
 
-  # if DEBUG variable set
+  # if DEBUG variable set, print diagnostic report
   if [ -n "$DEBUG" ]; then
-    # Diagnostic report, enabled flags
     [ "$DRY_RUN" = true ] && echo -e "${GRAY}dry run mode ON    : ${DRY_RUN}${NC}" >&2
     [ "$FORCE" = true ] && echo -e "${GRAY}forced override    : ${FORCE}${NC}" >&2
     [ "$GLOBAL" = true ] && echo -e "${GRAY}global installation: ${GLOBAL}${NC}" >&2

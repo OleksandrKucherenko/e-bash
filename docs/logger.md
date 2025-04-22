@@ -13,16 +13,17 @@
     - [Piping Support](#piping-support)
     - [Stream Control](#stream-control)
     - [Named Pipes](#named-pipes)
-    - [State Management](#state-management)
-    - [Cleanup](#cleanup)
+    - [State Management Enable/Disable](#state-management-enabledisable)
+    - [Cleanup not recommended, Optional](#cleanup-not-recommended-optional)
   - [Advanced Use Cases](#advanced-use-cases)
     - [Multiple Output Streams](#multiple-output-streams)
     - [Complex Redirections](#complex-redirections)
     - [Dynamic Logger Creation](#dynamic-logger-creation)
+    - [Recursive Functions Tracking](#recursive-functions-tracking)
   - [Corner Cases and Special Use Cases](#corner-cases-and-special-use-cases)
     - [Listening to Named Pipes](#listening-to-named-pipes)
     - [Temporary Debug Override](#temporary-debug-override)
-    - [Custom Formatting](#custom-formatting)
+    - [Custom Formatting, Timestamps](#custom-formatting-timestamps)
     - [Filtering Multi-line Command Output](#filtering-multi-line-command-output)
     - [Conditional Logging](#conditional-logging)
     - [Implement DRY-RUN mode](#implement-dry-run-mode)
@@ -120,7 +121,7 @@ When implementing logging in bash scripts:
 15. Use `log:Tag` pipes to send the same message to multiple loggers when needed
 16. Remember that `echo:Tag` and `printf:Tag` are wrappers over built-in commands, supporting all their options
 17. Include a session/correlation ID in logs to track related operations: `export __SESSION=$(date +%s%N)` if you expect a heavy usage of the script in multi-process environment (like CI/CD pipelines, cron jobs);
-18. Avoid warpping loggers with custom functions
+18. Avoid warpping loggers with custom functions, utilize subshell results injecting into string, example: `echo:Tag "$(time) some other logs"`
 
 
 This memory instruction ensures consistent, maintainable logging practices and helps prevent common pitfalls like resource leaks, missing logs, or inconsistent logging behavior.
@@ -304,6 +305,8 @@ function up_scan() {
 # fi
 ```
 
+> Note: Recommned approach for debugging recursive functions, or any nested calls you can find in `demos/demo.debug.sh`.
+
 ## Corner Cases and Special Use Cases
 
 ### 1. Listening to Named Pipes
@@ -393,10 +396,12 @@ Log only in specific conditions by using dedicated loggers:
 
 ```bash
 # Register a verbose-specific logger
-logger verbose && logger:prefix "verbose" "${cl_gray}[VERBOSE]${cl_reset} "
+logger verbose && logger:prefix verbose "${cl_gray}[VERBOSE]${cl_reset} "
 
 # Enable it only when VERBOSE=1 is set
 [[ "$VERBOSE" == "1" ]] && TAGS["verbose"]=1
+# OR Alternative:
+[[ "$VERBOSE" == "1" ]] && logger:config:Verbose --debug
 
 # Use the logger directly
 echo:Verbose "Processing item $item"
@@ -468,7 +473,6 @@ function exec:git() {
 - `DEBUG`: Comma-separated list of logger tags to enable
 - `__SESSION`: Unique ID for the current logging session
 - `__TTY`: Current terminal device
-- `TERM`: Terminal type, used to determine if colors are supported
 
 ### Global Arrays
 
@@ -490,6 +494,7 @@ function exec:git() {
 - `logger:pop`: Restore previous logger state
 - `logger:cleanup`: Remove all named pipes
 - `logger:listen <tag>`: Listen to a logger's named pipe
+- `logger:config:<Tag> [--debug]`: Re-configure specific logger options, env.DEBUG or `--debug` script argument should be provided
 
 ## Examples
 
