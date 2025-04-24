@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-22
+## Last revisit: 2025-04-24
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -41,7 +41,7 @@ readonly NOI=$(tput ritm)       # No Italic Style
 
 # Global flags.
 DRY_RUN=false       # Run in dry run mode (no changes)
-FORCE=false         # Not Implemented! But Reserved.
+FORCE=false         # If true, forcibly overwrite existing .scripts with auto-backup (numbered .scripts.~N~) for global install/upgrade.
 GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
 ARGS=()             # Clean argument after preparse_args
@@ -118,7 +118,7 @@ function print_usage() {
   echo -e "  ${YELLOW}--dry-run${NC}             - Run in dry run mode (no changes)"
   echo -e "  ${YELLOW}--global${NC}              - Install scripts to user's '${HOME}' directory instead of current repository"
   echo -e "  ${YELLOW}--[no-]create-symlink${NC} - Create symlink to global e-bash scripts (default: true)"
-  echo -e "  ${YELLOW}--force${NC}               - Not Implemented! But Reserved. Should override prev installations."
+  echo -e "  ${YELLOW}--force${NC}               - Force overwrite of existing scripts with auto-backup (numbered .scripts.~N~) for global install/upgrade."
   echo ""
   echo -e "Commands:"
   echo -e "  ${GREEN}install${NC}   - Install e-bash scripts (default if not already installed)"
@@ -227,6 +227,23 @@ function check_prerequisites() {
     if [ -d "${GLOBAL_INSTALL_DIR}" ] && ! git -C "${GLOBAL_INSTALL_DIR}" rev-parse --is-inside-work-tree &>/dev/null; then
       echo -e "${RED}Error: ${GLOBAL_INSTALL_DIR} exists but is not a git repository.${NC}" >&2
       exit 1
+    fi
+
+    # If a local .scripts directory exists and --global is requested, handle conflict
+    if [ -d "${SCRIPTS_DIR}" ] && [ ! -L "${SCRIPTS_DIR}" ]; then
+      if [ "$FORCE" = true ]; then
+        # Find next available numbered backup .scripts.~N~
+        local n=1
+        while [ -e ".scripts.~${n}~" ]; do
+          n=$((n+1))
+        done
+        echo -e "${YELLOW}--force specified: Backing up existing ${SCRIPTS_DIR} to .scripts.~${n}~${NC}"
+        mv "${SCRIPTS_DIR}" ".scripts.~${n}~"
+      else
+        echo -e "${RED}Conflict: Local ${SCRIPTS_DIR} directory exists.${NC}"
+        echo -e "To proceed with global installation, either rename your .scripts directory (e.g., to .scripts.old) and re-run this script, or use the --force flag to overwrite it (a numbered backup will be created)."
+        exit 1
+      fi
     fi
 
     return 0 # Skip other checks for global installation
