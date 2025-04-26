@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-22
+## Last revisit: 2025-04-26
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -392,7 +392,7 @@ function input:selector() {
     for key in "${keys[@]}"; do
       if [ "$counter" -eq "$pos" ]; then bg="$cl_selected"; else bg=""; fi
       if [ "$counter" -eq "$pos" ]; then value="${items[$key]}"; else value="${items[$key]}"; fi
-      output+="$separator${bg} $value ${cl_reset}"
+      output+="${separator}${bg} ${value}${bg} ${cl_reset}"
       counter=$((counter + 1))
       separator=" | "
     done
@@ -400,7 +400,7 @@ function input:selector() {
   }
   function reprint() {
     tput cup $((y_pos - 1)) $((x_pos - 1)) 1>&2
-    echo -n "$1" 1>&2
+    echo -n -e "$1" 1>&2
     tput cup $((y_pos - 1)) $((x_pos + pos - 1)) 1>&2
   }
   function reset() {

@@ -16,34 +16,11 @@
 #  http://tldp.org/LDP/abs/html/comparison-ops.html
 #  https://misc.flogisoft.com/bash/tip_colors_and_formatting
 
-DEBUG=${DEBUG:-"-loader,ver,-parser"}
+shopt -s extdebug # enable extended debugging
 
+DEBUG=${DEBUG:-"ver,-loader,-parser,-common"}
+export SKIP_ARGS_PARSING=1 # skip arguments parsing during script loading
 readonly VERSION_FILE=version.properties
-
-#region Arguments
-declare help version \
-	args_release args_alpha args_beta args_rc \
-	args_major args_minor args_patch args_revision \
-	args_git_revision args_stay args_default args_apply args_prefix
-
-# pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
-ARGS_DEFINITION=""
-ARGS_DEFINITION+=" -h,--help"
-ARGS_DEFINITION+=" --version=version:2.0.0"
-ARGS_DEFINITION+=" -r,--release=args_release"
-ARGS_DEFINITION+=" -a,--alpha=args_alpha"
-ARGS_DEFINITION+=" -b,--beta=args_beta"
-ARGS_DEFINITION+=" -c,--release-candidate=args_rc"
-ARGS_DEFINITION+=" -m,--major=args_major"
-ARGS_DEFINITION+=" -i,--minor=args_minor"
-ARGS_DEFINITION+=" -p,--patch=args_patch"
-ARGS_DEFINITION+=" -e,--revision=args_revision"
-ARGS_DEFINITION+=" -g,--git-revision=args_git_revision"
-ARGS_DEFINITION+=" --stay=args_stay"
-ARGS_DEFINITION+=" --default=args_default"
-ARGS_DEFINITION+=" --apply=args_apply"
-ARGS_DEFINITION+=" --prefix=args_prefix:sub-folder:1" # sub-folder|root|{any_string}
-#endregion
 
 #region Helper scripts attaching
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
@@ -61,37 +38,99 @@ source /dev/null # trick to make shellcheck happy
 # shellcheck source=../.scripts/_arguments.sh
 source "$E_BASH/_arguments.sh"
 
+# shellcheck source=../.scripts/_dependencies.sh
+source "$E_BASH/_dependencies.sh"
+
 # shellcheck source=../.scripts/_semver.sh
 source "$E_BASH/_semver.sh" # connect advanced version parser
 #endregion
 
 # create custom logger echo:Ver, printf:Ver
-logger:init ver "${cl_grey}[ver]${cl_reset} "
+logger:init ver "${cl_green}[ver]${cl_reset} " # no prefix, to stderr
+
+#region Arguments
+declare help version \
+	args_release args_alpha args_beta args_rc \
+	args_major args_minor args_patch args_revision \
+	args_git_revision args_stay args_default args_apply args_prefix
+
+# pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
+export ARGS_DEFINITION=""
+export COMPOSED_ARGS_DEFINITION="
+	$(args:i help -a "-h,--help" -h "Show help and exit." -g global)
+	$(args:i version -a "--version" -d "2.0.0" -h "Show version and exit." -g global)
+	$(args:i DEBUG -a "--debug" -d "*" -h "Enable debug mode." -g global)
+	$(args:i args_release -a "-r,--release" -h "Switch stage to release, no suffix.")
+	$(args:i args_alpha -a "-a,--alpha" -h "Switch stage to alpha.")
+	$(args:i args_beta -a "-b,--beta" -h "Switch stage to beta.")
+	$(args:i args_rc -a "-c,--release-candidate" -h "Switch stage to release candidate.")
+	$(args:i args_major -a "-m,--major" -h "Increment MAJOR version part.")
+	$(args:i args_minor -a "-i,--minor" -h "Increment MINOR version part.")
+	$(args:i args_patch -a "-p,--patch" -h "Increment PATCH version part.")
+	$(args:i args_revision -a "-e,--revision" -h "Increment REVISION version part.")
+	$(args:i args_git_revision -a "-g,--git,--git-revision" -h "Use git revision number as a revision part.")
+	$(args:i args_prefix -a "--prefix" -h "Provide tag prefix or use on of the strategies: root, sub-folder (default), {any_string}" -g global)
+	$(args:i args_stay -a "--stay" -h "Compose ${cl_yellow}version.properties${cl_white} but do not do any increments." -g action)
+	$(args:i args_default -a "--default" -d "sub-folder" -q 1 -h "Increment last found part of version, keeping the stage. Increment applied up to MINOR part." -g action)
+	$(args:i args_apply -a "--apply" -h "Run GIT command to apply version upgrade." -g action)
+"
+eval "$COMPOSED_ARGS_DEFINITION" >/dev/null
+parse:arguments "$@"
+#endregion
+
+#region Tracing/CallStack
+__FUNC_STACK="" # CSV list of functions
+
+function on_entry() {
+	local current_func="${FUNCNAME[1]}"
+	local last_on_stack="${__FUNC_STACK##*,}"
+	local indent_level=$(echo "$__FUNC_STACK" | tr -cd ',' | wc -c)
+	local indent=$(printf '%*s' "$indent_level" '' | tr ' ' '  ')
+
+	# if we got "<<" exit from nested function, then print current new level
+	if [[ "$last_on_stack" == "<<" ]]; then
+		__FUNC_STACK=${__FUNC_STACK%,*}
+		#indent=$(printf '%*s' "$((indent_level - 1))" '' | tr ' ' '  ')
+		#echo -e "${indent}${GRAY}-- ${BLUE}$current_func${NC}" >&2
+	elif [[ "$current_func" != "on_entry" &&
+		"$current_func" != "on_return" &&
+		"$current_func" != "$last_on_stack" ]]; then
+		echo -e "${indent}${cl_gray}>> ${cl_blue}$current_func${cl_reset}" >&2
+		__FUNC_STACK="$__FUNC_STACK,$current_func"
+	fi
+}
+
+function on_return() {
+	local current_func="${FUNCNAME[1]}"
+
+	__FUNC_STACK=${__FUNC_STACK%,*}
+	local indent_level=$(echo "$__FUNC_STACK" | tr -cd ',' | wc -c)
+	local indent=$(printf '%*s' "$indent_level" '' | tr ' ' '  ')
+	echo -e "${indent}${cl_gray}<< ${cl_blue}$current_func${cl_reset}" >&2
+
+	__FUNC_STACK="${__FUNC_STACK},<<"
+}
+
+# trap on_entry DEBUG && trap on_return RETURN
+#endregion
+
+# Cache commands using bkt if installed
+dependency bkt "0.8.*" "brew install bkt" 1>&2 || {
+	# If bkt isn't installed skip its arguments and just execute directly.
+	bkt() {
+		echo:Ver "bkt: ${cl_gray}$@${cl_reset}"
+		while [[ "$1" == --* ]]; do shift; done
+		"$@"
+	}
+	echo:Ver "bkt is not installed. Setup bkt fake wrapper."
+}
 
 # display help
 function help() {
-	args:d '-h' 'Show help and exit.' 'global'                # --help
-	args:d '--version' 'Show version and exit.' 'global'      # version
-	args:d '-r' 'switch stage to release, no suffix.'         # --release
-	args:d '-a' 'switch stage to alpha.'                      # --alpha
-	args:d '-b' 'switch stage to beta.'                       # --beta
-	args:d '-c' 'switch stage to release-candidate.'          # --release-candidate
-	args:d '-m' 'Increment MAJOR version part.'               # --major
-	args:d '-i' 'Increment MINOR version part.'               # --minor
-	args:d '-p' 'Increment PATCH version part.'               # --patch
-	args:d '-e' 'Increment REVISION version part.'            # --revision
-	args:d '-g' 'Use git revision number as a revision part.' # --git-revision
-
-	args:d '--stay' "Compose ${cl_yellow}version.properties${cl_white} but do not do any increments."
-	args:d '--default' 'Increment last found part of version, keeping the stage. Increment applied up to MINOR part.'
-	args:d '--apply' 'Run GIT command to apply version upgrade.'
-	args:d '--prefix' 'Provide tag prefix or use on of the strategies: root, sub-folder (default), any_string'
-
-	echo 'usage: ./version-up.sh [-r|--release] [-a|--alpha] [-b|--beta] [-c|--release-candidate]'
+	echo "usage: $0 [-r|--release] [-a|--alpha] [-b|--beta] [-c|--release-candidate]"
 	echo '                      [-m|--major] [-i|--minor] [-p|--patch] [-e|--revision] [-g|--git-revision]'
 	echo '                      [--prefix root|sub-folder|any] [--stay] [--default] [--help]'
 	echo ''
-	echo 'Switches:'
 	print:help
 	echo ''
 	echo 'Version: [PREFIX]MAJOR.MINOR[.PATCH[.REVISION]][-STAGE]'
@@ -282,7 +321,7 @@ function auto_detect_prefix_from_tags() {
 
 	# Format tags as comma-separated list
 	local csvTags=$(echo "$all_tags" | tr '\n' ',' | gsed 's/,$//; s/,/, /g')
-	echo:Ver "Auto-detected prefix: ${mostUsed} from tags: ${cl_gray}${csvTags}${cl_reset}"
+	echo:Ver "Auto-detected prefix: ${cl_yellow}${mostUsed}${cl_reset} from tags: ${cl_gray}${csvTags}${cl_reset}"
 
 	echo "${mostUsed}"
 }
@@ -538,11 +577,8 @@ function handle_stage_shift() {
 	PARTS[4]=$stage
 }
 
-function parse_arguments() {
+function parse_quick_arguments() {
 	local args=("$@")
-
-	local isNoArgs=false
-	[ "${#args[@]}" -eq 0 ] && isNoArgs=true
 
 	# parse input parameters
 	if [[ "$help" == "1" ]]; then
@@ -550,45 +586,52 @@ function parse_arguments() {
 	elif [[ -n "$version" ]]; then
 		echo "version: ${version}"
 		exit 0
-	else
-		if $isNoArgs; then
-			if [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
-				echo "Tag $TAG and HEAD are aligned. We will stay on the TAG version."
-				# TODO: should we re-create the version.properties file?
-				exit 0
-			fi
+	fi
+}
 
-			# are we in the branch that has version tag or name that matches the pattern?
-			local semver_grep=$(semver:grep)
-			local semver_part=$(echo "$BRANCH" | grep -oE "$semver_grep")
+function parse_arguments() {
+	echo:Ver "Parsing arguments..."
 
-			if [[ -n "$semver_part" ]]; then
-				echo "Detected version branch '$BRANCH'. We will auto-increment the last version PART."
-				args_default=1
-			else
-				echo "Detected branch name '$BRANCH' than does not match version pattern. We will increase MINOR."
-				args_minor=1
-			fi
+	local isNoArgs=false
+	[ "${#args[@]}" -eq 0 ] && isNoArgs=true
+
+	if $isNoArgs; then
+		if [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
+			echo "Tag $TAG and HEAD are aligned. We will stay on the TAG version."
+			# TODO: should we re-create the version.properties file?
+			exit 0
 		fi
 
-		[[ "$args_alpha" == "1" ]] && PARTS[4]="alpha" && IS_SHIFT=1
-		[[ "$args_beta" == "1" ]] && PARTS[4]="beta" && IS_SHIFT=1
-		[[ "$args_rc" == "1" ]] && PARTS[4]="rc" && IS_SHIFT=1
-		[[ "$args_release" == "1" ]] && PARTS[4]="" && IS_SHIFT=1
+		# are we in the branch that has version tag or name that matches the pattern?
+		local semver_grep=$(semver:grep)
+		local semver_part=$(echo "$BRANCH" | grep -oE "$semver_grep")
 
-		[[ "$args_patch" == "1" ]] && increment_patch
-		[[ "$args_revision" == "1" ]] && increment_revision
-		[[ "$args_git_revision" == "1" ]] && PARTS[3]=$((REVISION)) && IS_DIRTY=1
-		[[ "$args_minor" == "1" ]] && increment_minor
-
-		[[ "$args_default" == "1" ]] && increment_last_found
-		[[ "$args_major" == "1" ]] && increment_major
-		[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
-
-		[[ "$args_apply" == "1" ]] && DO_APPLY=1
-
-		[[ -n "$args_prefix" ]] && use_prefix "$args_prefix"
+		if [[ -n "$semver_part" ]]; then
+			echo "Detected version branch '$BRANCH'. We will auto-increment the last version PART."
+			args_default=1
+		else
+			echo:Ver "Detected branch name '$BRANCH' than does not match version pattern. We will increase MINOR."
+			args_minor=1
+		fi
 	fi
+
+	[[ "$args_alpha" == "1" ]] && PARTS[4]="alpha" && IS_SHIFT=1
+	[[ "$args_beta" == "1" ]] && PARTS[4]="beta" && IS_SHIFT=1
+	[[ "$args_rc" == "1" ]] && PARTS[4]="rc" && IS_SHIFT=1
+	[[ "$args_release" == "1" ]] && PARTS[4]="" && IS_SHIFT=1
+
+	[[ "$args_patch" == "1" ]] && increment_patch
+	[[ "$args_revision" == "1" ]] && increment_revision
+	[[ "$args_git_revision" == "1" ]] && PARTS[3]=$((REVISION)) && IS_DIRTY=1
+	[[ "$args_minor" == "1" ]] && increment_minor
+
+	[[ "$args_default" == "1" ]] && increment_last_found
+	[[ "$args_major" == "1" ]] && increment_major
+	[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
+
+	[[ "$args_apply" == "1" ]] && DO_APPLY=1
+
+	[[ -n "$args_prefix" ]] && use_prefix "$args_prefix"
 
 }
 
@@ -806,70 +849,6 @@ function handle_version_apply() {
 	fi
 }
 
-# Prepare global variables for versioning process
-# Inputs: $@ - command line arguments
-# Global variables:
-# - PREFIX, AUTO_DETECTED_PREFIX, INIT_VERSION, TAG,
-# - REVISION, BRANCH, TOP_TAG, TAG_HASH, HEAD_HASH,
-# - PROPOSED_HASH, VERSION_PROPS_PATH
-function prepare_globals() {
-	# try to detect the prefix in versioning tags/branches names. expected pattern: {PREFIX}{SEMVER}{SUFFIX}
-	# PREFIX in this case can be:
-	#   - '{any-string}' - something defined by user;
-	#   - '{sub-folder}' - sub-folder path used as a prefix;
-	#   - '{root}' - empty string;
-	export PREFIX=$(prepare_prefix "$@")
-	export AUTO_DETECTED_PREFIX=$(auto_detect_prefix_from_tags)
-
-	# initial version used for repository without tags
-	export INIT_VERSION="${PREFIX}0.0.0.0-alpha"
-
-	# do GIT data extracting into globals
-	export TAG=$(latest_tag "$@")
-	export REVISION=$(latest_revision)
-	export BRANCH=$(current_branch)
-	export TOP_TAG=$(highest_tag)
-	export TAG_HASH=$(tag_hash "$TAG")
-	export HEAD_HASH=$(head_hash)
-	export PROPOSED_HASH=""
-
-	# Find version.properties if it exists
-	export VERSION_PROPS_PATH=$(find_version_properties)
-
-	# parse the tag into parts
-	semver:parse "${TAG}" "PARTS" &&
-		echo:Ver "tag: ${cl_blue}${TAG}${cl_reset} ~>" "${PARTS[@]}" ||
-		echo:Ver "$? - FAIL parsing '${TAG}'!"
-}
-
-# Main function that orchestrates the versioning process
-# Inputs: $@ - command line arguments
-# Outputs: STDOUT - logs about version processing
-# Side effects: various, handled by subfunctions
-function main() {
-	#echo:Ver "Starting version-up.v2.sh process"
-
-	# Configure the global variables for triggering proper actions
-	parse_arguments "$@"
-
-	# Prepare global variables for processing, based on arguments and disk/repo state
-	prepare_globals "$@"
-
-	# Check if version.properties exists and process it
-	check_version_properties
-
-	# Process version tag detection and handling
-	process_tag_detection
-
-	# Process version calculation and potential conflicts
-	process_version "$@"
-
-	# Handle version application
-	handle_version_apply
-
-	echo:Ver "Version-up.v2.sh process completed"
-}
-
 # Check if we're running in a CI environment
 function is_ci_environment() {
 	[[ -n "${CI}" || -n "${GITHUB_ACTIONS}" || -n "${GITLAB_CI}" || -n "${JENKINS_URL}" ]] && return 0 || return 1
@@ -964,9 +943,76 @@ function is_prefix_matching_current_folder() {
 	[[ "${norm_prefix}" == "${norm_folder}" ]] && return 0 || return 1
 }
 
+# Prepare global variables for versioning process
+# Inputs: $@ - command line arguments
+# Global variables:
+# - PREFIX, AUTO_DETECTED_PREFIX, INIT_VERSION, TAG,
+# - REVISION, BRANCH, TOP_TAG, TAG_HASH, HEAD_HASH,
+# - PROPOSED_HASH, VERSION_PROPS_PATH
+function prepare_globals() {
+	# try to detect the prefix in versioning tags/branches names. expected pattern: {PREFIX}{SEMVER}{SUFFIX}
+	# PREFIX in this case can be:
+	#   - '{any-string}' - something defined by user;
+	#   - '{sub-folder}' - sub-folder path used as a prefix;
+	#   - '{root}' - empty string;
+	export PREFIX=$(prepare_prefix "$@")
+	export AUTO_DETECTED_PREFIX=$(auto_detect_prefix_from_tags)
+
+	# initial version used for repository without tags
+	export INIT_VERSION="${PREFIX}0.0.0.0-alpha"
+
+	# do GIT data extracting into globals
+	export TAG=$(latest_tag "$@")
+	export REVISION=$(latest_revision)
+	export BRANCH=$(current_branch)
+	export TOP_TAG=$(highest_tag)
+	export TAG_HASH=$(tag_hash "$TAG")
+	export HEAD_HASH=$(head_hash)
+	export PROPOSED_HASH=""
+
+	# Find version.properties if it exists
+	export VERSION_PROPS_PATH=$(find_version_properties)
+
+	# parse the tag into parts
+	semver:parse "${TAG}" "PARTS" &&
+		echo:Ver "tag: ${cl_blue}${TAG}${cl_reset} ~>" "${PARTS[@]}" ||
+		echo:Ver "$? - FAIL parsing '${TAG}'!"
+}
+
+# Main function that orchestrates the versioning process
+# Inputs: $@ - command line arguments
+# Outputs: STDOUT - logs about version processing
+# Side effects: various, handled by subfunctions
+function main() {
+	echo:Ver "Starting version-up.v2.sh process"
+
+	# check arguments for quick exit flags
+	parse_quick_arguments "$@"
+
+	# Prepare global variables for processing, based on arguments and disk/repo state
+	prepare_globals "$@"
+
+	# parse arguments after we initialize global state
+	parse_arguments "$@"
+
+	# Check if version.properties exists and process it
+	check_version_properties
+
+	# Process version tag detection and handling
+	process_tag_detection
+
+	# Process version calculation and potential conflicts
+	process_version "$@"
+
+	# Handle version application
+	handle_version_apply
+
+	echo:Ver "Version-up.v2.sh process completed"
+}
+
 main "$@"
 
-#
+#region Afterwords
 # Major logic of the script - "on each run script propose future version of the product".
 #  - if no tags on project --> propose '0.1-alpha'
 #  - do multiple build iterations until you become satisfied with result
@@ -1008,3 +1054,4 @@ main "$@"
 # 2. Script arguments
 # 3. Local version.properties file
 # 4. Default values
+#endregion
