@@ -3,7 +3,7 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-05
+## Last revisit: 2025-04-26
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -18,6 +18,8 @@
 
 DEBUG=${DEBUG:-"-loader,ver,-parser"}
 
+readonly VERSION_FILE=version.properties
+
 #region Arguments
 declare help version \
 	args_release args_alpha args_beta args_rc \
@@ -27,7 +29,7 @@ declare help version \
 # pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 ARGS_DEFINITION=""
 ARGS_DEFINITION+=" -h,--help"
-ARGS_DEFINITION+=" --version=version:1.0.0"
+ARGS_DEFINITION+=" --version=version:2.0.0"
 ARGS_DEFINITION+=" -r,--release=args_release"
 ARGS_DEFINITION+=" -a,--alpha=args_alpha"
 ARGS_DEFINITION+=" -b,--beta=args_beta"
@@ -64,7 +66,7 @@ source "$E_BASH/_semver.sh" # connect advanced version parser
 #endregion
 
 # create custom logger echo:Ver, printf:Ver
-logger ver "$@" && logger:redirect ver ">&2"
+logger:init ver "${cl_grey}[ver]${cl_reset} "
 
 # display help
 function help() {
@@ -100,6 +102,16 @@ function help() {
 	echo 'Versions priority:'
 	echo '  1.0.0-alpha < 1.0.0-beta < 1.0.0-rc < 1.0.0'
 	exit 0
+}
+
+## slagify, convert input string to valid bash variable name
+function slagify() {
+	local input="$1"
+	# Replace non-alphanumeric characters with underscores
+	local slag=$(echo "$input" | gsed 's/[^a-zA-Z0-9]/_/g')
+	# Ensure it doesn't start with a number
+	slag=$(echo "$slag" | gsed 's/^[0-9]/_&/g')
+	echo "$slag"
 }
 
 # find the monorepo root folder, print it to STDOUT
@@ -289,7 +301,7 @@ function latest_tag() {
 		tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
 	fi
 
-	echo:Ver "Latest tag: ${tag}"
+	echo:Ver "Latest tag: ${cl_blue}${tag}${cl_reset}"
 	echo "$tag"
 }
 
@@ -588,7 +600,7 @@ function check_version_properties() {
 	local version_props_exists=0
 
 	if [[ -n "${VERSION_PROPS_PATH}" ]]; then
-		echo:Ver "Found version.properties file: ${VERSION_PROPS_PATH}"
+		echo:Ver "Found ${cl_blue}version.properties${cl_reset} file: ${cl_yellow}${VERSION_PROPS_PATH}${cl_reset}"
 		process_version_properties "${VERSION_PROPS_PATH}"
 		version_props_exists=1
 	else
@@ -748,9 +760,6 @@ function process_tag_detection() {
 # Outputs: STDOUT - various logs about version processing
 # Side effects: may modify TAG, trigger version application
 function process_version() {
-	# Configure the global variables for triggering proper actions
-	parse_arguments "$@"
-
 	# Print current state of the repository on screen
 	report_current_state
 
@@ -797,12 +806,54 @@ function handle_version_apply() {
 	fi
 }
 
+# Prepare global variables for versioning process
+# Inputs: $@ - command line arguments
+# Global variables:
+# - PREFIX, AUTO_DETECTED_PREFIX, INIT_VERSION, TAG,
+# - REVISION, BRANCH, TOP_TAG, TAG_HASH, HEAD_HASH,
+# - PROPOSED_HASH, VERSION_PROPS_PATH
+function prepare_globals() {
+	# try to detect the prefix in versioning tags/branches names. expected pattern: {PREFIX}{SEMVER}{SUFFIX}
+	# PREFIX in this case can be:
+	#   - '{any-string}' - something defined by user;
+	#   - '{sub-folder}' - sub-folder path used as a prefix;
+	#   - '{root}' - empty string;
+	export PREFIX=$(prepare_prefix "$@")
+	export AUTO_DETECTED_PREFIX=$(auto_detect_prefix_from_tags)
+
+	# initial version used for repository without tags
+	export INIT_VERSION="${PREFIX}0.0.0.0-alpha"
+
+	# do GIT data extracting into globals
+	export TAG=$(latest_tag "$@")
+	export REVISION=$(latest_revision)
+	export BRANCH=$(current_branch)
+	export TOP_TAG=$(highest_tag)
+	export TAG_HASH=$(tag_hash "$TAG")
+	export HEAD_HASH=$(head_hash)
+	export PROPOSED_HASH=""
+
+	# Find version.properties if it exists
+	export VERSION_PROPS_PATH=$(find_version_properties)
+
+	# parse the tag into parts
+	semver:parse "${TAG}" "PARTS" &&
+		echo:Ver "tag: ${cl_blue}${TAG}${cl_reset} ~>" "${PARTS[@]}" ||
+		echo:Ver "$? - FAIL parsing '${TAG}'!"
+}
+
 # Main function that orchestrates the versioning process
 # Inputs: $@ - command line arguments
 # Outputs: STDOUT - logs about version processing
 # Side effects: various, handled by subfunctions
 function main() {
-	echo:Ver "Starting version-up.v2.sh process"
+	#echo:Ver "Starting version-up.v2.sh process"
+
+	# Configure the global variables for triggering proper actions
+	parse_arguments "$@"
+
+	# Prepare global variables for processing, based on arguments and disk/repo state
+	prepare_globals "$@"
 
 	# Check if version.properties exists and process it
 	check_version_properties
@@ -862,10 +913,18 @@ function find_version_properties() {
 function process_version_properties() {
 	local properties_file="$1"
 	if [[ -f "${properties_file}" ]]; then
-		echo "Using version definitions from: ${properties_file}"
-		# Source the properties file to get variables
-		# shellcheck disable=SC1090
-		source "${properties_file}"
+		echo:Ver "Using version definitions from: ${cl_yellow}${properties_file}${cl_reset}"
+		# Source the properties file to get variables.
+		# extract non comments lines for processing
+		grep -v '^#' "${properties_file}" | while read -r line; do
+			local variable="${line/=*/}"
+			local var_name="$(slagify "${variable}")"
+			local var_value="${line#*=}"
+
+			printf:Ver "${cl_green}%-20s${cl_reset}= ${cl_yellow}%-30s ${cl_grey}# %s${cl_reset}\n" "${var_name}" "\"${var_value}\"" "${line}"
+			eval "export ${var_name}=\"${var_value}\""
+		done
+
 		return 0
 	fi
 	return 1
@@ -904,33 +963,6 @@ function is_prefix_matching_current_folder() {
 
 	[[ "${norm_prefix}" == "${norm_folder}" ]] && return 0 || return 1
 }
-
-# try to detect the prefix in versioning tags/branches names. expected pattern: {PREFIX}{SEMVER}{SUFFIX}
-# PREFIX in this case can be:
-#   - '{any-string}' - something defined by user;
-#   - '{sub-folder}' - sub-folder path used as a prefix;
-#   - '{root}' - empty string;
-PREFIX=$(prepare_prefix "$@")
-AUTO_DETECTED_PREFIX=$(auto_detect_prefix_from_tags)
-
-# initial version used for repository without tags
-INIT_VERSION="${PREFIX}0.0.0.0-alpha"
-
-# do GIT data extracting into globals
-TAG=$(latest_tag "$@")
-REVISION=$(latest_revision)
-BRANCH=$(current_branch)
-TOP_TAG=$(highest_tag)
-TAG_HASH=$(tag_hash "$TAG")
-HEAD_HASH=$(head_hash)
-PROPOSED_HASH=""
-VERSION_FILE=version.properties
-
-# Find version.properties if it exists
-VERSION_PROPS_PATH=$(find_version_properties)
-
-# parse the tag into parts
-semver:parse "${TAG}" "PARTS" && echo "${PARTS[@]}" || echo "$? - FAIL parsing '${TAG}'!"
 
 main "$@"
 

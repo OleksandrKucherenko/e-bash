@@ -1,0 +1,7 @@
+# Mark scripts as executable
+*.sh text eol=lf exec
+.githook/pre-* text eol=lf exec
+
+# Everything else is normal (non-executable)
+*.json text eol=lf
+*.md text eol=lf
