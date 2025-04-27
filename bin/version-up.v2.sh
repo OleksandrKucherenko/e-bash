@@ -1047,7 +1047,7 @@ function prepare_globals() {
 	export AUTO_DETECTED_PREFIX=$(cached:auto_detect_prefix_from_tags)
 
 	# initial version used for repository without tags
-	export INIT_VERSION="${PREFIX}0.0.0.0-alpha"
+	export INIT_VERSION="${PREFIX}0.0.1-alpha"
 
 	# do GIT data extracting into globals
 	export TAG=$(latest_tag "$@")
