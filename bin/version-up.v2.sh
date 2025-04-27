@@ -3,7 +3,7 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-26
+## Last revisit: 2025-04-27
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -18,7 +18,7 @@
 
 shopt -s extdebug # enable extended debugging
 
-DEBUG=${DEBUG:-"ver,-loader,-parser,-common"}
+DEBUG=${DEBUG:-"ver,-dbg,-loader,-parser,-common"}
 export SKIP_ARGS_PARSING=1 # skip arguments parsing during script loading
 readonly VERSION_FILE=version.properties
 
@@ -47,6 +47,7 @@ source "$E_BASH/_semver.sh" # connect advanced version parser
 
 # create custom logger echo:Ver, printf:Ver
 logger:init ver "${cl_green}[ver]${cl_reset} " # no prefix, to stderr
+logger:init dbg "${cl_gray}[dbg]${cl_reset} "  # no prefix, to stderr
 
 #region Arguments
 declare help version \
@@ -56,26 +57,57 @@ declare help version \
 
 # pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 export ARGS_DEFINITION=""
-export COMPOSED_ARGS_DEFINITION="
+export COMPOSER="
 	$(args:i help -a "-h,--help" -h "Show help and exit." -g global)
 	$(args:i version -a "--version" -d "2.0.0" -h "Show version and exit." -g global)
 	$(args:i DEBUG -a "--debug" -d "*" -h "Enable debug mode." -g global)
-	$(args:i args_release -a "-r,--release" -h "Switch stage to release, no suffix.")
-	$(args:i args_alpha -a "-a,--alpha" -h "Switch stage to alpha.")
-	$(args:i args_beta -a "-b,--beta" -h "Switch stage to beta.")
-	$(args:i args_rc -a "-c,--release-candidate" -h "Switch stage to release candidate.")
-	$(args:i args_major -a "-m,--major" -h "Increment MAJOR version part.")
-	$(args:i args_minor -a "-i,--minor" -h "Increment MINOR version part.")
-	$(args:i args_patch -a "-p,--patch" -h "Increment PATCH version part.")
-	$(args:i args_revision -a "-e,--revision" -h "Increment REVISION version part.")
-	$(args:i args_git_revision -a "-g,--git,--git-revision" -h "Use git revision number as a revision part.")
-	$(args:i args_prefix -a "--prefix" -h "Provide tag prefix or use on of the strategies: root, sub-folder (default), {any_string}" -g global)
+	$(args:i DRY_RUN -a "--dry-run" -d "false" -h "Run in dry-run mode without making actual changes." -g global)
+	$(args:i args_release -a "-r,--release" -h "Switch stage to release, no suffix." -g stage)
+	$(args:i args_alpha -a "-a,--alpha" -h "Switch stage to alpha. Set: ${cl_purple}'-alpha'${cl_reset}" -g stage)
+	$(args:i args_beta -a "-b,--beta" -h "Switch stage to beta. Set: ${cl_purple}'-beta'${cl_reset}" -g stage)
+	$(args:i args_rc -a "-c,--release-candidate" -h "Switch stage to release candidate. Set: ${cl_purple}'-rc'${cl_reset}" -g stage)
+	$(args:i args_major -a "-m,--major" -d "*" -h "Increment MAJOR version part.")
+	$(args:i args_minor -a "-i,--minor" -d "*" -h "Increment MINOR version part.")
+	$(args:i args_patch -a "-p,--patch" -d "*" -h "Increment PATCH version part.")
+	$(args:i args_revision -a "-e,--revision" -d "*" -h "Increment REVISION version part.")
+	$(args:i args_git_revision -a "-g,--git,--git-revision" -h "Use git revision number as a revision part." -g special)
+	$(args:i args_prefix -a "--prefix" -d "sub-folder" -h "Provide tag prefix or use on of the strategies: ${cl_cyan}root${cl_reset}, ${cl_cyan}sub-folder${cl_reset} (default), ${cl_purple}any_string${cl_reset}" -g special)
 	$(args:i args_stay -a "--stay" -h "Compose ${cl_yellow}version.properties${cl_white} but do not do any increments." -g action)
 	$(args:i args_default -a "--default" -d "sub-folder" -q 1 -h "Increment last found part of version, keeping the stage. Increment applied up to MINOR part." -g action)
-	$(args:i args_apply -a "--apply" -h "Run GIT command to apply version upgrade." -g action)
+	$(args:i args_apply -a "--apply" -h "Run GIT command(s) to apply version upgrade." -g action)
 "
-eval "$COMPOSED_ARGS_DEFINITION" >/dev/null
+eval "$COMPOSER" >/dev/null
 parse:arguments "$@"
+#endregion
+
+#region Interrupt and Exit Handlers
+readonly EXIT_OK=0
+readonly EXIT_NO=1
+readonly TMP_FILE_CACHE=$(mktemp -u version-up.v2.cache.XXXX.tmp)
+
+# Trap to capture exit/interrupt and print exit code
+function on_exit() {
+	[ -f "$TMP_FILE_CACHE" ] && rm -f "$TMP_FILE_CACHE"
+
+	local exit_code=$?
+
+	local CLR="${cl_green}"
+	[ $exit_code -ne 0 ] && CLR="${cl_red}"
+
+	echo -e "\n${cl_gray}exit code: ${CLR}$exit_code${cl_reset}" >&2
+	return $exit_code
+}
+
+function on_interrupt() {
+	# TODO (olku): reserve for rollback on interrupt
+
+	echo -e "\n${cl_gray}Script interrupted!${cl_reset}" >&2
+	exit "${EXIT_NO}"
+}
+
+# Register trap for normal exit and interrupt
+trap on_exit EXIT
+trap on_interrupt INT TERM
 #endregion
 
 #region Tracing/CallStack
@@ -111,7 +143,7 @@ function on_return() {
 	__FUNC_STACK="${__FUNC_STACK},<<"
 }
 
-# trap on_entry DEBUG && trap on_return RETURN
+[ -n "$TRACE" ] && trap on_entry DEBUG && trap on_return RETURN
 #endregion
 
 # Cache commands using bkt if installed
@@ -122,25 +154,25 @@ dependency bkt "0.8.*" "brew install bkt" 1>&2 || {
 		while [[ "$1" == --* ]]; do shift; done
 		"$@"
 	}
-	echo:Ver "bkt is not installed. Setup bkt fake wrapper."
+	echo:Ver "${cl_grey}bkt is not installed. Fallback to bkt fake wrapper (no caching).${cl_reset}"
 }
 
 # display help
 function help() {
-	echo "usage: $0 [-r|--release] [-a|--alpha] [-b|--beta] [-c|--release-candidate]"
-	echo '                      [-m|--major] [-i|--minor] [-p|--patch] [-e|--revision] [-g|--git-revision]'
-	echo '                      [--prefix root|sub-folder|any] [--stay] [--default] [--help]'
+	echo "Usage:"
+	echo "  ${cl_yellow}$0${cl_reset} [-r|--release] [-a|--alpha] [-b|--beta] [-c|--release-candidate]"
+	echo '                       [-m|--major] [-i|--minor] [-p|--patch] [-e|--revision] [-g|--git|--git-revision]'
+	echo '                       [--prefix root|sub-folder|any] [--stay] [--default]  [--apply]'
+	echo '                       [--version] [--dry-run] [--debug] [--help]'
 	echo ''
 	print:help
-	echo ''
-	echo 'Version: [PREFIX]MAJOR.MINOR[.PATCH[.REVISION]][-STAGE]'
+	echo 'Version: [PREFIX]MAJOR.MINOR.PATCH[-STAGE][+REVISION]'
 	echo ''
 	echo 'Reference:'
 	echo '  https://semver.org/'
 	echo ''
 	echo 'Versions priority:'
 	echo '  1.0.0-alpha < 1.0.0-beta < 1.0.0-rc < 1.0.0'
-	exit 0
 }
 
 ## slagify, convert input string to valid bash variable name
@@ -326,6 +358,16 @@ function auto_detect_prefix_from_tags() {
 	echo "${mostUsed}"
 }
 
+# Use temporary file for caching the results of the function, to prevent
+# repeated calculations and time expensive calls.
+function cached:auto_detect_prefix_from_tags() {
+	if [ ! -f "$TMP_FILE_CACHE" ]; then
+		auto_detect_prefix_from_tags >"$TMP_FILE_CACHE"
+	fi
+
+	cat "$TMP_FILE_CACHE"
+}
+
 # get latest tag in specified branch. result to STDOUT.
 function latest_tag() {
 	local resolved_prefix=$(prepare_prefix)
@@ -335,12 +377,12 @@ function latest_tag() {
 
 	# if tag is empty then try to autodetect the prefix and try extaction again
 	if [[ -z "$tag" ]]; then
-		echo:Ver "No tag found, trying to auto-detect prefix..."
-		resolved_prefix=$(auto_detect_prefix_from_tags)
+		echo:Ver "${cl_gray}No tags found with default prefix strategy (${resolved_prefix}[0-9]*), fallback to auto-detected prefix...${cl_reset}"
+		resolved_prefix=$(cached:auto_detect_prefix_from_tags)
 		tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
 	fi
 
-	echo:Ver "Latest tag: ${cl_blue}${tag}${cl_reset}"
+	echo:Ver "Latest repo tag: ${cl_blue}${tag}${cl_reset}"
 	echo "$tag"
 }
 
@@ -350,73 +392,120 @@ function latest_revision() {
 	echo "$gitRevision"
 }
 
-# parse first PART of the tage, extract PREFIX if any provided
+# parse first PART of the stage, extract PREFIX if any provided
 # shellcheck disable=SC2001
 function parse_first() {
-	# extract into PREFIX variable all non digits chars from the beginning of the PARTS[0]
-	local prefix=$(echo "${PARTS[0]}" | sed 's#\([^0-9]*\)\(.*\)#\1#')
+	# extract into PREFIX variable all non digits chars from the beginning of the PARTS["major"]
+	local prefix=$(echo "${PARTS["major"]}" | sed 's#\([^0-9]*\)\(.*\)#\1#')
 
-	# leave only digits in the PARTS[0]
-	local clean_part=$(echo "${PARTS[0]}" | sed 's#\([^0-9]*\)\(.*\)#\2#')
+	# leave only digits in the PARTS["major"]
+	local clean_part=$(echo "${PARTS["major"]}" | sed 's#\([^0-9]*\)\(.*\)#\2#')
 
 	PREFIX=$prefix
-	PARTS[0]=$clean_part
+	PARTS["major"]=$clean_part
 }
 
 # parse last found tag, extract it PARTS
 function parse_last() {
 	local position=$(($1 - 1))
+	# local names=("major" "minor" "patch" "build" "pre-release")
 
-	# two parts found only
-	# shellcheck disable=SC2206
-	local segments=(${PARTS[$position]//-/ }) # split by - into array of strings
-	#echo ${segments[@]}, size: ${#segments}
+	# # two parts found only
+	# # shellcheck disable=SC2206
+	# local segments=(${PARTS[${names[$position]]//-/ }) # split by - into array of strings
+	# #echo ${segments[@]}, size: ${#segments}
 
-	# found NUMBER
-	PARTS[$position]=${segments[0]}
-	#echo ${PARTS[@]}
+	# # found NUMBER
+	# PARTS[${names[$position]}]=${segments[0]}
+	# #echo ${PARTS[@]}
 
-	# found SUFFIX
-	if [[ ${#segments} -ge 1 ]]; then
-		PARTS[4]=${segments[1],,} #lowercase
-		#echo ${PARTS[@]}, ${SUBS[@]}
-	fi
-}
-
-# increment REVISION part, don't touch STAGE
-function increment_revision() {
-	PARTS[3]=$((PARTS[3] + 1))
-	IS_DIRTY=1
-}
-
-# increment PATCH part, reset all others lower PARTS, don't touch STAGE
-function increment_patch() {
-	PARTS[2]=$((PARTS[2] + 1))
-	PARTS[3]=0
-	IS_DIRTY=1
-}
-
-# increment MINOR part, reset all others lower PARTS, don't touch STAGE
-function increment_minor() {
-	PARTS[1]=$((PARTS[1] + 1))
-	PARTS[2]=0
-	PARTS[3]=0
-	IS_DIRTY=1
+	# # found SUFFIX
+	# if [[ ${#segments} -ge 1 ]]; then
+	# 	PARTS["pre-release"]=${segments[1],,} #lowercase
+	# 	#echo ${PARTS[@]}, ${SUBS[@]}
+	# fi
 }
 
 # increment MAJOR part, reset all others lower PARTS, don't touch STAGE
 function increment_major() {
-	PARTS[0]=$((PARTS[0] + 1))
-	PARTS[1]=0
-	PARTS[2]=0
-	PARTS[3]=0
+	local override=${args_major:-"*"}
+
+	if [[ "$override" != "*" ]]; then
+		PARTS["major"]=$((override))
+	else
+		PARTS["major"]=$((PARTS["major"] + 1))
+	fi
+
+	PARTS["minor"]=0
+	PARTS["patch"]=0
+	PARTS["build"]=""
 	IS_DIRTY=1
+
+	echo:Ver "Incrementing MAJOR: ${cl_green}${PARTS["major"]}${cl_reset}"
+}
+
+# increment MINOR part, reset all others lower PARTS, don't touch STAGE
+function increment_minor() {
+	local override=${args_minor:-"*"}
+
+	if [[ "$override" != "*" ]]; then
+		PARTS["minor"]=$((override))
+	else
+		PARTS["minor"]=$((PARTS["minor"] + 1))
+	fi
+
+	PARTS["patch"]=0
+	PARTS["build"]=""
+	IS_DIRTY=1
+
+	echo:Ver "Incrementing MINOR: ${cl_green}${PARTS["minor"]}${cl_reset}"
+}
+
+# increment PATCH part, reset all others lower PARTS, don't touch STAGE
+function increment_patch() {
+	local override=${args_patch:-"*"}
+
+	if [[ "$override" != "*" ]]; then
+		PARTS["patch"]=$((override))
+	else
+		PARTS["patch"]=$((PARTS["patch"] + 1))
+	fi
+
+	PARTS["build"]=""
+	IS_DIRTY=1
+	echo:Ver "Incrementing PATCH: ${cl_green}${PARTS["patch"]}${cl_reset}"
+}
+
+# increment REVISION part, don't touch STAGE
+function increment_revision() {
+	local override=${args_revision:-"*"}
+	local build=${PARTS["build"]//+/} # we force `+NNN` format
+	build=${build:-"0"}               # fallback to 0 if empty
+
+	if [[ "$override" != "*" ]]; then
+		build=${override//+/}
+	else
+		build=$((build + 1))
+	fi
+
+	PARTS["build"]="+${build}"
+	IS_DIRTY=1
+	echo:Ver "Incrementing REVISION: ${cl_green}${PARTS["build"]}${cl_reset}"
+}
+
+# set revision part to a revision counter based on total amount of commits in repository
+function set_revision() {
+	local number="$1"
+
+	PARTS["build"]="+$((number))"
+	IS_DIRTY=1
+	echo:Ver "Setting REVISION: ${cl_green}${PARTS["build"]}${cl_reset}"
 }
 
 # increment the number only of last found PART: REVISION --> PATCH --> MINOR. don't touch STAGE
 function increment_last_found() {
-	if [[ "${#PARTS[3]}" == 0 || "${PARTS[3]}" == "0" ]]; then
-		if [[ "${#PARTS[2]}" == 0 || "${PARTS[2]}" == "0" ]]; then
+	if [[ "${#PARTS["build"]}" == 0 || "${PARTS["build"]}" == "0" ]]; then
+		if [[ "${#PARTS["patch"]}" == 0 || "${PARTS["patch"]}" == "0" ]]; then
 			increment_minor
 		else
 			increment_patch
@@ -426,48 +515,29 @@ function increment_last_found() {
 	fi
 
 	# stage part is not EMPTY
-	if [[ "${#PARTS[4]}" != 0 ]]; then
+	if [[ "${#PARTS["pre-release"]}" != 0 ]]; then
 		IS_SHIFT=1
 	fi
 }
 
-# compose version from PARTS
+# compose version from PARTS and output it to STDOUT
 function compose() {
-	local major="${PARTS[0]}"
-	local minor=".${PARTS[1]}"
-	local patch=".${PARTS[2]}"
-	local revision=".${PARTS[3]}"
-	local suffix="-${PARTS[4]}"
+	for i in "${!PARTS[@]}"; do echo:Dbg "$i: ${PARTS[$i]}"; done
+	declare -A V=(
+		["major"]="${PARTS["major"]}"
+		["minor"]="${PARTS["minor"]}"
+		["patch"]="${PARTS["patch"]}"
+		["pre-release"]="${PARTS["pre-release"]}" # started from "-"
+		["build"]="${PARTS["build"]}"             # started from "+"
+	)
 
-	if [[ "${#patch}" == 1 ]]; then # if empty {patch}
-		patch=""
-	fi
+	for i in "${!V[@]}"; do echo:Dbg "$i: ${V[$i]}"; done
 
-	if [[ "${#revision}" == 1 ]]; then # if empty {revision}
-		revision=""
-	fi
+	# "${major}.${minor}.${patch}${pre_release}${build}"
+	echo "${PREFIX}$(semver:recompose "V")"
+	echo:Dbg "${PREFIX}$(semver:recompose "V")"
 
-	if [[ "${PARTS[3]}" == "0" ]]; then # if revision is ZERO
-		revision=""
-	fi
-
-	# shrink patch and revision
-	if [[ -z "${revision// /}" ]]; then
-		if [[ "${PARTS[2]}" == "0" ]]; then
-			patch=""
-		fi
-	else # revision is not EMPTY
-		if [[ "${#patch}" == 0 ]]; then
-			patch=".0"
-		fi
-	fi
-
-	# remove suffix if we don't have alpha/beta/rc
-	if [[ "${#suffix}" == 1 ]]; then
-		suffix=""
-	fi
-
-	echo "${PREFIX}${major}${minor}${patch}${revision}${suffix}" #full format
+	unset V
 }
 
 # print error message about conflict with existing tag and proposed tag
@@ -514,7 +584,7 @@ function publish_version_file() {
 
 	echo "# $(date)" >${publish_path}
 	{
-		echo "## Version: 3.0.0"
+		echo "## Version: 2.0.0"
 		echo "snapshot.version=$(compose)"
 		echo "snapshot.lasttag=$TAG"
 		echo "snapshot.revision=$REVISION"
@@ -553,53 +623,62 @@ function report_current_state() {
 		TAG=$INIT_VERSION
 		echo "No tags found."
 	else
-		echo "Found tag: $TAG in branch '$BRANCH'"
+		echo "Found tag        : ${cl_blue}$TAG${cl_reset} in branch ${cl_yellow}$BRANCH${cl_reset}"
 	fi
 
 	# print current revision number based on number of commits
-	echo "Current Revision: $REVISION"
-	echo "Current Branch  : $BRANCH"
-	echo "Repository Dir  : \"$(realpath "$(monorepo_root)")\""
-	echo "Current Folder  : \"$(prefix_sub_folder)\""
+	echo "Current Revision : ${cl_green}$REVISION${cl_reset}"
+	echo "Current Branch   : ${cl_yellow}$BRANCH${cl_reset}"
+	echo "Repository Dir   : ${cl_yellow}$(realpath "$(monorepo_root)")${cl_reset}"
+	echo "Current Folder   : \"$(prefix_sub_folder)\""
 	echo ""
 
 }
 
+# stage == "pre-release" in terms of SEMVER
 function handle_stage_shift() {
-	stage=${PARTS[4]}
-	PARTS[4]=''
+	stage=${PARTS["pre-release"]}
+	PARTS["pre-release"]='.'
 
 	# detect first run on repository, INIT_VERSION was used
 	if [[ "$(compose)" == "0.0" ]]; then
 		increment_minor
 	fi
 
-	PARTS[4]=$stage
+	PARTS["pre-release"]=$stage
 }
 
+# Verify arguments that allows quick exit from the script: help, version.
 function parse_quick_arguments() {
 	local args=("$@")
 
 	# parse input parameters
 	if [[ "$help" == "1" ]]; then
 		help
+		exit 0
 	elif [[ -n "$version" ]]; then
 		echo "version: ${version}"
 		exit 0
 	fi
 }
 
-function parse_arguments() {
-	echo:Ver "Parsing arguments..."
+# Based on passed argument evaluate and configure versioning strategy
+function configure_strategy() {
+	echo:Ver "Configuring versioning strategy..."
+	local args=("$@")
 
 	local isNoArgs=false
 	[ "${#args[@]}" -eq 0 ] && isNoArgs=true
 
 	if $isNoArgs; then
+		echo:Dbg "Testing latest tag hash: ${cl_blue}${TAG_HASH:0:7}${cl_reset} vs HEAD hash: ${cl_blue}${HEAD_HASH:0:7}${cl_reset}"
+
 		if [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
-			echo "Tag $TAG and HEAD are aligned. We will stay on the TAG version."
-			# TODO: should we re-create the version.properties file?
+			echo "Tag ${cl_blue}$TAG${cl_reset} and ${cl_yellow}HEAD${cl_reset} are aligned. We will stay on the TAG version."
+			# TODO (olku): should we re-create the version.properties file?
 			exit 0
+		else
+			echo:Ver "Tag ${cl_blue}$TAG${cl_reset} and ${cl_yellow}HEAD${cl_reset} are not aligned. Continue with versioning..."
 		fi
 
 		# are we in the branch that has version tag or name that matches the pattern?
@@ -607,28 +686,35 @@ function parse_arguments() {
 		local semver_part=$(echo "$BRANCH" | grep -oE "$semver_grep")
 
 		if [[ -n "$semver_part" ]]; then
-			echo "Detected version branch '$BRANCH'. We will auto-increment the last version PART."
+			echo:Ver "Detected branch name ${cl_yellow}$BRANCH${cl_reset} and it matches SEMVER pattern."
+			echo:Ver "Selected versioning strategy: ${cl_green}increment last version PART of BRANCH${cl_reset}."
 			args_default=1
 		else
-			echo:Ver "Detected branch name '$BRANCH' than does not match version pattern. We will increase MINOR."
-			args_minor=1
+			echo:Ver "Detected branch name ${cl_yellow}$BRANCH${cl_reset} and it does not match SEMVER pattern."
+			echo:Ver "Selected versioning strategy: ${cl_green}increment MINOR of the latest TAG${cl_reset}."
+			args_minor='*' # use default increment
 		fi
 	fi
 
-	[[ "$args_alpha" == "1" ]] && PARTS[4]="alpha" && IS_SHIFT=1
-	[[ "$args_beta" == "1" ]] && PARTS[4]="beta" && IS_SHIFT=1
-	[[ "$args_rc" == "1" ]] && PARTS[4]="rc" && IS_SHIFT=1
-	[[ "$args_release" == "1" ]] && PARTS[4]="" && IS_SHIFT=1
+	echo:Dbg "alpha: $args_alpha, beta: $args_beta, rc: $args_rc, release: $args_release"
+	echo:Dbg "patch: $args_patch, revision: $args_revision, git_revision: $args_git_revision, minor: $args_minor"
+	echo:Dbg "default: $args_default, major: $args_major, stay: $args_stay, apply: $args_apply"
+	echo:Dbg "prefix: $args_prefix"
 
-	[[ "$args_patch" == "1" ]] && increment_patch
-	[[ "$args_revision" == "1" ]] && increment_revision
-	[[ "$args_git_revision" == "1" ]] && PARTS[3]=$((REVISION)) && IS_DIRTY=1
-	[[ "$args_minor" == "1" ]] && increment_minor
+	[[ "$args_alpha" == "1" ]] && PARTS["pre-release"]="-alpha" && IS_SHIFT=1
+	[[ "$args_beta" == "1" ]] && PARTS["pre-release"]="-beta" && IS_SHIFT=1
+	[[ "$args_rc" == "1" ]] && PARTS["pre-release"]="-rc" && IS_SHIFT=1
+	[[ "$args_release" == "1" ]] && PARTS["pre-release"]="" && IS_SHIFT=1
+
+	# DONE: support --major=2 --minor=1 --patch=0 --revision=1000 overrides
+	[[ -n "$args_major" ]] && increment_major
+	[[ -n "$args_minor" ]] && increment_minor
+	[[ -n "$args_patch" ]] && increment_patch
+	[[ -n "$args_revision" ]] && increment_revision
+	[[ "$args_git_revision" == "1" ]] && set_revision "${REVISION}"
 
 	[[ "$args_default" == "1" ]] && increment_last_found
-	[[ "$args_major" == "1" ]] && increment_major
 	[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
-
 	[[ "$args_apply" == "1" ]] && DO_APPLY=1
 
 	[[ -n "$args_prefix" ]] && use_prefix "$args_prefix"
@@ -647,7 +733,7 @@ function check_version_properties() {
 		process_version_properties "${VERSION_PROPS_PATH}"
 		version_props_exists=1
 	else
-		echo:Ver "No version.properties found. Using default version logic."
+		echo:Ver "No ${cl_yellow}version.properties${cl_reset} found. Using script defaults for versioning..."
 		version_props_exists=0
 	fi
 
@@ -664,7 +750,7 @@ function has_version_tags() {
 	local result=1
 
 	if [[ -n "${TAG}" && "${TAG}" != "${INIT_VERSION}" ]]; then
-		echo:Ver "Version tags detected: ${TAG}"
+		echo:Ver "Version tags detected: ${cl_green}${TAG}${cl_reset}"
 		result=0
 	fi
 
@@ -720,16 +806,16 @@ function handle_single_prefix() {
 	local sub_folder=""
 
 	if [[ "${prefix}" == "v" ]]; then
-		echo:Ver "Known prefix 'v' detected."
+		echo:Ver "Known prefix ${cl_yellow}v${cl_reset} detected."
 		PREFIX="v"
 	else
 		# Check if it's a subfolder path
 		sub_folder=$(prefix_sub_folder)
 		if [[ "${prefix}" == "${sub_folder}" ]]; then
-			echo:Ver "Prefix matches current subfolder: ${sub_folder}"
+			echo:Ver "Prefix matches current subfolder: ${cl_yellow}${sub_folder}${cl_reset}"
 			PREFIX="${sub_folder}"
 		else
-			echo:Ver "Using detected prefix: ${prefix}"
+			echo:Ver "Using detected prefix: ${cl_yellow}${prefix}${cl_reset}"
 			PREFIX="${prefix}"
 		fi
 	fi
@@ -743,7 +829,7 @@ function handle_prefix_detection() {
 	local prefixes=()
 
 	if [[ -n "${AUTO_DETECTED_PREFIX}" ]]; then
-		echo:Ver "Prefix detected: ${AUTO_DETECTED_PREFIX}"
+		echo:Ver "Prefix detected: ${cl_yellow}${AUTO_DETECTED_PREFIX}${cl_reset}"
 
 		# Check if we have multiple prefixes
 		IFS=',' read -ra prefixes <<<"${AUTO_DETECTED_PREFIX}"
@@ -772,7 +858,7 @@ function handle_no_version_tags() {
 	if [[ -n "${sub_folder}" && "${sub_folder}" != "/" ]]; then
 		if ask_user_confirmation "Use subfolder '${sub_folder}' as prefix?" "Y"; then
 			PREFIX="${sub_folder}"
-			echo:Ver "Using subfolder as prefix: ${PREFIX}"
+			echo:Ver "Using subfolder as prefix: ${cl_yellow}${PREFIX}${cl_reset}"
 		fi
 	fi
 }
@@ -787,7 +873,7 @@ function process_tag_detection() {
 		echo:Ver "No tags found in the repository."
 		handle_no_version_tags
 	else
-		echo:Ver "Tags found in the repository."
+		echo:Ver "Repository has Tags. Lets check them for SEMVER compatibility."
 
 		# Check if we can detect version tags
 		if has_version_tags; then
@@ -813,7 +899,7 @@ function process_version() {
 	[[ "$IS_DIRTY$IS_SHIFT" == "" ]] && increment_minor
 
 	# Instruct user how to apply new TAG
-	echo:Ver "Proposed TAG: ${cl_green}$(compose)${cl_reset}"
+	echo:Ver "Proposed Next Version TAG: ${cl_green}$(compose)${cl_reset}"
 	echo ''
 
 	# Is proposed tag in conflict with any other TAG
@@ -900,7 +986,7 @@ function process_version_properties() {
 			local var_name="$(slagify "${variable}")"
 			local var_value="${line#*=}"
 
-			printf:Ver "${cl_green}%-20s${cl_reset}= ${cl_yellow}%-30s ${cl_grey}# %s${cl_reset}\n" "${var_name}" "\"${var_value}\"" "${line}"
+			printf:Dbg "${cl_green}%-20s${cl_reset}= ${cl_yellow}%-30s ${cl_grey}# %s${cl_reset}\n" "${var_name}" "\"${var_value}\"" "${line}"
 			eval "export ${var_name}=\"${var_value}\""
 		done
 
@@ -950,13 +1036,15 @@ function is_prefix_matching_current_folder() {
 # - REVISION, BRANCH, TOP_TAG, TAG_HASH, HEAD_HASH,
 # - PROPOSED_HASH, VERSION_PROPS_PATH
 function prepare_globals() {
+	echo:Ver "Recovering versioning strategy from repository state..."
+
 	# try to detect the prefix in versioning tags/branches names. expected pattern: {PREFIX}{SEMVER}{SUFFIX}
 	# PREFIX in this case can be:
 	#   - '{any-string}' - something defined by user;
 	#   - '{sub-folder}' - sub-folder path used as a prefix;
 	#   - '{root}' - empty string;
 	export PREFIX=$(prepare_prefix "$@")
-	export AUTO_DETECTED_PREFIX=$(auto_detect_prefix_from_tags)
+	export AUTO_DETECTED_PREFIX=$(cached:auto_detect_prefix_from_tags)
 
 	# initial version used for repository without tags
 	export INIT_VERSION="${PREFIX}0.0.0.0-alpha"
@@ -974,9 +1062,10 @@ function prepare_globals() {
 	export VERSION_PROPS_PATH=$(find_version_properties)
 
 	# parse the tag into parts
+	# shellcheck disable=SC2015
 	semver:parse "${TAG}" "PARTS" &&
-		echo:Ver "tag: ${cl_blue}${TAG}${cl_reset} ~>" "${PARTS[@]}" ||
-		echo:Ver "$? - FAIL parsing '${TAG}'!"
+		(for i in "${!PARTS[@]}"; do echo:Dbg "$i: ${PARTS[$i]}"; done) ||
+		echo:Dbg "$? - FAIL parsing '${TAG}'!"
 }
 
 # Main function that orchestrates the versioning process
@@ -984,7 +1073,7 @@ function prepare_globals() {
 # Outputs: STDOUT - logs about version processing
 # Side effects: various, handled by subfunctions
 function main() {
-	echo:Ver "Starting version-up.v2.sh process"
+	echo:Ver "Starting version-up.v2.sh process..."
 
 	# check arguments for quick exit flags
 	parse_quick_arguments "$@"
@@ -993,7 +1082,7 @@ function main() {
 	prepare_globals "$@"
 
 	# parse arguments after we initialize global state
-	parse_arguments "$@"
+	configure_strategy "$@"
 
 	# Check if version.properties exists and process it
 	check_version_properties

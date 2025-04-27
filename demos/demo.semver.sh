@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-20
+## Last revisit: 2025-04-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -56,7 +56,18 @@ semver:parse "1.0.0-alpha" && echo "${__semver_parse_result[@]}"
 semver:parse "1.0.0-alpha0.valid" "VER_1" && echo "${VER_1[@]}"
 semver:parse "2.0.0-rc.1+build.123" "V" && echo "${V[@]}"
 semver:parse "1.0.0+0.build.1-rc.10000aaa-kk-0.1" && echo "${__semver_parse_result[@]}"
-semver:parse "2.0.0-rc.1+build.123" "V" && for i in "${!V[@]}"; do echo "$i: ${V[$i]}"; done && semver:recompose "V"
+
+## Demo common cases
+echo ""
+semver:parse "2.0.0-rc.1+build.123" "V" && for i in "${!V[@]}"; do echo -n "$i: ${V[$i]}, "; done && semver:recompose "V" && unset V
+semver:parse "2.2.3-rc.1" "V" && for i in "${!V[@]}"; do echo -n "$i: ${V[$i]}, "; done && semver:recompose "V" && unset V
+semver:parse "2.2.3-1" "V" && for i in "${!V[@]}"; do echo -n "$i: ${V[$i]}, "; done && semver:recompose "V" && unset V
+semver:parse "2.2.3-rc+1" "V" && for i in "${!V[@]}"; do echo -n "$i: ${V[$i]}, "; done && semver:recompose "V" && unset V
+semver:parse "2.2.3+1" "V" && for i in "${!V[@]}"; do echo -n "$i: ${V[$i]}, "; done && semver:recompose "V" && unset V
+semver:parse "2.2.3" "V" && for i in "${!V[@]}"; do echo -n "$i: ${V[$i]}, "; done && semver:recompose "V" && unset V
+
+# not valid
+semver:parse "2.2" "V" && for i in "${!V[@]}"; do echo -n "$i: ${V[$i]}, "; done && semver:recompose "V" && unset V
 
 ## Valid
 #echo "0.0.4" | grep -E "${SEMVER_LINE}" --color=always --ignore-case

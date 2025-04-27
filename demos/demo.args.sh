@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-26
+## Last revisit: 2025-04-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -42,8 +42,9 @@ source "$E_BASH/_arguments.sh"
 # args:i version -a "--version" -d "1.0.0" -h "Show version and exit."
 # args:i args_switch -a "-s,--switch" -q 1 -h "Switch to another environment."
 
-# inject argument defintion into ARGS_DEFINITION
-ARGS_DEFINITION+=" $(args:i args_switch -a "-s,--switch" -q 1 -h "Switch to another environment.")"
+# inject argument defintion into ARGS_DEFINITION via composer
+COMPOSER="$(args:i args_switch -a "-s,--switch" -q 1 -h "Switch to another environment.")"
+eval "$COMPOSER"
 
 parse:arguments "$@" # time to parse arguments
 
