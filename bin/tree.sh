@@ -7,7 +7,6 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-
 DEBUG=${DEBUG:-"-tree,-loader"}
 
 # shellcheck disable=SC1090 source=../.scripts/_logger.sh
@@ -108,7 +107,7 @@ function tree_bash() {
 
       # Store each unique node only once
       echo:Tree "storing node: $key = $current / $path / ${parts[*]}"
-      
+
       # Skip empty keys to avoid 'bad array subscript' errors
       if [[ -n "$key" ]]; then
         nodes["$key"]="$current"
