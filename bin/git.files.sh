@@ -6,7 +6,6 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-
 # set -x
 
 myDir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -35,10 +34,10 @@ function args:isTree() {
 }
 
 function print_help() {
-    echo "Usage: showfiles [TOP] [--tree]"
+    echo "Usage: $0 [TOP] [--tree]"
     echo "TOP           : number of commits to show files changed."
     echo "--tree        : show files in tree format."
-    echo "--help        : show this help."
+    echo "--help        : show this help and exit."
 }
 
 # array of script arguments cleaned from flags (e.g. --help)
@@ -66,7 +65,7 @@ TOP=${ARGS_NO_FLAGS[0]:-$git_commits}
 if [ "$(args:isHelp "$@")" == "true" ]; then
     print_help
 elif [ "$(args:isTree "$@")" == "true" ]; then
-    git diff-tree --no-commit-id --name-only -r HEAD "HEAD~$TOP" | "${myDir}/tree.ts"
+    git diff-tree --no-commit-id --name-only -r HEAD "HEAD~$TOP" | "${myDir}/tree.sh"
 else
     git diff-tree --no-commit-id --name-only -r HEAD "HEAD~$TOP"
 fi

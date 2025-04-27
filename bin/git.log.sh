@@ -7,14 +7,13 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-TOP=${1:-10}
-
+# include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 # shellcheck source=../.scripts/_colors.sh
 source /dev/null # trick shellcheck
-
-# include other scripts: _colors, _logger, _commons, _dependencies, _arguments
-# shellcheck disable=SC1090 source=../.scripts/_commons.sh
+# shellcheck disable=SC1090 source=../.scripts/_logger.sh
 source "$E_BASH/_logger.sh"
+# shellcheck disable=SC1090 source=../.scripts/_arguments.sh
+source "$E_BASH/_arguments.sh"
 
 logger:init debug "[${cl_blue}debug${cl_reset}] "
 
@@ -154,5 +153,13 @@ function main() {
 			printf -- "${log_row}\n" "$id" "$hash" "$time" "$author" "$msg"
 		done
 }
+
+# detect the MAIN/MASTER branch name
+git_master_name=$(git rev-parse --verify master >/dev/null 2>&1 && echo master || echo main)
+
+# total commits in branch
+git_commits=$(git rev-list --no-merges --count "${git_master_name}..")
+
+export TOP=${ARGS_NO_FLAGS[0]:-$((git_commits + 2))}
 
 main "$@"
