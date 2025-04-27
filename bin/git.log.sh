@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2059,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-26
+## Last revisit: 2025-04-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-
 
 TOP=${1:-10}
 
@@ -16,126 +16,143 @@ source /dev/null # trick shellcheck
 # shellcheck disable=SC1090 source=../.scripts/_commons.sh
 source "$E_BASH/_logger.sh"
 
+logger:init debug "[${cl_blue}debug${cl_reset}] "
+
 # Get terminal width
-tput cols &>/dev/null
-TERM_WIDTH=$(tput cols)
+tput cols &>/dev/null # trick to force tput correctly detect terminal width
+readonly TERM_WIDTH=$(tput cols)
 
 # Define column widths based on terminal width
-ID_WIDTH=3
-HASH_WIDTH=7
-TIME_WIDTH=5
-AUTHOR_WIDTH=15
-MESSAGE_WIDTH=$((TERM_WIDTH - HASH_WIDTH - TIME_WIDTH - AUTHOR_WIDTH - 5 * 4)) # 5 columns, each 4 chars extra
+readonly ID_WIDTH=3
+readonly HASH_WIDTH=7
+readonly TIME_WIDTH=4
 
-# If terminal is wide enough, increase author width
-if [ "${TERM_WIDTH}" -gt 100 ]; then
-	AUTHOR_WIDTH=20
-	MESSAGE_WIDTH=$((TERM_WIDTH - HASH_WIDTH - TIME_WIDTH - AUTHOR_WIDTH - 5 * 4))
-fi
+export AUTHOR_WIDTH=12
+export MESSAGE_WIDTH=$((TERM_WIDTH - HASH_WIDTH - TIME_WIDTH - AUTHOR_WIDTH - 5 * 4)) # 5 columns, each 4 chars extra
 
-function format_column() {
-	local text="$1"
-	local width="$2"
-	local truncated
+function adjust:to:terminal() {
+	echo:Debug "MESSAGE_WIDTH: ${MESSAGE_WIDTH}"
 
-	if [ "${#text}" -gt "${width}" ]; then
-		truncated="${text:0:$((width - 3))}...${text:$((${#text} - 3))}"
-	else
-		truncated="$text"
+	# If terminal is wide enough, increase author width
+	if [ "${TERM_WIDTH}" -gt 100 ]; then
+		export AUTHOR_WIDTH=20
+		export MESSAGE_WIDTH=$((TERM_WIDTH - HASH_WIDTH - TIME_WIDTH - AUTHOR_WIDTH - 5 * 4))
+		echo:Debug "MESSAGE_WIDTH(2): ${MESSAGE_WIDTH}"
+	fi
+}
+
+# ellipsis in the middle of the string
+function ellipsis() {
+	local type="$1"
+	local text="$2"
+	local width="$3"
+	local truncated="${text}"
+
+	# if type==mid
+	if [ "${type}" = "mid" ]; then
+		if [ "${#text}" -gt "${width}" ]; then
+			local middle=$((width / 2))
+			local start=${text:0:$((middle - 3))}
+			local end=${text:$((${#text} - middle))}
+			truncated="${start}...${end}"
+		fi
+	elif [ "${type}" = "end" ]; then
+		if [ "${#text}" -gt "${width}" ]; then
+			local end=${text:0:$((${#text} - width - 3))}
+			truncated="${end}..."
+		fi
 	fi
 
-	# Calculate padding to center the text
-	local padding_left=$(((width - ${#truncated}) / 2))
-	local padding_right=$((width - ${#truncated} - padding_left))
-
-	printf "%-${padding_left}s%s%-${padding_right}s" " " "$truncated" " "
+	echo "${truncated}"
 }
 
-# repeat spacer string N times
-function sp() {
-	local num="$1"
-	local filler="-"
-
-	printf "%${num}s\n" | tr ' ' "$filler"
+function ellipsis:mid() {
+	ellipsis mid "$1" "$2"
 }
 
-# Print table header
-title_row="%${ID_WIDTH}s | %${HASH_WIDTH}s | %${TIME_WIDTH}s | %${AUTHOR_WIDTH}s | %-${MESSAGE_WIDTH}s"
-separator_row="%${ID_WIDTH}s-+-%${HASH_WIDTH}s-+-%${TIME_WIDTH}s-+-%${AUTHOR_WIDTH}s-+-%${MESSAGE_WIDTH}s"
-log_row="%${ID_WIDTH}s | %${HASH_WIDTH}s | ${cl_blue}%${TIME_WIDTH}s${cl_reset} | %-${AUTHOR_WIDTH}s | %-${MESSAGE_WIDTH}s"
+function ellipsis:end() {
+	ellipsis end "$1" "$2"
+}
 
-echo "---"
-echo "${log_row}"
-echo "---"
+# remove ansi colors
+function no_colors() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
 
-printf "${title_row}\n" "#" "hash" "time" "author" "message, tags, branches"
-printf "${separator_row}\n" "$(sp $ID_WIDTH)" "$(sp $HASH_WIDTH)" "$(sp $TIME_WIDTH)" "$(sp $AUTHOR_WIDTH)" "$(sp $MESSAGE_WIDTH)"
+# repeat spacer string N times. $1 - N, $2 - spacer/filler.
+function sp() { printf "%${1}s\n" | tr ' ' "${2:-"-"}"; }
 
-# Extract logs
-PATTERN="%h%x09"   # short commit hash
-PATTERN+="%cr%x09" # committer date, relative
-PATTERN+="%aN%x09" # author name (respecting .mailmap)
-PATTERN+="%s%x09"  # subject
-PATTERN+="%D"      # ref names, tags
+function color_refs() {
+	local refs=$1
 
-git --no-pager log --pretty=format:"${PATTERN}" --color -n "${TOP}" --date=short | # extract logs
-	nl -w2 |                                                                          # number lines
-	sed -e "s# hours ago#h#" \
-		-e "s# seconds ago#s#" \
-		-e "s# days ago#d#" \
-		-e "s# weeks ago#w#" \
-		-e "s# months ago#M#" \
-		-e "s# minutes ago#m#" \
-		-e "s# to master##" \
-		-e "s#Pull request #PR#" \
-		-e "s#Merge pull request#Merge#" | # cleanup texts
-	while read -r line; do
-		# split line into columns: id, hash, time, author, message, refs
-		IFS=$'\t' read -r id hash time author message refs <<<"$line"
+	# highlight in different colors: HEAD, remotes and local branches
+	IFS=',' read -r -a branches <<<"$refs"
+	separators=", " ptrs=""
+	for branch in "${branches[@]}"; do
+		branch="${branch// /}" # remove spaces
+		echo:Debug "branch: ${branch}"
 
-		# remove 0x0A (line break) from message
-		message="$(echo "$message" | tr '\n' " ")"
-		# hexdump -C <<<"$message-"
-
-		echo "${cl_grey} $id $hash $time $author $message ${cl_reset}"
-		printf "${log_row}\n" "$id" "$hash" "$time" "$author" "$message" "" #"$refs"
+		if [[ "$branch" == origin/* ]]; then
+			# if contains `origin/`, color yellow
+			ptrs+="${separators}${cl_yellow}${branch}${cl_reset}"
+		elif [[ "$branch" == tag:* ]]; then
+			# if contains `tags/`, color green
+			ptrs+="${separators}${cl_green}${branch}${cl_reset}"
+		elif [[ "$branch" == HEAD* ]]; then
+			# if contains `HEAD ->`, color blue
+			ptrs+="${separators}${cl_blue}${branch}${cl_reset}"
+		else
+			# else, color purple
+			ptrs+="${separators}${cl_purple}${branch}${cl_reset}"
+		fi
 	done
 
-# git --no-pager log --pretty=format:"${PATTERN}" --color -n "${TOP}" --date=short | # extract logs
-# 	nl -w2 -s"  " |                                                                   # number lines
-# 	sed -e "s# hours ago#h#" \
-# 		-e "s# seconds ago#s#" \
-# 		-e "s# days ago#d#" \
-# 		-e "s# weeks ago#w#" \
-# 		-e "s# months ago#M#" \
-# 		-e "s# minutes ago#m#" \
-# 		-e "s#in KLAPP/klarna-app from#<~#" \
-# 		-e "s# to master##" \
-# 		-e "s#Pull request #PR#" \
-# 		-e "s#Merge pull request#Merge#" | # cleanup texts
-# 	awk -v id_width=$ID_WIDTH -v hash_width=$HASH_WIDTH -v time_width=$TIME_WIDTH -v author_width=$AUTHOR_WIDTH -v message_width=$MESSAGE_WIDTH -F"\t" '
-# 	  BEGIN {OFS="|"};
-# 	  {
-# 	    hash = $1
-# 	    time = $2
-# 	    author = $3
-# 	    message = $4
-# 	    refs = $5
+	# use emoji to reduce the length of the string
+	ptrs="$(echo "$ptrs" | gsed -e "s#tag:#🏷️::#g; s#HEAD->#👑:#g; s#/HEAD#/👑#g; s#origin/#🔀/#g")"
 
-# 	    # Trim if necessary
-# 	    if (length(author) > author_width) {
-# 	      author = substr(author, 1, author_width-3) "..." substr(author, length(author) - 3, 3)
-# 	    }
+	echo "$ptrs"
+}
 
-# 	    # Add spacing for alignment
-# 	    hash_part = " " hash " "
-# 	    time_part = " " time " "
-# 	    author_part = " " author " "
+# Simplifies log output using sed replacements for time units, merge/pull request markers, and colors.
+simplify_log() {
+	sed -e "s# hours ago#h#; s# seconds ago#s#; s# days ago#d#; s# weeks ago#w#; s# months ago#M#; s# minutes ago#m#; s# year, #y#" \
+		-e "s# to master##" \
+		-e "s#Pull request #PR#" \
+		-e "s#Merge branch#${cl_cyan}Merge${cl_reset}#" \
+		-e "s#Merge pull request#${cl_cyan}Merge${cl_reset}#"
+}
 
-# 	    # Print formatted line
-# 	    printf("%${id_width}s | %${hash_width}s | %${time_width}s | %${author_width}s | %${message_width}s\n", "", hash_part, time_part, author_part, " " message refs)
-# 	  }
-# 	' |
-# 	gsed -e "s#tag:#\n\t\t\t\t\t\t       🏷️::#g" \
-# 		-e "s#HEAD#\n\t\t\t\t\t\t       👑#g" \
-# 		-e "s#origin/#\n\t\t\t\t\t\t       🔀: origin/#g" # put tags and branches on new line
+function main() {
+	# adjust output to terminal width
+	adjust:to:terminal
+
+	# prepare table printing templates
+	title_row="%${ID_WIDTH}s | %${HASH_WIDTH}s | %${TIME_WIDTH}s | %${AUTHOR_WIDTH}s | %-${MESSAGE_WIDTH}s"
+	separator_row="%${ID_WIDTH}s-+-%${HASH_WIDTH}s-+-%${TIME_WIDTH}s-+-%${AUTHOR_WIDTH}s-+-%${MESSAGE_WIDTH}s"
+	log_row="%${ID_WIDTH}s | ${cl_grey}%${HASH_WIDTH}s${cl_reset} | ${cl_blue}%${TIME_WIDTH}s${cl_reset} | ${cl_green}%-${AUTHOR_WIDTH}s${cl_reset} | %-${MESSAGE_WIDTH}s"
+
+	# Print table header
+	printf "${title_row}\n" "#" "hash" "time" "author" "message, tags, branches"
+	printf "${separator_row}\n" "$(sp $ID_WIDTH)" "$(sp $HASH_WIDTH)" "$(sp $TIME_WIDTH)" "$(sp $AUTHOR_WIDTH)" "$(sp $MESSAGE_WIDTH)"
+
+	# Extract logs
+	PATTERN="%h%x09"   # short commit hash
+	PATTERN+="%cr%x09" # committer date, relative
+	PATTERN+="%aN%x09" # author name (respecting .mailmap)
+	PATTERN+="%s%x09"  # subject
+	PATTERN+="%D%x09"  # ref names, tags
+
+	git --no-pager log --pretty=format:"${PATTERN}" --color -n "${TOP}" --date=short | nl -w2 | simplify_log |
+		while read -r line; do
+			# split line into columns by TAB|\x09: id, hash, time, author, message, refs
+			IFS=$'\t' read -r id hash time author message refs <<<"$line"
+
+			author="$(ellipsis:mid "$author" $AUTHOR_WIDTH)"
+
+			ptrs="$(color_refs "$refs")"
+			onlytext_ptrs="$(no_colors "$ptrs")"
+			msg="$(ellipsis:mid "$message" $((MESSAGE_WIDTH - ${#onlytext_ptrs})))$ptrs"
+
+			printf -- "${log_row}\n" "$id" "$hash" "$time" "$author" "$msg"
+		done
+}
+
+main "$@"
