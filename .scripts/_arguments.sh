@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-26
+## Last revisit: 2025-04-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -148,7 +148,7 @@ function parse:arguments() {
 
       # assign aggregated value to output variable
       local tmp_index=${lookup_arguments[$last_processed]}
-      echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='$tmpValue'"
+      echo:Common "[L1] export ${index_to_outputs[$tmp_index]}='$tmpValue'"
       eval "export ${index_to_outputs[$tmp_index]}='$tmpValue'"
     fi
 
@@ -159,7 +159,7 @@ function parse:arguments() {
       local expected=${index_to_args_qt[$tmp_index]}
 
       # assign default value to the output variable first
-      echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
+      echo:Common "[L2] export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
       eval "export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
 
       # if expected more arguments than provided, configure skip_next_counter
@@ -174,7 +174,7 @@ function parse:arguments() {
       else
         # default value is re-assigned by provided value
         if [ -n "$value" ]; then
-          echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='$value'"
+          echo:Common "[L3] export ${index_to_outputs[$tmp_index]}='$value'"
           eval "export ${index_to_outputs[$tmp_index]}='$value'"
         fi
       fi
@@ -187,7 +187,7 @@ function parse:arguments() {
           last_processed=$by_index
           local tmp_index=${lookup_arguments[$by_index]}
 
-          echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='$argument'"
+          echo:Common "[L4] export ${index_to_outputs[$tmp_index]}='$argument'"
           eval "export ${index_to_outputs[$tmp_index]}='$argument'"
         else
           echo:Common "${cl_grey}ignored: $argument [$by_index] vs $last_processed:$skip_next_counter:$skip_aggregated:$value ${cl_reset}" >&2

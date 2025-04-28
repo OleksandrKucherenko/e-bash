@@ -1,0 +1,1 @@
+/Users/oleksandr.kucherenko/workspace/github/e-bash/version-up.v2.sh

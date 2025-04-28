@@ -90,9 +90,10 @@ readonly TMP_FILE_CACHE=$(mktemp -u version-up.v2.cache.XXXX.tmp)
 
 # Trap to capture exit/interrupt and print exit code
 function on_exit() {
-	[ -f "$TMP_FILE_CACHE" ] && rm -f "$TMP_FILE_CACHE"
-
 	local exit_code=$?
+
+	# Cleanup temporary files
+	[ -f "$TMP_FILE_CACHE" ] && rm -f "$TMP_FILE_CACHE"
 
 	local CLR="${cl_green}"
 	[ $exit_code -ne 0 ] && CLR="${cl_red}"
@@ -623,10 +624,10 @@ function parse_quick_arguments() {
 	# parse input parameters
 	if [[ "$help" == "1" ]]; then
 		help
-		exit 0
+		exit $EX_OK
 	elif [[ -n "$version" ]]; then
 		echo "version: ${version}"
-		exit 0
+		exit $EX_OK
 	fi
 }
 
