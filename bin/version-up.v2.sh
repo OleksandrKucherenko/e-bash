@@ -370,6 +370,8 @@ function cached:auto_detect_prefix_from_tags() {
 function latest_tag() {
 	local resolved_prefix=$(prepare_prefix)
 
+	# TODO (olku): fetch remote tags first before extraction, they can be changed by another PR
+
 	# extract from git latest tag that started from number (OR from prefix and number)
 	local tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
 
