@@ -52,8 +52,9 @@ Both approaches has known issues:
 - [x] Support revision/build increment
 - [x] Support git revision (count git commits as a INDEX of the build)
 - [x] Support stay on the same version tag
-- [ ] Custom pre-release stage (`-rc.1` for supporting SEMVER fully: `2.0.0-rc.1+build.123`)
-- [ ] Custom build number (`+build.123` for supporting SEMVER fully: `2.0.0-rc.1+build.123`)
+- [x] Hardcoded Priority between `alpha`, `beta`, `rc` and release versions.
+- [x] Custom pre-release stage (`-rc.1` for supporting SEMVER fully: `2.0.0-rc.1+build.123`)
+- [x] Custom build number (`+build.123` for supporting SEMVER fully: `2.0.0-rc.1+build.123`)
 
 ## Usage
 

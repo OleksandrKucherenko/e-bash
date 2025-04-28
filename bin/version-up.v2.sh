@@ -3,7 +3,7 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-27
+## Last revisit: 2025-04-28
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -51,9 +51,10 @@ logger:init dbg "${cl_gray}[dbg]${cl_reset} "  # no prefix, to stderr
 
 #region Arguments
 declare help version \
-	args_release args_alpha args_beta args_rc \
-	args_major args_minor args_patch args_revision \
-	args_git_revision args_stay args_default args_apply args_prefix
+	args_release args_alpha args_beta args_rc args_stage \
+	args_major args_minor args_patch \
+	args_revision args_git_revision args_meta \
+	args_stay args_default args_apply args_prefix
 
 # pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 export ARGS_DEFINITION=""
@@ -65,15 +66,17 @@ export COMPOSER="
 	$(args:i args_release -a "-r,--release" -h "Switch stage to release, no suffix." -g stage)
 	$(args:i args_alpha -a "-a,--alpha" -h "Switch stage to alpha. Set: ${cl_purple}'-alpha'${cl_reset}" -g stage)
 	$(args:i args_beta -a "-b,--beta" -h "Switch stage to beta. Set: ${cl_purple}'-beta'${cl_reset}" -g stage)
-	$(args:i args_rc -a "-c,--release-candidate" -h "Switch stage to release candidate. Set: ${cl_purple}'-rc'${cl_reset}" -g stage)
-	$(args:i args_major -a "-m,--major" -d "*" -h "Increment MAJOR version part.")
-	$(args:i args_minor -a "-i,--minor" -d "*" -h "Increment MINOR version part.")
-	$(args:i args_patch -a "-p,--patch" -d "*" -h "Increment PATCH version part.")
-	$(args:i args_revision -a "-e,--revision" -d "*" -h "Increment REVISION version part.")
+	$(args:i args_rc -a "-c,--rc,--release-candidate" -h "Switch stage to release candidate. Set: ${cl_purple}'-rc'${cl_reset}" -g stage)
+	$(args:i args_stage -a "--pre-release" -q 1 -h "Custom stage/pre-release. Usage: ${cl_purple}'--pre-release=rc.12'${cl_reset} will set: ${cl_purple}'-rc.12'${cl_reset}" -g special)
+	$(args:i args_meta -a "--build" -q 1 -h "Custom meta/build/revision part. Usage: ${cl_grey}'--build=snapshot.12'${cl_reset} will set: ${cl_grey}'+snapshot.12'${cl_reset}" -g special)
+	$(args:i args_major -a "-m,--major" -d "*" -h "Increment ${cl_red}MAJOR${cl_reset} version part.")
+	$(args:i args_minor -a "-i,--minor" -d "*" -h "Increment ${cl_green}MINOR${cl_reset} version part.")
+	$(args:i args_patch -a "-p,--patch" -d "*" -h "Increment ${cl_blue}PATCH${cl_reset} version part.")
+	$(args:i args_revision -a "-e,--revision" -d "*" -h "Increment ${cl_grey}REVISION${cl_reset} version part.")
 	$(args:i args_git_revision -a "-g,--git,--git-revision" -h "Use git revision number as a revision part." -g special)
-	$(args:i args_prefix -a "--prefix" -d "sub-folder" -h "Provide tag prefix or use on of the strategies: ${cl_cyan}root${cl_reset}, ${cl_cyan}sub-folder${cl_reset} (default), ${cl_purple}any_string${cl_reset}" -g special)
+	$(args:i args_prefix -a "--prefix" -d "sub-folder" -q 1 -h "Provide tag prefix or use on of the strategies: ${cl_cyan}root${cl_reset}, ${cl_cyan}sub-folder${cl_reset} (default), ${cl_lcyan}any_string${cl_reset}" -g special)
 	$(args:i args_stay -a "--stay" -h "Compose ${cl_yellow}version.properties${cl_white} but do not do any increments." -g action)
-	$(args:i args_default -a "--default" -d "sub-folder" -q 1 -h "Increment last found part of version, keeping the stage. Increment applied up to MINOR part." -g action)
+	$(args:i args_default -a "--default" -h "Increment last found part of version, keeping the stage. Increment applied up to MINOR part." -g action)
 	$(args:i args_apply -a "--apply" -h "Run GIT command(s) to apply version upgrade." -g action)
 "
 eval "$COMPOSER" >/dev/null
@@ -146,33 +149,28 @@ function on_return() {
 [ -n "$TRACE" ] && trap on_entry DEBUG && trap on_return RETURN
 #endregion
 
-# Cache commands using bkt if installed
-dependency bkt "0.8.*" "brew install bkt" 1>&2 || {
-	# If bkt isn't installed skip its arguments and just execute directly.
-	bkt() {
-		echo:Ver "bkt: ${cl_gray}$@${cl_reset}"
-		while [[ "$1" == --* ]]; do shift; done
-		"$@"
-	}
-	echo:Ver "${cl_grey}bkt is not installed. Fallback to bkt fake wrapper (no caching).${cl_reset}"
-}
-
 # display help
 function help() {
 	echo "Usage:"
 	echo "  ${cl_yellow}$0${cl_reset} [-r|--release] [-a|--alpha] [-b|--beta] [-c|--release-candidate]"
 	echo '                       [-m|--major] [-i|--minor] [-p|--patch] [-e|--revision] [-g|--git|--git-revision]'
-	echo '                       [--prefix root|sub-folder|any] [--stay] [--default]  [--apply]'
-	echo '                       [--version] [--dry-run] [--debug] [--help]'
+	echo '                       [--prefix root|sub-folder|<prefix>] [--build <revision>] [--pre-release <stage>]'
+	echo '                       [--stay] [--default] [--apply] [--version] [--dry-run] [--debug] [--help]'
 	echo ''
 	print:help
-	echo 'Version: [PREFIX]MAJOR.MINOR.PATCH[-STAGE][+REVISION]'
+	echo "${cl_gray}Notes:"
+	echo '  1. when used --build option, --revision flag will be ignored.'
+	echo '  2. when used --pre-release option, --alpha, --beta, --rc flags will be ignored.'
+	echo '  3. root and sub-folder are reserved keywords, do not use them.'
+	echo '  4. REVISION part does not participate in version comparison according to SEMVER spec.'
+	echo "${cl_reset}"
+	echo "Version: [${cl_cyan}PREFIX${cl_reset}]${cl_red}MAJOR${cl_reset}.${cl_green}MINOR${cl_reset}.${cl_blue}PATCH${cl_reset}[${cl_purple}-STAGE${cl_reset}][${cl_grey}+REVISION${cl_reset}]"
 	echo ''
 	echo 'Reference:'
-	echo '  https://semver.org/'
+	echo ' https://semver.org/'
 	echo ''
 	echo 'Versions priority:'
-	echo '  1.0.0-alpha < 1.0.0-beta < 1.0.0-rc < 1.0.0'
+	echo ' 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0'
 }
 
 ## slagify, convert input string to valid bash variable name
@@ -392,40 +390,6 @@ function latest_revision() {
 	echo "$gitRevision"
 }
 
-# parse first PART of the stage, extract PREFIX if any provided
-# shellcheck disable=SC2001
-function parse_first() {
-	# extract into PREFIX variable all non digits chars from the beginning of the PARTS["major"]
-	local prefix=$(echo "${PARTS["major"]}" | sed 's#\([^0-9]*\)\(.*\)#\1#')
-
-	# leave only digits in the PARTS["major"]
-	local clean_part=$(echo "${PARTS["major"]}" | sed 's#\([^0-9]*\)\(.*\)#\2#')
-
-	PREFIX=$prefix
-	PARTS["major"]=$clean_part
-}
-
-# parse last found tag, extract it PARTS
-function parse_last() {
-	local position=$(($1 - 1))
-	# local names=("major" "minor" "patch" "build" "pre-release")
-
-	# # two parts found only
-	# # shellcheck disable=SC2206
-	# local segments=(${PARTS[${names[$position]]//-/ }) # split by - into array of strings
-	# #echo ${segments[@]}, size: ${#segments}
-
-	# # found NUMBER
-	# PARTS[${names[$position]}]=${segments[0]}
-	# #echo ${PARTS[@]}
-
-	# # found SUFFIX
-	# if [[ ${#segments} -ge 1 ]]; then
-	# 	PARTS["pre-release"]=${segments[1],,} #lowercase
-	# 	#echo ${PARTS[@]}, ${SUBS[@]}
-	# fi
-}
-
 # increment MAJOR part, reset all others lower PARTS, don't touch STAGE
 function increment_major() {
 	local override=${args_major:-"*"}
@@ -494,7 +458,7 @@ function increment_revision() {
 }
 
 # set revision part to a revision counter based on total amount of commits in repository
-function set_revision() {
+function set_revision_number() {
 	local number="$1"
 
 	PARTS["build"]="+$((number))"
@@ -504,8 +468,10 @@ function set_revision() {
 
 # increment the number only of last found PART: REVISION --> PATCH --> MINOR. don't touch STAGE
 function increment_last_found() {
-	if [[ "${#PARTS["build"]}" == 0 || "${PARTS["build"]}" == "0" ]]; then
-		if [[ "${#PARTS["patch"]}" == 0 || "${PARTS["patch"]}" == "0" ]]; then
+	echo:Ver "Incrementing last found non-Zero part of the version..."
+
+	if [[ "${#PARTS["build"]}" == 0 || "${PARTS["build"]}" == "0" ]]; then  # build is empty or 0
+		if [[ "${#PARTS["patch"]}" == 0 || "${PARTS["patch"]}" == "0" ]]; then # patch is empty or 0
 			increment_minor
 		else
 			increment_patch
@@ -699,19 +665,22 @@ function configure_strategy() {
 	echo:Dbg "alpha: $args_alpha, beta: $args_beta, rc: $args_rc, release: $args_release"
 	echo:Dbg "patch: $args_patch, revision: $args_revision, git_revision: $args_git_revision, minor: $args_minor"
 	echo:Dbg "default: $args_default, major: $args_major, stay: $args_stay, apply: $args_apply"
+	echo:Dbg "overrides / stage: $args_stage, revision: $args_meta"
 	echo:Dbg "prefix: $args_prefix"
 
 	[[ "$args_alpha" == "1" ]] && PARTS["pre-release"]="-alpha" && IS_SHIFT=1
 	[[ "$args_beta" == "1" ]] && PARTS["pre-release"]="-beta" && IS_SHIFT=1
 	[[ "$args_rc" == "1" ]] && PARTS["pre-release"]="-rc" && IS_SHIFT=1
 	[[ "$args_release" == "1" ]] && PARTS["pre-release"]="" && IS_SHIFT=1
+	[[ -n "$args_stage" ]] && PARTS["pre-release"]="-${args_stage}" && IS_SHIFT=1
 
 	# DONE: support --major=2 --minor=1 --patch=0 --revision=1000 overrides
 	[[ -n "$args_major" ]] && increment_major
 	[[ -n "$args_minor" ]] && increment_minor
 	[[ -n "$args_patch" ]] && increment_patch
 	[[ -n "$args_revision" ]] && increment_revision
-	[[ "$args_git_revision" == "1" ]] && set_revision "${REVISION}"
+	[[ "$args_git_revision" == "1" ]] && set_revision_number "${REVISION}"
+	[[ -n "$args_meta" ]] && PARTS["build"]="+${args_meta}" && IS_DIRTY=1
 
 	[[ "$args_default" == "1" ]] && increment_last_found
 	[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
@@ -1073,10 +1042,10 @@ function prepare_globals() {
 # Outputs: STDOUT - logs about version processing
 # Side effects: various, handled by subfunctions
 function main() {
-	echo:Ver "Starting version-up.v2.sh process..."
-
 	# check arguments for quick exit flags
 	parse_quick_arguments "$@"
+
+	echo:Ver "Starting version-up.v2.sh process..."
 
 	# Prepare global variables for processing, based on arguments and disk/repo state
 	prepare_globals "$@"
