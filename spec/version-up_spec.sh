@@ -3,11 +3,10 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-28
+## Last revisit: 2025-04-29
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-
 
 eval "$(shellspec - -c) exit 1"
 
@@ -24,7 +23,7 @@ VERSION_UP_SCRIPT="./version-up.v2.sh"
 ROOT_SCRIPT="$SHELLSPEC_PROJECT_ROOT/bin/version-up.v2.sh"
 
 # keep it in focus mode `fDescribe` for TDD
-fDescribe 'version-up.v2.sh'
+fDescribe 'bin/version-up.v2.sh'
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
   no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
@@ -32,7 +31,7 @@ fDescribe 'version-up.v2.sh'
 
   mk_repo() {
     mkdir -p "$TEST_DIR" || true
-    cd "$TEST_DIR"
+    cd "$TEST_DIR" || exit 1
   }
   git_init() { git init -q; }
   git_config_user() { git config --local user.name "Test User"; }
@@ -58,6 +57,22 @@ fDescribe 'version-up.v2.sh'
     The result of function no_colors_stdout should include "Reference:"
     The result of function no_colors_stdout should include "Versions priority:"
 
-    #Dump
+    The result of function no_colors_stderr should include "exit code: 0"
+
+    # Dump
+  End
+
+  # test-001
+  It 'displays script version and exits with 0'
+    BeforeRun 'export DEBUG="ver"'
+    When run bash "$VERSION_UP_SCRIPT" --version
+
+    The status should be success
+    The stdout should be present
+
+    The result of function no_colors_stdout should include "version: 2.0.0"
+    The result of function no_colors_stderr should include "exit code: 0"
+
+    Dump
   End
 End

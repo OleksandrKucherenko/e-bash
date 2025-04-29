@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-28
+## Last revisit: 2025-04-29
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -22,7 +22,7 @@ eval "$(shellspec - -c) exit 1"
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
 
-Describe 'install.e-bash.sh /'
+Describe 'bin/install.e-bash.sh'
   temp_repo() {
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR" || return 1
@@ -60,7 +60,7 @@ Describe 'install.e-bash.sh /'
   no_colors_error() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
   no_colors_output() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
 
-  Describe 'check_prerequisites /'
+  Describe 'Check Prerequisites:'
     Before 'temp_repo; cp_install'
     After 'cleanup_temp_repo'
 
@@ -81,7 +81,7 @@ Describe 'install.e-bash.sh /'
     End
   End
 
-  Describe 'check_unstaged_changes /'
+  Describe 'Check Unstaged Changes:'
     git_stage_touch() {
       touch file.txt
       git add file.txt
@@ -131,7 +131,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test installation of e-bash scripts
-  Describe 'install_scripts /'
+  Describe 'Install:'
     git_rename_custom() { git branch -m custom; }
     git_rename_main() { git branch -m main; }
     git_new_branch() { git checkout -b new_branch 1>/dev/null 2>&1; }
@@ -210,7 +210,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test upgrading e-bash
-  Describe 'upgrade_scripts /'
+  Describe 'Upgrade:'
     Before 'temp_repo; git_init; git_config; cp_install; install_stable'
     After 'cleanup_temp_repo'
 
@@ -242,7 +242,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test rollback functionality
-  Describe 'repo_rollback /'
+  Describe 'Rollback:'
     Before 'temp_repo; git_init; git_config; cp_install; install_stable'
     After 'cleanup_temp_repo'
 
@@ -267,7 +267,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Scenario 5: Viewing available versions of e-Bash
-  Describe 'repo_versions /'
+  Describe 'Versions:'
 
     Before 'temp_repo; cp_install'
     After 'cleanup_temp_repo'
@@ -321,7 +321,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test specific version installation
-  Describe 'install with specific version:'
+  Describe 'Install Version:'
     Before 'temp_repo; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
@@ -348,7 +348,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test helper functions
-  Describe 'help functions /'
+  Describe 'Help:'
     Before 'temp_repo; cp_install'
     After 'cleanup_temp_repo'
 
@@ -370,7 +370,7 @@ Describe 'install.e-bash.sh /'
   End
 
   # Test global installation of e-bash scripts
-  Describe 'global_installation /'
+  Describe 'Global Install:'
     setup_temp_home() {
       # Create a temporary directory to act as HOME
       TEMP_HOME="$TEST_DIR/temp_home"
