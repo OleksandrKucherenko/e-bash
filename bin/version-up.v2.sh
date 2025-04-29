@@ -428,6 +428,7 @@ function increment_major() {
 	PARTS["build"]=""
 	IS_DIRTY=1
 
+	echo:Ver "Selected versioning strategy: ${cl_green}forced MAJOR increment${cl_reset}."
 	echo:Ver "Incrementing MAJOR: ${cl_green}${PARTS["major"]}${cl_reset}"
 }
 
@@ -445,6 +446,7 @@ function increment_minor() {
 	PARTS["build"]=""
 	IS_DIRTY=1
 
+	echo:Ver "Selected versioning strategy: ${cl_green}forced MINOR increment${cl_reset}."
 	echo:Ver "Incrementing MINOR: ${cl_green}${PARTS["minor"]}${cl_reset}"
 }
 
@@ -460,6 +462,8 @@ function increment_patch() {
 
 	PARTS["build"]=""
 	IS_DIRTY=1
+
+	echo:Ver "Selected versioning strategy: ${cl_green}forced PATCH increment${cl_reset}."
 	echo:Ver "Incrementing PATCH: ${cl_green}${PARTS["patch"]}${cl_reset}"
 }
 
@@ -477,6 +481,8 @@ function increment_revision() {
 
 	PARTS["build"]="+${build}"
 	IS_DIRTY=1
+
+	echo:Ver "Selected versioning strategy: ${cl_green}forced REVISION increment${cl_reset}."
 	echo:Ver "Incrementing REVISION: ${cl_green}${PARTS["build"]}${cl_reset}"
 }
 
@@ -491,7 +497,7 @@ function set_revision_number() {
 
 # increment the number only of last found PART: REVISION --> PATCH --> MINOR. don't touch STAGE
 function increment_last_found() {
-	echo:Ver "Incrementing last found non-Zero part of the version..."
+	echo:Ver "Selected versioning strategy: ${cl_green}increment last found non-zero version part${cl_reset}."
 
 	if [[ "${#PARTS["build"]}" == 0 || "${PARTS["build"]}" == "0" ]]; then  # build is empty or 0
 		if [[ "${#PARTS["patch"]}" == 0 || "${PARTS["patch"]}" == "0" ]]; then # patch is empty or 0
@@ -507,6 +513,25 @@ function increment_last_found() {
 	if [[ "${#PARTS["pre-release"]}" != 0 ]]; then
 		IS_SHIFT=1
 	fi
+}
+
+# do not do any increments, just stay on the same version
+function stay_on_the_same_version() {
+	IS_DIRTY=1
+	NO_APPLY_MSG=1
+
+	echo:Ver "Selected versioning strategy: ${cl_green}stay on the same version${cl_reset}."
+}
+
+# assign stage to the future version
+function set_stage() {
+	local stage="$1"
+
+	PARTS["pre-release"]="$stage"
+	IS_DIRTY=1
+
+	echo:Ver "Selected versioning strategy: ${cl_green}forced stage '$stage'${cl_reset}."
+	echo:Ver "Setting stage: ${cl_green}${stage}${cl_reset}"
 }
 
 # compose version from PARTS and output it to STDOUT
@@ -669,6 +694,7 @@ function configure_strategy() {
 			exit 0
 		elif [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
 			echo "Tag ${cl_blue}${TAG:-"<none>"}${cl_reset} and ${cl_yellow}HEAD${cl_reset} are aligned. We will stay on the TAG version."
+			echo:Ver "Selected versioning strategy: ${cl_green}stay on the same version${cl_reset}."
 			# TODO (olku): should we re-create the version.properties file?
 			exit 0
 		else
@@ -696,11 +722,11 @@ function configure_strategy() {
 	echo:Dbg "overrides / stage: $args_stage, revision: $args_meta"
 	echo:Dbg "prefix: $args_prefix"
 
-	[[ "$args_alpha" == "1" ]] && PARTS["pre-release"]="-alpha" && IS_SHIFT=1
-	[[ "$args_beta" == "1" ]] && PARTS["pre-release"]="-beta" && IS_SHIFT=1
-	[[ "$args_rc" == "1" ]] && PARTS["pre-release"]="-rc" && IS_SHIFT=1
-	[[ "$args_release" == "1" ]] && PARTS["pre-release"]="" && IS_SHIFT=1
-	[[ -n "$args_stage" ]] && PARTS["pre-release"]="-${args_stage}" && IS_SHIFT=1
+	[[ "$args_alpha" == "1" ]] && set_stage "-alpha"
+	[[ "$args_beta" == "1" ]] && set_stage "-beta"
+	[[ "$args_rc" == "1" ]] && set_stage "-rc"
+	[[ "$args_release" == "1" ]] && set_stage ""
+	[[ -n "$args_stage" ]] && set_stage "-${args_stage}"
 
 	# DONE: support --major=2 --minor=1 --patch=0 --revision=1000 overrides
 	[[ -n "$args_major" ]] && increment_major
@@ -711,7 +737,7 @@ function configure_strategy() {
 	[[ -n "$args_meta" ]] && PARTS["build"]="+${args_meta}" && IS_DIRTY=1
 
 	[[ "$args_default" == "1" ]] && increment_last_found
-	[[ "$args_stay" == "1" ]] && IS_DIRTY=1 && NO_APPLY_MSG=1
+	[[ "$args_stay" == "1" ]] && stay_on_the_same_version
 	[[ "$args_apply" == "1" ]] && DO_APPLY=1
 
 	[[ -n "$args_prefix" ]] && use_prefix "$args_prefix"
@@ -1094,8 +1120,6 @@ function main() {
 
 	# Handle version application
 	handle_version_apply
-
-	echo:Ver "$0 process completed"
 }
 
 main "$@"

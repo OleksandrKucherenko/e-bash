@@ -154,6 +154,7 @@ fDescribe 'bin/version-up.v2.sh'
       # Verify the correct version is proposed
       The result of function no_colors_stdout should include "git tag $4"
       The result of function no_colors_stdout should include "git push origin $4"
+      The result of function no_colors_stderr should include "Selected versioning strategy: "
       The result of function no_colors_stderr should include "Proposed Next Version TAG: $4"
 
       # Verify prefix detection
@@ -163,7 +164,40 @@ fDescribe 'bin/version-up.v2.sh'
       # Exit code should be 0
       The result of function no_colors_stderr should include "exit code: 0"
 
+      # cat version.properties
       # Dump
+
     End
+  End
+
+  # test-004: Re-publish existing version tag
+  It 'should reuse version when on a branch named after that version tag'
+    # CI mode, prevent user input asking
+    BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+    # Create initial commit and tag
+    git_first_commit >/dev/null 2>&1
+    git_create_tag "v2.0.0"
+
+    # Create and checkout a branch with the same name as the tag
+    git checkout -b "v2.0.0-hotfix" v2.0.0 >/dev/null 2>&1
+
+    When run bash "$VERSION_UP_SCRIPT"
+
+    The status should be success
+    The stdout should be present
+
+    # Verify it suggests reusing the same version
+    The result of function no_colors_stdout should include "Tag v2.0.0 and HEAD are aligned. We will stay on the TAG version."
+
+    # Check detection messages
+    The result of function no_colors_stderr should include "Latest repo tag: v2.0.0"
+    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v2.0.0"
+    The result of function no_colors_stderr should include "Selected versioning strategy: stay on the same version"
+
+    # Exit code should be 0
+    The result of function no_colors_stderr should include "exit code: 0"
+
+    # Dump
   End
 End
