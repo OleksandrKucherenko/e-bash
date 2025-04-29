@@ -21,9 +21,9 @@
 
 ## Roadmap
 
-- [ ] High-level scripts should be in own `bin` OR `scripts`
+- [ ] High-level scripts should be in their own `bin` OR `scripts`
 - [ ] Git helpers
-- [ ] GitLabs helper scripts (work with branches, forks, submodules)
+- [ ] GitLab's helper scripts (work with branches, forks, submodules)
 - [ ] Slack notifications helper scripts
 - [ ] Telemetry module (report metrics to CI or DataDog)
 - [ ] Globals module (declarative way of defining script dependencies to global environment variables)
@@ -51,7 +51,7 @@ brew install kcov
 ## TDD - Test Driven Development, run tests on file change
 
 ```bash
-# make tool required python in hidden dependencies
+# make tool required Python in hidden dependencies
 # ref1: https://docs.astral.sh/uv/guides/install-python/
 # ref2: https://github.com/astral-sh/uv
 uv python install 
@@ -81,16 +81,16 @@ Alternatives:
 
 ```bash
 # OR: install latest version
-wget -qO- https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+wget -qO- https://git.new/e-bash | bash -s -- install
 # OR: install latest version (httpie)
-http -b https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install
+http -b https://git.new/e-bash | bash -s -- install
 
 # install specific version
-curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+curl -sSL https://git.new/e-bash | bash -s -- install v1.0.0
 # OR: install specific version
-wget -qO- https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+wget -qO- https://git.new/e-bash | bash -s -- install v1.0.0
 # OR: install specific version (httpie)
-http -b https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh | bash -s -- install v1.0.0
+http -b https://git.new/e-bash | bash -s -- install v1.0.0
 ```
 
 [More details](./docs/installation.md)
