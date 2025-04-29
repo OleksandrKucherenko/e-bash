@@ -39,6 +39,10 @@ fDescribe 'bin/version-up.v2.sh'
   git_config() { git_config_user && git_config_email; }
   ln_script() { ln -s "$ROOT_SCRIPT" "$VERSION_UP_SCRIPT"; }
   rm_repo() { rm -rf "$TEST_DIR"; }
+  git_first_commit() { (git add . && git commit -m "Initial commit"); }
+  git_next_commit() { (git add . && git commit -m "Next commit"); }
+  git_create_tag() { git tag "$1"; }
+  random_change() { date >>random.txt; }
 
   Before 'mk_repo; git_init; git_config; ln_script'
   After 'rm_repo'
@@ -73,6 +77,93 @@ fDescribe 'bin/version-up.v2.sh'
     The result of function no_colors_stdout should include "version: 2.0.0"
     The result of function no_colors_stderr should include "exit code: 0"
 
-    Dump
+    # Dump
+  End
+
+  # test-002
+  It 'should detect empty git repository'
+    BeforeRun 'export DEBUG="ver"; unset TRACE'
+    # We're already in a fresh git repo thanks to the Before hook
+    # which runs: mk_repo; git_init; git_config; ln_script
+    When run bash "$VERSION_UP_SCRIPT"
+
+    The status should be success
+    The stdout should be present
+
+    The result of function no_colors_stdout should include "Empty repository without commits. Nothing to do."
+    The result of function no_colors_stderr should include "exit code: 0"
+
+    # Dump
+  End
+
+  # test-002-1
+  It 'proposes version 0.0.1-alpha in a fresh git repository'
+    # CI mode, prevent user input asking
+    BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+    # And one commit exists
+    git_first_commit >/dev/null 2>&1
+
+    When run bash "$VERSION_UP_SCRIPT"
+
+    The status should be success
+    The stdout should be present
+
+    The result of function no_colors_stdout should include "git tag 0.1.0-alpha"
+    The result of function no_colors_stdout should include "git push origin 0.1.0-alpha"
+    The result of function no_colors_stderr should include "Selected versioning strategy: increment MINOR of the latest 0.0.1-alpha"
+    The result of function no_colors_stderr should include "Proposed Next Version TAG: 0.1.0-alpha"
+    The result of function no_colors_stderr should include "exit code: 0"
+
+    # Dump
+  End
+
+  # test-003: Propose next release version tag
+  # Gherkin Scenario Outline: Propose next release version tag
+  Describe "version tag proposal scenarios"
+    Parameters
+      # id | init_tag | flag | expected_version
+      "#0" "v1.2.3" "" "v1.3.0"
+      "#1" "v1.2.3" "--default" "v1.2.4"
+      "#2" "v1.2.3" "--major" "v2.0.0"
+      "#3" "v1.2.3" "--minor" "v1.3.0"
+      "#4" "v1.2.3" "--patch" "v1.2.4"
+      "#5" "v1.2.3" "--alpha" "v1.2.3-alpha"
+      "#6" "v1.2.3" "--beta" "v1.2.3-beta"
+      "#7" "v1.2.3" "--rc" "v1.2.3-rc"
+      "#8" "v1.2.3" "--revision" "v1.2.3+1"
+      # "#9" "v1.2.3" "--stay" "v1.2.3"
+    End
+
+    It "proposes the next version from tag '$2' after '$3' flag, expected '$4'"
+      # CI mode to prevent interactive prompts
+      BeforeRun "export DEBUG=\"ver\"; export CI=1; unset TRACE"
+
+      # Create an initial commit and tag
+      git_first_commit >/dev/null 2>&1
+      git_create_tag "$2"
+      random_change
+      git_next_commit >/dev/null 2>&1
+
+      # Run the script with the provided flag
+      When run bash "$VERSION_UP_SCRIPT" "$3"
+
+      The status should be success
+      The stdout should be present
+
+      # Verify the correct version is proposed
+      The result of function no_colors_stdout should include "git tag $4"
+      The result of function no_colors_stdout should include "git push origin $4"
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: $4"
+
+      # Verify prefix detection
+      The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: $2"
+      The result of function no_colors_stderr should include "Prefix detected: v"
+
+      # Exit code should be 0
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Dump
+    End
   End
 End

@@ -3,7 +3,7 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-28
+## Last revisit: 2025-04-29
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -259,15 +259,35 @@ function highest_tag() {
 
 # extract current branch name, print it to STDOUT
 function current_branch() {
-	## expected: heads/{branch_name}
-	## expected: {branch_name}
-	local gitBranch=$(git rev-parse --abbrev-ref HEAD | cut -d"/" -f2)
+	# expected: heads/{branch_name} OR {branch_name}
+	# fallback: master
+	local gitBranch="master"
+
+	if git rev-parse --quiet --verify HEAD &>/dev/null; then
+		gitBranch=$(git rev-parse --abbrev-ref HEAD | cut -d"/" -f2)
+	else
+		# newly created git repo without commits
+
+		# Check if there's a default branch configured
+		if git config init.defaultBranch >/dev/null 2>&1; then
+			gitBranch=$(git config init.defaultBranch)
+		fi
+	fi
+
 	echo "$gitBranch"
 }
 
 # get latest/head commit hash number, print it to STDOUT
 function head_hash() {
-	local commitHash=$(git rev-parse --verify HEAD)
+	local commitHash=""
+
+	if git rev-parse --quiet --verify HEAD &>/dev/null; then
+		commitHash=$(git rev-parse --verify HEAD)
+	else
+		# newly created git repo without commits
+		: # no-op
+	fi
+
 	echo "$commitHash"
 }
 
@@ -383,7 +403,7 @@ function latest_tag() {
 		tag=$(git describe --tags --abbrev=0 --match="${resolved_prefix}[0-9]*" 2>/dev/null)
 	fi
 
-	echo:Ver "Latest repo tag: ${cl_blue}${tag}${cl_reset}"
+	echo:Ver "Latest repo tag: ${cl_blue}${tag:-"<none>"}${cl_reset}"
 	echo "$tag"
 }
 
@@ -551,7 +571,7 @@ function publish_version_file() {
 		# Default behavior remains the same - current directory
 	fi
 
-	echo "# $(date)" >${publish_path}
+	echo "# $(date)" >"${publish_path}"
 	{
 		echo "## Version: 2.0.0"
 		echo "snapshot.version=$(compose)"
@@ -624,9 +644,11 @@ function parse_quick_arguments() {
 	# parse input parameters
 	if [[ "$help" == "1" ]]; then
 		help
+		# shellcheck disable=SC2086
 		exit $EX_OK
 	elif [[ -n "$version" ]]; then
 		echo "version: ${version}"
+		# shellcheck disable=SC2086
 		exit $EX_OK
 	fi
 }
@@ -642,12 +664,15 @@ function configure_strategy() {
 	if $isNoArgs; then
 		echo:Dbg "Testing latest tag hash: ${cl_blue}${TAG_HASH:0:7}${cl_reset} vs HEAD hash: ${cl_blue}${HEAD_HASH:0:7}${cl_reset}"
 
-		if [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
-			echo "Tag ${cl_blue}$TAG${cl_reset} and ${cl_yellow}HEAD${cl_reset} are aligned. We will stay on the TAG version."
+		if [[ -z "${HEAD_HASH}" ]]; then
+			echo "Empty repository without commits. Nothing to do."
+			exit 0
+		elif [[ "$TAG_HASH" == "$HEAD_HASH" ]]; then
+			echo "Tag ${cl_blue}${TAG:-"<none>"}${cl_reset} and ${cl_yellow}HEAD${cl_reset} are aligned. We will stay on the TAG version."
 			# TODO (olku): should we re-create the version.properties file?
 			exit 0
 		else
-			echo:Ver "Tag ${cl_blue}$TAG${cl_reset} and ${cl_yellow}HEAD${cl_reset} are not aligned. Continue with versioning..."
+			echo:Ver "Tag ${cl_blue}${TAG:-"<none>"}${cl_reset} and ${cl_yellow}HEAD${cl_reset} are not aligned. Continue with versioning..."
 		fi
 
 		# are we in the branch that has version tag or name that matches the pattern?
@@ -660,7 +685,7 @@ function configure_strategy() {
 			args_default=1
 		else
 			echo:Ver "Detected branch name ${cl_yellow}$BRANCH${cl_reset} and it does not match SEMVER pattern."
-			echo:Ver "Selected versioning strategy: ${cl_green}increment MINOR of the latest TAG${cl_reset}."
+			echo:Ver "Selected versioning strategy: ${cl_green}increment MINOR of the latest ${cl_blue}${TAG:-"$INIT_VERSION"}${cl_reset}"
 			args_minor='*' # use default increment
 		fi
 	fi
@@ -1035,7 +1060,7 @@ function prepare_globals() {
 
 	# parse the tag into parts
 	# shellcheck disable=SC2015
-	semver:parse "${TAG}" "PARTS" &&
+	semver:parse "${TAG:-"$INIT_VERSION"}" "PARTS" &&
 		(for i in "${!PARTS[@]}"; do echo:Dbg "$i: ${PARTS[$i]}"; done) ||
 		echo:Dbg "$? - FAIL parsing '${TAG}'!"
 }
@@ -1048,7 +1073,9 @@ function main() {
 	# check arguments for quick exit flags
 	parse_quick_arguments "$@"
 
-	echo:Ver "Starting version-up.v2.sh process..."
+	# shellcheck disable=SC2178,SC2124
+	local args=" $@"
+	echo:Ver "Starting '$0${args[*]}' process..."
 
 	# Prepare global variables for processing, based on arguments and disk/repo state
 	prepare_globals "$@"
@@ -1068,7 +1095,7 @@ function main() {
 	# Handle version application
 	handle_version_apply
 
-	echo:Ver "Version-up.v2.sh process completed"
+	echo:Ver "$0 process completed"
 }
 
 main "$@"

@@ -55,10 +55,19 @@ Scenario: Show script version
 
 ```gherkin
 Scenario: No existing tags
-  Given a temporary git repository initialized in a scratch directory
-  And the script `bin/version-up.v2.sh` is present and executable
-  When I run the script without any version tags
-  Then it should propose version `0.0.1-alpha`
+  Given a new git repository just initialized from scratch
+  When I run the script
+  Then it should say `Empty repository without commits. Nothing to do.`
+  And exit code should be 0
+```
+
+```gherkin
+Scenario: No existing tags
+  Given a new git repository just initialized from scratch
+  And one commit exists
+  When I run the script
+  Then it should propose version `0.1.0-alpha`
+  And proposed strategy should be `increment MINOR of the latest 0.0.1-alpha`
   And exit code should be 0
 ```
 
@@ -78,6 +87,7 @@ Examples:
   | v1.2.3   | --major     | v2.0.0            |
   | v1.2.3   | --minor     | v1.3.0            |
   | v1.2.3   | --patch     | v1.2.4            |
+  | v1.2.3   | --default   | v1.2.4            |
   | v1.2.3   | --alpha     | v1.2.3-alpha      |
   | v1.2.3   | --beta      | v1.2.3-beta       |
   | v1.2.3   | --rc        | v1.2.3-rc         |
@@ -93,7 +103,6 @@ Scenario: Re-publish existing version tag
   Then it should reuse version `2.0.0`
   And exit code should be 0
 ```
-
 
 #### test-005: Propose patch segment increase on branched version tag
 
@@ -175,7 +184,6 @@ Scenario: Monorepo custom prefix string
   And exit code should be 0
 ```
 
-
 #### test-024: Monorepo has multiple version.properties files
 
 ```gherkin
@@ -242,18 +250,19 @@ Scenario: Invalid prefix parameter
 ```
 
 Specifically, a tag name cannot contain:
-1.	ASCII control characters (characters with ASCII codes below 32, like newlines, tabs, etc.)
-2.	Space characters ( )
-3.	Tilde (~)
-4.	Caret (^)
-5.	Colon (:)
-6.	Question mark (?)
-7.	Asterisk (*)
-8.	Open or close square brackets ([ and ])
-9.	Backslash (\)
-10.	Double dots (..) — a tag cannot have .. inside
-11.	Leading or trailing slashes — e.g., /tagname, tagname/
-12.	Consecutive slashes — e.g., tag//name
+
+1. ASCII control characters (characters with ASCII codes below 32, like newlines, tabs, etc.)
+2. Space characters ( )
+3. Tilde (~)
+4. Caret (^)
+5. Colon (:)
+6. Question mark (?)
+7. Asterisk (\*)
+8. Open or close square brackets ([ and ])
+9. Backslash (\)
+10. Double dots (..) — a tag cannot have .. inside
+11. Leading or trailing slashes — e.g., /tagname, tagname/
+12. Consecutive slashes — e.g., tag//name
 
 ### test-053: Existing version.properties reuse with --stay
 
