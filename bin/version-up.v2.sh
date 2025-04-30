@@ -3,7 +3,7 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-29
+## Last revisit: 2025-04-30
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -219,6 +219,11 @@ function get_relative_path() {
 	echo "${result#./}"
 }
 
+# resolve args_prefix into default value, after parsing it may have empty value
+function args_prefix_or_default() {
+	echo "${args_prefix:-"sub-folder"}"
+}
+
 # get monorepo sub-folder, print it to STDOUT
 function prefix_sub_folder() {
 	local tmpFileName="temp.file"
@@ -232,7 +237,7 @@ function prefix_sub_folder() {
 # resolve prefix income parameter into prefix calue, and print it to STDOUT
 # strategy: root|sub-folder|{any-string}
 function prefix_strategy() {
-	local strategy=${1:-"sub-folder"}
+	local strategy=${1:-"$(args_prefix_or_default)"}
 	local resolution=""
 
 	if [[ "$strategy" == "root" ]]; then
@@ -312,8 +317,8 @@ function prepare_prefix() {
 # auto-detect tag prefix from existing tags in repository
 # shellcheck disable=SC2155,SC2001
 function auto_detect_prefix_from_tags() {
-	# Limit analysis to 25 most recent tags for performance
-	local all_tags=$(git tag --sort=-creatordate -l | head -n 25)
+	# TODO (olku): Limit analysis to 25 most recent tags for performance (| head -n 25)
+	local all_tags=$(git tag --sort=-creatordate -l)
 
 	# If no tags found, return empty prefix
 	if [[ -z "$all_tags" ]]; then
@@ -348,6 +353,11 @@ function auto_detect_prefix_from_tags() {
 		fi
 	done <<<"$all_tags"
 
+	# TODO: depends on the strategy we may select another prefix from the list.
+	# sub-folder - means that we have a sub-folder path as a prefix, even if tags with
+	#   such pattern are not very often.
+	echo:Ver "Current prefix strategy: ${cl_gray}$(args_prefix_or_default):${cl_purple}${PREFIX}${cl_reset}"
+
 	# Find the most common prefix
 	local mostUsed=""
 	local max=0 # most used prefix
@@ -362,13 +372,9 @@ function auto_detect_prefix_from_tags() {
 	# print detected patterns top-5, if we have more than 1
 	if [[ ${#prefixes[@]} -gt 1 ]]; then
 		for prefix in "${!prefixes[@]}"; do
-			echo:Ver "Auto-detected prefix: ${prefix}, Count: ${prefixes[$prefix]}"
+			echo:Ver "Auto-detected prefix: ${cl_yellow}${prefix}${cl_reset}, Count: ${prefixes[$prefix]}"
 		done | head -n 5
 	fi
-
-	# TODO: depends on the strategy we may select another prefix from the list.
-	# sub-folder - means that we have a sub-folder path as a prefix, even if tags with
-	#   such pattern are not very often.
 
 	# Format tags as comma-separated list
 	local csvTags=$(echo "$all_tags" | tr '\n' ',' | gsed 's/,$//; s/,/, /g')
@@ -707,7 +713,7 @@ function configure_strategy() {
 
 		if [[ -n "$semver_part" ]]; then
 			echo:Ver "Detected branch name ${cl_yellow}$BRANCH${cl_reset} and it matches SEMVER pattern."
-			echo:Ver "Selected versioning strategy: ${cl_green}increment last version PART of BRANCH${cl_reset}."
+			echo:Ver "Selected versioning strategy: ${cl_green}increment last version PART of ${cl_yellow}$BRANCH${cl_reset}"
 			args_default=1
 		else
 			echo:Ver "Detected branch name ${cl_yellow}$BRANCH${cl_reset} and it does not match SEMVER pattern."

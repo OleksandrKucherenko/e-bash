@@ -5,13 +5,13 @@
 - [Version-Up Script Scenarios](#version-up-script-scenarios)
   - [Critical Path](#critical-path)
     - [Single Repo](#single-repo)
-      - [test-000: Show help message](#test-000-show-help-message)
-      - [test-001: Show script version](#test-001-show-script-version)
-      - [test-002: No existing tags](#test-002-no-existing-tags)
-      - [test-003: Propose next release version tag](#test-003-propose-next-release-version-tag)
-      - [test-004: Re-publish existing version tag](#test-004-re-publish-existing-version-tag)
-      - [test-005: Propose patch segment increase on branched version tag](#test-005-propose-patch-segment-increase-on-branched-version-tag)
-      - [test-006: Migration of existing repo to version-up script](#test-006-migration-of-existing-repo-to-version-up-script)
+      - [test-000: Show help message - PASSED!](#test-000-show-help-message---passed)
+      - [test-001: Show script version - PASSED!](#test-001-show-script-version---passed)
+      - [test-002: No existing tags - PASSED!](#test-002-no-existing-tags---passed)
+      - [test-003: Propose next release version tag - PASSED!](#test-003-propose-next-release-version-tag---passed)
+      - [test-004: Re-publish existing version tag - PASSED!](#test-004-re-publish-existing-version-tag---passed)
+      - [test-005: Propose patch segment increase on branched version tag - PASSED!](#test-005-propose-patch-segment-increase-on-branched-version-tag---passed)
+      - [test-006: Migration of existing repo to version-up script - PASSED! covered by test-003](#test-006-migration-of-existing-repo-to-version-up-script---passed-covered-by-test-003)
     - [Monorepo](#monorepo)
       - [test-020: Monorepo default prefix detection](#test-020-monorepo-default-prefix-detection)
       - [test-021: Monorepo root prefix strategy](#test-021-monorepo-root-prefix-strategy)
@@ -33,7 +33,7 @@
 
 ### Single Repo
 
-#### test-000: Show help message
+#### test-000: Show help message - PASSED!
 
 ```gherkin
 Scenario: Show help message
@@ -42,7 +42,7 @@ Scenario: Show help message
   And the exit code should be 0
 ```
 
-#### test-001: Show script version
+#### test-001: Show script version - PASSED!
 
 ```gherkin
 Scenario: Show script version
@@ -51,7 +51,7 @@ Scenario: Show script version
   And the exit code should be 0
 ```
 
-#### test-002: No existing tags
+#### test-002: No existing tags - PASSED!
 
 ```gherkin
 Scenario: No existing tags
@@ -71,7 +71,7 @@ Scenario: No existing tags
   And exit code should be 0
 ```
 
-#### test-003: Propose next release version tag
+#### test-003: Propose next release version tag - PASSED!
 
 ```gherkin
 Scenario Outline: Propose next release version tag
@@ -94,7 +94,7 @@ Examples:
   | v1.2.3   | --revision  | v1.2.3+1          |
 ```
 
-#### test-004: Re-publish existing version tag
+#### test-004: Re-publish existing version tag - PASSED!
 
 ```gherkin
 Scenario: Re-publish existing version tag
@@ -104,7 +104,7 @@ Scenario: Re-publish existing version tag
   And exit code should be 0
 ```
 
-#### test-005: Propose patch segment increase on branched version tag
+#### test-005: Propose patch segment increase on branched version tag - PASSED!
 
 ```gherkin
 Scenario: Propose patch segment increase on branched version tag
@@ -116,7 +116,13 @@ Scenario: Propose patch segment increase on branched version tag
   And exit code should be 0
 ```
 
-#### test-006: Migration of existing repo to version-up script
+> Note: script choose different strategies for MAIN and BRANCH state of repository.
+
+> Note: if branch name matches SEMVER pattern, script will use "increment last found non-zero version part" strategy.
+
+> Note: if branch name does not match SEMVER pattern, script will use "increment MINOR of the latest tag" strategy.
+
+#### test-006: Migration of existing repo to version-up script - PASSED! (covered by test-003)
 
 ```gherkin
 Scenario: Migration of existing repo to version-up script

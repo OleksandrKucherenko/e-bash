@@ -3,7 +3,7 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-29
+## Last revisit: 2025-04-30
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -23,7 +23,8 @@ VERSION_UP_SCRIPT="./version-up.v2.sh"
 ROOT_SCRIPT="$SHELLSPEC_PROJECT_ROOT/bin/version-up.v2.sh"
 
 # keep it in focus mode `fDescribe` for TDD
-fDescribe 'bin/version-up.v2.sh'
+Describe 'bin/version-up.v2.sh'
+  #region Helper Functions
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
   no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g' | tr -s ' '; }
@@ -40,9 +41,10 @@ fDescribe 'bin/version-up.v2.sh'
   ln_script() { ln -s "$ROOT_SCRIPT" "$VERSION_UP_SCRIPT"; }
   rm_repo() { rm -rf "$TEST_DIR"; }
   git_first_commit() { (git add . && git commit -m "Initial commit"); }
-  git_next_commit() { (git add . && git commit -m "Next commit"); }
+  git_next_commit() { (git add . && git commit -m "Next commit${1:-" $(date)"}"); }
   git_create_tag() { git tag "$1"; }
   random_change() { date >>random.txt; }
+  #endregion
 
   Before 'mk_repo; git_init; git_config; ln_script'
   After 'rm_repo'
@@ -166,38 +168,286 @@ fDescribe 'bin/version-up.v2.sh'
 
       # cat version.properties
       # Dump
-
     End
   End
 
-  # test-004: Re-publish existing version tag
-  It 'should reuse version when on a branch named after that version tag'
+  Describe "forced stay on the same version tag"
+    # test-003: --stay part
+    It "should reuse version when on a MASTER branch"
+      # CI mode, prevent user input asking
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Create initial commit and tag
+      git_first_commit >/dev/null 2>&1
+      git_create_tag "v2.0.0"
+
+      When run bash "$VERSION_UP_SCRIPT"
+
+      The status should be success
+      The stdout should be present
+
+      # Verify it suggests reusing the same version
+      The result of function no_colors_stdout should include "Tag v2.0.0 and HEAD are aligned. We will stay on the TAG version."
+
+      # Exit code should be 0
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Dump
+    End
+
+    It "forced stay strategy on a MASTER branch"
+      # CI mode, prevent user input asking
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Create initial commit and tag
+      git_first_commit >/dev/null 2>&1
+      git_create_tag "v2.0.0"
+      random_change
+      git_next_commit >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT" --stay
+
+      The status should be success
+      The stdout should be present
+
+      The result of function no_colors_stdout should include "File version.properties is successfully created."
+      The result of function no_colors_stderr should include "Selected versioning strategy: stay on the same version"
+      The result of function no_colors_stderr should include "Version tags detected: v2.0.0"
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: v2.0.0"
+
+      # Exit code should be 0
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Dump
+    End
+
+    # test-004: Re-publish existing version tag
+    It 'should reuse version when on a branch named after that version tag'
+      # CI mode, prevent user input asking
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Create initial commit and tag
+      git_first_commit >/dev/null 2>&1
+      git_create_tag "v2.0.0"
+
+      # Create and checkout a branch with the same name as the tag
+      git checkout -b "v2.0.0-hotfix" v2.0.0 >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT"
+
+      The status should be success
+      The stdout should be present
+
+      # Verify it suggests reusing the same version
+      The result of function no_colors_stdout should include "Tag v2.0.0 and HEAD are aligned. We will stay on the TAG version."
+
+      # Check detection messages
+      The result of function no_colors_stderr should include "Latest repo tag: v2.0.0"
+      The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v2.0.0"
+      The result of function no_colors_stderr should include "Selected versioning strategy: stay on the same version"
+
+      # Exit code should be 0
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Dump
+    End
+  End
+
+  # test-005: Propose revision segment increase on branched version tag
+  It 'should propose REVISION segment increase when on a branch from a version tag'
     # CI mode, prevent user input asking
     BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
-    # Create initial commit and tag
-    git_first_commit >/dev/null 2>&1
-    git_create_tag "v2.0.0"
+    # Create two tags v1.1.0+10 and v1.2.0
+    {
+      git_first_commit
+      git_create_tag "v1.1.0+10"
+      random_change
+      git_next_commit
+      git_create_tag "v1.2.0"
 
-    # Create and checkout a branch with the same name as the tag
-    git checkout -b "v2.0.0-hotfix" v2.0.0 >/dev/null 2>&1
+      # Create and checkout a branch from v1.1.0
+      git checkout -b "hotfix-v1.1.0" "v1.1.0+10"
+
+      # Add a commit to the branch
+      random_change
+      git_next_commit ": hotfix applied"
+    } >/dev/null 2>&1
 
     When run bash "$VERSION_UP_SCRIPT"
 
     The status should be success
     The stdout should be present
 
-    # Verify it suggests reusing the same version
-    The result of function no_colors_stdout should include "Tag v2.0.0 and HEAD are aligned. We will stay on the TAG version."
+    # Verify the correct version is proposed
+    The result of function no_colors_stdout should include "git tag v1.1.0+11"
+    The result of function no_colors_stdout should include "git push origin v1.1.0+11"
 
     # Check detection messages
-    The result of function no_colors_stderr should include "Latest repo tag: v2.0.0"
-    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v2.0.0"
-    The result of function no_colors_stderr should include "Selected versioning strategy: stay on the same version"
+    The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of BRANCH"
+    The result of function no_colors_stderr should include "Selected versioning strategy: forced REVISION increment."
+    The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.0+11"
+    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v1.1.0+10"
 
     # Exit code should be 0
     The result of function no_colors_stderr should include "exit code: 0"
 
     # Dump
+  End
+
+  # test-005-1: Propose patch segment increase on branched version tag
+  It 'should propose PATCH segment increase when on a branch from a version tag'
+    # CI mode, prevent user input asking
+    BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+    # Create two tags v1.1.1 and v1.2.0
+    {
+      git_first_commit
+      git_create_tag "v1.1.1" # important: last segment should not be zero
+      random_change
+      git_next_commit
+      git_create_tag "v1.2.0"
+
+      # Create and checkout a branch from v1.1.1
+      git checkout -b "hotfix-v1.1.1" "v1.1.1"
+
+      # Add a commit to the branch
+      random_change
+      git_next_commit ": hotfix applied"
+    } >/dev/null 2>&1
+
+    When run bash "$VERSION_UP_SCRIPT"
+
+    The status should be success
+    The stdout should be present
+
+    # Verify the correct version is proposed
+    The result of function no_colors_stdout should include "git tag v1.1.2"
+    The result of function no_colors_stdout should include "git push origin v1.1.2"
+
+    # Check detection messages
+    The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of BRANCH"
+    The result of function no_colors_stderr should include "Selected versioning strategy: forced PATCH increment."
+    The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.2"
+    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v1.1.1"
+
+    # Exit code should be 0
+    The result of function no_colors_stderr should include "exit code: 0"
+
+    # Dump
+  End
+
+  # test-005-2: Propose last segment increase on branched version tag
+  It 'should propose PATCH increase with stage keeping'
+    # CI mode, prevent user input asking
+    BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+    # Create two tags v1.1.1-rc.1 and v1.2.0
+    {
+      git_first_commit
+      git_create_tag "v1.1.1-rc.1" # important: last segment should not be zero
+      random_change
+      git_next_commit
+      git_create_tag "v1.2.0"
+
+      # Create and checkout a branch from v1.1.0
+      git checkout -b "hotfix-v1.1.1-rc.1" "v1.1.1-rc.1"
+
+      # Add a commit to the branch
+      random_change
+      git_next_commit ": hotfix applied"
+    } >/dev/null 2>&1
+
+    When run bash "$VERSION_UP_SCRIPT"
+
+    The status should be success
+    The stdout should be present
+
+    # Verify the correct version is proposed
+    The result of function no_colors_stdout should include "git tag v1.1.2-rc.1"
+    The result of function no_colors_stdout should include "git push origin v1.1.2-rc.1"
+
+    # Check detection messages
+    The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of hotfix-v1.1.1-rc.1"
+    The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.2-rc.1"
+    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v1.1.1-rc.1"
+
+    # Exit code should be 0
+    The result of function no_colors_stderr should include "exit code: 0"
+
+    # Dump
+  End
+
+  # Monorepo test scenarios
+  Describe "monorepo version detection"
+    # Helper functions for monorepo tests
+    setup_monorepo() {
+      # Create subdirectories for packages
+      mkdir -p packages/foo packages/bar
+
+      # Initialize git in the monorepo
+      git_init
+      git_config
+
+      # Create initial commit
+      git_first_commit
+
+      # Add commits to packages/foo
+      (cd packages/foo && touch file.txt && date >>file.txt)
+      git add packages/foo
+      git commit -m "packages/foo: initial commit" >/dev/null 2>&1
+      git tag "packages/foo/v1.0.0"
+
+      # Add commits to packages/bar
+      (cd packages/bar && touch file.txt && date >>file.txt)
+      git add packages/bar
+      git commit -m "packages/bar: initial commit" >/dev/null 2>&1
+      git tag "packages/bar/v1.1.0"
+    }
+
+    git_foo_commit() {
+      (cd packages/foo && touch file.txt && date >>file.txt)
+      git add packages/foo
+      git commit -m "packages/foo: new commit" >/dev/null 2>&1
+    }
+
+    git_bar_commit() {
+      (cd packages/bar && touch file.txt && date >>file.txt)
+      git add packages/bar
+      git commit -m "packages/bar: new commit" >/dev/null 2>&1
+    }
+
+    # test-020: Monorepo default prefix detection
+    fIt "should auto-detect prefix in monorepo structure"
+      # CI mode, prevent user input asking
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Set up monorepo with packages/foo and packages/bar
+      # with tags packages/foo/v1.0.0 and packages/bar/v1.1.0
+      setup_monorepo
+
+      # make a change to the code for a new version proposal
+      git_foo_commit
+
+      # Set working directory to packages/foo
+      cd packages/foo || return 1
+
+      When run bash "../../version-up.v2.sh"
+
+      The status should be success
+      The stdout should be present
+
+      # Verify prefix detection and version proposal
+      The result of function no_colors_stderr should include "Auto-detected prefix: packages/foo from tags: packages/foo/v1.0.0"
+      The result of function no_colors_stderr should include "Prefix detected: packages/foo"
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: packages/foo/v1.0.1"
+      The result of function no_colors_stdout should include "git tag packages/foo/v1.0.1"
+      The result of function no_colors_stdout should include "git push origin packages/foo/v1.0.1"
+
+      # Exit code should be 0
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      Dump
+    End
   End
 End
