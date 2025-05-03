@@ -453,5 +453,55 @@ fDescribe 'bin/version-up.v2.sh /'
 
       # Dump
     End
+
+    # test-021: Monorepo root prefix strategy
+    It "should use root prefix strategy in monorepo structure"
+      # CI mode, prevent user input asking
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Set up a monorepo with tags v1.0.0 at root and packages/foo/v2.0.0
+      {
+        # Initialize git repo
+        git_init
+        git_config
+
+        # Create initial commit at root level
+        git_first_commit >/dev/null 2>&1
+        git tag "v1.0.0"
+
+        # Create packages/foo directory and add commits
+        mkdir -p packages/foo
+        (cd packages/foo && touch file.txt && date >>file.txt)
+        git add packages/foo
+        git commit -m "packages/foo: initial commit" >/dev/null 2>&1
+        git tag "packages/foo/v2.0.0"
+
+        # make a change to the code for a new version proposal
+        random_change
+        git add .
+        git commit -m "Root level change" >/dev/null 2>&1
+      } >/dev/null 2>&1
+
+      # Set working directory to packages/foo
+      cd packages/foo || return 1
+
+      When run bash "../../version-up.v2.sh" --prefix root
+
+      The status should be success
+      The stdout should be present
+
+      # Verify root prefix detection and version proposal
+      The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: packages/foo/v2.0.0, v1.0.0"
+      The result of function no_colors_stderr should include "Prefix detected: v"
+      The result of function no_colors_stderr should include "Selected versioning strategy: forced MINOR increment."
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.0"
+      The result of function no_colors_stdout should include "git tag v1.1.0"
+      The result of function no_colors_stdout should include "git push origin v1.1.0"
+
+      # Exit code should be 0
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Dump
+    End
   End
 End

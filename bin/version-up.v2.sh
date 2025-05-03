@@ -356,7 +356,7 @@ function auto_detect_prefix_from_tags() {
 	# TODO: depends on the strategy we may select another prefix from the list.
 	# sub-folder - means that we have a sub-folder path as a prefix, even if tags with
 	#   such pattern are not very often.
-	echo:Ver "Current prefix strategy: ${cl_gray}${_prefix}:${cl_purple}${PREFIX}${cl_reset}"
+	echo:Ver "Current prefix strategy: ${cl_gray}${_prefix}:${cl_purple}'${PREFIX}'${cl_reset}"
 
 	# Find the most common prefix
 	local mostUsed="" high=$((1 << 16))

@@ -13,7 +13,7 @@
       - [test-005: Propose patch segment increase on branched version tag - PASSED!](#test-005-propose-patch-segment-increase-on-branched-version-tag---passed)
       - [test-006: Migration of existing repo to version-up script - PASSED! covered by test-003](#test-006-migration-of-existing-repo-to-version-up-script---passed-covered-by-test-003)
     - [Monorepo](#monorepo)
-      - [test-020: Monorepo default prefix detection](#test-020-monorepo-default-prefix-detection)
+      - [test-020: Monorepo default prefix detection - PASSED!](#test-020-monorepo-default-prefix-detection---passed)
       - [test-021: Monorepo root prefix strategy](#test-021-monorepo-root-prefix-strategy)
       - [test-022: Monorepo sub-folder prefix strategy](#test-022-monorepo-sub-folder-prefix-strategy)
       - [test-023: Monorepo custom prefix string](#test-023-monorepo-custom-prefix-string)
@@ -140,7 +140,7 @@ Scenario: Migration of existing repo to version-up script
 
 ### Monorepo
 
-#### test-020: Monorepo default prefix detection
+#### test-020: Monorepo default prefix detection - PASSED!
 
 ```gherkin
 Scenario: Monorepo default prefix detection
@@ -157,11 +157,12 @@ Scenario: Monorepo default prefix detection
 
 ```gherkin
 Scenario: Monorepo root prefix strategy
-  Given a monorepo with tags `v1.0.0` at root and sub-folders `packages/foo`
+  Given a monorepo with tags `v1.0.0` at root and sub-folder `packages/foo`
+  And tag `packages/foo/v2.0.0` exists
   And current directory is `packages/foo`
   When I run the script with `--prefix root`
   Then it should use no prefix
-  And propose version `v1.0.1`
+  And propose version `v1.1.0`
   And exit code should be 0
 ```
 
