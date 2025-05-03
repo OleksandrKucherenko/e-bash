@@ -3,7 +3,7 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-30
+## Last revisit: 2025-05-03
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -303,7 +303,7 @@ function tag_hash() {
 }
 
 # resolve prefix argument before the actual processing is done. result print to STDOUT.
-function prepare_prefix() {
+function resolve_prefix_to_value() {
 	local resolved_prefix=$(prefix_strategy) # extract default strategy first
 
 	# if --prefix provided, then required re-evaluation of the prefix
@@ -327,13 +327,13 @@ function auto_detect_prefix_from_tags() {
 		return
 	fi
 
-	# Get semver regex pattern
-	local semver_pattern=$(semver:grep)
+	# Get semver regex pattern and prefix strategy
+	local semver_pattern=$(semver:grep) _prefix=$(args_prefix_or_default)
 
 	# Key-value storage for prefixes
 	declare -A prefixes
 
-	# Process each tag
+	# Process each tag and extract a prefix in front of SEMVER, ignore suffix
 	while read -r tag; do
 		# Use semver regex to extract the prefix
 		# Expected pattern: {prefix}{semver}{suffix}
@@ -356,13 +356,18 @@ function auto_detect_prefix_from_tags() {
 	# TODO: depends on the strategy we may select another prefix from the list.
 	# sub-folder - means that we have a sub-folder path as a prefix, even if tags with
 	#   such pattern are not very often.
-	echo:Ver "Current prefix strategy: ${cl_gray}$(args_prefix_or_default):${cl_purple}${PREFIX}${cl_reset}"
+	echo:Ver "Current prefix strategy: ${cl_gray}${_prefix}:${cl_purple}${PREFIX}${cl_reset}"
 
 	# Find the most common prefix
-	local mostUsed=""
+	local mostUsed="" high=$((1 << 16))
 	local max=0 # most used prefix
 
 	for prefix in "${!prefixes[@]}"; do
+		# give the priority to the resolved sub-folder prefix $PREFIX if our strategy is sub-folder $_prefix
+		if [[ "${_prefix}" == "sub-folder" && "${prefix}" == "${PREFIX}"* ]]; then
+			prefixes[$prefix]=$((prefixes[$prefix] + high))
+		fi
+
 		if [[ ${prefixes[$prefix]} -gt $max ]]; then
 			mostUsed="$prefix"
 			max=${prefixes[$prefix]}
@@ -372,8 +377,9 @@ function auto_detect_prefix_from_tags() {
 	# print detected patterns top-5, if we have more than 1
 	if [[ ${#prefixes[@]} -gt 1 ]]; then
 		for prefix in "${!prefixes[@]}"; do
-			echo:Ver "Auto-detected prefix: ${cl_yellow}${prefix}${cl_reset}, Count: ${prefixes[$prefix]}"
-		done | head -n 5
+			local count=${prefixes[$prefix]}
+			echo:Ver "Auto-detected prefix: ${cl_yellow}${prefix}${cl_reset}, Count: $((count & ~high)), Priority: $((count & high))"
+		done # | head -n 5
 	fi
 
 	# Format tags as comma-separated list
@@ -395,7 +401,7 @@ function cached:auto_detect_prefix_from_tags() {
 
 # get latest tag in specified branch. result to STDOUT.
 function latest_tag() {
-	local resolved_prefix=$(prepare_prefix)
+	local resolved_prefix=$(resolve_prefix_to_value)
 
 	# TODO (olku): fetch remote tags first before extraction, they can be changed by another PR
 
@@ -1072,7 +1078,7 @@ function prepare_globals() {
 	#   - '{any-string}' - something defined by user;
 	#   - '{sub-folder}' - sub-folder path used as a prefix;
 	#   - '{root}' - empty string;
-	export PREFIX=$(prepare_prefix "$@")
+	export PREFIX=$(resolve_prefix_to_value)
 	export AUTO_DETECTED_PREFIX=$(cached:auto_detect_prefix_from_tags)
 
 	# initial version used for repository without tags

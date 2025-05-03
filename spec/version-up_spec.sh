@@ -3,7 +3,7 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-30
+## Last revisit: 2025-05-03
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -22,8 +22,8 @@ eval "$(shellspec - -c) exit 1"
 VERSION_UP_SCRIPT="./version-up.v2.sh"
 ROOT_SCRIPT="$SHELLSPEC_PROJECT_ROOT/bin/version-up.v2.sh"
 
-# keep it in focus mode `fDescribe` for TDD
-Describe 'bin/version-up.v2.sh'
+# keep it in focus mode `fDescribe` or `fIt` for TDD
+fDescribe 'bin/version-up.v2.sh /'
   #region Helper Functions
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
@@ -122,7 +122,7 @@ Describe 'bin/version-up.v2.sh'
 
   # test-003: Propose next release version tag
   # Gherkin Scenario Outline: Propose next release version tag
-  Describe "version tag proposal scenarios"
+  Describe "version scenarios /"
     Parameters
       # id | init_tag | flag | expected_version
       "#0" "v1.2.3" "" "v1.3.0"
@@ -137,7 +137,7 @@ Describe 'bin/version-up.v2.sh'
       # "#9" "v1.2.3" "--stay" "v1.2.3"
     End
 
-    It "proposes the next version from tag '$2' after '$3' flag, expected '$4'"
+    It "should be proposed '$4' from tag '$2' after '$3' flag"
       # CI mode to prevent interactive prompts
       BeforeRun "export DEBUG=\"ver\"; export CI=1; unset TRACE"
 
@@ -284,7 +284,7 @@ Describe 'bin/version-up.v2.sh'
     The result of function no_colors_stdout should include "git push origin v1.1.0+11"
 
     # Check detection messages
-    The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of BRANCH"
+    The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of hotfix-v1.1.0"
     The result of function no_colors_stderr should include "Selected versioning strategy: forced REVISION increment."
     The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.0+11"
     The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v1.1.0+10"
@@ -326,7 +326,7 @@ Describe 'bin/version-up.v2.sh'
     The result of function no_colors_stdout should include "git push origin v1.1.2"
 
     # Check detection messages
-    The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of BRANCH"
+    The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of hotfix-v1.1.1"
     The result of function no_colors_stderr should include "Selected versioning strategy: forced PATCH increment."
     The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.2"
     The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v1.1.1"
@@ -379,8 +379,8 @@ Describe 'bin/version-up.v2.sh'
   End
 
   # Monorepo test scenarios
-  Describe "monorepo version detection"
-    # Helper functions for monorepo tests
+  Describe "monorepo version detection /"
+    #region Helper functions for monorepo tests
     setup_monorepo() {
       # Create subdirectories for packages
       mkdir -p packages/foo packages/bar
@@ -416,18 +416,21 @@ Describe 'bin/version-up.v2.sh'
       git add packages/bar
       git commit -m "packages/bar: new commit" >/dev/null 2>&1
     }
+    #endregion
 
     # test-020: Monorepo default prefix detection
-    fIt "should auto-detect prefix in monorepo structure"
+    It "should auto-detect prefix in monorepo structure"
       # CI mode, prevent user input asking
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
       # Set up monorepo with packages/foo and packages/bar
       # with tags packages/foo/v1.0.0 and packages/bar/v1.1.0
-      setup_monorepo
+      {
+        setup_monorepo
 
-      # make a change to the code for a new version proposal
-      git_foo_commit
+        # make a change to the code for a new version proposal
+        git_foo_commit
+      } >/dev/null 2>&1
 
       # Set working directory to packages/foo
       cd packages/foo || return 1
@@ -438,16 +441,17 @@ Describe 'bin/version-up.v2.sh'
       The stdout should be present
 
       # Verify prefix detection and version proposal
-      The result of function no_colors_stderr should include "Auto-detected prefix: packages/foo from tags: packages/foo/v1.0.0"
-      The result of function no_colors_stderr should include "Prefix detected: packages/foo"
-      The result of function no_colors_stderr should include "Proposed Next Version TAG: packages/foo/v1.0.1"
-      The result of function no_colors_stdout should include "git tag packages/foo/v1.0.1"
-      The result of function no_colors_stdout should include "git push origin packages/foo/v1.0.1"
+      The result of function no_colors_stderr should include "Auto-detected prefix: packages/foo/v from tags: packages/bar/v1.1.0, packages/foo/v1.0.0"
+      The result of function no_colors_stderr should include "Prefix detected: packages/foo/v"
+      The result of function no_colors_stderr should include "Selected versioning strategy: increment MINOR of the latest packages/foo/v1.0.0"
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: packages/foo/v1.1.0"
+      The result of function no_colors_stdout should include "git tag packages/foo/v1.1.0"
+      The result of function no_colors_stdout should include "git push origin packages/foo/v1.1.0"
 
       # Exit code should be 0
       The result of function no_colors_stderr should include "exit code: 0"
 
-      Dump
+      # Dump
     End
   End
 End
