@@ -50,7 +50,7 @@ Describe 'bin/version-up.v2.sh /'
   After 'rm_repo'
 
   # test-000
-  It 'displays usage/help information and exits with 0'
+  It 'test-000: displays usage/help information and exits with 0'
     BeforeRun 'export DEBUG="ver"'
     When run bash "$VERSION_UP_SCRIPT" --help
 
@@ -69,7 +69,7 @@ Describe 'bin/version-up.v2.sh /'
   End
 
   # test-001
-  It 'displays script version and exits with 0'
+  It 'test-001: displays script version and exits with 0'
     BeforeRun 'export DEBUG="ver"'
     When run bash "$VERSION_UP_SCRIPT" --version
 
@@ -83,7 +83,7 @@ Describe 'bin/version-up.v2.sh /'
   End
 
   # test-002
-  It 'should detect empty git repository'
+  It 'test-002: should detect empty git repository'
     BeforeRun 'export DEBUG="ver"; unset TRACE'
     # We're already in a fresh git repo thanks to the Before hook
     # which runs: mk_repo; git_init; git_config; ln_script
@@ -99,7 +99,7 @@ Describe 'bin/version-up.v2.sh /'
   End
 
   # test-002-1
-  It 'proposes version 0.0.1-alpha in a fresh git repository'
+  It 'test-002: proposes version 0.0.1-alpha in a fresh git repository'
     # CI mode, prevent user input asking
     BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -122,7 +122,7 @@ Describe 'bin/version-up.v2.sh /'
 
   # test-003: Propose next release version tag
   # Gherkin Scenario Outline: Propose next release version tag
-  Describe "version scenarios /"
+  Describe "test-003: version scenarios /"
     Parameters
       # id | init_tag | flag | expected_version
       "#0" "v1.2.3" "" "v1.3.0"
@@ -171,9 +171,9 @@ Describe 'bin/version-up.v2.sh /'
     End
   End
 
-  Describe "forced stay on the same version tag"
+  Describe "forced stay on the same version tag /"
     # test-003: --stay part
-    It "should reuse version when on a MASTER branch"
+    It "test-003: should reuse version when on a MASTER branch"
       # CI mode, prevent user input asking
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -195,7 +195,7 @@ Describe 'bin/version-up.v2.sh /'
       # Dump
     End
 
-    It "forced stay strategy on a MASTER branch"
+    It "test-003: forced stay strategy on a MASTER branch"
       # CI mode, prevent user input asking
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -222,7 +222,7 @@ Describe 'bin/version-up.v2.sh /'
     End
 
     # test-004: Re-publish existing version tag
-    It 'should reuse version when on a branch named after that version tag'
+    It 'test-004: should reuse version when on a branch named after that version tag'
       # CI mode, prevent user input asking
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -254,7 +254,7 @@ Describe 'bin/version-up.v2.sh /'
   End
 
   # test-005: Propose revision segment increase on branched version tag
-  It 'should propose REVISION segment increase when on a branch from a version tag'
+  It 'test-005: should propose REVISION segment increase when on a branch from a version tag'
     # CI mode, prevent user input asking
     BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -296,7 +296,7 @@ Describe 'bin/version-up.v2.sh /'
   End
 
   # test-005-1: Propose patch segment increase on branched version tag
-  It 'should propose PATCH segment increase when on a branch from a version tag'
+  It 'test-005: should propose PATCH segment increase when on a branch from a version tag'
     # CI mode, prevent user input asking
     BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -338,7 +338,7 @@ Describe 'bin/version-up.v2.sh /'
   End
 
   # test-005-2: Propose last segment increase on branched version tag
-  It 'should propose PATCH increase with stage keeping'
+  It 'test-005: should propose PATCH increase with stage keeping'
     # CI mode, prevent user input asking
     BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -423,7 +423,7 @@ Describe 'bin/version-up.v2.sh /'
     #endregion
 
     # test-020: Monorepo default prefix detection
-    It "should auto-detect prefix in monorepo structure"
+    It "test-020: should auto-detect prefix in monorepo structure"
       # CI mode, prevent user input asking
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -459,7 +459,7 @@ Describe 'bin/version-up.v2.sh /'
     End
 
     # test-021: Monorepo root prefix strategy
-    fIt "should use root prefix strategy in monorepo structure"
+    It "test-021: should use root prefix strategy in monorepo structure"
       # CI mode, prevent user input asking
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -505,7 +505,7 @@ Describe 'bin/version-up.v2.sh /'
     End
 
     # test-022: Monorepo sub-folder prefix strategy
-    fIt "should use sub-folder prefix strategy in monorepo structure"
+    It "test-022: should use sub-folder prefix strategy in monorepo structure"
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
       # Set up monorepo with tag packages/foo/v1.2.3
@@ -531,6 +531,39 @@ Describe 'bin/version-up.v2.sh /'
       The result of function no_colors_stderr should include "Prefix detected: packages/foo/v"
       The result of function no_colors_stderr should include "Selected versioning strategy: forced MINOR increment."
       The result of function no_colors_stderr should include "Proposed Next Version TAG: packages/foo/v1.3.0"
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Dump
+    End
+
+    # Monorepo custom prefix string
+    fIt "test-023: should use custom prefix string in monorepo structure"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+      # Set up monorepo with tag custom/v0.9.0
+      {
+        git_init
+        git_config
+
+        mkdir -p somefolder
+        (cd somefolder && touch file.txt && echo "content" >file.txt)
+        git add somefolder
+        git commit -m "initial commit" >/dev/null 2>&1
+        git tag "custom/v0.9.0"
+
+        random_change
+        git add .
+        git commit -m "New commit" >/dev/null 2>&1
+      } >/dev/null 2>&1
+
+      When run bash "./version-up.v2.sh" --prefix custom
+
+      The status should be success
+      The stdout should be present
+
+      The result of function no_colors_stderr should include "Current prefix strategy: custom:'custom'"
+      The result of function no_colors_stderr should include "Prefix detected: custom/v"
+      The result of function no_colors_stderr should include "Selected versioning strategy: forced MINOR increment."
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: custom/v0.10.0"
       The result of function no_colors_stderr should include "exit code: 0"
 
       # Dump

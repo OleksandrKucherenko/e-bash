@@ -15,8 +15,8 @@
     - [Monorepo](#monorepo)
       - [test-020: Monorepo default prefix detection - PASSED!](#test-020-monorepo-default-prefix-detection---passed)
       - [test-021: Monorepo root prefix strategy - PASSED!](#test-021-monorepo-root-prefix-strategy---passed)
-      - [test-022: Monorepo sub-folder prefix strategy](#test-022-monorepo-sub-folder-prefix-strategy)
-      - [test-023: Monorepo custom prefix string](#test-023-monorepo-custom-prefix-string)
+      - [test-022: Monorepo sub-folder prefix strategy - PASSED!](#test-022-monorepo-sub-folder-prefix-strategy---passed)
+      - [test-023: Monorepo custom prefix string - PASSED!](#test-023-monorepo-custom-prefix-string---passed)
       - [test-024: Monorepo has multiple version.properties files](#test-024-monorepo-has-multiple-versionproperties-files)
       - [test-025: Monorepo with multiple version tag prefixes without clear winner](#test-025-monorepo-with-multiple-version-tag-prefixes-without-clear-winner)
   - [Corner Cases](#corner-cases)
@@ -182,14 +182,14 @@ Scenario: Monorepo sub-folder prefix strategy
 
 > Note: expected version will be `packages/foo/v1.3.0` - will be MINOR increment due to MASTER branch strategy applying.
 
-#### test-023: Monorepo custom prefix string
+#### test-023: Monorepo custom prefix string - PASSED!
 
 ```gherkin
 Scenario: Monorepo custom prefix string
   Given a monorepo with tags `custom/v0.9.0` and any folder structure
   When I run the script with `--prefix custom`
   Then it should use prefix `custom`
-  And propose version `custom/v0.9.1`
+  And propose version `custom/v0.10.0`
   And exit code should be 0
 ```
 
