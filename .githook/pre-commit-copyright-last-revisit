@@ -13,6 +13,17 @@ readonly cl_grey=$(tput setaf 8)
 readonly cl_gray=$cl_grey # alias to the same color
 readonly cl_reset=$(tput sgr0)
 
+# Prefer custom GNU tools from bin/gnubin if available, then fallback to Linux aliases
+if [[ -d "$REPO_ROOT/bin/gnubin" ]]; then
+  export PATH="$REPO_ROOT/bin/gnubin:$PATH"
+fi
+
+# Fallback to Linux aliases if custom GNU tools are not available
+if [[ "$(uname)" == "Linux" ]]; then
+  command -v ggrep >/dev/null 2>&1 || alias ggrep='grep'
+  command -v gsed >/dev/null 2>&1 || alias gsed='sed'
+fi
+
 # Check if HOOK_TEST environment variable is set (TEST mode)
 # or not set (PRODUCTION mode via git hook)
 if [[ -n "${HOOK_TEST}" ]]; then

@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-26
+## Last revisit: 2025-04-13
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-
 
 DEBUG=${DEBUG:-"-ipv6,-regex"}
 
@@ -40,7 +39,7 @@ color:ipv6 "test #14: ::ffff:192.168.1.1 vs 0:0:0:0:0:ffff:192.168.1.1"         
 color:ipv6 "test #15: 0:0:0:0:0:ffff:c000:280 vs 0000:0000:0000:0000:0000:ffff:c0a8:0101" # PASSED!
 
 # Link-local addresses
-color:ipv6 "test #16: fe80::1%eth0 and fe80::a1b2:3c4d%en0"          # PASSED!
+color:ipv6 "test #16: fe80::1%eth0 and fe80::a1b2:3c4d%en0"      # PASSED!
 color:ipv6 "test #17: fe80::1%1234567890 (same as above in hex)" # PASSED!
 
 # Multicast
