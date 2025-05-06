@@ -3,7 +3,7 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-05-03
+## Last revisit: 2025-05-06
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -23,7 +23,7 @@ VERSION_UP_SCRIPT="./version-up.v2.sh"
 ROOT_SCRIPT="$SHELLSPEC_PROJECT_ROOT/bin/version-up.v2.sh"
 
 # keep it in focus mode `fDescribe` or `fIt` for TDD
-fDescribe 'bin/version-up.v2.sh /'
+Describe 'bin/version-up.v2.sh /'
   #region Helper Functions
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
@@ -381,6 +381,25 @@ fDescribe 'bin/version-up.v2.sh /'
   # Monorepo test scenarios
   Describe "monorepo version detection /"
     #region Helper functions for monorepo tests
+    package_commit() {
+      local package="$1"
+      local comment="$2"
+
+      mkdir -p "packages/$package"
+      (cd "packages/$package" && touch file.txt && date >>file.txt)
+      git add "packages/$package"
+      git commit -m "packages/$package: $comment" >/dev/null 2>&1
+    }
+
+    package_versioned_change() {
+      local package="$1"
+      local comment="$2"
+      local tag="$3"
+
+      package_commit "$package" "$comment"
+      git tag "packages/$package/$tag"
+    }
+
     setup_monorepo() {
       # Create subdirectories for packages
       mkdir -p packages/foo packages/bar
@@ -393,29 +412,14 @@ fDescribe 'bin/version-up.v2.sh /'
       git_first_commit
 
       # Add commits to packages/foo
-      (cd packages/foo && touch file.txt && date >>file.txt)
-      git add packages/foo
-      git commit -m "packages/foo: initial commit" >/dev/null 2>&1
-      git tag "packages/foo/v1.0.0"
+      package_versioned_change "foo" "initial commit" "v1.0.0"
 
       # Add commits to packages/bar
-      (cd packages/bar && touch file.txt && date >>file.txt)
-      git add packages/bar
-      git commit -m "packages/bar: initial commit" >/dev/null 2>&1
-      git tag "packages/bar/v1.1.0"
+      package_versioned_change "bar" "initial commit" "v1.1.0"
     }
 
-    git_foo_commit() {
-      (cd packages/foo && touch file.txt && date >>file.txt)
-      git add packages/foo
-      git commit -m "packages/foo: new commit" >/dev/null 2>&1
-    }
-
-    git_bar_commit() {
-      (cd packages/bar && touch file.txt && date >>file.txt)
-      git add packages/bar
-      git commit -m "packages/bar: new commit" >/dev/null 2>&1
-    }
+    git_foo_commit() { package_commit "foo" "new commit"; }
+    git_bar_commit() { package_commit "bar" "new commit"; }
     #endregion
 
     # test-020: Monorepo default prefix detection
@@ -455,7 +459,7 @@ fDescribe 'bin/version-up.v2.sh /'
     End
 
     # test-021: Monorepo root prefix strategy
-    It "should use root prefix strategy in monorepo structure"
+    fIt "should use root prefix strategy in monorepo structure"
       # CI mode, prevent user input asking
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
@@ -466,15 +470,11 @@ fDescribe 'bin/version-up.v2.sh /'
         git_config
 
         # Create initial commit at root level
-        git_first_commit >/dev/null 2>&1
+        git_first_commit
         git tag "v1.0.0"
 
         # Create packages/foo directory and add commits
-        mkdir -p packages/foo
-        (cd packages/foo && touch file.txt && date >>file.txt)
-        git add packages/foo
-        git commit -m "packages/foo: initial commit" >/dev/null 2>&1
-        git tag "packages/foo/v2.0.0"
+        package_versioned_change "foo" "initial commit" "v2.0.0"
 
         # make a change to the code for a new version proposal
         random_change
@@ -499,6 +499,38 @@ fDescribe 'bin/version-up.v2.sh /'
       The result of function no_colors_stdout should include "git push origin v1.1.0"
 
       # Exit code should be 0
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Dump
+    End
+
+    # test-022: Monorepo sub-folder prefix strategy
+    fIt "should use sub-folder prefix strategy in monorepo structure"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Set up monorepo with tag packages/foo/v1.2.3
+      {
+        git_init
+        git_config
+
+        package_versioned_change "foo" "initial commit" "v1.2.3"
+
+        random_change
+        git add .
+        git commit -m "New commit"
+      } >/dev/null 2>&1
+
+      cd packages/foo || return 1
+
+      When run bash "../../version-up.v2.sh" --prefix sub-folder
+
+      The status should be success
+      The stdout should be present
+
+      The result of function no_colors_stderr should include "Current prefix strategy: sub-folder:'packages/foo/'"
+      The result of function no_colors_stderr should include "Prefix detected: packages/foo/v"
+      The result of function no_colors_stderr should include "Selected versioning strategy: forced MINOR increment."
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: packages/foo/v1.3.0"
       The result of function no_colors_stderr should include "exit code: 0"
 
       # Dump

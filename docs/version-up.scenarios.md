@@ -14,7 +14,7 @@
       - [test-006: Migration of existing repo to version-up script - PASSED! covered by test-003](#test-006-migration-of-existing-repo-to-version-up-script---passed-covered-by-test-003)
     - [Monorepo](#monorepo)
       - [test-020: Monorepo default prefix detection - PASSED!](#test-020-monorepo-default-prefix-detection---passed)
-      - [test-021: Monorepo root prefix strategy](#test-021-monorepo-root-prefix-strategy)
+      - [test-021: Monorepo root prefix strategy - PASSED!](#test-021-monorepo-root-prefix-strategy---passed)
       - [test-022: Monorepo sub-folder prefix strategy](#test-022-monorepo-sub-folder-prefix-strategy)
       - [test-023: Monorepo custom prefix string](#test-023-monorepo-custom-prefix-string)
       - [test-024: Monorepo has multiple version.properties files](#test-024-monorepo-has-multiple-versionproperties-files)
@@ -153,7 +153,7 @@ Scenario: Monorepo default prefix detection
   And exit code should be 0
 ```
 
-#### test-021: Monorepo root prefix strategy
+#### test-021: Monorepo root prefix strategy - PASSED!
 
 ```gherkin
 Scenario: Monorepo root prefix strategy
@@ -168,7 +168,7 @@ Scenario: Monorepo root prefix strategy
 
 > Note: expected that script will detect commonly used prefix `v` from tags `v1.0.0` and apply it for future version `v1.1.0`.
 
-#### test-022: Monorepo sub-folder prefix strategy
+#### test-022: Monorepo sub-folder prefix strategy - PASSED!
 
 ```gherkin
 Scenario: Monorepo sub-folder prefix strategy
@@ -176,9 +176,11 @@ Scenario: Monorepo sub-folder prefix strategy
   And current directory is `packages/foo`
   When I run the script with `--prefix sub-folder`
   Then it should use prefix `packages/foo`
-  And propose version `packages/foo/v1.2.4`
+  And propose version `packages/foo/v1.3.0`
   And exit code should be 0
 ```
+
+> Note: expected version will be `packages/foo/v1.3.0` - will be MINOR increment due to MASTER branch strategy applying.
 
 #### test-023: Monorepo custom prefix string
 
