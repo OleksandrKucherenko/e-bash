@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-16
+## Last revisit: 2025-04-02
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -213,6 +213,15 @@ function logger:prefix() {
     # setup the prefix
     TAGS_PREFIX["$tag"]="${prefix}"
   fi
+}
+
+# initialization helper, allows to setup prefix and redirect in one line
+function logger:init() {
+  local tag=${1}
+  local prefix=${2:-""}
+  local redirect=${3:-""}
+
+  logger "${tag}" && logger:prefix "${tag}" "${prefix}" && logger:redirect "${tag}" "${redirect}"
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
