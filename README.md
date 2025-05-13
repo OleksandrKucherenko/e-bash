@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/OleksandrKucherenko/e-bash)
+
 # Enhanced BASH Scripts
 
 - [Enhanced BASH Scripts](#enhanced-bash-scripts)
