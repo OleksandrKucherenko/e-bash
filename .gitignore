@@ -41,3 +41,15 @@ bin/bitbucket
 
 # symbolic links (for Linux only)
 bin/gnubin
+
+# patches
+patches/
+
+# Virtual Hard Drives
+*.vhd
+*.vhdx
+*.vmdk
+*.qcow2
+*.img
+*.dmg
+*.vpc

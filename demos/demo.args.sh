@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-19
+## Last revisit: 2025-04-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 export DEBUG=${DEBUG:-"-loader,-parser,-common"}
+
+export SKIP_ARGS_PARSING=1 # skip initial parsing of arguments during script loading
 
 # pre-declare variables to make shellcheck happy
 declare help version \
@@ -20,7 +22,7 @@ ARGS_DEFINITION+=" --version=version:1.0.0"
 ARGS_DEFINITION+=" -d,--debug=DEBUG:demo"
 ARGS_DEFINITION+=" -i,--init,--initialize=args_init"
 ARGS_DEFINITION+=" -n,--new,--new-environment=args_new::1"
-ARGS_DEFINITION+=" -s,--switch=args_switch::1"
+#ARGS_DEFINITION+=" -s,--switch=args_switch::1"
 ARGS_DEFINITION+=" --id=args_pno::1"
 ARGS_DEFINITION+=" \$1,<command>=args_command:dummy:1"
 ARGS_DEFINITION+=" \$2,[sub-command]=args_sub_command:sub_dummy:1"
@@ -28,8 +30,23 @@ ARGS_DEFINITION+=" \$3,<sub-sub-command>=args_subsub_command:sub_sub_dummy:1"
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 # shellcheck source=../.scripts/_colors.sh
+source /dev/null
+
 # shellcheck disable=SC1090 source=../.scripts/_commons.sh
 source "$E_BASH/_arguments.sh"
+
+# args:i HELP -a "-h,--help" -h "Show help and exit."                                          # expected "-h,--help=HELP"
+# args:i help -a "-h,--help" -h "Show help and exit."                                          # expected "-h,--help"
+# args:i COMMAND -a "\$1,-c,--position,--command" -h "First positional argument as a command." # expected "\$1,-c,--position,--command=COMMAND"
+# args:i COMMAND -a "\$1" -a "-c" -a ",--command" -h "First positional argument as a command." # expected "\$1,-c,--command=COMMAND"
+# args:i version -a "--version" -d "1.0.0" -h "Show version and exit."
+# args:i args_switch -a "-s,--switch" -q 1 -h "Switch to another environment."
+
+# inject argument defintion into ARGS_DEFINITION via composer
+COMPOSER="$(args:i args_switch -a "-s,--switch" -q 1 -h "Switch to another environment.")"
+eval "$COMPOSER"
+
+parse:arguments "$@" # time to parse arguments
 
 logger "demo" "$@"
 logger:redirect "demo" ">&2"
