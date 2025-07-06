@@ -13,26 +13,38 @@ jobs:
     runs-on: macos-latest
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
-      - name: Checkout
+      - name: Checkout Code with full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for release-it to generate proper changelog
+          fetch-tags: true # For correct version detection by release-it
       - name: Install shellspec
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           # brew update
           brew install bash
           brew install kcov
+          brew install grep
+          brew install gnu-sed
+          brew install gawk
+          brew install coreutils
           curl -fsSL https://git.io/shellspec | sh -s ${{ env.SHELLSPEC_VERSION }} --yes
       - name: Run shellspec Tests
         run: |
+          export E_BASH="$(pwd)/.scripts"
           shellspec
+  
   shellspec-ubuntu:
     name: "Ubuntu"
     # kcov only works on ubuntu 22.04, on ubuntu-latest installation fails
     runs-on: ubuntu-22.04
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
-      - name: Checkout
+      - name: Checkout Code with full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for release-it to generate proper changelog
+          fetch-tags: true # For correct version detection by release-it
       - name: Install kcov
         run: |
           sudo apt-get update
@@ -44,4 +56,9 @@ jobs:
           curl -fsSL https://git.io/shellspec | sh -s -- --yes
       - name: Run shellspec tests
         run: |
+          export E_BASH="$(pwd)/.scripts"
+          # register aliases for GNU tools
+          source "$E_BASH/_setup_gnu_symbolic_links.sh"
+          export PATH="$(pwd)/bin/gnubin:$PATH"
+          # run tests
           shellspec
