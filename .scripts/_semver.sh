@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-03-26
+## Last revisit: 2025-04-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -32,6 +32,7 @@ declare -A -g __semver_compare_v2=()
 # ref: https://regex101.com/r/vkijKf/1/,
 # ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
 # \d - any digit
+# ref: https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
 function semver:grep() {
   #  <letter> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
   #             | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
@@ -39,7 +40,7 @@ function semver:grep() {
   #             | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n"
   #             | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x"
   #             | "y" | "z"
-  local v_letter="[a-z]"
+  local v_letter="[a-z]" # we are case insensitive
 
   # <positive digit> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
   local v_positive_digit="[1-9]"
@@ -75,14 +76,14 @@ function semver:grep() {
   local v_pre_release_identifier="(${v_alphanumeric_identifier}|${v_numeric_identifier})"
 
   # <dot-separated build identifiers> ::= <build identifier> | <build identifier> "." <dot-separated build identifiers>
-  local v_dot_separated_build_identifiers="(${v_build_identifier}(\.${v_build_identifier})*)"
+  local v_dot_separated_build_identifiers="(${v_build_identifier}((\.${v_build_identifier})*))"
 
   # <build> ::= <dot-separated build identifiers>
   local v_build="(${v_dot_separated_build_identifiers})"
 
   # <dot-separated pre-release identifiers> ::= <pre-release identifier>
   #                                          | <pre-release identifier> "." <dot-separated pre-release identifiers>
-  local v_dot_separated_pre_release_identifiers="(${v_pre_release_identifier}(\.${v_pre_release_identifier})*)"
+  local v_dot_separated_pre_release_identifiers="(${v_pre_release_identifier}((\.${v_pre_release_identifier})*))"
 
   # <pre-release> ::= <dot-separated pre-release identifiers>
   local v_pre_release="(${v_dot_separated_pre_release_identifiers})"
@@ -154,6 +155,8 @@ function semver:parse() {
       3) parsed["major"]="${BASH_REMATCH[$i]}" ;;
       7) parsed["minor"]="${BASH_REMATCH[$i]}" ;;
       11) parsed["patch"]="${BASH_REMATCH[$i]}" ;;
+      37) parsed[".pre-release"]="${BASH_REMATCH[$i]}" ;;
+      79) parsed[".build"]="${BASH_REMATCH[$i]}" ;;
       *)
         if [[ "${BASH_REMATCH[$i]:0:1}" == "-" ]]; then # index=15
           parsed["pre-release"]="${BASH_REMATCH[$i]}"
@@ -275,26 +278,44 @@ function semver:compare() {
   local maxSize=$((${#parts1[@]} > ${#parts2[@]} ? ${#parts1[@]} : ${#parts2[@]}))
   ((maxSize -= 1)) # array index starts from 0
 
-  # if identifier is a number, then compare as a number, otherwise as a string
-  # number is always less than string
-  for i in $(seq 0 $maxSize); do
-    local part1="${parts1[$i]}"
-    local part2="${parts2[$i]}"
+  if [[ "$maxSize" -ge 0 ]]; then
+    # if identifier is a number, then compare as a number, otherwise as a string
+    # number is always less than string
+    for i in $(seq 0 $maxSize); do
+      local part1="${parts1[$i]}"
+      local part2="${parts2[$i]}"
 
-    # if one of the parts is empty, then it is less than the other
-    if [[ -z "$part1" && -n "$part2" ]]; then return 2; fi
-    if [[ -n "$part1" && -z "$part2" ]]; then return 1; fi
+      # if one of the parts is empty, then it is less than the other
+      if [[ -z "$part1" && -n "$part2" ]]; then return 2; fi
+      if [[ -n "$part1" && -z "$part2" ]]; then return 1; fi
 
-    # compare parts as numbers or strings
-    if [[ "$part1" =~ ^[0-9]+$ && "$part2" =~ ^[0-9]+$ ]]; then
-      if [[ "$part1" -gt "$part2" ]]; then return 1; fi
-      if [[ "$part1" -lt "$part2" ]]; then return 2; fi
-    else
-      if [[ "$part1" > "$part2" ]]; then return 1; fi
-      if [[ "$part1" < "$part2" ]]; then return 2; fi
-    fi
-  done
+      # compare parts as numbers or strings
+      if [[ "$part1" =~ ^[0-9]+$ && "$part2" =~ ^[0-9]+$ ]]; then
+        if [[ "$part1" -gt "$part2" ]]; then return 1; fi
+        if [[ "$part1" -lt "$part2" ]]; then return 2; fi
+      else
+        if [[ "$part1" > "$part2" ]]; then return 1; fi
+        if [[ "$part1" < "$part2" ]]; then return 2; fi
+      fi
+    done
 
+    # A larger set of pre-release fields has a higher precedence than a
+    # smaller set, if all of the preceding identifiers are equal. (Rule #11.4.4)
+    if [[ "${#parts1[@]}" -gt "${#parts2[@]}" ]]; then return 1; fi
+    if [[ "${#parts1[@]}" -lt "${#parts2[@]}" ]]; then return 2; fi
+
+    # numbers are equal? but how? Only META left uncomared
+    echo:Semver "Warning: verify versions, are is META an only difference: $version1 $version2"
+    return 0
+  else
+    echo:Semver "Warning: No pre-release part in versions: $version1 $version2"
+
+    # Build metadata MUST be ignored when determining version precedence. (Rule #10)
+    # So versions are equal during the comparisson!
+    return 0
+  fi
+
+  # We should never reach this point!
   echo:Semver "Error: $version1 $version2" >&2
   return 3 # error
 }
@@ -469,7 +490,9 @@ logger semver "$@" # declare echo:Semver & printf:Semver functions
 logger regex "$@"  # declare echo:Regex & printf:Regex functions
 logger simple "$@" # declare echo:Simple & printf:Simple functions
 
+logger:redirect semver ">&2"
 logger:redirect regex ">&2" # redirect regex to STDERR
+logger:redirect simple ">&2"
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"

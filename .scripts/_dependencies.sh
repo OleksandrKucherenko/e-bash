@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-04-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -140,6 +140,7 @@ function optional() {
 ${__SOURCED__:+return}
 
 logger dependencies "$@" # register own debug tag & logger functions
+logger:redirect dependencies ">&2"
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"

@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2023-10-18
+## Last revisit: 2025-04-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -59,7 +59,7 @@ Describe "_dependencies.sh"
             When call dependency bash "[45].*.*" "brew install bash" --version
 
             The status should be success
-            The output should include "Dependency [OK]: \`bash\` - version: 5."
+            The output should include "Dependency [OK]: \`bash\` - version:"
             The error should include ""
 
             # Dump

@@ -20,6 +20,115 @@ This document provides detailed test scenarios for installing, upgrading, and ma
   - [Scenario 12: Installation with insufficient permissions](#scenario-12-installation-with-insufficient-permissions)
   - [Scenario 13: Network failure during installation](#scenario-13-network-failure-during-installation)
 
+## Review of the Script Actions
+
+The following state diagram illustrates the logic flow of the `install.e-bash.sh` script, showing the various states and transitions during the installation, upgrade, and rollback processes.
+
+```mermaid
+flowchart TD
+    Start([Start]) --> PreparseArgs["PreparseArgs()"]    
+    PreparseArgs --> |"Parse Flags"| MainFunction["MainFunction()"]    
+    MainFunction --> |"Process Command"| CommandRouter{"Command?"}
+    
+    %% Command Determination
+    CommandRouter --> |"auto"| Auto{"Is auto?"}
+    Auto --> |"Check"| IsInstalled1{"Is installed?"}
+    IsInstalled1 --> |"No"| Install1["Install"]
+    IsInstalled1 --> |"Yes"| Upgrade1["Upgrade"]
+    
+    CommandRouter --> |"install"| Install1
+    CommandRouter --> |"upgrade"| Upgrade1
+    CommandRouter --> |"rollback"| Rollback1["Rollback"]
+    CommandRouter --> |"versions"| Versions1["Versions"]
+    CommandRouter --> |"uninstall"| Uninstall1["Uninstall"]
+    
+    %% Check Prerequisites
+    Install1 --> CheckPrereq["CheckPrerequisites()"]
+    Upgrade1 --> CheckPrereq
+    Rollback1 --> CheckPrereq
+    
+    CheckPrereq --> |"git not found"| NoGitError["Error: Git Not Found"]
+    CheckPrereq --> |"not in git repo"| NotGitRepoError["Error: Not Git Repo"]
+    CheckPrereq --> |"unstaged changes"| UnstagedChangesError["Error: Unstaged Changes"]
+    CheckPrereq --> |"untracked dirs"| UntrackedDirsError["Error: Untracked Dirs"]
+    CheckPrereq --> |"warning: .scripts exists"| ScriptsDirWarning["Warning: Scripts Dir Exists"]
+    CheckPrereq --> |"checks passed"| InitializeEmptyRepo["InitializeEmptyRepo()"]
+    
+    InitializeEmptyRepo --> |"empty repo initialized"| ConfigureBranches["ConfigureBranches()"]
+    
+    %% Installation Logic
+    Install1 --> IsInstalled2{"Is installed?"}
+    IsInstalled2 --> |"Yes"| UpgradeMessage["Display upgrade message"]    
+    IsInstalled2 --> |"No"| InstallScripts["InstallScripts()"]
+    
+    Upgrade1 --> IsInstalled3{"Is installed?"}
+    IsInstalled3 --> |"No"| InstallScripts
+    IsInstalled3 --> |"Yes"| UpgradeScripts["UpgradeScripts()"]
+    
+    %% Installation Steps
+    InstallScripts --> ConfigureRemote["ConfigureRemote()"]
+    ConfigureRemote --> |"remote exists"| FetchRemote["Fetch remote"]
+    ConfigureRemote --> |"remote missing"| AddRemote["Add remote"]
+    AddRemote --> FetchRemote
+    
+    FetchRemote --> CleanTempBranches["CleanTempBranches()"]
+    CleanTempBranches --> CreateTempBranch["CreateTempBranch()"]
+    CreateTempBranch --> ConfigureLocalBranches["ConfigureLocalBranches()"]
+    ConfigureLocalBranches --> AddScriptsSubtree["AddScriptsSubtree()"]
+    
+    AddScriptsSubtree --> DisplayInstallationSuccess["DisplayInstallationSuccess()"]
+    DisplayInstallationSuccess --> PostInstallationSteps["PostInstallationSteps()"]
+    
+    PostInstallationSteps --> |"direnv detected"| UpdateEnvrcConfiguration["UpdateEnvrcConfiguration()"]
+    PostInstallationSteps --> CopyInstallerToBin["CopyInstallerToBin()"]
+    UpdateEnvrcConfiguration --> CopyInstallerToBin
+    CopyInstallerToBin --> InstallSuccess(["Installation Success"])
+    
+    %% Upgrade Steps
+    UpgradeScripts --> SaveCurrentVersion["SaveCurrentVersion()"]
+    SaveCurrentVersion --> ConfigureRemote
+    PerformSubtreeMerge["PerformSubtreeMerge()"] --> DisplayMergeResult["DisplayMergeResult()"]
+    FetchRemote --> PerformSubtreeMerge
+    DisplayMergeResult --> ReturnToOriginalBranch["ReturnToOriginalBranch()"]
+    ReturnToOriginalBranch --> DisplayUpgradeSuccess["DisplayUpgradeSuccess()"]
+    DisplayUpgradeSuccess --> UpgradeSuccess(["Upgrade Success"])
+    
+    %% Rollback Logic
+    Rollback1 --> CheckPreviousVersionExists["CheckPreviousVersionExists()"]
+    CheckPreviousVersionExists --> |"exists"| GetPreviousVersion["GetPreviousVersion()"]
+    CheckPreviousVersionExists --> |"missing"| NoPreviousVersionError["Error: No Previous Version"]
+    GetPreviousVersion --> PerformRollback["PerformRollback()"]
+    PerformRollback --> |"successful"| DisplayRollbackSuccess["DisplayRollbackSuccess()"]
+    PerformRollback --> |"failed"| RollbackFailedError["Error: Rollback Failed"]
+    DisplayRollbackSuccess --> CleanupAfterRollback["CleanupAfterRollback()"]
+    CleanupAfterRollback --> RollbackSuccess(["Rollback Success"])
+    
+    %% Versions Logic
+    Versions1 --> FetchVersions["FetchVersions()"]
+    FetchVersions --> GetInstalledVersion["GetInstalledVersion()"]
+    GetInstalledVersion --> DisplayVersions["DisplayVersions()"]
+    DisplayVersions --> VersionsSuccess(["Versions Displayed"])
+    
+    %% Uninstall Logic
+    Uninstall1 --> ShowManualUninstall["ShowManualUninstall()"]
+    ShowManualUninstall --> UninstallSuccess(["Uninstall Instructions Shown"])
+
+    %% Style definitions
+    classDef error fill:#ffcccc,stroke:#ff0000,stroke-width:1px
+    classDef success fill:#ccffcc,stroke:#00cc00,stroke-width:1px
+    classDef warning fill:#ffffcc,stroke:#ffcc00,stroke-width:1px
+    classDef process fill:#f9f9f9,stroke:#666666,stroke-width:1px
+    classDef decision fill:#e6f3ff,stroke:#0066cc,stroke-width:1px
+    
+    %% Apply styles
+    class NoGitError,NotGitRepoError,UnstagedChangesError,UntrackedDirsError,NoPreviousVersionError,RollbackFailedError error
+    class InstallSuccess,UpgradeSuccess,RollbackSuccess,VersionsSuccess,UninstallSuccess success
+    class ScriptsDirWarning warning
+    class Start,CommandRouter,Auto,IsInstalled1,IsInstalled2,IsInstalled3 decision
+    class PreparseArgs,MainFunction,CheckPrereq,InitializeEmptyRepo,InstallScripts,UpgradeScripts,ConfigureRemote,FetchRemote,AddRemote,CleanTempBranches,CreateTempBranch,ConfigureLocalBranches,AddScriptsSubtree,DisplayInstallationSuccess,PostInstallationSteps,UpdateEnvrcConfiguration,CopyInstallerToBin,SaveCurrentVersion,PerformSubtreeMerge,DisplayMergeResult,ReturnToOriginalBranch,DisplayUpgradeSuccess,CheckPreviousVersionExists,GetPreviousVersion,PerformRollback,DisplayRollbackSuccess,CleanupAfterRollback,FetchVersions,GetInstalledVersion,DisplayVersions,ShowManualUninstall process
+```
+
+
 ## Passing results
 
 - [x] Scenario 1: Installing e-Bash in a new Git repository
@@ -381,4 +490,29 @@ git init
 sed 's|github.com/OleksandrKucherenko/e-bash|nonexistent-domain.invalid/repo|g' < /path/to/install.e-bash.sh | bash
 # Check exit code
 echo $?
+```
+
+## Manual Testing Instructions
+
+```bash
+# goto workspace
+cd ~/workspace
+
+# make a temporary git repo
+mkdir tmp && cd tmp && git init
+
+# make an alias for the install script
+ln -s ~/workspace/e-bash/bin/install.e-bash.sh install.e-bash.sh
+
+# verify the current state with global HOME involved
+./install.e-bash.sh versions
+
+# redefine HOME to a temporary directory
+HOME=$(pwd) ./install.e-bash.sh versions
+
+# try DRY run installation first
+HOME=$(pwd) ./install.e-bash.sh install --global --dry-run
+
+# update global installation (or install if no installed yet)
+HOME=$(pwd) ./install.e-bash.sh update --global
 ```
