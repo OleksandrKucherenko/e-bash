@@ -540,7 +540,12 @@ function create_symlink() {
 
   # delete old symlink if exists
   [ -L "${SCRIPTS_DIR}" ] && rm -f "${SCRIPTS_DIR}"
-  ln --symbolic --force "${source_path}" "${SCRIPTS_DIR}"
+
+  # WARNING: LN for macos and linux are different, macos has limited support
+  # MacOS: usage: ln [-s [-F] | -L | -P] [-f | -i] [-hnv] source_file [target_file]
+  # MacOS: https://ss64.com/mac/ln.html
+  # Linux: https://www.gnu.org/software/coreutils/manual/html_node/ln-invocation.html#ln-invocation
+  ln -s -f "${source_path}" "${SCRIPTS_DIR}"
 
   # shellcheck disable=SC2012
   symlink=$(ls -la "${SCRIPTS_DIR}" | awk -F ' -> ' '{print $2}')

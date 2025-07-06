@@ -6,7 +6,6 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-
 # Script to gather and publish current network configuration of the WSL2 instance
 # Focuses on networking and Docker IPs, printed directly to terminal
 
@@ -18,7 +17,6 @@ GREEN="$(tput setaf 2)"
 YELLOW="$(tput setaf 3)"
 BLUE="$(tput setaf 4)"
 RED="$(tput setaf 1)"
-NC="$(tput sgr0)"
 
 # compose regex for matching ipv6 in GNU grep style, print it to STDOUT
 function ipv6:grep() {

@@ -407,6 +407,8 @@ fDescribe 'bin/install.e-bash.sh'
       The dir "$TEMP_HOME/.e-bash" should be present
       The dir "$TEMP_HOME/.e-bash/.scripts" should be present
       The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
+
+      # Dump
     End
 
     It 'should install specific version globally'
@@ -418,6 +420,8 @@ fDescribe 'bin/install.e-bash.sh'
 
       The dir "$TEMP_HOME/.e-bash" should be present
       The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
+
+      # Dump
     End
 
     It 'should update shell configuration files'
@@ -431,6 +435,8 @@ fDescribe 'bin/install.e-bash.sh'
 
       The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
       The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should include "export E_BASH"
+
+      # Dump
     End
 
     It 'should support NO symlink creation with --no-create-symlink option'
@@ -443,6 +449,8 @@ fDescribe 'bin/install.e-bash.sh'
       The dir "$TEMP_HOME/.e-bash" should be present
 
       The path "$TEST_DIR/.scripts" should not be exist
+
+      # Dump
     End
 
     It 'should detect broken .scripts symlink'
@@ -457,6 +465,8 @@ fDescribe 'bin/install.e-bash.sh'
       The output should include "Installation complete!"
       The result of function no_colors_error should include "detected: broken symlink: .scripts ->"
       The stderr should be present
+
+      # Dump
     End
 
     It 'should install globally and bind to current repo'
@@ -497,7 +507,7 @@ fDescribe 'bin/install.e-bash.sh'
       The result of function no_colors_output should include "Symlink created: .scripts ->"
       The result of function no_colors_output should include "tmprepo/temp_home/.e-bash/.scripts"
 
-      #Dump
+      # Dump
     End
 
     It 'should downgrade repo to another version'
@@ -517,7 +527,7 @@ fDescribe 'bin/install.e-bash.sh'
       The result of function no_colors_output should include "tmprepo/temp_home/.e-bash/.versions/v1.0.0/.scripts"
       The result of function no_colors_output should include "The e-bash scripts have been upgraded to version v1.0.0"
 
-      #Dump
+      # Dump
     End
 
     xIt 'should rollback global installation'
