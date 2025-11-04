@@ -173,9 +173,9 @@ function help() {
 function slagify() {
 	local input="$1"
 	# Replace non-alphanumeric characters with underscores
-	local slag=$(echo "$input" | gsed 's/[^a-zA-Z0-9]/_/g')
+	local slag=$(echo "$input" | sed 's/[^a-zA-Z0-9]/_/g')
 	# Ensure it doesn't start with a number
-	slag=$(echo "$slag" | gsed 's/^[0-9]/_&/g')
+	slag=$(echo "$slag" | sed 's/^[0-9]/_&/g')
 	echo "$slag"
 }
 
@@ -378,7 +378,7 @@ function auto_detect_prefix_from_tags() {
 	fi
 
 	# Format tags as comma-separated list
-	local csvTags=$(echo "$all_tags" | tr '\n' ',' | gsed 's/,$//; s/,/, /g')
+	local csvTags=$(echo "$all_tags" | tr '\n' ',' | sed 's/,$//; s/,/, /g')
 	echo:Ver "Auto-detected prefix: ${cl_yellow}${mostUsed}${cl_reset} from tags: ${cl_gray}${csvTags}${cl_reset}"
 
 	echo "${mostUsed}"

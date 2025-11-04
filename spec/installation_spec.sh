@@ -277,6 +277,7 @@ fDescribe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
       The error should include "Error: Previous version file is empty or invalid"
     End
 
@@ -287,6 +288,7 @@ fDescribe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
       The error should include "Error: Previous version file is empty or invalid"
     End
 
@@ -297,6 +299,7 @@ fDescribe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
       The error should include "Error: Previous version commit no longer exists"
     End
 
@@ -312,7 +315,10 @@ fDescribe 'bin/install.e-bash.sh'
 
       When run ./install.e-bash.sh rollback
 
-      # Should not fail with validation error
+      # Should not fail with validation error, but may fail with rollback error
+      The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
+      The output should include "Rolling back to previous version:"
       The error should not include "Error: Previous version file is empty or invalid"
       The error should not include "Error: Previous version commit no longer exists"
     End
@@ -329,7 +335,10 @@ fDescribe 'bin/install.e-bash.sh'
 
       When run ./install.e-bash.sh rollback
 
-      # Should not fail with validation error
+      # Should not fail with validation error, but may fail with rollback error
+      The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
+      The output should include "Rolling back to previous version:"
       The error should not include "Error: Previous version file is empty or invalid"
       The error should not include "Error: Previous version commit no longer exists"
     End
