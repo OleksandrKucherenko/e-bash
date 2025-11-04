@@ -44,6 +44,7 @@ DRY_RUN=false       # Run in dry run mode (no changes)
 FORCE=false         # If true, forcibly overwrite existing .scripts with auto-backup (numbered .scripts.~N~) for global install/upgrade.
 GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
+CONFIRM=false       # Confirm destructive operations (like uninstall)
 ARGS=()             # Clean argument after preparse_args
 
 # Helpers
@@ -143,6 +144,152 @@ function print_usage() {
   echo -e "  $0 --global install     ${GRAY}# Install to user's HOME directory${NC}"
 
   exit "${exit_code}"
+}
+
+## Automated uninstall e-bash scripts
+function repo_uninstall() {
+  echo -e "${RED}=== operation: UNINSTALL ===${NC}"
+
+  # Require --confirm flag for safety
+  if [ "$CONFIRM" != true ]; then
+    echo -e "${YELLOW}This will remove all e-bash files from your repository${NC}"
+    echo -e "${YELLOW}Use --confirm to proceed with uninstall${NC}"
+    echo ""
+    echo -e "${GRAY}Example:${NC}"
+    echo -e "  $0 uninstall --confirm"
+    echo ""
+    return 1
+  fi
+
+  # Handle global uninstall (only remove symlink)
+  if [ "$GLOBAL" = true ]; then
+    echo -e "${BLUE}Uninstalling global e-bash link from current project...${NC}"
+
+    # Check if symlink exists
+    if [ ! -L "${SCRIPTS_DIR}" ]; then
+      echo -e "${RED}Error: No .scripts symlink found in current directory${NC}"
+      echo -e "${GRAY}Nothing to uninstall${NC}"
+      return 1
+    fi
+
+    # Remove symlink
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -f ${SCRIPTS_DIR}${NC}"
+    else
+      rm -f "${SCRIPTS_DIR}"
+      echo -e "${GREEN}Removed .scripts symlink${NC}"
+    fi
+
+    echo -e "${GREEN}Uninstall complete!${NC}"
+    echo -e "${GRAY}Note: Global installation in ${YELLOW}${GLOBAL_INSTALL_DIR}${GRAY} was not removed${NC}"
+    return 0
+  fi
+
+  # Local uninstall
+  echo -e "${BLUE}Uninstalling e-bash scripts from current repository...${NC}"
+
+  # Check if e-bash is installed
+  if ! is_ebash_installed; then
+    echo -e "${RED}Error: e-bash is not installed in this repository${NC}"
+    echo -e "${GRAY}Nothing to uninstall${NC}"
+    return 1
+  fi
+
+  local uninstall_steps=0
+
+  # Remove .scripts directory
+  if [ -d "${SCRIPTS_DIR}" ] || [ -L "${SCRIPTS_DIR}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -rf ${SCRIPTS_DIR}${NC}"
+    else
+      rm -rf "${SCRIPTS_DIR}"
+      echo -e "${GREEN}Removed ${SCRIPTS_DIR} directory${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove previous version file
+  if [ -f "${SCRIPTS_PREV_VERSION}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -f ${SCRIPTS_PREV_VERSION}${NC}"
+    else
+      rm -f "${SCRIPTS_PREV_VERSION}"
+      echo -e "${GREEN}Removed ${SCRIPTS_PREV_VERSION} file${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove e-bash branches
+  if git rev-parse --verify "${SCRIPTS_BRANCH}" >/dev/null 2>&1; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: git branch -D ${SCRIPTS_BRANCH}${NC}"
+    else
+      git branch -D "${SCRIPTS_BRANCH}" >/dev/null 2>&1
+      echo -e "${GREEN}Removed ${SCRIPTS_BRANCH} branch${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  if git rev-parse --verify "${TEMP_BRANCH}" >/dev/null 2>&1; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: git branch -D ${TEMP_BRANCH}${NC}"
+    else
+      git branch -D "${TEMP_BRANCH}" >/dev/null 2>&1
+      echo -e "${GREEN}Removed ${TEMP_BRANCH} branch${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove e-bash remote
+  if git remote | grep -q "^${REMOTE_NAME}$"; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: git remote remove ${REMOTE_NAME}${NC}"
+    else
+      git remote remove "${REMOTE_NAME}"
+      echo -e "${GREEN}Removed ${REMOTE_NAME} remote${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove installation script from bin if it exists
+  if [ -f "${INSTALL_SCRIPT}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -f ${INSTALL_SCRIPT}${NC}"
+    else
+      rm -f "${INSTALL_SCRIPT}"
+      echo -e "${GREEN}Removed ${INSTALL_SCRIPT}${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Clean .envrc if it exists
+  if [ -f ".envrc" ]; then
+    if grep -q "E_BASH\|PATH_add.*${SCRIPTS_DIR}" ".envrc"; then
+      if [ "$DRY_RUN" = true ]; then
+        echo -e "${CYAN}dry run: clean .envrc configuration${NC}"
+      else
+        # Remove E_BASH related lines
+        sed -i.bak '/E_BASH/d; /PATH_add.*\.scripts/d; /_setup_gnu_symbolic_links/d' ".envrc"
+        rm -f ".envrc.bak"
+        echo -e "${GREEN}Cleaned .envrc configuration${NC}"
+      fi
+      ((uninstall_steps++))
+    fi
+  fi
+
+  if [ $uninstall_steps -eq 0 ]; then
+    echo -e "${YELLOW}No e-bash files found to remove${NC}"
+  else
+    echo -e "${GREEN}Uninstall complete!${NC}"
+    echo -e "${GRAY}Removed $uninstall_steps e-bash component(s)${NC}"
+  fi
+
+  # Note about shell RC files
+  echo ""
+  echo -e "${GRAY}Note: Shell RC files (~/.bashrc, ~/.zshrc) were not modified${NC}"
+  echo -e "${GRAY}You may have E_BASH exports that are still in use by other projects${NC}"
+
+  return 0
 }
 
 ## Print manual instructions how to uninstall e-bash scripts
@@ -1468,7 +1615,7 @@ function main_ebash() {
     repo_versions
     ;;
   "uninstall")
-    print_manual_uninstall
+    repo_uninstall
     ;;
   "help" | "-h" | "--help")
     print_usage $EXIT_OK
@@ -1497,6 +1644,8 @@ function preparse_args() {
       CREATE_SYMLINK=true && unset 'args[i]'
     elif [[ "$key" == "--no-create-symlink" ]]; then
       CREATE_SYMLINK=false && unset 'args[i]'
+    elif [[ "$key" == "--confirm" ]]; then
+      CONFIRM=true && unset 'args[i]'
     elif [[ "$key" == "--help" ]]; then
       print_usage $EXIT_OK
     fi
