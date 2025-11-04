@@ -11,8 +11,8 @@
 if type logger | grep -q "is a function"; then return 0; fi
 
 # global helpers
-export __SESSION=$(uuidgen)
-export __TTY=$(tty)
+export __SESSION=$(uuidgen 2>/dev/null || echo "session-$$-$RANDOM")
+export __TTY=$(tty 2>/dev/null || echo "notty")
 
 # declare global associative array
 if [[ -z $TAGS ]]; then declare -g -A TAGS; fi

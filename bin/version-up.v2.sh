@@ -8,6 +8,9 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# Set TERM if not defined (required for tput commands)
+if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
+
 # For help:
 #   ./version-up.v2.sh --help
 
@@ -560,9 +563,9 @@ function compose() {
 
 # print error message about conflict with existing tag and proposed tag
 function error_conflict_tag() {
-	local red=$(tput setaf 1)
-	local end=$(tput sgr0)
-	local yellow=$(tput setaf 3)
+	local red=$(tput setaf 1 2>/dev/null || echo "")
+	local end=$(tput sgr0 2>/dev/null || echo "")
+	local yellow=$(tput setaf 3 2>/dev/null || echo "")
 
 	echo -e "${red}ERROR:${end} "
 	echo -e "${red}ERROR:${end} Found conflict with existing tag ${yellow}$(compose)${end} / $PROPOSED_HASH"

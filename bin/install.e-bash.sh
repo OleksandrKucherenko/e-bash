@@ -7,6 +7,9 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# Set TERM if not defined (required for tput commands)
+if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
+
 # fail if any error is encountered
 set -e
 shopt -s extdebug # enable extended debugging
@@ -27,17 +30,17 @@ readonly __REPO_V1="v1.0.0"
 readonly __GLOBAL_DIR=".e-bash"
 readonly GLOBAL_INSTALL_DIR="${HOME}/${__GLOBAL_DIR}"
 
-# Colors for better readability. should we use tput instead?
-readonly RED=$(tput setaf 1)    # red
-readonly GREEN=$(tput setaf 2)  # green
-readonly YELLOW=$(tput setaf 3) # yellow
-readonly BLUE=$(tput setaf 4)   # blue
-readonly PURPLE=$(tput setaf 5) # purple
-readonly CYAN=$(tput setaf 6)   # cyan
-readonly GRAY=$(tput setaf 8)   # dark gray
-readonly NC=$(tput sgr0)        # No Color
-readonly ITALIC=$(tput sitm)    # Italic Style
-readonly NOI=$(tput ritm)       # No Italic Style
+# Colors for better readability. Suppress stderr for test environments
+readonly RED=$(tput setaf 1 2>/dev/null || echo "")    # red
+readonly GREEN=$(tput setaf 2 2>/dev/null || echo "")  # green
+readonly YELLOW=$(tput setaf 3 2>/dev/null || echo "") # yellow
+readonly BLUE=$(tput setaf 4 2>/dev/null || echo "")   # blue
+readonly PURPLE=$(tput setaf 5 2>/dev/null || echo "") # purple
+readonly CYAN=$(tput setaf 6 2>/dev/null || echo "")   # cyan
+readonly GRAY=$(tput setaf 8 2>/dev/null || echo "")   # dark gray
+readonly NC=$(tput sgr0 2>/dev/null || echo "")        # No Color
+readonly ITALIC=$(tput sitm 2>/dev/null || echo "")    # Italic Style
+readonly NOI=$(tput ritm 2>/dev/null || echo "")       # No Italic Style
 
 # Global flags.
 DRY_RUN=false       # Run in dry run mode (no changes)
