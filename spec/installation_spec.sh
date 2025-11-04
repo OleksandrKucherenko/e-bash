@@ -439,6 +439,42 @@ fDescribe 'bin/install.e-bash.sh'
       # Dump
     End
 
+    It 'should export correct E_BASH path for master version in shell rc'
+      touch "$TEMP_HOME/.${SHELL##*/}rc"
+
+      # Install master (default version)
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
+
+      The status should be success
+      The output should include "Installation complete!"
+      The error should be present # logs output
+
+      The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
+      # For master version, path should be ${HOME}/.e-bash/.scripts
+      The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should include 'export E_BASH="${HOME}/.e-bash/.scripts"'
+      # Should NOT include .versions/master in the path
+      The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should not include '.versions/master'
+
+      # Dump
+    End
+
+    It 'should export versioned E_BASH path for tagged version in shell rc'
+      touch "$TEMP_HOME/.${SHELL##*/}rc"
+
+      # Install specific version
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global
+
+      The status should be success
+      The output should include "Installation complete!"
+      The error should be present # logs output
+
+      The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
+      # For tagged version, path should include .versions/{version}
+      The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should include 'export E_BASH="${HOME}/.e-bash/.versions/v1.0.0/.scripts"'
+
+      # Dump
+    End
+
     It 'should support NO symlink creation with --no-create-symlink option'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global --no-create-symlink
 

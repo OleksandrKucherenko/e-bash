@@ -664,8 +664,13 @@ function post_installation_steps_global() {
   local shell="${SHELL##*/}"
   local shellrc="${HOME}/.${shell}rc"
 
-  # TODO: for 'master' version we should skip '${__WORKTREES}/${version}' part
-  local ver_dir="\${HOME}/${__GLOBAL_DIR}/${__WORKTREES}/${version}"
+  # For 'master' version, use direct path; for tagged versions, use versioned path
+  local ver_dir
+  if [ "$version" = "master" ]; then
+    ver_dir="\${HOME}/${__GLOBAL_DIR}"
+  else
+    ver_dir="\${HOME}/${__GLOBAL_DIR}/${__WORKTREES}/${version}"
+  fi
 
   # Configure E_BASH environment variable
   local env_line="export E_BASH=\"${ver_dir}/${SCRIPTS_DIR}\""
