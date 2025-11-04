@@ -31,7 +31,7 @@ function print:emoji:line() {
     local emojis=("$@") emoji
 
     for emoji in "${emojis[@]}"; do
-        printf:Emoji " %s " "$emoji"
+        printf:Emoji " [%s] " "$emoji"
     done
     echo:Emoji ""
 }
