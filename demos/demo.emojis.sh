@@ -24,7 +24,7 @@ function print:category() {
     local category="$1"
 
     echo:Emoji ""
-    printf:Emoji "%s%s%s%s\n" "${cl_bold}" "${cl_cyan}" "$category" "${cl_reset}"
+    printf:Emoji "%s%s%s%s\n" "${st_bold}" "${cl_cyan}" "$category" "${cl_reset}"
 }
 
 function print:emoji:line() {
