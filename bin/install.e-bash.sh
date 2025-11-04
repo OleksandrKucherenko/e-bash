@@ -1158,9 +1158,29 @@ function get_previous_version() {
   # shellcheck disable=SC2155
   local previous_version=$(cat "${SCRIPTS_PREV_VERSION}")
 
-  # FIXME: Should validate that previous_version is a valid commit hash/tag
-  echo -e "${BLUE}Found previous version: $previous_version${NC}" >&2
+  # Validate that previous_version is not empty and has valid format
+  if [ -z "$previous_version" ] || [ "${#previous_version}" -lt 6 ]; then
+    echo -e "${RED}Error: Previous version file is empty or invalid${NC}" >&2
+    echo -e "${GRAY}File: ${SCRIPTS_PREV_VERSION}${NC}" >&2
+    return 1
+  fi
 
+  # Validate format: should be alphanumeric with optional dots, dashes, underscores (for tags/hashes)
+  if ! [[ "$previous_version" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo -e "${RED}Error: Previous version file is empty or invalid${NC}" >&2
+    echo -e "${GRAY}Invalid format: ${previous_version}${NC}" >&2
+    return 1
+  fi
+
+  # Validate that the commit/tag exists in git
+  if ! git rev-parse --verify "${previous_version}^{commit}" >/dev/null 2>&1; then
+    echo -e "${RED}Error: Previous version commit no longer exists${NC}" >&2
+    echo -e "${GRAY}Version: ${previous_version}${NC}" >&2
+    echo -e "${YELLOW}The commit may have been garbage collected or the repository history was rewritten${NC}" >&2
+    return 1
+  fi
+
+  echo -e "${BLUE}Found previous version: $previous_version${NC}" >&2
   echo "$previous_version"
 }
 
@@ -1434,8 +1454,12 @@ function repo_rollback() {
   check_previous_version_exists
   if [ $? -ne 0 ]; then return 1; fi
 
-  # Get the previous version
+  # Get the previous version (with validation)
   previous_version=$(get_previous_version)
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}Cannot proceed with rollback${NC}"
+    return 1
+  fi
 
   # Perform the rollback
   perform_rollback "$previous_version"
