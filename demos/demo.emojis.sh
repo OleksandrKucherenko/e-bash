@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-11-04
@@ -6,22 +7,33 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+DEBUG=${DEBUG:-"emoji,-loader,-ver,-parser"} # enable emoji logger, disable internals
+
+# shellcheck source=../.scripts/_colors.sh
+source /dev/null # trick shellcheck
+
+# include logger and colors support
+# shellcheck disable=SC1090 source=../.scripts/_commons.sh
+source "$E_BASH/_logger.sh"
+
+# register loggers
+logger emoji "$@" && logger:redirect emoji ">&1"
+logger hint "$@" && logger:prefix hint "${cl_gray}" && logger:redirect hint ">&1"
+
 function print:category() {
     local category="$1"
-    local reset=$(printf "\033[0m")
-    local bold=$(printf "\033[1m")
-    local cyan=$(printf "\033[36m")
 
-    echo ""
-    printf "%s%s%s%s\n" "$bold" "$cyan" "$category" "$reset"
+    echo:Emoji ""
+    printf:Emoji "%s%s%s%s\n" "${cl_bold}" "${cl_cyan}" "$category" "${cl_reset}"
 }
 
 function print:emoji:line() {
-    local emojis=("$@")
+    local emojis=("$@") emoji
+
     for emoji in "${emojis[@]}"; do
-        printf " %s " "$emoji"
+        printf:Emoji " %s " "$emoji"
     done
-    echo ""
+    echo:Emoji ""
 }
 
 function report:emojis() {
@@ -153,11 +165,11 @@ function report:emojis() {
 clear
 report:emojis
 
-echo ""
-echo "Hints:"
-echo "  - Simply copy and paste the emoji you need from above"
-echo "  - Most modern terminals support emoji rendering"
-echo "  - To copy: select the emoji with your mouse and use Ctrl+Shift+C (or Cmd+C on Mac)"
-echo "  - To paste: use Ctrl+Shift+V (or Cmd+V on Mac)"
-echo "  - If emojis don't display correctly, ensure your terminal supports UTF-8 encoding"
-echo ""
+echo:Emoji ""
+echo:Hint "Hints:"
+echo:Hint "  - Simply copy and paste the emoji you need from above"
+echo:Hint "  - Most modern terminals support emoji rendering"
+echo:Hint "  - To copy: select the emoji with your mouse and use Ctrl+Shift+C (or Cmd+C on Mac)"
+echo:Hint "  - To paste: use Ctrl+Shift+V (or Cmd+V on Mac)"
+echo:Hint "  - If emojis don't display correctly, ensure your terminal supports UTF-8 encoding"
+echo:Emoji ""
