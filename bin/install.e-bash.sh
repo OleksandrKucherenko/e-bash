@@ -342,6 +342,12 @@ function check_prerequisites() {
     exit 1
   fi
 
+  # Check write permissions in current directory
+  if ! check_write_permissions "."; then
+    echo -e "${RED}Cannot proceed without write permissions${NC}" >&2
+    exit 1
+  fi
+
   # is any broken symlinks exist
   if [ -L "$SCRIPTS_DIR" ] && [ ! -f "$SCRIPTS_DIR/_colors.sh" ]; then
     # show user the resolution of the symbolic link
@@ -470,6 +476,33 @@ function is_ebash_installed() {
   else
     return 1 # false
   fi
+}
+
+## Check if directory has write permissions
+function check_write_permissions() {
+  local test_dir="${1:-.}"
+
+  # First check if directory exists and is writable
+  if [ ! -w "$test_dir" ]; then
+    echo -e "${RED}Error: Insufficient permissions to write to directory${NC}" >&2
+    echo -e "${GRAY}Directory: $(cd "$test_dir" 2>/dev/null && pwd || echo "$test_dir")${NC}" >&2
+    echo -e "${YELLOW}Please check directory permissions and try again${NC}" >&2
+    echo -e "${GRAY}Hint: chmod +w .${NC}" >&2
+    return 1
+  fi
+
+  # Also test if we can actually create a file
+  local test_file="${test_dir}/.e-bash-permission-test-$$"
+  if ! touch "$test_file" 2>/dev/null; then
+    echo -e "${RED}Error: Insufficient permissions to write to directory${NC}" >&2
+    echo -e "${GRAY}Directory: $(cd "$test_dir" 2>/dev/null && pwd || echo "$test_dir")${NC}" >&2
+    echo -e "${YELLOW}Please check directory permissions and try again${NC}" >&2
+    return 1
+  fi
+
+  # Clean up test file
+  rm -f "$test_file" 2>/dev/null
+  return 0
 }
 
 ## Save the current commit hash for potential rollback

@@ -335,6 +335,79 @@ fDescribe 'bin/install.e-bash.sh'
     End
   End
 
+  # Test permission error handling
+  Describe 'Permission Errors:'
+    make_readonly() {
+      chmod -w .
+    }
+
+    restore_write() {
+      chmod +w .
+    }
+
+    After 'restore_write; cleanup_temp_repo'
+
+    xIt 'should detect read-only repository during install'
+      # Skipped: Permission tests require non-root user to test properly
+      # Root user bypasses permission checks
+      temp_repo
+      git_init
+      git_config
+      cp_install
+      make_readonly
+
+      When run ./install.e-bash.sh install
+
+      The status should be failure
+      The error should include "Error:"
+      The error should include "permission"
+    End
+
+    xIt 'should detect read-only repository during uninstall'
+      # Skipped: Permission tests require non-root user to test properly
+      temp_repo
+      git_init
+      git_config
+      cp_install
+      # Create .scripts to simulate installation
+      mkdir .scripts
+      touch .scripts/test.sh
+      make_readonly
+
+      When run ./install.e-bash.sh uninstall --confirm
+
+      The status should be failure
+      The error should include "Error:"
+    End
+
+    xIt 'should provide helpful error message for permission denied'
+      # Skipped: Permission tests require non-root user to test properly
+      temp_repo
+      git_init
+      git_config
+      cp_install
+      make_readonly
+
+      When run ./install.e-bash.sh install
+
+      The status should be failure
+      # Should suggest checking permissions
+      The error should include "permission"
+    End
+
+    # Verification test that permission check function exists
+    It 'should have check_write_permissions function defined in script'
+      temp_repo
+      cp_install
+
+      # Check that the function is defined in the script
+      When run grep -n "function check_write_permissions" ./install.e-bash.sh
+
+      The status should be success
+      The output should include "check_write_permissions"
+    End
+  End
+
   # Scenario 5: Viewing available versions of e-Bash
   Describe 'Versions:'
 
