@@ -7,7 +7,7 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-DEBUG=${DEBUG:-"emoji,-loader,-ver,-parser"} # enable emoji logger, disable internals
+DEBUG=${DEBUG:-"emoji,hint,-loader,-ver,-parser"} # enable emoji and hint loggers, disable internals
 
 # shellcheck source=../.scripts/_colors.sh
 source /dev/null # trick shellcheck
@@ -19,6 +19,46 @@ source "$E_BASH/_logger.sh"
 # register loggers
 logger emoji "$@" && logger:redirect emoji ">&1"
 logger hint "$@" && logger:prefix hint "${cl_gray}" && logger:redirect hint ">&1"
+
+function detect:terminal:capabilities() {
+    local locale_utf8 term_type term_program has_color_emoji
+
+    # Check locale for UTF-8 support
+    locale_utf8=$(locale | grep -i "utf-8" | wc -l)
+
+    # Get terminal type
+    term_type="${TERM:-unknown}"
+    term_program="${TERM_PROGRAM:-unknown}"
+
+    # Check if terminal is known to support color emojis well
+    has_color_emoji=0
+    case "$term_program" in
+        iTerm.app|WezTerm|Alacritty) has_color_emoji=1 ;;
+    esac
+
+    case "$term_type" in
+        *256color*|*truecolor*|xterm-kitty) has_color_emoji=1 ;;
+    esac
+
+    # Report findings
+    echo:Hint "${cl_cyan}Terminal Detection:${cl_reset}"
+    echo:Hint "  TERM: ${cl_yellow}${term_type}${cl_reset}"
+    [[ "$term_program" != "unknown" ]] && echo:Hint "  TERM_PROGRAM: ${cl_yellow}${term_program}${cl_reset}"
+    echo:Hint "  UTF-8 Locale: ${cl_yellow}$([[ $locale_utf8 -gt 0 ]] && echo "Yes" || echo "No")${cl_reset}"
+    echo:Hint "  Emoji Support: ${cl_yellow}$([[ $has_color_emoji -eq 1 ]] && echo "Good" || echo "Limited")${cl_reset}"
+    echo:Hint ""
+
+    return $has_color_emoji
+}
+
+function get:emoji:width() {
+    local emoji="$1" width
+
+    # Use printf with field width to estimate character width
+    # Emojis that render properly typically take 2 columns
+    width=$(printf "%s" "$emoji" | wc -m)
+    echo "$width"
+}
 
 function print:category() {
     local category="$1"
@@ -39,12 +79,14 @@ function print:emoji:line() {
 function report:emojis() {
     # Smileys & Emotion
     print:category "😀 Smileys & Emotion"
-    print:emoji:line 😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 🫠 😉 😊 😇
+    print:emoji:line 😀 😃 😄 😁 😆 😅 🤣 😂 🙂 🙃 😉 😊 😇
+    echo:Hint "  ${cl_gray}# Newer emojis (Unicode 14+): 🫠 🫢 🫣 🫡 🫥 🫤 🥹 may not render on older terminals${cl_reset}"
     print:emoji:line 🥰 😍 🤩 😘 😗 😚 😙 🥲 😋 😛 😜 🤪 😝 🤑
-    print:emoji:line 🤗 🤭 🫢 🫣 🤫 🤔 🫡 🤐 🤨 😐 😑 😶 🫥 😏
-    print:emoji:line 😒 🙄 😬 😮‍💨 🤥 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢
-    print:emoji:line 🤮 🤧 🥵 🥶 😶‍🌫️ 😵 😵‍💫 🤯 🤠 🥳 🥸 😎 🤓 🧐
-    print:emoji:line 😕 🫤 😟 🙁 😮 😯 😲 😳 🥺 🥹 😦 😧 😨 😰
+    print:emoji:line 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏
+    print:emoji:line 😒 🙄 😬 🤥 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢
+    print:emoji:line 🤮 🤧 🥵 🥶 😵 🤯 🤠 🥳 🥸 😎 🤓 🧐
+    echo:Hint "  ${cl_gray}# Compound emojis with ZWJ sequences: 😮‍💨 😶‍🌫️ 😵‍💫 need advanced font support${cl_reset}"
+    print:emoji:line 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰
     print:emoji:line 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠
     print:emoji:line 🤬 😈 👿 💀 💩 🤡 👹 👺 👻 👽 👾 🤖 💯
 
@@ -163,6 +205,11 @@ function report:emojis() {
 
 # Main execution
 clear
+
+# Detect terminal capabilities first
+detect:terminal:capabilities
+terminal_has_good_emoji=$?
+
 report:emojis
 
 echo:Emoji ""
