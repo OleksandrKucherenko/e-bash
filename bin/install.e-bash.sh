@@ -1225,6 +1225,7 @@ function repo_upgrade() {
 
 ## Rollback to previous version
 function repo_rollback() {
+  local target_version="${1:-}"
   local previous_version=""
   local rollback_status=0
 
@@ -1232,12 +1233,55 @@ function repo_rollback() {
 
   echo -e "${RED}=== operation: ROLLBACK ===${NC}"
 
-  # If  used --global, rollback is not allowed, only upgrade to a specific version is allowed
+  # Handle global rollback differently
   if [ "$GLOBAL" = true ]; then
-    echo -e "${YELLOW}Rollback is not allowed for global installation.${NC}"
-    echo -e "Use instead: $0 --global upgrade ${version}"
-    exit $EXIT_NO
+    echo -e "${BLUE}Rolling back global e-bash installation...${NC}"
+
+    # Check if global installation exists
+    if [ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
+      echo -e "${RED}Error: Global e-bash installation not found at ${GLOBAL_INSTALL_DIR}${NC}"
+      echo -e "${YELLOW}Run: $0 install --global${NC}"
+      return 1
+    fi
+
+    # Require version to be specified for global rollback
+    if [ -z "$target_version" ] || [ "$target_version" = "master" ]; then
+      # If no version specified, try to use master as default
+      if [ -z "$target_version" ]; then
+        echo -e "${YELLOW}No version specified. Using 'master' as default.${NC}"
+        target_version="master"
+      fi
+    fi
+
+    # Validate version exists
+    if [ "$target_version" != "master" ]; then
+      # Check if worktree exists for tagged version
+      if [ ! -d "${GLOBAL_INSTALL_DIR}/${__WORKTREES}/${target_version}" ]; then
+        # Try to create it
+        pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || return 1
+
+        # Check if tag exists in git
+        if ! git rev-parse --verify "${target_version}" >/dev/null 2>&1; then
+          popd &>/dev/null
+          echo -e "${RED}Error: Version ${target_version} not found in global installation${NC}"
+          echo -e "${YELLOW}Run: $0 versions --global to see available versions${NC}"
+          return 1
+        fi
+
+        popd &>/dev/null
+      fi
+    fi
+
+    # Perform rollback by updating symlink
+    echo -e "${BLUE}Switching to version: ${PURPLE}${target_version}${NC}"
+    bind_ebash_global_version "$target_version"
+
+    echo -e "${GREEN}Rollback complete!${NC}"
+    echo -e "The e-bash scripts have been rolled back to version ${PURPLE}${target_version}${NC}"
+    return 0
   fi
+
+  # Local rollback (existing logic)
 
   # Check if previous version exists
   check_previous_version_exists
@@ -1418,7 +1462,7 @@ function main_ebash() {
     repo_upgrade "$version"
     ;;
   "rollback")
-    repo_rollback
+    repo_rollback "$version"
     ;;
   "versions")
     repo_versions

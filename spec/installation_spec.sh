@@ -566,17 +566,76 @@ fDescribe 'bin/install.e-bash.sh'
       # Dump
     End
 
-    xIt 'should rollback global installation'
-      # First install
-      install_global
+    Describe 'Global Rollback:'
+      It 'should rollback from master to previous version'
+        # Setup: Install v1.0.0, then upgrade to master
+        mkdir -p "$TEMP_HOME/repo" && cd "$TEMP_HOME/repo" || return 1
+        git_init
+        git_master_to_main
+        cp_install
 
-      # Then upgrade to create a previous version
-      upgrade_global
+        # Install v1.0.0 with symlink
+        env HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global 2>/dev/null >/dev/null
 
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback --global
+        # Upgrade to master
+        env HOME="$TEMP_HOME" ./install.e-bash.sh upgrade master --global 2>/dev/null >/dev/null
 
-      The status should be success
-      The output should include "Successfully rolled back global e-bash installation"
+        # Rollback should go back to v1.0.0
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback v1.0.0 --global
+
+        The status should be success
+        The output should include "Rollback complete"
+        # Symlink should point back to v1.0.0
+        The result of function no_colors_output should include ".versions/v1.0.0/.scripts"
+      End
+
+      It 'should rollback from versioned to master'
+        # Setup: Install master, then upgrade to v1.0.0
+        mkdir -p "$TEMP_HOME/repo2" && cd "$TEMP_HOME/repo2" || return 1
+        git_init
+        git_master_to_main
+        cp_install
+
+        env HOME="$TEMP_HOME" ./install.e-bash.sh install master --global 2>/dev/null >/dev/null
+        env HOME="$TEMP_HOME" ./install.e-bash.sh upgrade v1.0.0 --global 2>/dev/null >/dev/null
+
+        # Rollback to master
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback master --global
+
+        The status should be success
+        The output should include "Rollback complete"
+        # Symlink should point to master
+        The result of function no_colors_output should include "/.e-bash/.scripts"
+        The result of function no_colors_output should not include ".versions"
+      End
+
+      It 'should show error when global installation not found'
+        mkdir -p "$TEMP_HOME/repo3" && cd "$TEMP_HOME/repo3" || return 1
+        git_init
+        git_master_to_main
+        cp_install
+
+        # Try rollback without global installation
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback master --global
+
+        The status should be failure
+        The output should include "Error: Global e-bash installation not found"
+      End
+
+      It 'should show error when version not available'
+        mkdir -p "$TEMP_HOME/repo4" && cd "$TEMP_HOME/repo4" || return 1
+        git_init
+        git_master_to_main
+        cp_install
+
+        env HOME="$TEMP_HOME" ./install.e-bash.sh install master --global 2>/dev/null >/dev/null
+
+        # Try to rollback to non-existent version
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback v99.99.99 --global
+
+        The status should be failure
+        The output should include "Error: Version v99.99.99 not found"
+      End
     End
   End
 End
