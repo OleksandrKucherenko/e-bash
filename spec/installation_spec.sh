@@ -526,6 +526,13 @@ Describe 'bin/install.e-bash.sh'
       # FIXME: should we rollback to the initial state of repo? Uncomment Dump to preview.
       # Dump
     End
+
+    It 'should fail with clear error for non-existent version during validation'
+      When run ./install.e-bash.sh install v999.999.999
+
+      The status should be failure
+      The error should be present # logs output should have error message
+    End
   End
 
   # Test helper functions
