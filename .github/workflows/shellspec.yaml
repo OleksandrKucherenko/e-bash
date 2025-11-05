@@ -24,27 +24,19 @@ jobs:
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           mkdir -p "${HOME}/.local/bin"
-      - name: Auto-install dependencies using CI mode
+      - name: Install DIRENV
         run: |
-          export E_BASH="$(pwd)/.scripts"
-          # Source dependencies script - CI auto-install mode will handle all installations
-          source "$PWD/.scripts/_dependencies.sh"
-          # Load project dependencies from .envrc (excluding direnv-specific parts)
-          dependency bash "5.*.*" "brew install bash"
-          dependency git "2.*.*" "brew install git"
-          dependency git-lfs "3.*.*" "brew install git-lfs"
-          dependency shellspec "0.28.*" "curl -fsSL https://git.io/shellspec | sh -s ${{ env.SHELLSPEC_VERSION }} --yes"
-          dependency shellcheck "0.10.*" "curl -sS https://webi.sh/shellcheck | sh"
-          dependency shfmt "3.*.*" "curl -sS https://webi.sh/shfmt | sh"
-          dependency ggrep "3.*" "brew install grep"
-          dependency gsed "4.*" "brew install gnu-sed"
-          dependency gawk "5.*.*" "brew install gawk"
-          dependency timeout "9.*" "brew install coreutils"
-          dependency jq "1.[6-9].*" "brew install jq"
-          dependency kcov "43" "brew install kcov"
+          # Install direnv for macOS
+          brew install direnv
+      - name: Setup project dependencies using DIRENV and CI auto-install mode
+        run: |
+          # Allow .envrc execution and export environment to GitHub Actions
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+          echo "Dependencies loaded via DIRENV with CI auto-install mode"
       - name: Run shellspec Tests
         run: |
-          export E_BASH="$(pwd)/.scripts"
+          # Environment variables from .envrc are now available
           shellspec
   
   shellspec-ubuntu:
@@ -66,33 +58,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y kcov uuid-runtime curl
-      - name: Auto-install dependencies using CI mode
+      - name: Install DIRENV
         run: |
-          export E_BASH="$(pwd)/.scripts"
-          # Source dependencies script - CI auto-install mode will handle all installations
-          source "$PWD/.scripts/_dependencies.sh"
-          # Load project dependencies (Ubuntu-specific install commands)
-          dependency bash "5.*.*" "sudo apt-get install -y bash"
-          dependency git "2.*.*" "sudo apt-get install -y git"
-          dependency git-lfs "3.*.*" "sudo apt-get install -y git-lfs"
-          dependency shellspec "0.28.*" "curl -fsSL https://git.io/shellspec | sh -s -- --yes"
-          dependency shellcheck "0.10.*" "curl -sS https://webi.sh/shellcheck | sh"
-          dependency shfmt "3.*.*" "curl -sS https://webi.sh/shfmt | sh"
-          dependency jq "1.[6-9].*" "sudo apt-get install -y jq"
-          # GNU tools are already available on Ubuntu, just verify versions
-          dependency grep "3.*" "sudo apt-get install -y grep"
-          dependency sed "4.*" "sudo apt-get install -y sed"
-          dependency gawk "5.*.*" "sudo apt-get install -y gawk"
-          dependency timeout "9.*" "sudo apt-get install -y coreutils"
-      - name: Setup GNU tools symbolic links
+          # Install direnv for Ubuntu
+          curl -sfL https://direnv.net/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Setup project dependencies using DIRENV and CI auto-install mode
         run: |
-          export E_BASH="$(pwd)/.scripts"
-          # register aliases for GNU tools
-          source "$E_BASH/_setup_gnu_symbolic_links.sh"
-          export PATH="$(pwd)/bin/gnubin:$PATH"
+          # Allow .envrc execution and export environment to GitHub Actions
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+          echo "Dependencies loaded via DIRENV with CI auto-install mode"
       - name: Run shellspec tests
         run: |
-          export E_BASH="$(pwd)/.scripts"
-          export PATH="$(pwd)/bin/gnubin:$PATH"
-          # run tests
+          # Environment variables from .envrc are now available (includes GNU tools setup)
           shellspec
