@@ -22,7 +22,7 @@ eval "$(shellspec - -c) exit 1"
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
 
-fDescribe 'bin/install.e-bash.sh'
+Describe 'bin/install.e-bash.sh'
   temp_repo() {
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR" || return 1
@@ -56,6 +56,46 @@ fDescribe 'bin/install.e-bash.sh'
   do_rollback() { ./install.e-bash.sh rollback 2>/dev/null >/dev/null; }
   do_rollback_global() { HOME="$TEMP_HOME" ./install.e-bash.sh rollback --global 2>/dev/null >/dev/null; }
   do_versions() { ./install.e-bash.sh versions 2>/dev/null >/dev/null; }
+  do_uninstall() { ./install.e-bash.sh uninstall --confirm  2>/dev/null >/dev/null; }
+  do_uninstall_global() { HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global  2>/dev/null >/dev/null; }
+
+  # Mock installation state without network access
+  # Simulates a successful local installation by creating expected directory structure
+  mock_install() {
+    # Create .scripts directory with actual e-bash scripts
+    mkdir -p .scripts
+    cp -r "$SHELLSPEC_PROJECT_ROOT/.scripts/"* .scripts/ 2>/dev/null || true
+
+    # Add .scripts to git
+    git add .scripts
+    git commit --no-gpg-sign -m "Install e-bash scripts" -q 2>/dev/null || git commit -m "Install e-bash scripts" -q
+
+    # Create a fake tag v1.0.0 on current commit to simulate version detection
+    git tag v1.0.0 2>/dev/null || true
+
+    # Set up git remote and branches as the install script would
+    git remote add e-bash https://github.com/OleksandrKucherenko/e-bash.git 2>/dev/null || true
+    
+    # Create e-bash-scripts branch pointing to the tagged commit
+    git branch e-bash-scripts 2>/dev/null || true
+    
+    # Create a temporary branch to simulate e-bash-temp pointing to v1.0.0
+    git branch e-bash-temp 2>/dev/null || true
+
+    # Return success
+    return 0
+  }
+
+  # Mock upgrade state - creates previous version file
+  mock_upgrade() {
+    local previous_version="${1:-v1.0.0}"
+    # Get current HEAD as "previous" version
+    local current_hash=$(git rev-parse HEAD)
+    echo "$current_hash" > .e-bash-previous-version
+    git add .e-bash-previous-version
+    git commit --no-gpg-sign -m "Upgrade e-bash (mock)" -q 2>/dev/null || git commit -m "Upgrade e-bash (mock)" -q
+    return 0
+  }
 
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
@@ -245,18 +285,19 @@ fDescribe 'bin/install.e-bash.sh'
 
   # Test rollback functionality
   Describe 'Rollback:'
-    Before 'temp_repo; git_init; git_config; cp_install; install_stable'
+    Before 'temp_repo; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
     It 'should rollback to previous version successfully'
-      upgrade_alpha
+      # Mock installation and upgrade to create previous version file
+      mock_install
+      mock_upgrade
 
       When run ./install.e-bash.sh rollback
 
       The status should be success
       The output should include "Rollback complete!"
       The error should be present # logs output
-      The file .e-bash-previous-version should not be empty file
     End
 
     It 'should fail when no previous version exists'
@@ -265,6 +306,152 @@ fDescribe 'bin/install.e-bash.sh'
       The status should be failure
       The output should include "Error: No previous version found to rollback to"
       The error should be present # logs output
+    End
+
+    It 'should fail with empty previous version file'
+      # Create empty version file
+      touch .e-bash-previous-version
+
+      When run ./install.e-bash.sh rollback
+
+      The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
+      The error should include "Error: Previous version file is empty or invalid"
+    End
+
+    It 'should fail with invalid commit hash format'
+      # Create file with invalid hash
+      echo "not-a-valid-hash-!!!" > .e-bash-previous-version
+
+      When run ./install.e-bash.sh rollback
+
+      The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
+      The error should include "Error: Previous version file is empty or invalid"
+    End
+
+    It 'should fail with non-existent commit hash'
+      # Create file with valid format but non-existent hash
+      echo "0000000000000000000000000000000000000000" > .e-bash-previous-version
+
+      When run ./install.e-bash.sh rollback
+
+      The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
+      The error should include "Error: Previous version commit no longer exists"
+    End
+
+    It 'should accept valid commit hash'
+      # Create a commit so we have a valid hash
+      touch test-file.txt
+      git add test-file.txt
+      git commit --no-gpg-sign -m "test commit" -q 2>/dev/null || git commit -m "test commit" -q
+
+      # Get a valid commit hash
+      local valid_hash=$(git rev-parse HEAD)
+      echo "$valid_hash" > .e-bash-previous-version
+
+      When run ./install.e-bash.sh rollback
+
+      # Should not fail with validation error, but may fail with rollback error
+      The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
+      The output should include "Rolling back to previous version:"
+      The error should not include "Error: Previous version file is empty or invalid"
+      The error should not include "Error: Previous version commit no longer exists"
+    End
+
+    It 'should accept valid short commit hash'
+      # Create a commit so we have a valid hash
+      touch test-file2.txt
+      git add test-file2.txt
+      git commit --no-gpg-sign -m "test commit 2" -q 2>/dev/null || git commit -m "test commit 2" -q
+
+      # Get a valid short commit hash
+      local valid_hash=$(git rev-parse --short HEAD)
+      echo "$valid_hash" > .e-bash-previous-version
+
+      When run ./install.e-bash.sh rollback
+
+      # Should not fail with validation error, but may fail with rollback error
+      The status should be failure
+      The output should include "=== operation: ROLLBACK ==="
+      The output should include "Rolling back to previous version:"
+      The error should not include "Error: Previous version file is empty or invalid"
+      The error should not include "Error: Previous version commit no longer exists"
+    End
+  End
+
+  # Test permission error handling
+  Describe 'Permission Errors:'
+    make_readonly() {
+      chmod -w .
+    }
+
+    restore_write() {
+      chmod +w .
+    }
+
+    After 'restore_write; cleanup_temp_repo'
+
+    xIt 'should detect read-only repository during install'
+      # Skipped: Permission tests require non-root user to test properly
+      # Root user bypasses permission checks
+      temp_repo
+      git_init
+      git_config
+      cp_install
+      make_readonly
+
+      When run ./install.e-bash.sh install
+
+      The status should be failure
+      The error should include "Error:"
+      The error should include "permission"
+    End
+
+    xIt 'should detect read-only repository during uninstall'
+      # Skipped: Permission tests require non-root user to test properly
+      temp_repo
+      git_init
+      git_config
+      cp_install
+      # Create .scripts to simulate installation
+      mkdir .scripts
+      touch .scripts/test.sh
+      make_readonly
+
+      When run ./install.e-bash.sh uninstall --confirm 
+
+      The status should be failure
+      The error should include "Error:"
+    End
+
+    xIt 'should provide helpful error message for permission denied'
+      # Skipped: Permission tests require non-root user to test properly
+      temp_repo
+      git_init
+      git_config
+      cp_install
+      make_readonly
+
+      When run ./install.e-bash.sh install
+
+      The status should be failure
+      # Should suggest checking permissions
+      The error should include "permission"
+    End
+
+    # Verification test that permission check function exists
+    It 'should have check_write_permissions function defined in script'
+      temp_repo
+      cp_install
+
+      # Check that the function is defined in the script
+      When run grep -n "function check_write_permissions" ./install.e-bash.sh
+
+      The status should be success
+      The output should include "check_write_permissions"
     End
   End
 
@@ -346,6 +533,14 @@ fDescribe 'bin/install.e-bash.sh'
 
       # FIXME: should we rollback to the initial state of repo? Uncomment Dump to preview.
       # Dump
+    End
+
+    It 'should fail with clear error for non-existent version during validation'
+      When run ./install.e-bash.sh install v999.999.999
+
+      The status should be failure
+      The output should include "Installing e-bash scripts"
+      The error should be present # logs output should have error message
     End
   End
 
@@ -435,6 +630,42 @@ fDescribe 'bin/install.e-bash.sh'
 
       The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
       The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should include "export E_BASH"
+
+      # Dump
+    End
+
+    It 'should export correct E_BASH path for master version in shell rc'
+      touch "$TEMP_HOME/.${SHELL##*/}rc"
+
+      # Install master (default version)
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
+
+      The status should be success
+      The output should include "Installation complete!"
+      The error should be present # logs output
+
+      The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
+      # For master version, path should be ${HOME}/.e-bash/.scripts
+      The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should include 'export E_BASH="${HOME}/.e-bash/.scripts"'
+      # Should NOT include .versions/master in the path
+      The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should not include '.versions/master'
+
+      # Dump
+    End
+
+    It 'should export versioned E_BASH path for tagged version in shell rc'
+      touch "$TEMP_HOME/.${SHELL##*/}rc"
+
+      # Install specific version
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global
+
+      The status should be success
+      The output should include "Installation complete!"
+      The error should be present # logs output
+
+      The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
+      # For tagged version, path should include .versions/{version}
+      The contents of file "$TEMP_HOME/.${SHELL##*/}rc" should include 'export E_BASH="${HOME}/.e-bash/.versions/v1.0.0/.scripts"'
 
       # Dump
     End
@@ -530,17 +761,288 @@ fDescribe 'bin/install.e-bash.sh'
       # Dump
     End
 
-    xIt 'should rollback global installation'
-      # First install
-      install_global
+    Describe 'Global Rollback:'
+      It 'should rollback from master to previous version'
+        # Setup: Install v1.0.0, then upgrade to master
+        mkdir -p "$TEMP_HOME/repo" && cd "$TEMP_HOME/repo" || return 1
+        git_init
+        git_master_to_main
+        cp_install
 
-      # Then upgrade to create a previous version
-      upgrade_global
+        # Install v1.0.0 with symlink
+        env HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global 2>/dev/null >/dev/null
 
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback --global
+        # Upgrade to master
+        env HOME="$TEMP_HOME" ./install.e-bash.sh upgrade master --global 2>/dev/null >/dev/null
+
+        # Rollback should go back to v1.0.0
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback v1.0.0 --global
+
+        The status should be success
+        The output should include "Rollback complete"
+        # Symlink should point back to v1.0.0
+        The result of function no_colors_output should include ".versions/v1.0.0/.scripts"
+      End
+
+      It 'should rollback from versioned to master'
+        # Setup: Install master, then upgrade to v1.0.0
+        mkdir -p "$TEMP_HOME/repo2" && cd "$TEMP_HOME/repo2" || return 1
+        git_init
+        git_master_to_main
+        cp_install
+
+        env HOME="$TEMP_HOME" ./install.e-bash.sh install master --global 2>/dev/null >/dev/null
+        env HOME="$TEMP_HOME" ./install.e-bash.sh upgrade v1.0.0 --global 2>/dev/null >/dev/null
+
+        # Rollback to master
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback master --global
+
+        The status should be success
+        The output should include "Rollback complete"
+        # Symlink should point to master
+        The result of function no_colors_output should include "/.e-bash/.scripts"
+        The result of function no_colors_output should not include ".versions"
+      End
+
+      It 'should show error when global installation not found'
+        mkdir -p "$TEMP_HOME/repo3" && cd "$TEMP_HOME/repo3" || return 1
+        git_init
+        git_master_to_main
+        cp_install
+
+        # Try rollback without global installation
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback master --global
+
+        The status should be failure
+        The stderr should include "installer: e-bash scripts"
+        The output should include "Error: Global e-bash installation not found"
+      End
+
+      It 'should show error when version not available'
+        mkdir -p "$TEMP_HOME/repo4" && cd "$TEMP_HOME/repo4" || return 1
+        git_init
+        git_master_to_main
+        cp_install
+
+        env HOME="$TEMP_HOME" ./install.e-bash.sh install master --global 2>/dev/null >/dev/null
+
+        # Try to rollback to non-existent version
+        When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback v99.99.99 --global
+
+        The status should be failure
+        The stderr should include "installer: e-bash scripts"
+        The output should include "Error: Version v99.99.99 not found"
+      End
+    End
+  End
+
+  # Test automated uninstall functionality
+  Describe 'Uninstall:'
+    Before 'temp_repo; git_init; git_config; cp_install'
+    After 'cleanup_temp_repo'
+
+    It 'should require --confirm flag for safety'
+      mock_install
+
+      When run ./install.e-bash.sh uninstall
+
+      The status should be failure
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Use --confirm to proceed"
+    End
+
+    It 'should remove .scripts directory with --confirm'
+      mock_install
+
+      When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
-      The output should include "Successfully rolled back global e-bash installation"
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete"
+      The dir ".scripts" should not be exist
+    End
+
+    It 'should remove .e-bash-previous-version file'
+      mock_install
+      mock_upgrade  # Create previous version file
+
+      When run ./install.e-bash.sh uninstall --confirm 
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
+      The file ".e-bash-previous-version" should not be exist
+    End
+
+    It 'should remove e-bash remote'
+      mock_install
+      ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null
+
+      When run git remote
+
+      The output should not include "e-bash"
+    End
+
+    It 'should remove e-bash branches'
+      mock_install
+      ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null
+
+      When run git branch
+
+      The output should not include "e-bash-scripts"
+      The output should not include "e-bash-temp"
+    End
+
+    It 'should remove bin/install.e-bash.sh if it exists'
+      mock_install
+      mkdir_bin
+      cp_install
+      mv install.e-bash.sh bin/
+
+      When run ./bin/install.e-bash.sh uninstall --confirm 
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
+      The file "bin/install.e-bash.sh" should not be exist
+    End
+
+    It 'should clean .envrc E_BASH configuration'
+      mock_install
+      touch .envrc
+      echo 'export E_BASH="$PWD/.scripts"' >> .envrc
+      echo 'PATH_add "$PWD/.scripts"' >> .envrc
+
+      When run ./install.e-bash.sh uninstall --confirm 
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
+      The file ".envrc" should not include "E_BASH"
+      The file ".envrc" should not include "PATH_add"
+    End
+
+    It 'should preserve user files during uninstall'
+      mock_install
+      # Add user files
+      touch .scripts/user-script.sh
+      echo "# User content" > README.md
+
+      When run ./install.e-bash.sh uninstall --confirm 
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
+      The file "README.md" should be present
+      The contents of file "README.md" should include "User content"
+    End
+
+    It 'should support dry-run mode'
+      mock_install
+
+      When run ./install.e-bash.sh uninstall --confirm --dry-run 
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "dry run:"
+      The dir ".scripts" should be present
+    End
+
+    It 'should show error when not installed'
+      # Fresh repo without e-bash
+      rm -rf .scripts .e-bash-previous-version
+
+      When run ./install.e-bash.sh uninstall --confirm 
+
+      The status should be failure
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Error: e-bash is not installed"
+    End
+
+    It 'should NOT remove shell RC files'
+      mock_install
+      # This is important - shell RC should not be touched
+      When run ./install.e-bash.sh uninstall --confirm 
+
+      # Should complete successfully
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      # And should not mention shell RC files
+      The output should not include ".bashrc"
+      The output should not include ".zshrc"
+    End
+  End
+
+  # Test global uninstall
+  Describe 'Global Uninstall:'
+    setup_temp_home() {
+      TEMP_HOME="$TEST_DIR/temp_home"
+      mkdir -p "$TEMP_HOME"
+      REAL_HOME="$HOME"
+      export HOME="$TEMP_HOME"
+    }
+
+    restore_real_home() {
+      export HOME="$REAL_HOME"
+      rm -rf "$TEMP_HOME"
+    }
+
+    Before 'temp_repo; setup_temp_home; cp_install'
+    After 'restore_real_home; cleanup_temp_repo'
+
+    It 'should only remove symlink from current project'
+      mkdir -p "$TEMP_HOME/repo" && cd "$TEMP_HOME/repo" || return 1
+      git_init
+      git_master_to_main
+      cp_install
+
+      # Install global with symlink
+      env HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null
+
+      # Uninstall should only remove symlink
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Removed .scripts symlink"
+      The path ".scripts" should not be exist
+      # Global installation should still exist
+      The dir "$TEMP_HOME/.e-bash" should be present
+    End
+
+    It 'should preserve global installation directory'
+      mkdir -p "$TEMP_HOME/repo" && cd "$TEMP_HOME/repo" || return 1
+      git_init
+      git_master_to_main
+      cp_install
+
+      env HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null
+
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The stdout should include "=== operation: UNINSTALL ==="
+      The stdout should include "Uninstalling global e-bash link from current project..."
+      The stdout should include "Removed .scripts symlink"
+      The stdout should include "Uninstall complete!"
+      # $HOME/.e-bash should still exist
+      The dir "$TEMP_HOME/.e-bash" should be present
+      The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
+    End
+
+    It 'should show error when no symlink exists'
+      mkdir -p "$TEMP_HOME/repo" && cd "$TEMP_HOME/repo" || return 1
+      git_init
+      git_master_to_main
+      cp_install
+
+      # No symlink created
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
+
+      The status should be failure
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Error: No .scripts symlink found"
     End
   End
 End

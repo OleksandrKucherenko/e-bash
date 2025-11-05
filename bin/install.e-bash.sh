@@ -7,6 +7,9 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+# Set TERM if not defined (required for tput commands)
+if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
+
 # fail if any error is encountered
 set -e
 shopt -s extdebug # enable extended debugging
@@ -27,23 +30,25 @@ readonly __REPO_V1="v1.0.0"
 readonly __GLOBAL_DIR=".e-bash"
 readonly GLOBAL_INSTALL_DIR="${HOME}/${__GLOBAL_DIR}"
 
-# Colors for better readability. should we use tput instead?
-readonly RED=$(tput setaf 1)    # red
-readonly GREEN=$(tput setaf 2)  # green
-readonly YELLOW=$(tput setaf 3) # yellow
-readonly BLUE=$(tput setaf 4)   # blue
-readonly PURPLE=$(tput setaf 5) # purple
-readonly CYAN=$(tput setaf 6)   # cyan
-readonly GRAY=$(tput setaf 8)   # dark gray
-readonly NC=$(tput sgr0)        # No Color
-readonly ITALIC=$(tput sitm)    # Italic Style
-readonly NOI=$(tput ritm)       # No Italic Style
+# Colors for better readability. Suppress stderr for test environments
+readonly RED=$(tput setaf 1 2>/dev/null || echo "")    # red
+readonly GREEN=$(tput setaf 2 2>/dev/null || echo "")  # green
+readonly YELLOW=$(tput setaf 3 2>/dev/null || echo "") # yellow
+readonly BLUE=$(tput setaf 4 2>/dev/null || echo "")   # blue
+readonly PURPLE=$(tput setaf 5 2>/dev/null || echo "") # purple
+readonly CYAN=$(tput setaf 6 2>/dev/null || echo "")   # cyan
+readonly GRAY=$(tput setaf 8 2>/dev/null || echo "")   # dark gray
+readonly NC=$(tput sgr0 2>/dev/null || echo "")        # No Color
+readonly ITALIC=$(tput sitm 2>/dev/null || echo "")    # Italic Style
+readonly NOI=$(tput ritm 2>/dev/null || echo "")       # No Italic Style
 
 # Global flags.
 DRY_RUN=false       # Run in dry run mode (no changes)
 FORCE=false         # If true, forcibly overwrite existing .scripts with auto-backup (numbered .scripts.~N~) for global install/upgrade.
 GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
+CONFIRM=false       # Confirm destructive operations (like uninstall)
+# SILENT flag removed - script should be polished by default
 ARGS=()             # Clean argument after preparse_args
 
 # Helpers
@@ -145,6 +150,157 @@ function print_usage() {
   exit "${exit_code}"
 }
 
+## Automated uninstall e-bash scripts
+function repo_uninstall() {
+  # Temporarily disable exit on error for uninstall to be more robust
+  set +e
+
+  echo -e "${RED}=== operation: UNINSTALL ===${NC}"
+
+  # Require --confirm flag for safety
+  if [ "$CONFIRM" != true ]; then
+    echo -e "${YELLOW}This will remove all e-bash files from your repository${NC}"
+    echo -e "${YELLOW}Use --confirm to proceed with uninstall${NC}"
+    echo ""
+    echo -e "${GRAY}Example:${NC}"
+    echo -e "  $0 uninstall --confirm"
+    echo ""
+    return 1
+  fi
+
+  # Handle global uninstall (only remove symlink)
+  if [ "$GLOBAL" = true ]; then
+    echo -e "${BLUE}Uninstalling global e-bash link from current project...${NC}"
+
+    # Check if symlink exists
+    if [ ! -L "${SCRIPTS_DIR}" ]; then
+      echo -e "${RED}Error: No .scripts symlink found in current directory${NC}"
+      echo -e "${GRAY}Nothing to uninstall${NC}"
+      return 1
+    fi
+
+    # Remove symlink
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -f ${SCRIPTS_DIR}${NC}"
+    else
+      rm -f "${SCRIPTS_DIR}"
+      echo -e "${GREEN}Removed .scripts symlink${NC}"
+    fi
+
+    echo -e "${GREEN}Uninstall complete!${NC}"
+    echo -e "${GRAY}Note: Global installation in ${YELLOW}${GLOBAL_INSTALL_DIR}${GRAY} was not removed${NC}"
+    return 0
+  fi
+
+  # Local uninstall
+  echo -e "${BLUE}Uninstalling e-bash scripts from current repository...${NC}"
+
+  # Check if e-bash is installed
+  if ! is_ebash_installed; then
+    echo -e "${RED}Error: e-bash is not installed in this repository${NC}"
+    echo -e "${GRAY}Nothing to uninstall${NC}"
+    return 1
+  fi
+
+  local uninstall_steps=0
+
+  # Remove .scripts directory
+  if [ -d "${SCRIPTS_DIR}" ] || [ -L "${SCRIPTS_DIR}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -rf ${SCRIPTS_DIR}${NC}"
+    else
+      rm -rf "${SCRIPTS_DIR}"
+      echo -e "${GREEN}Removed ${SCRIPTS_DIR} directory${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove previous version file
+  if [ -f "${SCRIPTS_PREV_VERSION}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -f ${SCRIPTS_PREV_VERSION}${NC}"
+    else
+      rm -f "${SCRIPTS_PREV_VERSION}"
+      echo -e "${GREEN}Removed ${SCRIPTS_PREV_VERSION} file${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove e-bash branches
+  if git rev-parse --verify "${SCRIPTS_BRANCH}" >/dev/null 2>&1; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: git branch -D ${SCRIPTS_BRANCH}${NC}"
+    else
+      git branch -D "${SCRIPTS_BRANCH}" >/dev/null 2>&1 || true
+      echo -e "${GREEN}Removed ${SCRIPTS_BRANCH} branch${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  if git rev-parse --verify "${TEMP_BRANCH}" >/dev/null 2>&1; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: git branch -D ${TEMP_BRANCH}${NC}"
+    else
+      git branch -D "${TEMP_BRANCH}" >/dev/null 2>&1 || true
+      echo -e "${GREEN}Removed ${TEMP_BRANCH} branch${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove e-bash remote
+  if git remote | grep -q "^${REMOTE_NAME}$"; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: git remote remove ${REMOTE_NAME}${NC}"
+    else
+      git remote remove "${REMOTE_NAME}"
+      echo -e "${GREEN}Removed ${REMOTE_NAME} remote${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Remove installation script from bin if it exists
+  if [ -f "${INSTALL_SCRIPT}" ]; then
+    if [ "$DRY_RUN" = true ]; then
+      echo -e "${CYAN}dry run: rm -f ${INSTALL_SCRIPT}${NC}"
+    else
+      rm -f "${INSTALL_SCRIPT}"
+      echo -e "${GREEN}Removed ${INSTALL_SCRIPT}${NC}"
+    fi
+    ((uninstall_steps++))
+  fi
+
+  # Clean .envrc if it exists
+  if [ -f ".envrc" ]; then
+    if grep -q "E_BASH\|PATH_add.*${SCRIPTS_DIR}" ".envrc"; then
+      if [ "$DRY_RUN" = true ]; then
+        echo -e "${CYAN}dry run: clean .envrc configuration${NC}"
+      else
+        # Remove E_BASH related lines
+        sed -i.bak '/E_BASH/d; /PATH_add.*\.scripts/d; /_setup_gnu_symbolic_links/d' ".envrc"
+        rm -f ".envrc.bak"
+        echo -e "${GREEN}Cleaned .envrc configuration${NC}"
+      fi
+      ((uninstall_steps++))
+    fi
+  fi
+
+  if [ $uninstall_steps -eq 0 ]; then
+    echo -e "${YELLOW}No e-bash files found to remove${NC}"
+  else
+    echo -e "${GREEN}Uninstall complete!${NC}"
+    echo -e "${GRAY}Removed $uninstall_steps e-bash component(s)${NC}"
+  fi
+
+  # Note about shell RC files
+  echo ""
+  echo -e "${GRAY}Note: Shell RC files were not modified${NC}"
+  echo -e "${GRAY}You may have E_BASH exports that are still in use by other projects${NC}"
+
+  # Re-enable exit on error
+  set -e
+  return 0
+}
+
 ## Print manual instructions how to uninstall e-bash scripts
 function print_manual_uninstall() {
   local exit_code=${1:-0}
@@ -192,6 +348,12 @@ function check_prerequisites() {
   # If git is not available, exit with error
   if ! command -v git &>/dev/null; then
     echo -e "${RED}Error: git is not installed or not in PATH${NC}" >&2
+    exit 1
+  fi
+
+  # Check write permissions in current directory
+  if ! check_write_permissions "."; then
+    echo -e "${RED}Cannot proceed without write permissions${NC}" >&2
     exit 1
   fi
 
@@ -323,6 +485,33 @@ function is_ebash_installed() {
   else
     return 1 # false
   fi
+}
+
+## Check if directory has write permissions
+function check_write_permissions() {
+  local test_dir="${1:-.}"
+
+  # First check if directory exists and is writable
+  if [ ! -w "$test_dir" ]; then
+    echo -e "${RED}Error: Insufficient permissions to write to directory${NC}" >&2
+    echo -e "${GRAY}Directory: $(cd "$test_dir" 2>/dev/null && pwd || echo "$test_dir")${NC}" >&2
+    echo -e "${YELLOW}Please check directory permissions and try again${NC}" >&2
+    echo -e "${GRAY}Hint: chmod +w .${NC}" >&2
+    return 1
+  fi
+
+  # Also test if we can actually create a file
+  local test_file="${test_dir}/.e-bash-permission-test-$$"
+  if ! touch "$test_file" 2>/dev/null; then
+    echo -e "${RED}Error: Insufficient permissions to write to directory${NC}" >&2
+    echo -e "${GRAY}Directory: $(cd "$test_dir" 2>/dev/null && pwd || echo "$test_dir")${NC}" >&2
+    echo -e "${YELLOW}Please check directory permissions and try again${NC}" >&2
+    return 1
+  fi
+
+  # Clean up test file
+  rm -f "$test_file" 2>/dev/null
+  return 0
 }
 
 ## Save the current commit hash for potential rollback
@@ -664,8 +853,13 @@ function post_installation_steps_global() {
   local shell="${SHELL##*/}"
   local shellrc="${HOME}/.${shell}rc"
 
-  # TODO: for 'master' version we should skip '${__WORKTREES}/${version}' part
-  local ver_dir="\${HOME}/${__GLOBAL_DIR}/${__WORKTREES}/${version}"
+  # For 'master' version, use direct path; for tagged versions, use versioned path
+  local ver_dir
+  if [ "$version" = "master" ]; then
+    ver_dir="\${HOME}/${__GLOBAL_DIR}"
+  else
+    ver_dir="\${HOME}/${__GLOBAL_DIR}/${__WORKTREES}/${version}"
+  fi
 
   # Configure E_BASH environment variable
   local env_line="export E_BASH=\"${ver_dir}/${SCRIPTS_DIR}\""
@@ -1006,9 +1200,29 @@ function get_previous_version() {
   # shellcheck disable=SC2155
   local previous_version=$(cat "${SCRIPTS_PREV_VERSION}")
 
-  # FIXME: Should validate that previous_version is a valid commit hash/tag
-  echo -e "${BLUE}Found previous version: $previous_version${NC}" >&2
+  # Validate that previous_version is not empty and has valid format
+  if [ -z "$previous_version" ] || [ "${#previous_version}" -lt 6 ]; then
+    echo -e "${RED}Error: Previous version file is empty or invalid${NC}" >&2
+    echo -e "${GRAY}File: ${SCRIPTS_PREV_VERSION}${NC}" >&2
+    return 1
+  fi
 
+  # Validate format: should be alphanumeric with optional dots, dashes, underscores (for tags/hashes)
+  if ! [[ "$previous_version" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo -e "${RED}Error: Previous version file is empty or invalid${NC}" >&2
+    echo -e "${GRAY}Invalid format: ${previous_version}${NC}" >&2
+    return 1
+  fi
+
+  # Validate that the commit/tag exists in git
+  if ! git rev-parse --verify "${previous_version}^{commit}" >/dev/null 2>&1; then
+    echo -e "${RED}Error: Previous version commit no longer exists${NC}" >&2
+    echo -e "${GRAY}Version: ${previous_version}${NC}" >&2
+    echo -e "${YELLOW}The commit may have been garbage collected or the repository history was rewritten${NC}" >&2
+    return 1
+  fi
+
+  echo -e "${BLUE}Found previous version: $previous_version${NC}" >&2
   echo "$previous_version"
 }
 
@@ -1220,6 +1434,7 @@ function repo_upgrade() {
 
 ## Rollback to previous version
 function repo_rollback() {
+  local target_version="${1:-}"
   local previous_version=""
   local rollback_status=0
 
@@ -1227,19 +1442,66 @@ function repo_rollback() {
 
   echo -e "${RED}=== operation: ROLLBACK ===${NC}"
 
-  # If  used --global, rollback is not allowed, only upgrade to a specific version is allowed
+  # Handle global rollback differently
   if [ "$GLOBAL" = true ]; then
-    echo -e "${YELLOW}Rollback is not allowed for global installation.${NC}"
-    echo -e "Use instead: $0 --global upgrade ${version}"
-    exit $EXIT_NO
+    echo -e "${BLUE}Rolling back global e-bash installation...${NC}"
+
+    # Check if global installation exists
+    if [ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
+      echo -e "${RED}Error: Global e-bash installation not found at ${GLOBAL_INSTALL_DIR}${NC}"
+      echo -e "${YELLOW}Run: $0 install --global${NC}"
+      return 1
+    fi
+
+    # Require version to be specified for global rollback
+    if [ -z "$target_version" ] || [ "$target_version" = "master" ]; then
+      # If no version specified, try to use master as default
+      if [ -z "$target_version" ]; then
+        echo -e "${YELLOW}No version specified. Using 'master' as default.${NC}"
+        target_version="master"
+      fi
+    fi
+
+    # Validate version exists
+    if [ "$target_version" != "master" ]; then
+      # Check if worktree exists for tagged version
+      if [ ! -d "${GLOBAL_INSTALL_DIR}/${__WORKTREES}/${target_version}" ]; then
+        # Try to create it
+        pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || return 1
+
+        # Check if tag exists in git
+        if ! git rev-parse --verify "${target_version}" >/dev/null 2>&1; then
+          popd &>/dev/null
+          echo -e "${RED}Error: Version ${target_version} not found in global installation${NC}"
+          echo -e "${YELLOW}Run: $0 versions --global to see available versions${NC}"
+          return 1
+        fi
+
+        popd &>/dev/null
+      fi
+    fi
+
+    # Perform rollback by updating symlink
+    echo -e "${BLUE}Switching to version: ${PURPLE}${target_version}${NC}"
+    bind_ebash_global_version "$target_version"
+
+    echo -e "${GREEN}Rollback complete!${NC}"
+    echo -e "The e-bash scripts have been rolled back to version ${PURPLE}${target_version}${NC}"
+    return 0
   fi
+
+  # Local rollback (existing logic)
 
   # Check if previous version exists
   check_previous_version_exists
   if [ $? -ne 0 ]; then return 1; fi
 
-  # Get the previous version
+  # Get the previous version (with validation)
   previous_version=$(get_previous_version)
+  if [ $? -ne 0 ]; then
+    echo -e "${RED}Cannot proceed with rollback${NC}"
+    return 1
+  fi
 
   # Perform the rollback
   perform_rollback "$previous_version"
@@ -1279,7 +1541,8 @@ function repo_versions() {
     reason=", not a git repository"
   elif [ "$has_remote" = "true" ]; then
     echo -e "${GRAY}detected:${NC} repository with e-bash remotes, updating remote tags..."
-    exec:git fetch "$REMOTE_NAME" --tags
+    # Fetch tags, but don't fail if there are conflicts
+    exec:git fetch "$REMOTE_NAME" --tags || true
   fi
 
   # Determine current version if installed
@@ -1380,10 +1643,12 @@ function main_ebash() {
   local args="$*"
   # if $args are empty, print <empty>
   [ -z "$args" ] && args="<empty>"
-  echo -e "${PURPLE}installer: e-bash scripts, arguments: ${GRAY}$args${NC}" >&2
-
+  
   local command="${1:-auto}"
   local version="${2:-master}"
+  
+  # Always show the main installer message
+  echo -e "${PURPLE}installer: e-bash scripts, arguments: ${GRAY}$args${NC}" >&2
 
   # Process version to handle aliases like 'latest' -> 'master'
   [ "$version" = "latest" ] && version="master"
@@ -1413,13 +1678,13 @@ function main_ebash() {
     repo_upgrade "$version"
     ;;
   "rollback")
-    repo_rollback
+    repo_rollback "$version"
     ;;
   "versions")
     repo_versions
     ;;
   "uninstall")
-    print_manual_uninstall
+    repo_uninstall
     ;;
   "help" | "-h" | "--help")
     print_usage $EXIT_OK
@@ -1448,6 +1713,11 @@ function preparse_args() {
       CREATE_SYMLINK=true && unset 'args[i]'
     elif [[ "$key" == "--no-create-symlink" ]]; then
       CREATE_SYMLINK=false && unset 'args[i]'
+    elif [[ "$key" == "--confirm" ]]; then
+      CONFIRM=true && unset 'args[i]'
+    elif [[ "$key" == "--silent" ]]; then
+      # --silent flag is deprecated - script is polished by default
+      unset 'args[i]'
     elif [[ "$key" == "--help" ]]; then
       print_usage $EXIT_OK
     fi
