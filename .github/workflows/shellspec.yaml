@@ -6,6 +6,8 @@ env:
   SHELLSPEC_VERSION: 0.28.1
   TERM: xterm-256color
   HOMEBREW_NO_AUTO_UPDATE: 1
+  # Enable CI auto-install mode for dependencies
+  CI_E_BASH_INSTALL_DEPENDENCIES: 1
 
 jobs:
   shellspec-macos:
@@ -18,20 +20,31 @@ jobs:
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
-      - name: Install shellspec
+      - name: Setup PATH for local binaries
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
-          # brew update
-          brew install bash
-          brew install kcov
-          brew install grep
-          brew install gnu-sed
-          brew install gawk
-          brew install coreutils
-          curl -fsSL https://git.io/shellspec | sh -s ${{ env.SHELLSPEC_VERSION }} --yes
+          mkdir -p "${HOME}/.local/bin"
+      - name: Install DIRENV
+        run: |
+          # Install direnv for macOS
+          brew install direnv
+      - name: Verify installation order and setup
+        run: |
+          # Verify critical tools are available in correct order
+          echo "=== Verifying installation order ==="
+          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
+          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
+          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
+          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
+      - name: Setup project dependencies using DIRENV and CI auto-install mode
+        run: |
+          # Allow .envrc execution and export environment to GitHub Actions
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+          echo "Dependencies loaded via DIRENV with CI auto-install mode"
       - name: Run shellspec Tests
         run: |
-          export E_BASH="$(pwd)/.scripts"
+          # Environment variables from .envrc are now available
           shellspec
   
   shellspec-ubuntu:
@@ -45,20 +58,47 @@ jobs:
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
-      - name: Install kcov
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y kcov 
-          sudo apt-get install -y uuid-runtime
-      - name: Install extra tools
+      - name: Setup PATH for local binaries
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
-          curl -fsSL https://git.io/shellspec | sh -s -- --yes
+          mkdir -p "${HOME}/.local/bin"
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
+      - name: Install Homebrew (required for dependency script)
+        run: |
+          # Install Homebrew for Linux - required by .envrc dependencies
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          # Add Homebrew to PATH for current and future steps
+          echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+          # Set up Homebrew environment variables
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          echo "HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew" >> "$GITHUB_ENV"
+          echo "HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar" >> "$GITHUB_ENV"
+          echo "HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew" >> "$GITHUB_ENV"
+      - name: Install DIRENV
+        run: |
+          # Install direnv for Ubuntu (must be after Homebrew for dependency order)
+          curl -sfL https://direnv.net/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Verify installation order and setup
+        run: |
+          # Verify critical tools are available in correct order
+          echo "=== Verifying installation order ==="
+          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
+          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
+          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
+          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
+      - name: Setup project dependencies using DIRENV and CI auto-install mode
+        run: |
+          # Ensure Homebrew is in PATH for this step
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          # Allow .envrc execution and export environment to GitHub Actions
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+          echo "Dependencies loaded via DIRENV with CI auto-install mode"
       - name: Run shellspec tests
         run: |
-          export E_BASH="$(pwd)/.scripts"
-          # register aliases for GNU tools
-          source "$E_BASH/_setup_gnu_symbolic_links.sh"
-          export PATH="$(pwd)/bin/gnubin:$PATH"
-          # run tests
+          # Environment variables from .envrc are now available (includes GNU tools setup)
           shellspec

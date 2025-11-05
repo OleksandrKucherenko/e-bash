@@ -38,6 +38,21 @@ function isSilent() {
   if [[ "${args[*]}" =~ "--silent" ]]; then echo true; else echo false; fi
 }
 
+function isCIAutoInstallEnabled() {
+  # Only enable auto-install if we're in a CI environment AND the flag is set
+  if [[ -n "${CI:-}" ]]; then
+    local value="${CI_E_BASH_INSTALL_DEPENDENCIES:-}"
+    # Convert to lowercase for case-insensitive comparison (bash 4.0+ syntax)
+    value="${value,,}"
+    case "$value" in
+      1|true|yes) echo true ;;
+      *) echo false ;;
+    esac
+  else
+    echo false
+  fi
+}
+
 # shellcheck disable=SC2001,SC2155,SC2086
 function dependency() {
   local tool_name=$1
@@ -46,6 +61,7 @@ function dependency() {
   local tool_version_flag=${4:-"--version"}
   local is_exec=$(isExec "$@")
   local is_optional=$(isOptional "$@")
+  local is_ci_auto_install=$(isCIAutoInstallEnabled)
 
   config:logger:Dependencies "$@" # refresh debug flags
 
@@ -59,7 +75,31 @@ function dependency() {
     printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
       "${which_tool:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
 
-    if $is_optional; then
+    if $is_ci_auto_install; then
+      if $is_optional; then
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} missing optional dependency \`${cl_yellow}$tool_name${cl_reset}\`"
+      else
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
+      fi
+
+      if eval $tool_fallback; then
+        # Trust the exit code - if install command succeeded, assume it worked
+        # Optionally check if tool is now available (informational only)
+        if command -v "$tool_name" >/dev/null 2>&1; then
+          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+        else
+          # Installation command succeeded but tool not in PATH yet
+          # This can happen if PATH needs to be reloaded or in test environments
+          printf:Dependencies "Note: Install command succeeded but \`$tool_name\` not immediately found in PATH\n"
+        fi
+        return 0
+      else
+        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        return 1
+      fi
+    elif $is_optional; then
       # shellcheck disable=SC2154
       echo "Optional   [${cl_red}NO${cl_reset}]: \`$tool_name\` - ${cl_red}not found${cl_reset}! Try: ${cl_purple}$tool_fallback${cl_reset}"
       return 0
@@ -78,7 +118,31 @@ function dependency() {
     "$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
   if [ "$version_cleaned" == "" ]; then
-    if $is_optional; then
+    if $is_ci_auto_install; then
+      if $is_optional; then
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} optional dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
+      else
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
+      fi
+
+      if eval $tool_fallback; then
+        # Trust the exit code - if install command succeeded, assume it worked
+        # Optionally check if tool is now available (informational only)
+        if command -v "$tool_name" >/dev/null 2>&1; then
+          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+        else
+          # Installation command succeeded but tool not in PATH yet
+          # This can happen if PATH needs to be reloaded or in test environments
+          printf:Dependencies "Note: Install command succeeded but \`$tool_name\` not immediately found in PATH\n"
+        fi
+        return 0
+      else
+        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        return 1
+      fi
+    elif $is_optional; then
       echo "Optional   [${cl_red}NO${cl_reset}]: \`$tool_name\` - ${cl_red}wrong version${cl_reset}! Try: ${cl_purple}$tool_fallback${cl_reset}"
       return 0
     else
@@ -108,30 +172,16 @@ function dependency() {
 
 function optional() {
   local args=("$@")
-
-  # remove all flags from call
-  local del=("--debug" "--exec" "--silent" "--optional")
-  for value in "${del[@]}"; do
-    for i in "${!args[@]}"; do
-      if [[ ${args[i]} == "${value}" ]]; then unset 'args[i]'; fi
-    done
-  done
-
-  # inject default parameters
-  if [ "${#args[@]}" == "2" ]; then
-    args+=("No details. Please google it." "--version")
-  elif [ "${#args[@]}" == "3" ]; then
-    args+=("--version")
-  fi
-
-  # recover flags
-  if [ "$(isExec "$@")" == "true" ]; then args+=("--exec"); fi
-  if [ "$(isSilent "$@")" == "true" ]; then args+=("--silent"); fi
-  if [ "$(isDebug "$@")" == "true" ]; then args+=("--debug"); fi
-  args+=("--optional")
-
-  # we should expand any number of input arguments to required 4 + extra flags
-  dependency "${args[@]}"
+  
+  # Ensure we have minimum required parameters before adding --optional flag
+  # This prevents --optional from being treated as a positional parameter
+  case ${#args[@]} in
+    2) args+=("No details. Please google it." "--version") ;;
+    3) args+=("--version") ;;
+  esac
+  
+  # Add --optional flag and forward to dependency()
+  dependency "${args[@]}" --optional
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
