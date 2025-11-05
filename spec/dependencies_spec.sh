@@ -211,6 +211,50 @@ Describe "_dependencies.sh"
             # Dump
         End
 
+        It "isCIAutoInstallEnabled returns true with case-insensitive TRUE"
+            export CI=1
+            export CI_E_BASH_INSTALL_DEPENDENCIES=TRUE
+            When call isCIAutoInstallEnabled
+            The status should be success
+            The output should eq true
+            The error should eq ''
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+            # Dump
+        End
+
+        It "isCIAutoInstallEnabled returns true with case-insensitive YES"
+            export CI=1
+            export CI_E_BASH_INSTALL_DEPENDENCIES=YES
+            When call isCIAutoInstallEnabled
+            The status should be success
+            The output should eq true
+            The error should eq ''
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+            # Dump
+        End
+
+        It "isCIAutoInstallEnabled returns true with mixed case True"
+            export CI=1
+            export CI_E_BASH_INSTALL_DEPENDENCIES=True
+            When call isCIAutoInstallEnabled
+            The status should be success
+            The output should eq true
+            The error should eq ''
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+            # Dump
+        End
+
+        It "isCIAutoInstallEnabled returns true with mixed case YeS"
+            export CI=1
+            export CI_E_BASH_INSTALL_DEPENDENCIES=YeS
+            When call isCIAutoInstallEnabled
+            The status should be success
+            The output should eq true
+            The error should eq ''
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+            # Dump
+        End
+
         It "isCIAutoInstallEnabled returns false when CI_E_BASH_INSTALL_DEPENDENCIES is unset"
             When call isCIAutoInstallEnabled
             The status should be success
@@ -337,6 +381,19 @@ Describe "_dependencies.sh"
             The status should be success
             The output should include "auto-installing missing optional dependency"
             The error should include "auto-installed optional tool"
+            
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+            # Dump
+        End
+
+        It "CI mode should work with case-insensitive TRUE value"
+            export CI=1
+            export CI_E_BASH_INSTALL_DEPENDENCIES=TRUE
+            When call dependency not_exist_tool "1.*.*" "echo 'auto-installed with TRUE' >&2"
+            
+            The status should be success
+            The output should include "auto-installing missing dependency"
+            The error should include "auto-installed with TRUE"
             
             unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
