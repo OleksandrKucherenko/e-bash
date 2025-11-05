@@ -41,7 +41,10 @@ function isSilent() {
 function isCIAutoInstallEnabled() {
   # Only enable auto-install if we're in a CI environment AND the flag is set
   if [[ -n "${CI:-}" ]]; then
-    case "${CI_E_BASH_INSTALL_DEPENDENCIES:-}" in
+    local value="${CI_E_BASH_INSTALL_DEPENDENCIES:-}"
+    # Convert to lowercase for case-insensitive comparison
+    value=$(echo "$value" | tr '[:upper:]' '[:lower:]')
+    case "$value" in
       1|true|yes) echo true ;;
       *) echo false ;;
     esac
