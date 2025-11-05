@@ -151,6 +151,9 @@ function print_usage() {
 
 ## Automated uninstall e-bash scripts
 function repo_uninstall() {
+  # Temporarily disable exit on error for uninstall to be more robust
+  set +e
+
   echo -e "${RED}=== operation: UNINSTALL ===${NC}"
 
   # Require --confirm flag for safety
@@ -227,7 +230,7 @@ function repo_uninstall() {
     if [ "$DRY_RUN" = true ]; then
       echo -e "${CYAN}dry run: git branch -D ${SCRIPTS_BRANCH}${NC}"
     else
-      git branch -D "${SCRIPTS_BRANCH}" >/dev/null 2>&1
+      git branch -D "${SCRIPTS_BRANCH}" >/dev/null 2>&1 || true
       echo -e "${GREEN}Removed ${SCRIPTS_BRANCH} branch${NC}"
     fi
     ((uninstall_steps++))
@@ -237,7 +240,7 @@ function repo_uninstall() {
     if [ "$DRY_RUN" = true ]; then
       echo -e "${CYAN}dry run: git branch -D ${TEMP_BRANCH}${NC}"
     else
-      git branch -D "${TEMP_BRANCH}" >/dev/null 2>&1
+      git branch -D "${TEMP_BRANCH}" >/dev/null 2>&1 || true
       echo -e "${GREEN}Removed ${TEMP_BRANCH} branch${NC}"
     fi
     ((uninstall_steps++))
@@ -292,6 +295,8 @@ function repo_uninstall() {
   echo -e "${GRAY}Note: Shell RC files (~/.bashrc, ~/.zshrc) were not modified${NC}"
   echo -e "${GRAY}You may have E_BASH exports that are still in use by other projects${NC}"
 
+  # Re-enable exit on error
+  set -e
   return 0
 }
 
