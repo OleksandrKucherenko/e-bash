@@ -30,9 +30,12 @@ End
 Include ".scripts/_dependencies.sh"
 
 Describe "_dependencies.sh"
-    # remove colors in output and ensure CI variables are clean for each test
-    # Unset both CI and CI_E_BASH_INSTALL_DEPENDENCIES to ensure clean state
-    BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset CI CI_E_BASH_INSTALL_DEPENDENCIES"
+    # Remove colors in output before each function call
+    BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset"
+
+    # Ensure CI variables are clean at the START of each test (before test setup)
+    # This runs before any test code, allowing tests to explicitly set CI if needed
+    BeforeEach "unset CI CI_E_BASH_INSTALL_DEPENDENCIES"
 
     Describe "Dependency:"
         It "Dependency OK on \`dependency bash \"5.*.*\" \"brew install bash\" --version\`"
