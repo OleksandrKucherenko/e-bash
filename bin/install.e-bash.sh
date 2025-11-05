@@ -1689,6 +1689,8 @@ function main_ebash() {
     repo_uninstall
     ;;
   "help" | "-h" | "--help")
+    # Detect environment for help command (needed for tests)
+    current_branch "false" >/dev/null
     print_usage $EXIT_OK
     ;;
   *)
