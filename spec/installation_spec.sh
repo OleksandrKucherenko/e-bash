@@ -22,7 +22,7 @@ eval "$(shellspec - -c) exit 1"
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
 
-fDescribe 'bin/install.e-bash.sh'
+Describe 'bin/install.e-bash.sh'
   temp_repo() {
     mkdir -p "$TEST_DIR"
     cd "$TEST_DIR" || return 1
@@ -768,6 +768,7 @@ fDescribe 'bin/install.e-bash.sh'
         When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback master --global
 
         The status should be failure
+        The stderr should include "installer: e-bash scripts"
         The output should include "Error: Global e-bash installation not found"
       End
 
@@ -783,6 +784,7 @@ fDescribe 'bin/install.e-bash.sh'
         When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback v99.99.99 --global
 
         The status should be failure
+        The stderr should include "installer: e-bash scripts"
         The output should include "Error: Version v99.99.99 not found"
       End
     End
@@ -906,6 +908,7 @@ fDescribe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm
 
       The status should be failure
+      The stderr should include "installer: e-bash scripts"
       The output should include "Error: e-bash is not installed"
     End
 
@@ -953,6 +956,7 @@ fDescribe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       The output should include "Removed .scripts symlink"
       The path ".scripts" should not be exist
       # Global installation should still exist
@@ -970,6 +974,11 @@ fDescribe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The stdout should include "=== operation: UNINSTALL ==="
+      The stdout should include "Uninstalling global e-bash link from current project..."
+      The stdout should include "Removed .scripts symlink"
+      The stdout should include "Uninstall complete!"
       # $HOME/.e-bash should still exist
       The dir "$TEMP_HOME/.e-bash" should be present
       The file "$TEMP_HOME/.e-bash/.scripts/_colors.sh" should be present
@@ -985,6 +994,7 @@ fDescribe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
 
       The status should be failure
+      The stderr should include "installer: e-bash scripts"
       The output should include "Error: No .scripts symlink found"
     End
   End

@@ -23,7 +23,7 @@ VERSION_UP_SCRIPT="./version-up.v2.sh"
 ROOT_SCRIPT="$SHELLSPEC_PROJECT_ROOT/bin/version-up.v2.sh"
 
 # keep it in focus mode `fDescribe` or `fIt` for TDD
-fDescribe 'bin/version-up.v2.sh /'
+Describe 'bin/version-up.v2.sh /'
   #region Helper Functions
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
@@ -537,7 +537,7 @@ fDescribe 'bin/version-up.v2.sh /'
     End
 
     # Monorepo custom prefix string
-    fIt "test-023: should use custom prefix string in monorepo structure"
+    It "test-023: should use custom prefix string in monorepo structure"
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
       # Set up monorepo with tag custom/v0.9.0
       {
