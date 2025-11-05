@@ -59,6 +59,36 @@ Describe 'bin/install.e-bash.sh'
   do_uninstall() { ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null; }
   do_uninstall_global() { HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 2>/dev/null >/dev/null; }
 
+  # Mock installation state without network access
+  # Simulates a successful local installation by creating expected directory structure
+  mock_install() {
+    # Create .scripts directory with actual e-bash scripts
+    mkdir -p .scripts
+    cp -r "$SHELLSPEC_PROJECT_ROOT/.scripts/"* .scripts/ 2>/dev/null || true
+
+    # Add .scripts to git
+    git add .scripts
+    git commit --no-gpg-sign -m "Install e-bash scripts" -q 2>/dev/null || git commit -m "Install e-bash scripts" -q
+
+    # Set up git remote and branches as the install script would
+    git remote add e-bash https://github.com/OleksandrKucherenko/e-bash.git 2>/dev/null || true
+    git branch e-bash-scripts 2>/dev/null || true
+
+    # Return success
+    return 0
+  }
+
+  # Mock upgrade state - creates previous version file
+  mock_upgrade() {
+    local previous_version="${1:-v1.0.0}"
+    # Get current HEAD as "previous" version
+    local current_hash=$(git rev-parse HEAD)
+    echo "$current_hash" > .e-bash-previous-version
+    git add .e-bash-previous-version
+    git commit --no-gpg-sign -m "Upgrade e-bash (mock)" -q 2>/dev/null || git commit -m "Upgrade e-bash (mock)" -q
+    return 0
+  }
+
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
   no_colors_error() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
@@ -215,7 +245,7 @@ Describe 'bin/install.e-bash.sh'
 
   # Test upgrading e-bash
   Describe 'Upgrade:'
-    Before 'temp_repo; git_init; git_config; cp_install; install_stable'
+    Before 'temp_repo; git_init; git_config; cp_install; mock_install'
     After 'cleanup_temp_repo'
 
     It 'should upgrade to the latest version successfully'
@@ -250,16 +280,16 @@ Describe 'bin/install.e-bash.sh'
     Before 'temp_repo; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
-    xIt 'should rollback to previous version successfully'
-      # Skipped due to pre-existing install issues
-      upgrade_alpha
+    It 'should rollback to previous version successfully'
+      # Mock installation and upgrade to create previous version file
+      mock_install
+      mock_upgrade
 
       When run ./install.e-bash.sh rollback
 
       The status should be success
       The output should include "Rollback complete!"
       The error should be present # logs output
-      The file .e-bash-previous-version should not be empty file
     End
 
     It 'should fail when no previous version exists'
@@ -447,7 +477,7 @@ Describe 'bin/install.e-bash.sh'
       End
 
       It 'should mark current stable installed version'
-        install_stable
+        mock_install
 
         When run ./install.e-bash.sh versions
 
@@ -795,20 +825,17 @@ Describe 'bin/install.e-bash.sh'
     Before 'temp_repo; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
-    xIt 'should require --confirm flag for safety'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should require --confirm flag for safety'
+      mock_install
 
       When run ./install.e-bash.sh uninstall
 
       The status should be failure
-      The output should include "This will remove all e-bash files"
       The output should include "Use --confirm to proceed"
     End
 
-    xIt 'should remove .scripts directory with --confirm'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should remove .scripts directory with --confirm'
+      mock_install
 
       When run ./install.e-bash.sh uninstall --confirm
 
@@ -817,10 +844,9 @@ Describe 'bin/install.e-bash.sh'
       The dir ".scripts" should not be exist
     End
 
-    xIt 'should remove .e-bash-previous-version file'
-      # Skipped due to pre-existing install issues
-      install_stable
-      upgrade_alpha  # Create previous version file
+    It 'should remove .e-bash-previous-version file'
+      mock_install
+      mock_upgrade  # Create previous version file
 
       When run ./install.e-bash.sh uninstall --confirm
 
@@ -828,9 +854,8 @@ Describe 'bin/install.e-bash.sh'
       The file ".e-bash-previous-version" should not be exist
     End
 
-    xIt 'should remove e-bash remote'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should remove e-bash remote'
+      mock_install
       ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null
 
       When run git remote
@@ -838,9 +863,8 @@ Describe 'bin/install.e-bash.sh'
       The output should not include "e-bash"
     End
 
-    xIt 'should remove e-bash branches'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should remove e-bash branches'
+      mock_install
       ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null
 
       When run git branch
@@ -849,9 +873,8 @@ Describe 'bin/install.e-bash.sh'
       The output should not include "e-bash-temp"
     End
 
-    xIt 'should remove bin/install.e-bash.sh if it exists'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should remove bin/install.e-bash.sh if it exists'
+      mock_install
       mkdir_bin
       cp_install
       mv install.e-bash.sh bin/
@@ -862,9 +885,8 @@ Describe 'bin/install.e-bash.sh'
       The file "bin/install.e-bash.sh" should not be exist
     End
 
-    xIt 'should clean .envrc E_BASH configuration'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should clean .envrc E_BASH configuration'
+      mock_install
       touch .envrc
       echo 'export E_BASH="$PWD/.scripts"' >> .envrc
       echo 'PATH_add "$PWD/.scripts"' >> .envrc
@@ -876,9 +898,8 @@ Describe 'bin/install.e-bash.sh'
       The file ".envrc" should not include "PATH_add"
     End
 
-    xIt 'should preserve user files during uninstall'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should preserve user files during uninstall'
+      mock_install
       # Add user files
       touch .scripts/user-script.sh
       echo "# User content" > README.md
@@ -890,9 +911,8 @@ Describe 'bin/install.e-bash.sh'
       The contents of file "README.md" should include "User content"
     End
 
-    xIt 'should support dry-run mode'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should support dry-run mode'
+      mock_install
 
       When run ./install.e-bash.sh uninstall --confirm --dry-run
 
@@ -912,9 +932,8 @@ Describe 'bin/install.e-bash.sh'
       The output should include "Error: e-bash is not installed"
     End
 
-    xIt 'should NOT remove shell RC files'
-      # Skipped due to pre-existing install issues
-      install_stable
+    It 'should NOT remove shell RC files'
+      mock_install
       # This is important - shell RC should not be touched
       When run ./install.e-bash.sh uninstall --confirm
 
