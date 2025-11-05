@@ -42,8 +42,8 @@ function isCIAutoInstallEnabled() {
   # Only enable auto-install if we're in a CI environment AND the flag is set
   if [[ -n "${CI:-}" ]]; then
     local value="${CI_E_BASH_INSTALL_DEPENDENCIES:-}"
-    # Convert to lowercase for case-insensitive comparison
-    value=$(echo "$value" | tr '[:upper:]' '[:lower:]')
+    # Convert to lowercase for case-insensitive comparison (bash 4.0+ syntax)
+    value="${value,,}"
     case "$value" in
       1|true|yes) echo true ;;
       *) echo false ;;
@@ -77,12 +77,26 @@ function dependency() {
 
     if $is_ci_auto_install; then
       if $is_optional; then
-        echo "auto-installing missing optional dependency \`$tool_name\`"
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} missing optional dependency \`${cl_yellow}$tool_name${cl_reset}\`"
       else
-        echo "auto-installing missing dependency \`$tool_name\`"
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
       fi
-      eval $tool_fallback
-      return 0
+
+      if eval $tool_fallback; then
+        # Verify the tool is now available
+        if command -v "$tool_name" >/dev/null 2>&1; then
+          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+          return 0
+        else
+          echo "${cl_red}✗${cl_reset} Installation completed but \`$tool_name\` not found in PATH"
+          return 1
+        fi
+      else
+        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        return 1
+      fi
     elif $is_optional; then
       # shellcheck disable=SC2154
       echo "Optional   [${cl_red}NO${cl_reset}]: \`$tool_name\` - ${cl_red}not found${cl_reset}! Try: ${cl_purple}$tool_fallback${cl_reset}"
@@ -104,12 +118,26 @@ function dependency() {
   if [ "$version_cleaned" == "" ]; then
     if $is_ci_auto_install; then
       if $is_optional; then
-        echo "auto-installing optional dependency with wrong version \`$tool_name\`"
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} optional dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
       else
-        echo "auto-installing dependency with wrong version \`$tool_name\`"
+        # shellcheck disable=SC2154
+        echo "${cl_blue}auto-installing${cl_reset} dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
       fi
-      eval $tool_fallback
-      return 0
+
+      if eval $tool_fallback; then
+        # Verify the tool is now available
+        if command -v "$tool_name" >/dev/null 2>&1; then
+          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+          return 0
+        else
+          echo "${cl_red}✗${cl_reset} Installation completed but \`$tool_name\` not found in PATH"
+          return 1
+        fi
+      else
+        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        return 1
+      fi
     elif $is_optional; then
       echo "Optional   [${cl_red}NO${cl_reset}]: \`$tool_name\` - ${cl_red}wrong version${cl_reset}! Try: ${cl_purple}$tool_fallback${cl_reset}"
       return 0
