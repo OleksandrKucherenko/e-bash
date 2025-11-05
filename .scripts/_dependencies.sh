@@ -38,6 +38,13 @@ function isSilent() {
   if [[ "${args[*]}" =~ "--silent" ]]; then echo true; else echo false; fi
 }
 
+function isCIAutoInstallEnabled() {
+  case "${CI_E_BASH_INSTALL_DEPENDENCIES:-}" in
+    1|true|yes) echo true ;;
+    *) echo false ;;
+  esac
+}
+
 # shellcheck disable=SC2001,SC2155,SC2086
 function dependency() {
   local tool_name=$1
@@ -46,6 +53,7 @@ function dependency() {
   local tool_version_flag=${4:-"--version"}
   local is_exec=$(isExec "$@")
   local is_optional=$(isOptional "$@")
+  local is_ci_auto_install=$(isCIAutoInstallEnabled)
 
   config:logger:Dependencies "$@" # refresh debug flags
 
@@ -59,7 +67,15 @@ function dependency() {
     printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
       "${which_tool:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
 
-    if $is_optional; then
+    if $is_ci_auto_install; then
+      if $is_optional; then
+        echo "auto-installing missing optional dependency \`$tool_name\`"
+      else
+        echo "auto-installing missing dependency \`$tool_name\`"
+      fi
+      eval $tool_fallback
+      return 0
+    elif $is_optional; then
       # shellcheck disable=SC2154
       echo "Optional   [${cl_red}NO${cl_reset}]: \`$tool_name\` - ${cl_red}not found${cl_reset}! Try: ${cl_purple}$tool_fallback${cl_reset}"
       return 0
@@ -78,7 +94,15 @@ function dependency() {
     "$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
   if [ "$version_cleaned" == "" ]; then
-    if $is_optional; then
+    if $is_ci_auto_install; then
+      if $is_optional; then
+        echo "auto-installing optional dependency with wrong version \`$tool_name\`"
+      else
+        echo "auto-installing dependency with wrong version \`$tool_name\`"
+      fi
+      eval $tool_fallback
+      return 0
+    elif $is_optional; then
       echo "Optional   [${cl_red}NO${cl_reset}]: \`$tool_name\` - ${cl_red}wrong version${cl_reset}! Try: ${cl_purple}$tool_fallback${cl_reset}"
       return 0
     else
