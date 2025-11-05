@@ -48,6 +48,7 @@ FORCE=false         # If true, forcibly overwrite existing .scripts with auto-ba
 GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
 CONFIRM=false       # Confirm destructive operations (like uninstall)
+SILENT=false        # Suppress debug output
 ARGS=()             # Clean argument after preparse_args
 
 # Helpers
@@ -292,7 +293,7 @@ function repo_uninstall() {
 
   # Note about shell RC files
   echo ""
-  echo -e "${GRAY}Note: Shell RC files (~/.bashrc, ~/.zshrc) were not modified${NC}"
+  echo -e "${GRAY}Note: Shell RC files were not modified${NC}"
   echo -e "${GRAY}You may have E_BASH exports that are still in use by other projects${NC}"
 
   # Re-enable exit on error
@@ -324,14 +325,15 @@ function print_manual_uninstall() {
 ## Try to determine the main branch name, with fallbacks for new repos. Result to STDOUT.
 function current_branch() {
   local branch="${DEFAULT_BRANCH}"
+  local quiet="${1:-false}"
 
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    echo -e "${GRAY}detected:${NC} we are in a regular folder." >&2
+    [ "$quiet" != "true" ] && echo -e "${GRAY}detected:${NC} we are in a regular folder." >&2
   elif git rev-parse --quiet --verify HEAD >/dev/null 2>&1; then
-    echo -e "${GRAY}detected:${NC} repository with commits." >&2
+    [ "$quiet" != "true" ] && echo -e "${GRAY}detected:${NC} repository with commits." >&2
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   else
-    echo -e "${GRAY}detected:${NC} new repository with NO commits." >&2
+    [ "$quiet" != "true" ] && echo -e "${GRAY}detected:${NC} new repository with NO commits." >&2
 
     # Check if there's a default branch configured
     if git config init.defaultBranch >/dev/null 2>&1; then
@@ -1540,7 +1542,8 @@ function repo_versions() {
     reason=", not a git repository"
   elif [ "$has_remote" = "true" ]; then
     echo -e "${GRAY}detected:${NC} repository with e-bash remotes, updating remote tags..."
-    exec:git fetch "$REMOTE_NAME" --tags
+    # Fetch tags, but don't fail if there are conflicts
+    exec:git fetch "$REMOTE_NAME" --tags || true
   fi
 
   # Determine current version if installed
@@ -1641,10 +1644,12 @@ function main_ebash() {
   local args="$*"
   # if $args are empty, print <empty>
   [ -z "$args" ] && args="<empty>"
-  echo -e "${PURPLE}installer: e-bash scripts, arguments: ${GRAY}$args${NC}" >&2
-
+  
   local command="${1:-auto}"
   local version="${2:-master}"
+  
+  # Always show the main installer message
+  echo -e "${PURPLE}installer: e-bash scripts, arguments: ${GRAY}$args${NC}" >&2
 
   # Process version to handle aliases like 'latest' -> 'master'
   [ "$version" = "latest" ] && version="master"
@@ -1664,7 +1669,9 @@ function main_ebash() {
 
   # Main repository branch
   # FIXME: This assumes current_branch will succeed, but there's no error handling if it fails
-  MAIN_BRANCH=$(current_branch)
+  local quiet_mode="false"
+  [[ "$SILENT" == "true" ]] && quiet_mode="true"
+  MAIN_BRANCH=$(current_branch "$quiet_mode")
 
   case "$command" in
   "install")
@@ -1711,6 +1718,8 @@ function preparse_args() {
       CREATE_SYMLINK=false && unset 'args[i]'
     elif [[ "$key" == "--confirm" ]]; then
       CONFIRM=true && unset 'args[i]'
+    elif [[ "$key" == "--silent" ]]; then
+      SILENT=true && unset 'args[i]'
     elif [[ "$key" == "--help" ]]; then
       print_usage $EXIT_OK
     fi

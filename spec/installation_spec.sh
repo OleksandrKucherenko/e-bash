@@ -56,8 +56,8 @@ Describe 'bin/install.e-bash.sh'
   do_rollback() { ./install.e-bash.sh rollback 2>/dev/null >/dev/null; }
   do_rollback_global() { HOME="$TEMP_HOME" ./install.e-bash.sh rollback --global 2>/dev/null >/dev/null; }
   do_versions() { ./install.e-bash.sh versions 2>/dev/null >/dev/null; }
-  do_uninstall() { ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null; }
-  do_uninstall_global() { HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 2>/dev/null >/dev/null; }
+  do_uninstall() { ./install.e-bash.sh uninstall --confirm --silent 2>/dev/null >/dev/null; }
+  do_uninstall_global() { HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global --silent 2>/dev/null >/dev/null; }
 
   # Mock installation state without network access
   # Simulates a successful local installation by creating expected directory structure
@@ -70,9 +70,17 @@ Describe 'bin/install.e-bash.sh'
     git add .scripts
     git commit --no-gpg-sign -m "Install e-bash scripts" -q 2>/dev/null || git commit -m "Install e-bash scripts" -q
 
+    # Create a fake tag v1.0.0 on current commit to simulate version detection
+    git tag v1.0.0 2>/dev/null || true
+
     # Set up git remote and branches as the install script would
     git remote add e-bash https://github.com/OleksandrKucherenko/e-bash.git 2>/dev/null || true
+    
+    # Create e-bash-scripts branch pointing to the tagged commit
     git branch e-bash-scripts 2>/dev/null || true
+    
+    # Create a temporary branch to simulate e-bash-temp pointing to v1.0.0
+    git branch e-bash-temp 2>/dev/null || true
 
     # Return success
     return 0
@@ -413,7 +421,7 @@ Describe 'bin/install.e-bash.sh'
       touch .scripts/test.sh
       make_readonly
 
-      When run ./install.e-bash.sh uninstall --confirm
+      When run ./install.e-bash.sh uninstall --confirm --silent
 
       The status should be failure
       The error should include "Error:"
@@ -844,7 +852,7 @@ Describe 'bin/install.e-bash.sh'
     It 'should remove .scripts directory with --confirm'
       mock_install
 
-      When run ./install.e-bash.sh uninstall --confirm
+      When run ./install.e-bash.sh uninstall --confirm --silent
 
       The status should be success
       The output should include "Uninstall complete"
@@ -855,7 +863,7 @@ Describe 'bin/install.e-bash.sh'
       mock_install
       mock_upgrade  # Create previous version file
 
-      When run ./install.e-bash.sh uninstall --confirm
+      When run ./install.e-bash.sh uninstall --confirm --silent
 
       The status should be success
       The file ".e-bash-previous-version" should not be exist
@@ -886,7 +894,7 @@ Describe 'bin/install.e-bash.sh'
       cp_install
       mv install.e-bash.sh bin/
 
-      When run ./bin/install.e-bash.sh uninstall --confirm
+      When run ./bin/install.e-bash.sh uninstall --confirm --silent
 
       The status should be success
       The file "bin/install.e-bash.sh" should not be exist
@@ -898,7 +906,7 @@ Describe 'bin/install.e-bash.sh'
       echo 'export E_BASH="$PWD/.scripts"' >> .envrc
       echo 'PATH_add "$PWD/.scripts"' >> .envrc
 
-      When run ./install.e-bash.sh uninstall --confirm
+      When run ./install.e-bash.sh uninstall --confirm --silent
 
       The status should be success
       The file ".envrc" should not include "E_BASH"
@@ -911,7 +919,7 @@ Describe 'bin/install.e-bash.sh'
       touch .scripts/user-script.sh
       echo "# User content" > README.md
 
-      When run ./install.e-bash.sh uninstall --confirm
+      When run ./install.e-bash.sh uninstall --confirm --silent
 
       The status should be success
       The file "README.md" should be present
@@ -921,7 +929,7 @@ Describe 'bin/install.e-bash.sh'
     It 'should support dry-run mode'
       mock_install
 
-      When run ./install.e-bash.sh uninstall --confirm --dry-run
+      When run ./install.e-bash.sh uninstall --confirm --dry-run --silent
 
       The status should be success
       The output should include "dry run:"
@@ -932,7 +940,7 @@ Describe 'bin/install.e-bash.sh'
       # Fresh repo without e-bash
       rm -rf .scripts .e-bash-previous-version
 
-      When run ./install.e-bash.sh uninstall --confirm
+      When run ./install.e-bash.sh uninstall --confirm --silent
 
       The status should be failure
       The stderr should include "installer: e-bash scripts"
@@ -942,7 +950,7 @@ Describe 'bin/install.e-bash.sh'
     It 'should NOT remove shell RC files'
       mock_install
       # This is important - shell RC should not be touched
-      When run ./install.e-bash.sh uninstall --confirm
+      When run ./install.e-bash.sh uninstall --confirm --silent
 
       # Should complete successfully
       The status should be success
@@ -979,7 +987,7 @@ Describe 'bin/install.e-bash.sh'
       env HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null
 
       # Uninstall should only remove symlink
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global --silent
 
       The status should be success
       The stderr should include "installer: e-bash scripts"
@@ -997,7 +1005,7 @@ Describe 'bin/install.e-bash.sh'
 
       env HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null
 
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global --silent
 
       The status should be success
       The stderr should include "installer: e-bash scripts"
@@ -1017,7 +1025,7 @@ Describe 'bin/install.e-bash.sh'
       cp_install
 
       # No symlink created
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global --silent
 
       The status should be failure
       The stderr should include "installer: e-bash scripts"
