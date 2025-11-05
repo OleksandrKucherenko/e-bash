@@ -30,8 +30,8 @@ End
 Include ".scripts/_dependencies.sh"
 
 Describe "_dependencies.sh"
-    # remove colors in output
-    BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset"
+    # remove colors in output and ensure CI variables are clean for each test
+    BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset CI_E_BASH_INSTALL_DEPENDENCIES"
 
     Describe "Dependency:"
         It "Dependency OK on \`dependency bash \"5.*.*\" \"brew install bash\" --version\`"
@@ -256,6 +256,8 @@ Describe "_dependencies.sh"
         End
 
         It "isCIAutoInstallEnabled returns false when CI_E_BASH_INSTALL_DEPENDENCIES is unset"
+            # Ensure CI is unset for this test (GitHub Actions sets CI=true by default)
+            unset CI
             When call isCIAutoInstallEnabled
             The status should be success
             The output should eq false
@@ -264,6 +266,8 @@ Describe "_dependencies.sh"
         End
 
         It "isCIAutoInstallEnabled returns false when CI is not set but CI_E_BASH_INSTALL_DEPENDENCIES=1"
+            # Explicitly unset CI to test this condition (GitHub Actions sets CI=true by default)
+            unset CI
             export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call isCIAutoInstallEnabled
             The status should be success
@@ -339,12 +343,14 @@ Describe "_dependencies.sh"
         End
 
         It "CI mode disabled should not auto-install (default behavior)"
+            # Ensure CI is unset to test default behavior (GitHub Actions sets CI=true by default)
+            unset CI
             When call dependency not_exist_tool "1.*.*" "echo 'should not execute' >&2"
-            
+
             The status should be failure
             The output should include "Error: dependency \`not_exist_tool\` not found."
             The error should not include "should not execute"
-            
+
             # Dump
         End
 
@@ -362,13 +368,15 @@ Describe "_dependencies.sh"
         End
 
         It "CI_E_BASH_INSTALL_DEPENDENCIES=1 without CI should not auto-install"
+            # Explicitly unset CI to test this condition (GitHub Actions sets CI=true by default)
+            unset CI
             export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call dependency not_exist_tool "1.*.*" "echo 'should not execute' >&2"
-            
+
             The status should be failure
             The output should include "Error: dependency \`not_exist_tool\` not found."
             The error should not include "should not execute"
-            
+
             unset CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
