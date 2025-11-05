@@ -169,13 +169,22 @@ function help() {
 	echo ' 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0'
 }
 
+# Cross-platform sed function - uses gsed on macOS, sed on Linux
+function xsed() {
+	if command -v gsed >/dev/null 2>&1; then
+		gsed "$@"
+	else
+		sed "$@"
+	fi
+}
+
 ## slagify, convert input string to valid bash variable name
 function slagify() {
 	local input="$1"
 	# Replace non-alphanumeric characters with underscores
-	local slag=$(echo "$input" | sed 's/[^a-zA-Z0-9]/_/g')
+	local slag=$(echo "$input" | xsed 's/[^a-zA-Z0-9]/_/g')
 	# Ensure it doesn't start with a number
-	slag=$(echo "$slag" | sed 's/^[0-9]/_&/g')
+	slag=$(echo "$slag" | xsed 's/^[0-9]/_&/g')
 	echo "$slag"
 }
 
@@ -337,7 +346,7 @@ function auto_detect_prefix_from_tags() {
 		# If we found a semver part in the tag
 		if [[ -n "$semver_part" ]]; then
 			# Extract prefix by removing semver part (and anything after) from the tag
-			local prefix=$(echo "$tag" | sed "s/${semver_part}.*//")
+			local prefix=$(echo "$tag" | xsed "s/${semver_part}.*//")
 
 			# Count occurrences of this prefix
 			if [[ -n "${prefixes[$prefix]}" ]]; then
@@ -378,7 +387,7 @@ function auto_detect_prefix_from_tags() {
 	fi
 
 	# Format tags as comma-separated list
-	local csvTags=$(echo "$all_tags" | tr '\n' ',' | sed 's/,$//; s/,/, /g')
+	local csvTags=$(echo "$all_tags" | tr '\n' ',' | xsed 's/,$//; s/,/, /g')
 	echo:Ver "Auto-detected prefix: ${cl_yellow}${mostUsed}${cl_reset} from tags: ${cl_gray}${csvTags}${cl_reset}"
 
 	echo "${mostUsed}"
