@@ -253,7 +253,7 @@ Describe 'bin/install.e-bash.sh'
 
   # Test upgrading e-bash
   Describe 'Upgrade:'
-    Before 'temp_repo; git_init; git_config; cp_install; mock_install'
+    Before 'temp_repo; git_init; git_config; cp_install; install_stable'
     After 'cleanup_temp_repo'
 
     It 'should upgrade to the latest version successfully'
@@ -485,7 +485,7 @@ Describe 'bin/install.e-bash.sh'
       End
 
       It 'should mark current stable installed version'
-        mock_install
+        install_stable
 
         When run ./install.e-bash.sh versions
 
@@ -846,6 +846,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall
 
       The status should be failure
+      The stderr should include "installer: e-bash scripts"
       The output should include "Use --confirm to proceed"
     End
 
@@ -855,6 +856,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       The output should include "Uninstall complete"
       The dir ".scripts" should not be exist
     End
@@ -866,6 +868,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       The file ".e-bash-previous-version" should not be exist
     End
 
@@ -897,6 +900,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./bin/install.e-bash.sh uninstall --confirm 
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       The file "bin/install.e-bash.sh" should not be exist
     End
 
@@ -909,6 +913,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       The file ".envrc" should not include "E_BASH"
       The file ".envrc" should not include "PATH_add"
     End
@@ -922,6 +927,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       The file "README.md" should be present
       The contents of file "README.md" should include "User content"
     End
@@ -932,6 +938,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm --dry-run 
 
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       The output should include "dry run:"
       The dir ".scripts" should be present
     End
@@ -954,6 +961,7 @@ Describe 'bin/install.e-bash.sh'
 
       # Should complete successfully
       The status should be success
+      The stderr should include "installer: e-bash scripts"
       # And should not mention shell RC files
       The output should not include ".bashrc"
       The output should not include ".zshrc"
