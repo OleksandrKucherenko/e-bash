@@ -48,7 +48,7 @@ FORCE=false         # If true, forcibly overwrite existing .scripts with auto-ba
 GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
 CONFIRM=false       # Confirm destructive operations (like uninstall)
-SILENT=false        # Suppress debug output
+# SILENT flag removed - script should be polished by default
 ARGS=()             # Clean argument after preparse_args
 
 # Helpers
@@ -1669,9 +1669,8 @@ function main_ebash() {
 
   # Main repository branch
   # FIXME: This assumes current_branch will succeed, but there's no error handling if it fails
-  local quiet_mode="false"
-  [[ "$SILENT" == "true" ]] && quiet_mode="true"
-  MAIN_BRANCH=$(current_branch "$quiet_mode")
+  # Always use quiet mode - script should be polished by default
+  MAIN_BRANCH=$(current_branch "true")
 
   case "$command" in
   "install")
@@ -1719,7 +1718,8 @@ function preparse_args() {
     elif [[ "$key" == "--confirm" ]]; then
       CONFIRM=true && unset 'args[i]'
     elif [[ "$key" == "--silent" ]]; then
-      SILENT=true && unset 'args[i]'
+      # --silent flag is deprecated - script is polished by default
+      unset 'args[i]'
     elif [[ "$key" == "--help" ]]; then
       print_usage $EXIT_OK
     fi
