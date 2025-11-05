@@ -370,7 +370,10 @@ Describe 'bin/version-up.v2.sh /'
     # Check detection messages
     The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of hotfix-v1.1.1-rc.1"
     The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.2-rc.1"
-    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v1.1.1-rc.1"
+    # Check that both tags are detected (order may vary by platform)
+    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags:"
+    The result of function no_colors_stderr should include "v1.1.1-rc.1"
+    The result of function no_colors_stderr should include "v1.2.0"
 
     # Exit code should be 0
     The result of function no_colors_stderr should include "exit code: 0"
