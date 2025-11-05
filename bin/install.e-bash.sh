@@ -1669,8 +1669,12 @@ function main_ebash() {
 
   # Main repository branch
   # FIXME: This assumes current_branch will succeed, but there's no error handling if it fails
-  # Always use quiet mode - script should be polished by default
-  MAIN_BRANCH=$(current_branch "true")
+  # Show environment detection for install/upgrade commands, quiet for others
+  if [[ "$command" == "install" || "$command" == "upgrade" ]]; then
+    MAIN_BRANCH=$(current_branch "false")
+  else
+    MAIN_BRANCH=$(current_branch "true")
+  fi
 
   case "$command" in
   "install")
