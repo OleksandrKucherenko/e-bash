@@ -140,30 +140,16 @@ function dependency() {
 
 function optional() {
   local args=("$@")
-
-  # remove all flags from call
-  local del=("--debug" "--exec" "--silent" "--optional")
-  for value in "${del[@]}"; do
-    for i in "${!args[@]}"; do
-      if [[ ${args[i]} == "${value}" ]]; then unset 'args[i]'; fi
-    done
-  done
-
-  # inject default parameters
-  if [ "${#args[@]}" == "2" ]; then
-    args+=("No details. Please google it." "--version")
-  elif [ "${#args[@]}" == "3" ]; then
-    args+=("--version")
-  fi
-
-  # recover flags
-  if [ "$(isExec "$@")" == "true" ]; then args+=("--exec"); fi
-  if [ "$(isSilent "$@")" == "true" ]; then args+=("--silent"); fi
-  if [ "$(isDebug "$@")" == "true" ]; then args+=("--debug"); fi
-  args+=("--optional")
-
-  # we should expand any number of input arguments to required 4 + extra flags
-  dependency "${args[@]}"
+  
+  # Ensure we have minimum required parameters before adding --optional flag
+  # This prevents --optional from being treated as a positional parameter
+  case ${#args[@]} in
+    2) args+=("No details. Please google it." "--version") ;;
+    3) args+=("--version") ;;
+  esac
+  
+  # Add --optional flag and forward to dependency()
+  dependency "${args[@]}" --optional
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
