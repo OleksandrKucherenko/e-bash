@@ -539,6 +539,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install v999.999.999
 
       The status should be failure
+      The output should include "Installing e-bash scripts"
       The error should be present # logs output should have error message
     End
   End
@@ -869,6 +870,7 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
       The file ".e-bash-previous-version" should not be exist
     End
 
@@ -901,6 +903,7 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
       The file "bin/install.e-bash.sh" should not be exist
     End
 
@@ -914,6 +917,7 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
       The file ".envrc" should not include "E_BASH"
       The file ".envrc" should not include "PATH_add"
     End
@@ -928,6 +932,7 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
       The file "README.md" should be present
       The contents of file "README.md" should include "User content"
     End
