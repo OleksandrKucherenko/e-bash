@@ -34,7 +34,7 @@ jobs:
           echo "=== Verifying installation order ==="
           echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
           echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
-          echo "3. Homebrew version: $(brew --version | head -1 || echo 'FAILED')"
+          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
           echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
       - name: Setup project dependencies using DIRENV and CI auto-install mode
         run: |
@@ -88,7 +88,7 @@ jobs:
           echo "=== Verifying installation order ==="
           echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
           echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
-          echo "3. Homebrew version: $(brew --version | head -1 || echo 'FAILED')"
+          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
           echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
       - name: Setup project dependencies using DIRENV and CI auto-install mode
         run: |
