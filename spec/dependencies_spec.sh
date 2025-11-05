@@ -178,33 +178,36 @@ Describe "_dependencies.sh"
             # Dump
         End
 
-        It "isCIAutoInstallEnabled returns true when CI_E_BASH_INSTALL_DEPENDENCIES=1"
+        It "isCIAutoInstallEnabled returns true when CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1"
+            export CI=1
             export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call isCIAutoInstallEnabled
             The status should be success
             The output should eq true
             The error should eq ''
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
 
-        It "isCIAutoInstallEnabled returns true when CI_E_BASH_INSTALL_DEPENDENCIES=true"
+        It "isCIAutoInstallEnabled returns true when CI=true and CI_E_BASH_INSTALL_DEPENDENCIES=true"
+            export CI=true
             export CI_E_BASH_INSTALL_DEPENDENCIES=true
             When call isCIAutoInstallEnabled
             The status should be success
             The output should eq true
             The error should eq ''
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
 
-        It "isCIAutoInstallEnabled returns true when CI_E_BASH_INSTALL_DEPENDENCIES=yes"
+        It "isCIAutoInstallEnabled returns true when CI=yes and CI_E_BASH_INSTALL_DEPENDENCIES=yes"
+            export CI=yes
             export CI_E_BASH_INSTALL_DEPENDENCIES=yes
             When call isCIAutoInstallEnabled
             The status should be success
             The output should eq true
             The error should eq ''
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
 
@@ -216,8 +219,8 @@ Describe "_dependencies.sh"
             # Dump
         End
 
-        It "isCIAutoInstallEnabled returns false when CI_E_BASH_INSTALL_DEPENDENCIES has invalid value"
-            export CI_E_BASH_INSTALL_DEPENDENCIES=invalid
+        It "isCIAutoInstallEnabled returns false when CI is not set but CI_E_BASH_INSTALL_DEPENDENCIES=1"
+            export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call isCIAutoInstallEnabled
             The status should be success
             The output should eq false
@@ -225,10 +228,22 @@ Describe "_dependencies.sh"
             unset CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
+
+        It "isCIAutoInstallEnabled returns false when CI=1 but CI_E_BASH_INSTALL_DEPENDENCIES has invalid value"
+            export CI=1
+            export CI_E_BASH_INSTALL_DEPENDENCIES=invalid
+            When call isCIAutoInstallEnabled
+            The status should be success
+            The output should eq false
+            The error should eq ''
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+            # Dump
+        End
     End
 
     Describe "CI Auto-Install Mode:"
-        It "CI mode enabled with CI_E_BASH_INSTALL_DEPENDENCIES=1 should auto-install missing tool"
+        It "CI mode enabled with CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1 should auto-install missing tool"
+            export CI=1
             export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call dependency not_exist_tool "1.*.*" "echo 'auto-installed tool' >&2"
             
@@ -236,11 +251,12 @@ Describe "_dependencies.sh"
             The output should include "auto-installing missing dependency"
             The error should include "auto-installed tool"
             
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
 
-        It "CI mode enabled with CI_E_BASH_INSTALL_DEPENDENCIES=true should auto-install missing tool"
+        It "CI mode enabled with CI=true and CI_E_BASH_INSTALL_DEPENDENCIES=true should auto-install missing tool"
+            export CI=true
             export CI_E_BASH_INSTALL_DEPENDENCIES=true
             When call dependency not_exist_tool "1.*.*" "echo 'auto-installed tool' >&2"
             
@@ -248,11 +264,12 @@ Describe "_dependencies.sh"
             The output should include "auto-installing missing dependency"
             The error should include "auto-installed tool"
             
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
 
-        It "CI mode enabled with CI_E_BASH_INSTALL_DEPENDENCIES=yes should auto-install missing tool"
+        It "CI mode enabled with CI=yes and CI_E_BASH_INSTALL_DEPENDENCIES=yes should auto-install missing tool"
+            export CI=yes
             export CI_E_BASH_INSTALL_DEPENDENCIES=yes
             When call dependency not_exist_tool "1.*.*" "echo 'auto-installed tool' >&2"
             
@@ -260,11 +277,12 @@ Describe "_dependencies.sh"
             The output should include "auto-installing missing dependency"
             The error should include "auto-installed tool"
             
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
 
         It "CI mode enabled should auto-install tool with wrong version"
+            export CI=1
             export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call dependency bash "99.*.*" "echo 'auto-upgraded bash' >&2"
             
@@ -272,7 +290,7 @@ Describe "_dependencies.sh"
             The output should include "auto-installing dependency with wrong version"
             The error should include "auto-upgraded bash"
             
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
 
@@ -287,7 +305,20 @@ Describe "_dependencies.sh"
         End
 
         It "CI mode with invalid value should not auto-install"
+            export CI=1
             export CI_E_BASH_INSTALL_DEPENDENCIES=invalid
+            When call dependency not_exist_tool "1.*.*" "echo 'should not execute' >&2"
+            
+            The status should be failure
+            The output should include "Error: dependency \`not_exist_tool\` not found."
+            The error should not include "should not execute"
+            
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+            # Dump
+        End
+
+        It "CI_E_BASH_INSTALL_DEPENDENCIES=1 without CI should not auto-install"
+            export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call dependency not_exist_tool "1.*.*" "echo 'should not execute' >&2"
             
             The status should be failure
@@ -299,6 +330,7 @@ Describe "_dependencies.sh"
         End
 
         It "CI mode should work with optional dependencies"
+            export CI=1
             export CI_E_BASH_INSTALL_DEPENDENCIES=1
             When call optional not_exist_tool "1.*.*" "echo 'auto-installed optional tool' >&2"
             
@@ -306,7 +338,7 @@ Describe "_dependencies.sh"
             The output should include "auto-installing missing optional dependency"
             The error should include "auto-installed optional tool"
             
-            unset CI_E_BASH_INSTALL_DEPENDENCIES
+            unset CI CI_E_BASH_INSTALL_DEPENDENCIES
             # Dump
         End
     End
