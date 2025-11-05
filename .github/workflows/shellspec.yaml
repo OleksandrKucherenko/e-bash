@@ -28,6 +28,14 @@ jobs:
         run: |
           # Install direnv for macOS
           brew install direnv
+      - name: Verify installation order and setup
+        run: |
+          # Verify critical tools are available in correct order
+          echo "=== Verifying installation order ==="
+          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
+          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
+          echo "3. Homebrew version: $(brew --version | head -1 || echo 'FAILED')"
+          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
       - name: Setup project dependencies using DIRENV and CI auto-install mode
         run: |
           # Allow .envrc execution and export environment to GitHub Actions
@@ -57,14 +65,35 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y kcov uuid-runtime curl
+          sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
+      - name: Install Homebrew (required for dependency script)
+        run: |
+          # Install Homebrew for Linux - required by .envrc dependencies
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          # Add Homebrew to PATH for current and future steps
+          echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+          # Set up Homebrew environment variables
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          echo "HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew" >> "$GITHUB_ENV"
+          echo "HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar" >> "$GITHUB_ENV"
+          echo "HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew" >> "$GITHUB_ENV"
       - name: Install DIRENV
         run: |
-          # Install direnv for Ubuntu
+          # Install direnv for Ubuntu (must be after Homebrew for dependency order)
           curl -sfL https://direnv.net/install.sh | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Verify installation order and setup
+        run: |
+          # Verify critical tools are available in correct order
+          echo "=== Verifying installation order ==="
+          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
+          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
+          echo "3. Homebrew version: $(brew --version | head -1 || echo 'FAILED')"
+          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
       - name: Setup project dependencies using DIRENV and CI auto-install mode
         run: |
+          # Ensure Homebrew is in PATH for this step
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
