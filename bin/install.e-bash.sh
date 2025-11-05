@@ -325,15 +325,14 @@ function print_manual_uninstall() {
 ## Try to determine the main branch name, with fallbacks for new repos. Result to STDOUT.
 function current_branch() {
   local branch="${DEFAULT_BRANCH}"
-  local quiet="${1:-false}"
 
   if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-    [ "$quiet" != "true" ] && echo -e "${GRAY}detected:${NC} we are in a regular folder." >&2
+    echo -e "${GRAY}detected:${NC} we are in a regular folder." >&2
   elif git rev-parse --quiet --verify HEAD >/dev/null 2>&1; then
-    [ "$quiet" != "true" ] && echo -e "${GRAY}detected:${NC} repository with commits." >&2
+    echo -e "${GRAY}detected:${NC} repository with commits." >&2
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   else
-    [ "$quiet" != "true" ] && echo -e "${GRAY}detected:${NC} new repository with NO commits." >&2
+    echo -e "${GRAY}detected:${NC} new repository with NO commits." >&2
 
     # Check if there's a default branch configured
     if git config init.defaultBranch >/dev/null 2>&1; then
@@ -1669,12 +1668,7 @@ function main_ebash() {
 
   # Main repository branch
   # FIXME: This assumes current_branch will succeed, but there's no error handling if it fails
-  # Show environment detection for install/upgrade commands, quiet for others
-  if [[ "$command" == "install" || "$command" == "upgrade" ]]; then
-    MAIN_BRANCH=$(current_branch "false")
-  else
-    MAIN_BRANCH=$(current_branch "true")
-  fi
+  MAIN_BRANCH=$(current_branch)
 
   case "$command" in
   "install")
@@ -1693,8 +1687,6 @@ function main_ebash() {
     repo_uninstall
     ;;
   "help" | "-h" | "--help")
-    # Detect environment for help command (needed for tests)
-    current_branch "false" >/dev/null
     print_usage $EXIT_OK
     ;;
   *)
