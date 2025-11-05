@@ -39,10 +39,15 @@ function isSilent() {
 }
 
 function isCIAutoInstallEnabled() {
-  case "${CI_E_BASH_INSTALL_DEPENDENCIES:-}" in
-    1|true|yes) echo true ;;
-    *) echo false ;;
-  esac
+  # Only enable auto-install if we're in a CI environment AND the flag is set
+  if [[ -n "${CI:-}" ]]; then
+    case "${CI_E_BASH_INSTALL_DEPENDENCIES:-}" in
+      1|true|yes) echo true ;;
+      *) echo false ;;
+    esac
+  else
+    echo false
+  fi
 }
 
 # shellcheck disable=SC2001,SC2155,SC2086
