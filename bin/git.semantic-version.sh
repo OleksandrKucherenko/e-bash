@@ -28,13 +28,12 @@ readonly SCRIPT_VERSION="1.0.0"
 # shellcheck source=../.scripts/_logger.sh
 # shellcheck source=../.scripts/_arguments.sh
 # shellcheck source=../.scripts/_semver.sh
-# shellcheck source=../.scripts/_tmux.sh
 source "$E_BASH/_colors.sh"
 source "$E_BASH/_logger.sh"
 source "$E_BASH/_arguments.sh"
 source "$E_BASH/_semver.sh"
 source "$E_BASH/_commons.sh"
-source "$E_BASH/_tmux.sh"
+# Note: tmux pattern implemented inline (see demos/demo.tmux.progress.sh)
 
 # Configure logging
 logger:init SemVer "[semver] " ">&2"
@@ -46,8 +45,16 @@ readonly EXIT_NO_COMMITS=2
 readonly EXIT_INVALID_ARGS=3
 readonly EXIT_INTERRUPTED=130
 
-# Global interrupt flag
+# Global flags
 INTERRUPTED=false
+
+# Tmux progress display variables (inline pattern from demo)
+readonly TMUX_PROGRESS_HEIGHT=2
+TMUX_SESSION_NAME="git-semver-$$"
+TMUX_FIFO_PATH="/tmp/git_semver_progress_$$"
+TMUX_PROGRESS_ACTIVE=false
+readonly TMUX_MAIN_PANE=0
+readonly TMUX_PROGRESS_PANE=1
 
 # ============================================================================
 # Conventional Commit Configuration
@@ -518,24 +525,33 @@ function gitsv:process_commits() {
   # Print header
   gitsv:print_header
 
-  # Setup tmux progress if enabled
+  # Setup tmux progress if enabled (inline pattern from demo)
   # Note: We're guaranteed to be in tmux at this point if use_tmux="true"
   # because main() auto-starts tmux and re-execs before reaching here
   if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
     echo:SemVer "${cl_cyan}Initializing tmux progress display...${cl_reset}"
-    tmux:init_progress
 
-    # Verify initialization succeeded
-    if [[ "$TMUX_PROGRESS_ACTIVE" != "true" ]] || [[ ! -p "$TMUX_FIFO_PATH" ]]; then
-      echo:SemVer "${cl_red}Warning: tmux progress initialization failed${cl_reset}"
-      echo:SemVer "TMUX_PROGRESS_ACTIVE=$TMUX_PROGRESS_ACTIVE"
-      echo:SemVer "TMUX_FIFO_PATH=$TMUX_FIFO_PATH"
-      echo:SemVer "FIFO exists: $([ -p "$TMUX_FIFO_PATH" ] && echo yes || echo no)"
-    else
-      echo:SemVer "${cl_green}Tmux progress active: FIFO=$TMUX_FIFO_PATH${cl_reset}"
-    fi
+    # Clean up any leftover FIFO
+    [[ -p "$TMUX_FIFO_PATH" ]] && rm -f "$TMUX_FIFO_PATH"
 
-    tmux:setup_trap
+    # Create the FIFO
+    mkfifo "$TMUX_FIFO_PATH"
+    echo:SemVer "Created FIFO: $TMUX_FIFO_PATH"
+
+    # Split the current tmux pane to create a progress display area
+    # The tail -f runs in a separate shell process and reads from FIFO
+    tmux split-window -v -l "$TMUX_PROGRESS_HEIGHT" "tail -f $TMUX_FIFO_PATH"
+
+    # Configure the progress pane (disable user input, set blue background)
+    tmux select-pane -t "$TMUX_PROGRESS_PANE" -d
+    tmux select-pane -t "$TMUX_PROGRESS_PANE" -P 'bg=colour25'
+
+    # Switch focus back to the main pane
+    tmux select-pane -t "$TMUX_MAIN_PANE"
+
+    # Mark progress as active
+    TMUX_PROGRESS_ACTIVE=true
+    echo:SemVer "${cl_green}Tmux progress active${cl_reset}"
   fi
 
   # Process each commit
@@ -629,12 +645,26 @@ function gitsv:process_commits() {
       tag) stat_tag=$((stat_tag + 1)) ;;
     esac
 
-    # Update progress - either to tmux or stderr, not both
-    if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
-      # Send to tmux progress bar only
-      tmux:show_progress_bar "$current_count" "$total_commits" "Processing commits" 50
+    # Update progress - either to tmux FIFO or stderr, not both
+    if [[ "$use_tmux" == "true" ]] && [[ "$TMUX_PROGRESS_ACTIVE" == "true" ]] && [[ -p "$TMUX_FIFO_PATH" ]]; then
+      # Build progress bar and write directly to FIFO (inline pattern from demo)
+      local percent=$((current_count * 100 / total_commits))
+      local width=50
+      local completed=$((width * current_count / total_commits))
+
+      # Build the bar
+      local progress=""
+      for ((i = 0; i < completed; i++)); do
+        progress+="#"
+      done
+      for ((i = completed; i < width; i++)); do
+        progress+=" "
+      done
+
+      # Write to FIFO (this goes to progress pane)
+      printf "Processing commits: [%s] %d%% (%d/%d)\n" "$progress" "$percent" "$current_count" "$total_commits" > "$TMUX_FIFO_PATH"
     else
-      # Log to stderr when not using tmux
+      # Log to stderr when not using tmux (goes to main output)
       echo:SemVer "[$current_count/$total_commits] $short_hash: $version_before → $version_after"
     fi
 
@@ -642,7 +672,7 @@ function gitsv:process_commits() {
 
   # Cleanup tmux if it was used
   if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
-    tmux:cleanup_progress
+    cleanup_tmux_progress
   fi
 
   # Print footer
@@ -884,21 +914,39 @@ function on_interrupt() {
   INTERRUPTED=true
 
   # Cleanup tmux progress if it was active
-  if type -t tmux:cleanup_progress >/dev/null 2>&1; then
-    tmux:cleanup_progress 2>/dev/null || true
-  fi
+  cleanup_tmux_progress 2>/dev/null || true
 
   exit $EXIT_INTERRUPTED
 }
 
 ## Cleanup function
+## Cleanup tmux progress display (inline pattern from demo)
+function cleanup_tmux_progress() {
+  # Only cleanup if progress is active
+  if [[ "$TMUX_PROGRESS_ACTIVE" != "true" ]]; then
+    return 0
+  fi
+
+  echo:SemVer "Cleaning up tmux progress display..."
+
+  # Make sure we're in the main pane
+  tmux select-pane -t "$TMUX_MAIN_PANE" 2>/dev/null
+
+  # Kill the progress pane if it exists
+  tmux kill-pane -t "$TMUX_PROGRESS_PANE" 2>/dev/null
+
+  # Remove the FIFO
+  [[ -p "$TMUX_FIFO_PATH" ]] && rm -f "$TMUX_FIFO_PATH"
+
+  TMUX_PROGRESS_ACTIVE=false
+}
+
+## Exit handler
 function on_exit() {
   local exit_code=$?
 
-  # Cleanup tmux progress if still active
-  if type -t tmux:cleanup_progress >/dev/null 2>&1; then
-    tmux:cleanup_progress 2>/dev/null || true
-  fi
+  # Cleanup tmux progress if active
+  cleanup_tmux_progress 2>/dev/null || true
 
   if [[ $exit_code -eq $EXIT_INTERRUPTED ]]; then
     echo:SemVer "Processing interrupted"
