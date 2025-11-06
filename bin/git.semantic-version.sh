@@ -534,24 +534,45 @@ function gitsv:process_commits() {
     # Clean up any leftover FIFO
     [[ -p "$TMUX_FIFO_PATH" ]] && rm -f "$TMUX_FIFO_PATH"
 
-    # Create the FIFO
-    mkfifo "$TMUX_FIFO_PATH"
-    echo:SemVer "Created FIFO: $TMUX_FIFO_PATH"
+    # Create the FIFO with retry (WSL2 workaround)
+    local fifo_created=false
+    for attempt in 1 2 3; do
+      if mkfifo "$TMUX_FIFO_PATH" 2>/dev/null; then
+        # Verify it actually exists (WSL2 sometimes returns success but doesn't create)
+        if [[ -p "$TMUX_FIFO_PATH" ]]; then
+          fifo_created=true
+          echo:SemVer "Created FIFO: $TMUX_FIFO_PATH (attempt $attempt)"
+          break
+        else
+          echo:SemVer "${cl_yellow}Warning: mkfifo succeeded but FIFO not found (attempt $attempt)${cl_reset}"
+          sleep 0.1
+        fi
+      else
+        echo:SemVer "${cl_yellow}Warning: mkfifo failed (attempt $attempt)${cl_reset}"
+        sleep 0.1
+      fi
+    done
 
-    # Split the current tmux pane to create a progress display area
-    # The tail -f runs in a separate shell process and reads from FIFO
-    tmux split-window -v -l "$TMUX_PROGRESS_HEIGHT" "tail -f $TMUX_FIFO_PATH"
+    if [[ "$fifo_created" != "true" ]]; then
+      echo:SemVer "${cl_red}Failed to create FIFO after 3 attempts. Disabling tmux progress.${cl_reset}"
+      echo:SemVer "${cl_yellow}Note: This is a known WSL2 issue. Try running manually: mkfifo $TMUX_FIFO_PATH${cl_reset}"
+      use_tmux="false"
+    else
+      # Split the current tmux pane to create a progress display area
+      # The tail -f runs in a separate shell process and reads from FIFO
+      tmux split-window -v -l "$TMUX_PROGRESS_HEIGHT" "tail -f $TMUX_FIFO_PATH"
 
-    # Configure the progress pane (disable user input, set blue background)
-    tmux select-pane -t "$TMUX_PROGRESS_PANE" -d
-    tmux select-pane -t "$TMUX_PROGRESS_PANE" -P 'bg=colour25'
+      # Configure the progress pane (disable user input, set blue background)
+      tmux select-pane -t "$TMUX_PROGRESS_PANE" -d
+      tmux select-pane -t "$TMUX_PROGRESS_PANE" -P 'bg=colour25'
 
-    # Switch focus back to the main pane
-    tmux select-pane -t "$TMUX_MAIN_PANE"
+      # Switch focus back to the main pane
+      tmux select-pane -t "$TMUX_MAIN_PANE"
 
-    # Mark progress as active
-    TMUX_PROGRESS_ACTIVE=true
-    echo:SemVer "${cl_green}Tmux progress active${cl_reset}"
+      # Mark progress as active
+      TMUX_PROGRESS_ACTIVE=true
+      echo:SemVer "${cl_green}Tmux progress active${cl_reset}"
+    fi
   fi
 
   # Process each commit
