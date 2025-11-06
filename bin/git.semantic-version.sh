@@ -623,12 +623,13 @@ function gitsv:process_commits() {
       tag) stat_tag=$((stat_tag + 1)) ;;
     esac
 
-    # Update progress
-    echo:SemVer "[$current_count/$total_commits] $short_hash: $version_before → $version_after"
-
-    # Update tmux progress if active
+    # Update progress - either to tmux or stderr, not both
     if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
+      # Send to tmux progress bar only
       tmux:show_progress_bar "$current_count" "$total_commits" "Processing commits" 50
+    else
+      # Log to stderr when not using tmux
+      echo:SemVer "[$current_count/$total_commits] $short_hash: $version_before → $version_after"
     fi
 
   done <<< "$commits"
@@ -932,6 +933,13 @@ function main() {
 
   # Auto-start tmux if --tmux-progress is enabled but not in tmux session
   if [[ "$USE_TMUX" == "true" ]] && [[ -z "$TMUX" ]]; then
+    # Check if we have a proper terminal (TTY)
+    if [[ ! -t 0 ]] || [[ ! -t 1 ]]; then
+      echo "${cl_red}Error: --tmux-progress requires a TTY terminal${cl_reset}" >&2
+      echo "Please run this script in an interactive terminal, not through a pipe or redirect" >&2
+      return $EXIT_ERROR
+    fi
+
     echo "${cl_cyan}--tmux-progress enabled: Starting tmux session...${cl_reset}" >&2
 
     # Generate unique session name
