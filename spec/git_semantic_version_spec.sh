@@ -338,6 +338,80 @@ Describe "git.semantic-version.sh"
     End
   End
 
+  Describe "gitsv:extract_semver_from_tag()"
+    It "extracts version from tag with v prefix"
+      When call gitsv:extract_semver_from_tag "v1.0.0"
+      The output should eq "1.0.0"
+    End
+
+    It "extracts version from tag without prefix"
+      When call gitsv:extract_semver_from_tag "2.3.4"
+      The output should eq "2.3.4"
+    End
+
+    It "extracts version from tag with path and v prefix"
+      When call gitsv:extract_semver_from_tag "package/test/v2.0.1"
+      The output should eq "2.0.1"
+    End
+
+    It "extracts version with pre-release suffix"
+      When call gitsv:extract_semver_from_tag "v1.0.0-alpha"
+      The output should eq "1.0.0-alpha"
+    End
+
+    It "extracts version with build metadata"
+      When call gitsv:extract_semver_from_tag "package/test/v2.0.1-alpha+1"
+      The output should eq "2.0.1-alpha+1"
+    End
+
+    It "returns empty for non-semver tag"
+      When call gitsv:extract_semver_from_tag "release-candidate"
+      The output should eq ""
+    End
+
+    It "returns empty for invalid version format"
+      When call gitsv:extract_semver_from_tag "v1.0"
+      The output should eq ""
+    End
+
+    It "handles tag with path prefix without v"
+      When call gitsv:extract_semver_from_tag "releases/1.2.3"
+      The output should eq "1.2.3"
+    End
+
+    It "extracts from complex tag with full semver"
+      When call gitsv:extract_semver_from_tag "my/package/v1.2.3-rc.1+build.123"
+      The output should eq "1.2.3-rc.1+build.123"
+    End
+  End
+
+  Describe "gitsv:extract_semvers_from_tags()"
+    It "extracts single semver from single tag"
+      When call gitsv:extract_semvers_from_tags "v1.0.0"
+      The output should eq "1.0.0"
+    End
+
+    It "extracts multiple semvers from multiple tags"
+      When call gitsv:extract_semvers_from_tags "v1.0.0,v2.0.0"
+      The output should eq "1.0.0,2.0.0"
+    End
+
+    It "filters out non-semver tags"
+      When call gitsv:extract_semvers_from_tags "v1.0.0,latest,v2.0.0"
+      The output should eq "1.0.0,2.0.0"
+    End
+
+    It "returns empty for all non-semver tags"
+      When call gitsv:extract_semvers_from_tags "latest,stable,production"
+      The output should eq ""
+    End
+
+    It "handles mixed prefix formats"
+      When call gitsv:extract_semvers_from_tags "v1.0.0,package/v2.0.0,3.0.0"
+      The output should eq "1.0.0,2.0.0,3.0.0"
+    End
+  End
+
   Describe "gitsv:get_last_version_tag()"
     It "returns latest semver tag if exists"
       When call gitsv:get_last_version_tag

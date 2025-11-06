@@ -269,6 +269,47 @@ function gitsv:get_commit_tags() {
   git tag --points-at "$commit_hash" 2>/dev/null | tr '\n' ',' | sed 's/,$//'
 }
 
+## Extract semver version from a git tag (strips any prefix)
+## Uses semver:grep pattern from _semver.sh for robust extraction
+## @param $1 - tag name (e.g., "v1.0.0", "package/test/v2.0.1-alpha+1")
+## @return clean semver version or empty string if not a valid semver tag
+function gitsv:extract_semver_from_tag() {
+  local tag="$1"
+
+  # Get semver regex pattern from _semver.sh
+  local semver_pattern=$(semver:grep)
+
+  # Extract semver part from tag using regex
+  # This automatically strips any prefix (v, package/test/v, etc.)
+  local semver_part=$(echo "$tag" | grep -oE "$semver_pattern")
+
+  # Return the extracted semver (or empty if no match)
+  echo "$semver_part"
+}
+
+## Get semver versions from commit tags
+## @param $1 - comma-separated tag names
+## @return comma-separated semver versions (may be empty if no valid semver tags)
+function gitsv:extract_semvers_from_tags() {
+  local tags="$1"
+  local versions=""
+
+  # Split tags by comma and process each
+  IFS=',' read -ra tag_array <<< "$tags"
+  for tag in "${tag_array[@]}"; do
+    local version=$(gitsv:extract_semver_from_tag "$tag")
+    if [[ -n "$version" ]]; then
+      if [[ -z "$versions" ]]; then
+        versions="$version"
+      else
+        versions="$versions,$version"
+      fi
+    fi
+  done
+
+  echo "$versions"
+}
+
 ## Get the latest semantic version tag
 ## @return tag name (without 'v' prefix) or empty string
 function gitsv:get_last_version_tag() {
@@ -475,6 +516,7 @@ function gitsv:process_commits() {
   local stat_minor=0
   local stat_patch=0
   local stat_none=0
+  local stat_tag=0
 
   echo:SemVer "Processing $total_commits commits from $start_commit to HEAD"
 
@@ -502,13 +544,25 @@ function gitsv:process_commits() {
     local first_line=$(git log -1 --format=%s "$commit_hash")
     local commit_tags=$(gitsv:get_commit_tags "$commit_hash")
 
-    # Determine bump type
-    local bump_type=$(gitsv:determine_bump "$commit_msg")
-
-    # Calculate new version
+    # Check if commit has semver tags that should override version
+    local tag_versions=$(gitsv:extract_semvers_from_tags "$commit_tags")
     local version_before="$current_version"
-    local version_after=$(gitsv:bump_version "$current_version" "$bump_type")
-    local diff=$(gitsv:version_diff "$version_before" "$version_after")
+    local version_after=""
+    local bump_type=""
+    local diff=""
+
+    if [[ -n "$tag_versions" ]]; then
+      # Tag sets the version - use first semver tag found
+      version_after=$(echo "$tag_versions" | cut -d',' -f1)
+      bump_type="tag"
+      diff=$(gitsv:version_diff "$version_before" "$version_after")
+      echo:SemVer "Tag found: $version_after (overriding calculated version)"
+    else
+      # No tag - calculate version from commit message
+      bump_type=$(gitsv:determine_bump "$commit_msg")
+      version_after=$(gitsv:bump_version "$current_version" "$bump_type")
+      diff=$(gitsv:version_diff "$version_before" "$version_after")
+    fi
 
     # Color the diff based on bump type and pre-release status
     local colored_diff="$diff"
@@ -517,6 +571,9 @@ function gitsv:process_commits() {
     if [[ "$version_after" =~ -[a-zA-Z] ]]; then
       # Pre-release version - purple
       colored_diff="${cl_purple}${diff}${cl_reset}"
+    elif [[ "$bump_type" == "tag" ]]; then
+      # Tag-based version - bold cyan
+      colored_diff="${cl_cyan}${st_bold}${diff}${cl_reset}"
     else
       # Regular version - color by bump type
       case "$bump_type" in
@@ -536,6 +593,7 @@ function gitsv:process_commits() {
     fi
 
     # Format tag display with color if present
+    # Show all tags (not just semver ones) in display
     local display_tag="${commit_tags:--}"
     if [[ -n "$commit_tags" && "$commit_tags" != "-" ]]; then
       display_tag="${cl_cyan}${commit_tags}${cl_reset}"
@@ -559,6 +617,7 @@ function gitsv:process_commits() {
       minor) stat_minor=$((stat_minor + 1)) ;;
       patch) stat_patch=$((stat_patch + 1)) ;;
       none) stat_none=$((stat_none + 1)) ;;
+      tag) stat_tag=$((stat_tag + 1)) ;;
     esac
 
     # Update progress
@@ -587,7 +646,8 @@ function gitsv:process_commits() {
   echo "    ${cl_red}Major${cl_reset} (breaking): $stat_major"
   echo "    ${cl_yellow}Minor${cl_reset} (features): $stat_minor"
   echo "    ${cl_green}Patch${cl_reset} (fixes):    $stat_patch"
-  echo "    ${cl_grey}None${cl_reset}  (merges):   $stat_none"
+  echo "    ${cl_cyan}${st_bold}Tag${cl_reset}   (assigned): $stat_tag"
+  echo "    ${cl_grey}None${cl_reset}  (ignored):  $stat_none"
   echo ""
   echo "${st_bold}Final Version:${cl_reset} ${cl_green}${current_version}${cl_reset}"
 
