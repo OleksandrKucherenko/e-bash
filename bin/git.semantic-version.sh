@@ -28,12 +28,13 @@ readonly SCRIPT_VERSION="1.0.0"
 # shellcheck source=../.scripts/_logger.sh
 # shellcheck source=../.scripts/_arguments.sh
 # shellcheck source=../.scripts/_semver.sh
+# shellcheck source=../.scripts/_tmux.sh
 source "$E_BASH/_colors.sh"
 source "$E_BASH/_logger.sh"
 source "$E_BASH/_arguments.sh"
 source "$E_BASH/_semver.sh"
 source "$E_BASH/_commons.sh"
-# Note: _tmux.sh is loaded conditionally when --tmux-progress is used
+source "$E_BASH/_tmux.sh"
 
 # Configure logging
 logger:init SemVer "[semver] " ">&2"
@@ -521,14 +522,19 @@ function gitsv:process_commits() {
   # Note: We're guaranteed to be in tmux at this point if use_tmux="true"
   # because main() auto-starts tmux and re-execs before reaching here
   if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
-    # Load tmux utilities on demand
-    if ! type -t tmux:init_progress >/dev/null 2>&1; then
-      # shellcheck source=../.scripts/_tmux.sh
-      source "$E_BASH/_tmux.sh"
-    fi
-
     echo:SemVer "${cl_cyan}Initializing tmux progress display...${cl_reset}"
     tmux:init_progress
+
+    # Verify initialization succeeded
+    if [[ "$TMUX_PROGRESS_ACTIVE" != "true" ]] || [[ ! -p "$TMUX_FIFO_PATH" ]]; then
+      echo:SemVer "${cl_red}Warning: tmux progress initialization failed${cl_reset}"
+      echo:SemVer "TMUX_PROGRESS_ACTIVE=$TMUX_PROGRESS_ACTIVE"
+      echo:SemVer "TMUX_FIFO_PATH=$TMUX_FIFO_PATH"
+      echo:SemVer "FIFO exists: $([ -p "$TMUX_FIFO_PATH" ] && echo yes || echo no)"
+    else
+      echo:SemVer "${cl_green}Tmux progress active: FIFO=$TMUX_FIFO_PATH${cl_reset}"
+    fi
+
     tmux:setup_trap
   fi
 

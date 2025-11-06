@@ -28,11 +28,12 @@ readonly TMUX_PROGRESS_PANE=1
 
 # --- Variables ---
 # Global variables to track tmux session state
-TMUX_STARTED_BY_SCRIPT=
-TMUX_SESSION_NAME=
-TMUX_PROGRESS_ACTIVE=false
+# Preserve environment variables if already set, otherwise initialize
+: ${TMUX_STARTED_BY_SCRIPT:=}
+: ${TMUX_SESSION_NAME:=}
+: ${TMUX_PROGRESS_ACTIVE:=false}
 # FIFO path for progress display
-TMUX_FIFO_PATH=
+: ${TMUX_FIFO_PATH:=}
 
 # Start a new tmux session if not already in one
 # Arguments:
@@ -112,14 +113,15 @@ function tmux:init_progress() {
 #   0 on success, 1 on failure
 function tmux:update_progress() {
   local message="$1"
-  
+
   if [ "$TMUX_PROGRESS_ACTIVE" = true ] && [ -p "$TMUX_FIFO_PATH" ]; then
-    echo -e "$message" > "$TMUX_FIFO_PATH"
+    echo -e "$message" > "$TMUX_FIFO_PATH" 2>/dev/null
     return 0
   fi
-  
-  # If progress display isn't active, just echo the message
-  echo -e "$message"
+
+  # If progress display isn't active, just echo the message to stderr
+  # This helps debug when progress is not going to the right place
+  echo -e "[DEBUG: Progress not active] $message" >&2
   return 1
 }
 
