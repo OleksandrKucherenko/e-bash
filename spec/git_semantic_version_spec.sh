@@ -22,6 +22,14 @@ Mock printf:SemVer
   printf "$@" >/dev/null
 End
 
+Mock echo:Regex
+  echo "$@" >/dev/null
+End
+
+Mock printf:Regex
+  printf "$@" >/dev/null
+End
+
 Describe "git.semantic-version.sh"
   # Set E_BASH to point to .scripts before including the main script
   BeforeAll 'E_BASH="$(cd "$(dirname "$SHELLSPEC_SPECFILE")" && cd ../.scripts && pwd)"'
@@ -164,15 +172,25 @@ Describe "git.semantic-version.sh"
     It "validates bump type"
       When call gitsv:add_keyword "custom" "invalid"
       The status should be failure
+      The stderr should include "Invalid bump type"
     End
 
-    It "allows all valid bump types"
+    It "allows major bump type"
       When call gitsv:add_keyword "test1" "major"
       The status should be success
+    End
+
+    It "allows minor bump type"
       When call gitsv:add_keyword "test2" "minor"
       The status should be success
+    End
+
+    It "allows patch bump type"
       When call gitsv:add_keyword "test3" "patch"
       The status should be success
+    End
+
+    It "allows none bump type"
       When call gitsv:add_keyword "test4" "none"
       The status should be success
     End
@@ -180,20 +198,19 @@ Describe "git.semantic-version.sh"
 
   Describe "gitsv:determine_bump() with custom keywords"
     It "respects added wip keyword"
-      # Add wip keyword first
-      gitsv:add_keyword "wip" "patch"
+      BeforeCall "gitsv:add_keyword wip patch"
       When call gitsv:determine_bump "wip: work in progress"
       The output should eq "patch"
     End
 
     It "respects custom keyword with none bump"
-      gitsv:add_keyword "experiment" "none"
+      BeforeCall "gitsv:add_keyword experiment none"
       When call gitsv:determine_bump "experiment: trying something"
       The output should eq "none"
     End
 
     It "respects custom keyword with minor bump"
-      gitsv:add_keyword "feature" "minor"
+      BeforeCall "gitsv:add_keyword feature minor"
       When call gitsv:determine_bump "feature: new capability"
       The output should eq "minor"
     End
@@ -382,8 +399,8 @@ Describe "git.semantic-version.sh"
   End
 
   Describe "Integration tests"
-    It "processes commits from HEAD commit"
-      When run script bin/git.semantic-version.sh --from-commit HEAD --initial-version 1.0.0
+    It "processes commits from recent history"
+      When run script bin/git.semantic-version.sh --from-commit HEAD~5 --initial-version 1.0.0
       The status should be success
       The output should include "Semantic Version History"
       The output should include "Summary:"
