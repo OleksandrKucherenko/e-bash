@@ -1,0 +1,649 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2155,SC1090,SC2034,SC2059
+
+## Git Semantic Version Calculator
+## Analyzes conventional commits and calculates semantic version progression
+##
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-11-06
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
+# Setup terminal and bash options
+if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
+shopt -s extdebug
+
+# Setup paths
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
+readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
+readonly SCRIPT_VERSION="1.0.0"
+
+# Import utilities
+# shellcheck source=../.scripts/_colors.sh
+# shellcheck source=../.scripts/_commons.sh
+# shellcheck source=../.scripts/_logger.sh
+# shellcheck source=../.scripts/_arguments.sh
+# shellcheck source=../.scripts/_semver.sh
+source "$E_BASH/_colors.sh"
+source "$E_BASH/_logger.sh"
+source "$E_BASH/_arguments.sh"
+source "$E_BASH/_semver.sh"
+source "$E_BASH/_commons.sh"
+source "$E_BASH/_tmux.sh"
+
+# Configure logging
+logger:init SemVer "[semver] " ">&2"
+
+# Exit codes
+readonly EXIT_OK=0
+readonly EXIT_ERROR=1
+readonly EXIT_NO_COMMITS=2
+readonly EXIT_INVALID_ARGS=3
+
+# ============================================================================
+# PHASE 1: Conventional Commit Parsing
+# ============================================================================
+
+## Parse commit message and extract type (feat, fix, chore, etc.)
+## @param $1 - commit message (first line)
+## @return type name or "unknown"
+function gitsv:parse_commit_type() {
+  local commit_msg="$1"
+
+  # Check for merge commit
+  if [[ "$commit_msg" =~ ^Merge ]]; then
+    echo "merge"
+    return 0
+  fi
+
+  # Check for conventional commit pattern: type(scope)?: message
+  if [[ "$commit_msg" =~ ^([a-z]+)(\([a-zA-Z0-9_-]+\))?!?:\ .+ ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  echo "unknown"
+  return 0
+}
+
+## Check if commit message contains breaking change indicator
+## @param $1 - full commit message (including body)
+## @return 0 if breaking change, 1 otherwise
+function gitsv:has_breaking_change() {
+  local commit_msg="$1"
+
+  # Check for ! in type
+  if [[ "$commit_msg" =~ ^[a-z]+(\([a-zA-Z0-9_-]+\))?!: ]]; then
+    return 0
+  fi
+
+  # Check for BREAKING CHANGE: or BREAKING-CHANGE: in body
+  if [[ "$commit_msg" =~ BREAKING[\ -]CHANGE: ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+## Determine version bump type based on commit message
+## @param $1 - full commit message
+## @return "major", "minor", "patch", or "none"
+function gitsv:determine_bump() {
+  local commit_msg="$1"
+  local commit_type
+
+  # Check for breaking change first (highest priority)
+  if gitsv:has_breaking_change "$commit_msg"; then
+    echo "major"
+    return 0
+  fi
+
+  # Parse commit type
+  commit_type=$(gitsv:parse_commit_type "$commit_msg")
+
+  case "$commit_type" in
+    feat)
+      echo "minor"
+      ;;
+    fix|chore|docs|refactor|test|ci|perf|style|build)
+      echo "patch"
+      ;;
+    merge)
+      echo "none"
+      ;;
+    unknown)
+      echo "patch"  # Treat unknown commits as patch
+      ;;
+    *)
+      echo "patch"
+      ;;
+  esac
+
+  return 0
+}
+
+## Bump version based on bump type
+## @param $1 - current version (e.g., "1.2.3")
+## @param $2 - bump type ("major", "minor", "patch", "none")
+## @return new version
+function gitsv:bump_version() {
+  local current_version="$1"
+  local bump_type="$2"
+
+  case "$bump_type" in
+    major)
+      semver:increase:major "$current_version"
+      ;;
+    minor)
+      semver:increase:minor "$current_version"
+      ;;
+    patch)
+      semver:increase:patch "$current_version"
+      ;;
+    none)
+      echo "$current_version"
+      ;;
+    *)
+      echo "$current_version"
+      ;;
+  esac
+}
+
+## Calculate version difference
+## @param $1 - version before
+## @param $2 - version after
+## @return version diff in format "+X.Y.Z" showing what was bumped
+function gitsv:version_diff() {
+  local ver_before="$1"
+  local ver_after="$2"
+
+  # If versions are the same, return +0.0.0
+  if [[ "$ver_before" == "$ver_after" ]]; then
+    echo "+0.0.0"
+    return 0
+  fi
+
+  declare -A V_BEFORE V_AFTER
+  semver:parse "$ver_before" V_BEFORE
+  semver:parse "$ver_after" V_AFTER
+
+  local major_diff=$((V_AFTER[major] - V_BEFORE[major]))
+  local minor_diff=$((V_AFTER[minor] - V_BEFORE[minor]))
+  local patch_diff=$((V_AFTER[patch] - V_BEFORE[patch]))
+
+  # If major changed, show only major change (minor and patch were reset)
+  if [[ $major_diff -ne 0 ]]; then
+    echo "+${major_diff}.0.0"
+    return 0
+  fi
+
+  # If minor changed, show minor and potential patch (patch was reset)
+  if [[ $minor_diff -ne 0 ]]; then
+    echo "+0.${minor_diff}.0"
+    return 0
+  fi
+
+  # Only patch changed
+  echo "+0.0.${patch_diff}"
+}
+
+# ============================================================================
+# PHASE 2: Git Integration
+# ============================================================================
+
+## Get the first commit in the repository
+## @return commit hash
+function gitsv:get_first_commit() {
+  git rev-list --max-parents=0 HEAD 2>/dev/null | head -n1
+}
+
+## Get the latest semantic version tag
+## @return tag name (without 'v' prefix) or empty string
+function gitsv:get_last_version_tag() {
+  # Get all tags sorted by version
+  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
+
+  if [[ -n "$tags" ]]; then
+    # Remove 'v' prefix if present
+    echo "$tags" | sed 's/^v//'
+  else
+    echo ""
+  fi
+}
+
+## Get commit hash of the latest version tag
+## @return commit hash or empty string
+function gitsv:get_last_version_tag_commit() {
+  local tag=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
+
+  if [[ -n "$tag" ]]; then
+    git rev-list -n 1 "$tag" 2>/dev/null
+  else
+    echo ""
+  fi
+}
+
+## Get commit where current branch diverged from main/master
+## @return commit hash
+function gitsv:get_branch_start_commit() {
+  local main_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+
+  if [[ -z "$main_branch" ]]; then
+    # Try common names
+    for branch in main master; do
+      if git rev-parse --verify "$branch" >/dev/null 2>&1; then
+        main_branch="$branch"
+        break
+      fi
+    done
+  fi
+
+  if [[ -n "$main_branch" ]]; then
+    git merge-base "$main_branch" HEAD 2>/dev/null
+  else
+    # Fallback to first commit
+    gitsv:get_first_commit
+  fi
+}
+
+## Get commit hash from N versions back
+## @param $1 - number of versions to go back
+## @return commit hash or empty string
+function gitsv:get_commit_from_n_versions_back() {
+  local n="$1"
+
+  # Get all version tags sorted
+  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V)
+  local tag_count=$(echo "$tags" | wc -l)
+
+  if [[ $tag_count -lt $n ]]; then
+    # Not enough tags, return first commit
+    gitsv:get_first_commit
+    return 0
+  fi
+
+  # Get the Nth tag from the end
+  local target_tag=$(echo "$tags" | tail -n "$n" | head -n1)
+
+  if [[ -n "$target_tag" ]]; then
+    git rev-list -n 1 "$target_tag" 2>/dev/null
+  else
+    echo ""
+  fi
+}
+
+# ============================================================================
+# PHASE 3: Starting Commit Strategy
+# ============================================================================
+
+## Determine starting commit based on strategy
+## @param $1 - strategy name
+## @param $2 - strategy parameter (optional, e.g., N for last-n-versions, hash for from-commit)
+## @return commit hash
+function gitsv:get_start_commit() {
+  local strategy="$1"
+  local param="$2"
+
+  case "$strategy" in
+    from-first-commit)
+      gitsv:get_first_commit
+      ;;
+    from-last-tag)
+      local commit=$(gitsv:get_last_version_tag_commit)
+      if [[ -z "$commit" ]]; then
+        echo:SemVer "No version tags found, using first commit"
+        gitsv:get_first_commit
+      else
+        echo "$commit"
+      fi
+      ;;
+    from-branch-start)
+      gitsv:get_branch_start_commit
+      ;;
+    from-last-n-versions)
+      if [[ -z "$param" ]] || [[ ! "$param" =~ ^[0-9]+$ ]]; then
+        echo "Error: from-last-n-versions requires a numeric parameter" >&2
+        return 1
+      fi
+      gitsv:get_commit_from_n_versions_back "$param"
+      ;;
+    from-commit)
+      if [[ -z "$param" ]]; then
+        echo "Error: from-commit requires a commit hash parameter" >&2
+        return 1
+      fi
+      # Verify commit exists
+      if git rev-parse --verify "$param" >/dev/null 2>&1; then
+        git rev-parse "$param"
+      else
+        echo "Error: commit '$param' not found" >&2
+        return 1
+      fi
+      ;;
+    *)
+      echo "Error: unknown strategy '$strategy'" >&2
+      return 1
+      ;;
+  esac
+}
+
+# ============================================================================
+# PHASE 4: Output Formatting
+# ============================================================================
+
+## Format a single output line
+## @param $1 - short hash
+## @param $2 - commit message (first line)
+## @param $3 - version before
+## @param $4 - version after
+## @param $5 - version diff
+function gitsv:format_output_line() {
+  local hash="$1"
+  local msg="$2"
+  local ver_before="$3"
+  local ver_after="$4"
+  local diff="$5"
+
+  # Truncate message to 60 chars
+  if [[ ${#msg} -gt 60 ]]; then
+    msg="${msg:0:57}..."
+  fi
+
+  # Format: hash | message | version_before → version_after | diff
+  printf "%s | %-60s | %s → %s | %s\n" "$hash" "$msg" "$ver_before" "$ver_after" "$diff"
+}
+
+## Print table header
+function gitsv:print_header() {
+  echo "${st_bold}${cl_cyan}Semantic Version History${cl_reset}"
+  echo "─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+  printf "%s | %-60s | %s | %s\n" "Commit " "Message" "Version Change" "Diff"
+  echo "─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+}
+
+## Print table footer
+function gitsv:print_footer() {
+  echo "─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+}
+
+# ============================================================================
+# PHASE 5: Main Processing Logic
+# ============================================================================
+
+## Process commits and output version history
+## @param $1 - start commit hash
+## @param $2 - initial version
+## @param $3 - enable tmux progress (true/false)
+function gitsv:process_commits() {
+  local start_commit="$1"
+  local current_version="$2"
+  local use_tmux="$3"
+
+  # Get commit list from start to HEAD
+  local commits=$(git rev-list --reverse "${start_commit}..HEAD" 2>/dev/null)
+
+  if [[ -z "$commits" ]]; then
+    echo "${cl_yellow}No commits found after start commit${cl_reset}" >&2
+    return $EXIT_NO_COMMITS
+  fi
+
+  # Count commits for progress
+  local total_commits=$(echo "$commits" | wc -l)
+  local current_count=0
+
+  echo:SemVer "Processing $total_commits commits from $start_commit to HEAD"
+
+  # Print header
+  gitsv:print_header
+
+  # Setup tmux progress if enabled
+  if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
+    tmux:init_progress
+    tmux:setup_trap
+  fi
+
+  # Process each commit
+  while IFS= read -r commit_hash; do
+    current_count=$((current_count + 1))
+
+    # Get commit details
+    local short_hash=$(git rev-parse --short "$commit_hash")
+    local commit_msg=$(git log -1 --format=%B "$commit_hash")
+    local first_line=$(git log -1 --format=%s "$commit_hash")
+
+    # Determine bump type
+    local bump_type=$(gitsv:determine_bump "$commit_msg")
+
+    # Calculate new version
+    local version_before="$current_version"
+    local version_after=$(gitsv:bump_version "$current_version" "$bump_type")
+    local diff=$(gitsv:version_diff "$version_before" "$version_after")
+
+    # Color the diff based on bump type
+    local colored_diff="$diff"
+    case "$bump_type" in
+      major)
+        colored_diff="${cl_red}${st_bold}${diff}${cl_reset}"
+        ;;
+      minor)
+        colored_diff="${cl_green}${diff}${cl_reset}"
+        ;;
+      patch)
+        colored_diff="${cl_yellow}${diff}${cl_reset}"
+        ;;
+      none)
+        colored_diff="${cl_grey}${diff}${cl_reset}"
+        ;;
+    esac
+
+    # Format and print line
+    printf "%s | %-60s | %s → %s | %s\n" \
+      "$short_hash" \
+      "${first_line:0:60}" \
+      "$version_before" \
+      "$version_after" \
+      "$colored_diff"
+
+    # Update current version
+    current_version="$version_after"
+
+    # Update progress
+    echo:SemVer "[$current_count/$total_commits] $short_hash: $version_before → $version_after"
+
+    # Update tmux progress if active
+    if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
+      tmux:show_progress_bar "$current_count" "$total_commits" "Processing commits" 50
+    fi
+
+  done <<< "$commits"
+
+  # Cleanup tmux if it was used
+  if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
+    tmux:cleanup_progress
+  fi
+
+  # Print footer
+  gitsv:print_footer
+
+  # Print summary
+  echo ""
+  echo "${st_bold}Final Version:${cl_reset} ${cl_green}${current_version}${cl_reset}"
+
+  return $EXIT_OK
+}
+
+# ============================================================================
+# PHASE 6: CLI Argument Parsing and Help
+# ============================================================================
+
+## Print help message
+function print:help() {
+  cat <<EOF
+${st_bold}${cl_cyan}$SCRIPT_NAME${cl_reset} v$SCRIPT_VERSION
+
+${st_bold}DESCRIPTION:${cl_reset}
+  Analyzes git commit messages using Conventional Commits specification
+  and calculates semantic version progression throughout repository history.
+
+${st_bold}USAGE:${cl_reset}
+  $SCRIPT_NAME [OPTIONS]
+
+${st_bold}OPTIONS:${cl_reset}
+  -h, --help                    Show this help message
+
+  ${st_bold}Starting Point:${cl_reset}
+  --from-first-commit           Start from the first commit in repo (default)
+  --from-last-tag               Start from the most recent version tag
+  --from-branch-start           Start from where current branch diverged
+  --from-last-n-versions N      Start from N versions back
+  --from-commit HASH            Start from specific commit hash
+
+  ${st_bold}Configuration:${cl_reset}
+  --initial-version VERSION     Initial version to use (default: 0.0.1)
+  --tmux-progress               Enable tmux progress display (if tmux available)
+
+${st_bold}EXAMPLES:${cl_reset}
+  # Show version history from first commit
+  $SCRIPT_NAME
+
+  # Show version history from last tagged version
+  $SCRIPT_NAME --from-last-tag
+
+  # Start from specific commit with custom initial version
+  $SCRIPT_NAME --from-commit abc1234 --initial-version 1.0.0
+
+  # Show last 3 versions of changes
+  $SCRIPT_NAME --from-last-n-versions 3
+
+${st_bold}CONVENTIONAL COMMITS:${cl_reset}
+  This tool follows the Conventional Commits specification (conventionalcommits.org)
+
+  ${st_bold}Commit Types:${cl_reset}
+    feat:      New feature (bumps ${cl_green}MINOR${cl_reset})
+    fix:       Bug fix (bumps ${cl_yellow}PATCH${cl_reset})
+    BREAKING:  Breaking change (bumps ${cl_red}MAJOR${cl_reset})
+    chore/docs/refactor/test/ci/perf: All bump ${cl_yellow}PATCH${cl_reset}
+
+${st_bold}OUTPUT FORMAT:${cl_reset}
+  <hash> | <commit message> | <version before> → <version after> | <diff>
+
+EOF
+}
+
+## Parse command line arguments
+function parse:cli:arguments() {
+  # Default values
+  STRATEGY="from-first-commit"
+  STRATEGY_PARAM=""
+  INITIAL_VERSION="0.0.1"
+  USE_TMUX="false"
+  SHOW_HELP="false"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -h|--help)
+        SHOW_HELP="true"
+        shift
+        ;;
+      --from-first-commit)
+        STRATEGY="from-first-commit"
+        shift
+        ;;
+      --from-last-tag)
+        STRATEGY="from-last-tag"
+        shift
+        ;;
+      --from-branch-start)
+        STRATEGY="from-branch-start"
+        shift
+        ;;
+      --from-last-n-versions)
+        STRATEGY="from-last-n-versions"
+        STRATEGY_PARAM="$2"
+        shift 2
+        ;;
+      --from-commit)
+        STRATEGY="from-commit"
+        STRATEGY_PARAM="$2"
+        shift 2
+        ;;
+      --initial-version)
+        INITIAL_VERSION="$2"
+        shift 2
+        ;;
+      --tmux-progress)
+        USE_TMUX="true"
+        shift
+        ;;
+      *)
+        echo "${cl_red}Error: Unknown option '$1'${cl_reset}" >&2
+        echo "Use --help for usage information" >&2
+        return $EXIT_INVALID_ARGS
+        ;;
+    esac
+  done
+
+  return $EXIT_OK
+}
+
+# ============================================================================
+# Main Entry Point
+# ============================================================================
+
+## Cleanup function
+function on_exit() {
+  local exit_code=$?
+  echo:SemVer "Exiting with code $exit_code"
+  return $exit_code
+}
+
+## Main function
+function main() {
+  # Parse arguments
+  parse:cli:arguments "$@" || return $?
+
+  # Show help if requested
+  if [[ "$SHOW_HELP" == "true" ]]; then
+    print:help
+    return $EXIT_OK
+  fi
+
+  # Verify we're in a git repository
+  if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "${cl_red}Error: Not a git repository${cl_reset}" >&2
+    return $EXIT_ERROR
+  fi
+
+  # Validate initial version
+  if ! [[ "$INITIAL_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "${cl_red}Error: Invalid initial version '$INITIAL_VERSION'${cl_reset}" >&2
+    echo "Expected format: X.Y.Z (e.g., 0.0.1)" >&2
+    return $EXIT_INVALID_ARGS
+  fi
+
+  # Get starting commit
+  local start_commit=$(gitsv:get_start_commit "$STRATEGY" "$STRATEGY_PARAM")
+  if [[ $? -ne 0 ]] || [[ -z "$start_commit" ]]; then
+    echo "${cl_red}Error: Could not determine starting commit${cl_reset}" >&2
+    return $EXIT_ERROR
+  fi
+
+  echo:SemVer "Strategy: $STRATEGY"
+  echo:SemVer "Start commit: $start_commit"
+  echo:SemVer "Initial version: $INITIAL_VERSION"
+
+  # Process commits
+  gitsv:process_commits "$start_commit" "$INITIAL_VERSION" "$USE_TMUX"
+
+  return $?
+}
+
+# Setup exit trap
+trap on_exit EXIT INT TERM
+
+# Run main if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+  exit $?
+fi
