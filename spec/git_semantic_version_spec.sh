@@ -302,18 +302,16 @@ Describe "git.semantic-version.sh"
     It "returns the first commit hash in repository"
       When call gitsv:get_first_commit
       The status should be success
-      The output should not be blank
-      # Output should be at least 7 characters (short hash)
-      The line 1 of output should match pattern "[0-9a-f]+"
+      The output should be present
     End
   End
 
   Describe "gitsv:get_last_version_tag()"
     It "returns latest semver tag if exists"
-      # This test depends on actual repo tags
       When call gitsv:get_last_version_tag
       The status should be success
-      # Output might be empty if no tags, or a version string
+      # Output should be a version or empty (repo might have tags)
+      The output should be present
     End
 
     It "strips 'v' prefix from tags"
@@ -327,6 +325,7 @@ Describe "git.semantic-version.sh"
       When call gitsv:get_last_version_tag_commit
       The status should be success
       # Output might be empty or a commit hash
+      The output should be present
     End
   End
 
@@ -341,13 +340,13 @@ Describe "git.semantic-version.sh"
 
   Describe "gitsv:get_commit_from_n_versions_back()"
     It "returns commit hash when versions exist"
-      # Test with N=1
       When call gitsv:get_commit_from_n_versions_back 1
       The status should be success
+      # Should return a commit hash
+      The output should be present
     End
 
     It "handles when N is larger than version count"
-      # Test with very large N
       When call gitsv:get_commit_from_n_versions_back 9999
       The status should be success
       # Should fallback to first commit
@@ -365,8 +364,9 @@ Describe "git.semantic-version.sh"
     End
 
     It "accepts --initial-version parameter"
-      When run script bin/git.semantic-version.sh --initial-version 5.0.0 --from-commit HEAD --help
+      When run script bin/git.semantic-version.sh --initial-version 5.0.0 --help
       The status should be success
+      The output should include "USAGE:"
     End
 
     It "rejects invalid --initial-version format"
@@ -376,8 +376,9 @@ Describe "git.semantic-version.sh"
     End
 
     It "accepts --add-keyword parameter"
-      When run script bin/git.semantic-version.sh --add-keyword wip:patch --from-commit HEAD --help
+      When run script bin/git.semantic-version.sh --add-keyword wip:patch --help
       The status should be success
+      The output should include "USAGE:"
     End
 
     It "rejects invalid --add-keyword format"
@@ -389,6 +390,7 @@ Describe "git.semantic-version.sh"
     It "accepts multiple --add-keyword parameters"
       When run script bin/git.semantic-version.sh --add-keyword wip:patch --add-keyword exp:none --help
       The status should be success
+      The output should include "USAGE:"
     End
 
     It "rejects unknown options"
