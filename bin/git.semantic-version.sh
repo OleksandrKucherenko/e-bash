@@ -444,12 +444,12 @@ function gitsv:get_start_commit() {
 # PHASE 4: Output Formatting
 # ============================================================================
 
-## Format a single output line
+## Format a single output line in markdown format
 ## @param $1 - short hash
 ## @param $2 - commit message (first line)
 ## @param $3 - version before
 ## @param $4 - version after
-## @param $5 - version diff
+## @param $5 - version diff (with color codes)
 ## @param $6 - git tag (optional)
 function gitsv:format_output_line() {
   local hash="$1"
@@ -459,31 +459,21 @@ function gitsv:format_output_line() {
   local diff="$5"
   local tag="${6:--}"
 
-  # Truncate message to 50 chars (reduced to fit tag column)
-  if [[ ${#msg} -gt 50 ]]; then
-    msg="${msg:0:47}..."
-  fi
-
-  # Truncate tag to 15 chars if too long
-  if [[ ${#tag} -gt 15 ]]; then
-    tag="${tag:0:12}..."
-  fi
-
-  # Format: hash | message | tag | version_before → version_after | diff
-  printf "%s | %-50s | %-15s | %s → %s | %s\n" "$hash" "$msg" "$tag" "$ver_before" "$ver_after" "$diff"
+  # Markdown table format without padding
+  printf "| %s | %s | %s | %s → %s | %s |\n" "$hash" "$msg" "$tag" "$ver_before" "$ver_after" "$diff"
 }
 
-## Print table header
+## Print markdown table header
 function gitsv:print_header() {
   echo "${st_bold}${cl_cyan}Semantic Version History${cl_reset}"
-  echo "──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-  printf "%s | %-50s | %-15s | %s | %s\n" "Commit " "Message" "Tag" "Version Change" "Diff"
-  echo "──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+  echo ""
+  printf "| %s | %s | %s | %s | %s |\n" "Commit" "Message" "Tag" "Version Change" "Diff"
+  printf "|%s|%s|%s|%s|%s|\n" "--------" "--------" "--------" "--------" "--------"
 }
 
-## Print table footer
+## Print table footer (empty for markdown)
 function gitsv:print_footer() {
-  echo "──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+  echo ""
 }
 
 # ============================================================================
@@ -555,7 +545,7 @@ function gitsv:process_commits() {
       # Tag sets the version - use first semver tag found
       version_after=$(echo "$tag_versions" | cut -d',' -f1)
       bump_type="tag"
-      diff=$(gitsv:version_diff "$version_before" "$version_after")
+      diff="=${version_after}"  # Format as ={version} for tags
       echo:SemVer "Tag found: $version_after (overriding calculated version)"
     else
       # No tag - calculate version from commit message
@@ -572,8 +562,8 @@ function gitsv:process_commits() {
       # Pre-release version - purple
       colored_diff="${cl_purple}${diff}${cl_reset}"
     elif [[ "$bump_type" == "tag" ]]; then
-      # Tag-based version - bold cyan
-      colored_diff="${cl_cyan}${st_bold}${diff}${cl_reset}"
+      # Tag-based version - bold light white
+      colored_diff="${st_bold}${cl_lwhite}${diff}${cl_reset}"
     else
       # Regular version - color by bump type
       case "$bump_type" in

@@ -287,31 +287,30 @@ Describe "git.semantic-version.sh"
   End
 
   Describe "gitsv:format_output_line()"
-    It "formats output line correctly"
+    It "formats output line in markdown format"
       When call gitsv:format_output_line "abc1234" "feat: add feature" "1.2.3" "1.3.0" "+0.1.0" "v1.3.0"
-      The output should include "abc1234"
-      The output should include "feat: add feature"
-      The output should include "1.2.3"
-      The output should include "1.3.0"
-      The output should include "+0.1.0"
-      The output should include "v1.3.0"
-    End
-
-    It "truncates long commit messages"
-      msg="feat: this is a very long commit message that should be truncated to fit in the output"
-      When call gitsv:format_output_line "abc1234" "$msg" "1.2.3" "1.3.0" "+0.1.0" "-"
-      The output should include "..."
+      The output should include "| abc1234 |"
+      The output should include "| feat: add feature |"
+      The output should include "| v1.3.0 |"
+      The output should include "1.2.3 → 1.3.0"
+      The output should include "| +0.1.0 |"
     End
 
     It "handles missing tag parameter with default dash"
       When call gitsv:format_output_line "abc1234" "feat: add feature" "1.2.3" "1.3.0" "+0.1.0"
-      The output should include "-"
+      The output should include "| - |"
     End
 
-    It "truncates long git tags"
+    It "handles long commit messages without truncation"
+      msg="feat: this is a very long commit message that should not be truncated in markdown format"
+      When call gitsv:format_output_line "abc1234" "$msg" "1.2.3" "1.3.0" "+0.1.0" "-"
+      The output should include "$msg"
+    End
+
+    It "handles long git tags without truncation"
       long_tag="v1.2.3-alpha-very-long-tag-name"
       When call gitsv:format_output_line "abc1234" "feat: test" "1.2.3" "1.3.0" "+0.1.0" "$long_tag"
-      The output should include "..."
+      The output should include "$long_tag"
     End
   End
 
