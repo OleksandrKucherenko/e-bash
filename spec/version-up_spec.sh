@@ -679,21 +679,31 @@ EOF
       BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
 
       {
+        # Create initial commit with v1.0.1 tag
         git_first_commit
         git_create_tag "v1.0.1"
+
+        # Create a side branch and tag v1.0.2 there
+        # This simulates another PR that already created v1.0.2
+        git checkout -b "other-pr"
         random_change
         git_next_commit
-        git_create_tag "v1.0.2"
+        git tag "v1.0.2"
 
-        # Create branch from v1.0.1
-        git checkout -b "hotfix-1.0.1" "v1.0.1"
+        # Go back to master (at v1.0.1)
+        git checkout master
+
+        # Add commit on master
         random_change
         git_next_commit
       } >/dev/null 2>&1
 
+      # From master, script will propose v1.0.2 (patch increment from v1.0.1)
+      # But v1.0.2 already exists on other-pr branch
+      # This should trigger conflict detection
       When run bash "$VERSION_UP_SCRIPT" --patch --apply
 
-      # Script should detect that v1.0.2 already exists
+      # Script should detect that v1.0.2 already exists on a different commit
       The stdout should be present
       The result of function no_colors_stdout should include "ERROR:"
       The result of function no_colors_stdout should include "Found conflict with existing tag"
