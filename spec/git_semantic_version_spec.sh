@@ -288,17 +288,29 @@ Describe "git.semantic-version.sh"
 
   Describe "gitsv:format_output_line()"
     It "formats output line correctly"
-      When call gitsv:format_output_line "abc1234" "feat: add feature" "1.2.3" "1.3.0" "+0.1.0"
+      When call gitsv:format_output_line "abc1234" "feat: add feature" "1.2.3" "1.3.0" "+0.1.0" "v1.3.0"
       The output should include "abc1234"
       The output should include "feat: add feature"
       The output should include "1.2.3"
       The output should include "1.3.0"
       The output should include "+0.1.0"
+      The output should include "v1.3.0"
     End
 
     It "truncates long commit messages"
       msg="feat: this is a very long commit message that should be truncated to fit in the output"
-      When call gitsv:format_output_line "abc1234" "$msg" "1.2.3" "1.3.0" "+0.1.0"
+      When call gitsv:format_output_line "abc1234" "$msg" "1.2.3" "1.3.0" "+0.1.0" "-"
+      The output should include "..."
+    End
+
+    It "handles missing tag parameter with default dash"
+      When call gitsv:format_output_line "abc1234" "feat: add feature" "1.2.3" "1.3.0" "+0.1.0"
+      The output should include "-"
+    End
+
+    It "truncates long git tags"
+      long_tag="v1.2.3-alpha-very-long-tag-name"
+      When call gitsv:format_output_line "abc1234" "feat: test" "1.2.3" "1.3.0" "+0.1.0" "$long_tag"
       The output should include "..."
     End
   End
@@ -308,6 +320,21 @@ Describe "git.semantic-version.sh"
       When call gitsv:get_first_commit
       The status should be success
       The result of function no_colors_stdout should include "cacb"
+    End
+  End
+
+  Describe "gitsv:get_commit_tags()"
+    It "returns empty string for commits without tags"
+      # Get a recent commit that likely has no tags
+      recent_commit=$(git rev-parse HEAD)
+      When call gitsv:get_commit_tags "$recent_commit"
+      The status should be success
+    End
+
+    It "handles invalid commit hash gracefully"
+      When call gitsv:get_commit_tags "invalid_hash_12345"
+      The status should be success
+      The output should eq ""
     End
   End
 
