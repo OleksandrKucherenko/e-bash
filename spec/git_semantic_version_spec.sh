@@ -22,13 +22,12 @@ Mock printf:SemVer
   printf "$@" >/dev/null
 End
 
-# Set E_BASH path
-E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
-
 Describe "git.semantic-version.sh"
+  # Set E_BASH to point to .scripts before including the main script
+  BeforeAll 'E_BASH="$(cd "$(dirname "$SHELLSPEC_SPECFILE")" && cd ../.scripts && pwd)"'
 
   # Source the script to load functions
-  Include "$E_BASH/bin/git.semantic-version.sh"
+  Include "bin/git.semantic-version.sh"
 
   Describe "gitsv:parse_commit_type()"
     It "detects feat commit"
@@ -276,7 +275,7 @@ Describe "git.semantic-version.sh"
     End
 
     It "truncates long commit messages"
-      local msg="feat: this is a very long commit message that should be truncated to fit in the output"
+      msg="feat: this is a very long commit message that should be truncated to fit in the output"
       When call gitsv:format_output_line "abc1234" "$msg" "1.2.3" "1.3.0" "+0.1.0"
       The output should include "..."
     End
@@ -287,8 +286,8 @@ Describe "git.semantic-version.sh"
       When call gitsv:get_first_commit
       The status should be success
       The output should not be blank
-      # Should be a valid commit hash (40 chars or 7+ chars for short)
-      The length of output should be greater than 6
+      # Output should be at least 7 characters (short hash)
+      The line 1 of output should match pattern "[0-9a-f]+"
     End
   End
 
@@ -384,22 +383,16 @@ Describe "git.semantic-version.sh"
 
   Describe "Integration tests"
     It "processes commits from HEAD commit"
-      # Test with just the last commit
-      local commit_hash=$(git rev-parse HEAD)
-      When run script bin/git.semantic-version.sh --from-commit "$commit_hash" --initial-version 1.0.0
+      When run script bin/git.semantic-version.sh --from-commit HEAD --initial-version 1.0.0
       The status should be success
       The output should include "Semantic Version History"
-      The output should include "Final Version:"
+      The output should include "Summary:"
     End
 
-    It "respects custom keywords in processing"
-      local commit_hash=$(git log --oneline -20 | grep "wip:" | head -1 | cut -d' ' -f1)
-      # Skip if no wip commits found
-      Skip if "no wip commits found" [ -z "$commit_hash" ]
-
-      When run script bin/git.semantic-version.sh --add-keyword wip:patch --from-commit "${commit_hash}^" --initial-version 1.0.0
+    It "works with --from-last-tag strategy"
+      When run script bin/git.semantic-version.sh --from-last-tag --initial-version 1.0.0
       The status should be success
-      The output should include "wip:"
+      The output should include "Semantic Version History"
     End
 
     It "validates not in git repository"

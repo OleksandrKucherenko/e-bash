@@ -17,3 +17,4 @@
 ## Example: Only specified files/directories
 --kcov-options "--include-pattern=.scripts/"
 --kcov-options "--include-pattern=bin/version-up.v2.sh"
+--kcov-options "--include-pattern=bin/git.semantic-version.sh"
