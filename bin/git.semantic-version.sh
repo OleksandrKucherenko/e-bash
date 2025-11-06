@@ -33,7 +33,7 @@ source "$E_BASH/_logger.sh"
 source "$E_BASH/_arguments.sh"
 source "$E_BASH/_semver.sh"
 source "$E_BASH/_commons.sh"
-source "$E_BASH/_tmux.sh"
+# Note: _tmux.sh is loaded conditionally when --tmux-progress is used
 
 # Configure logging
 logger:init SemVer "[semver] " ">&2"
@@ -83,6 +83,32 @@ function gitsv:add_keyword() {
       return 1
       ;;
   esac
+}
+
+## List all configured conventional commit keywords
+function gitsv:list_keywords() {
+  echo "${st_bold}${cl_cyan}Configured Conventional Commit Keywords:${cl_reset}"
+  echo "────────────────────────────────────────"
+  printf "%-15s | %s\n" "Keyword" "Bump Type"
+  echo "────────────────────────────────────────"
+
+  # Sort keywords alphabetically
+  for keyword in $(echo "${!CONVENTIONAL_KEYWORDS[@]}" | tr ' ' '\n' | sort); do
+    local bump_type="${CONVENTIONAL_KEYWORDS[$keyword]}"
+    local color=""
+
+    # Color by bump type
+    case "$bump_type" in
+      major) color="$cl_red" ;;
+      minor) color="$cl_yellow" ;;
+      patch) color="$cl_green" ;;
+      none) color="$cl_grey" ;;
+    esac
+
+    printf "%-15s | ${color}%s${cl_reset}\n" "$keyword" "$bump_type"
+  done
+
+  echo "────────────────────────────────────────"
 }
 
 # ============================================================================
@@ -429,6 +455,12 @@ function gitsv:process_commits() {
   local total_commits=$(echo "$commits" | wc -l)
   local current_count=0
 
+  # Statistics tracking
+  local stat_major=0
+  local stat_minor=0
+  local stat_patch=0
+  local stat_none=0
+
   echo:SemVer "Processing $total_commits commits from $start_commit to HEAD"
 
   # Print header
@@ -436,6 +468,11 @@ function gitsv:process_commits() {
 
   # Setup tmux progress if enabled
   if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
+    # Load tmux utilities on demand
+    if ! type -t tmux:init_progress >/dev/null 2>&1; then
+      # shellcheck source=../.scripts/_tmux.sh
+      source "$E_BASH/_tmux.sh"
+    fi
     tmux:init_progress
     tmux:setup_trap
   fi
@@ -493,6 +530,14 @@ function gitsv:process_commits() {
     # Update current version
     current_version="$version_after"
 
+    # Track statistics
+    case "$bump_type" in
+      major) stat_major=$((stat_major + 1)) ;;
+      minor) stat_minor=$((stat_minor + 1)) ;;
+      patch) stat_patch=$((stat_patch + 1)) ;;
+      none) stat_none=$((stat_none + 1)) ;;
+    esac
+
     # Update progress
     echo:SemVer "[$current_count/$total_commits] $short_hash: $version_before → $version_after"
 
@@ -512,6 +557,14 @@ function gitsv:process_commits() {
   gitsv:print_footer
 
   # Print summary
+  echo ""
+  echo "${st_bold}Summary:${cl_reset}"
+  echo "  Total commits processed: ${cl_cyan}${total_commits}${cl_reset}"
+  echo "  Version changes:"
+  echo "    ${cl_red}Major${cl_reset} (breaking): $stat_major"
+  echo "    ${cl_yellow}Minor${cl_reset} (features): $stat_minor"
+  echo "    ${cl_green}Patch${cl_reset} (fixes):    $stat_patch"
+  echo "    ${cl_grey}None${cl_reset}  (merges):   $stat_none"
   echo ""
   echo "${st_bold}Final Version:${cl_reset} ${cl_green}${current_version}${cl_reset}"
 
@@ -536,6 +589,7 @@ ${st_bold}USAGE:${cl_reset}
 
 ${st_bold}OPTIONS:${cl_reset}
   -h, --help                    Show this help message
+  --list-keywords               List all configured conventional commit keywords
 
   ${st_bold}Starting Point:${cl_reset}
   --from-first-commit           Start from the first commit in repo (default)
@@ -601,11 +655,16 @@ function parse:cli:arguments() {
   INITIAL_VERSION="0.0.1"
   USE_TMUX="false"
   SHOW_HELP="false"
+  LIST_KEYWORDS="false"
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -h|--help)
         SHOW_HELP="true"
+        shift
+        ;;
+      --list-keywords)
+        LIST_KEYWORDS="true"
         shift
         ;;
       --from-first-commit)
@@ -681,6 +740,12 @@ function main() {
   # Show help if requested
   if [[ "$SHOW_HELP" == "true" ]]; then
     print:help
+    return $EXIT_OK
+  fi
+
+  # List keywords if requested
+  if [[ "$LIST_KEYWORDS" == "true" ]]; then
+    gitsv:list_keywords
     return $EXIT_OK
   fi
 
