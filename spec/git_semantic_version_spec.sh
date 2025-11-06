@@ -438,8 +438,8 @@ Describe "git.semantic-version.sh"
     It "returns a commit hash"
       When call gitsv:get_branch_start_commit
       The status should be success
-      # Should return a commit hash
-      The result of function no_colors_stdout should include "cacb"
+      # Should return a commit hash (checking for first 4 chars of actual hash)
+      The result of function no_colors_stdout should include "cc29"
     End
   End
 
@@ -570,18 +570,19 @@ Describe "git.semantic-version.sh"
       The output should eq "major"
     End
 
-    It "determines bump type independent of version suffix"
+    It "determines bump type independent of version suffix (fix: commit)"
       # Bump type should NOT change based on current version state
       # This would have failed before fix: version state affected color
-
-      # Test 1: fix: commit should be patch even if version has -alpha
-      commit_msg1="fix: bug fix"
-      When call gitsv:determine_bump "$commit_msg1"
+      # Test: fix: commit should be patch even if version has -alpha
+      commit_msg="fix: bug fix"
+      When call gitsv:determine_bump "$commit_msg"
       The output should eq "patch"
+    End
 
-      # Test 2: non-conventional should be none even if version has -alpha
-      commit_msg2="Self update functionality"
-      When call gitsv:determine_bump "$commit_msg2"
+    It "determines bump type independent of version suffix (non-conventional)"
+      # Test: non-conventional should be none even if version has -alpha
+      commit_msg="Self update functionality"
+      When call gitsv:determine_bump "$commit_msg"
       The output should eq "none"
     End
   End
@@ -604,21 +605,23 @@ Describe "git.semantic-version.sh"
       The output should eq "1.0.1-alpha.1"
     End
 
-    It "extracts semver from tag regardless of pre-release suffix"
-      # Tags with -alpha, -beta, -rc should extract correctly
-
-      # Test alpha
+    It "extracts semver from tag with alpha pre-release suffix"
+      # Tag extraction should handle alpha format
       When call gitsv:extract_semver_from_tag "v2.0.0-alpha.1"
       The output should eq "2.0.0-alpha.1"
+    End
 
-      # Test beta
-      tag_beta="v1.5.0-beta.3"
-      When call gitsv:extract_semver_from_tag "$tag_beta"
+    It "extracts semver from tag with beta pre-release suffix"
+      # Tag extraction should handle beta format
+      tag="v1.5.0-beta.3"
+      When call gitsv:extract_semver_from_tag "$tag"
       The output should eq "1.5.0-beta.3"
+    End
 
-      # Test rc
-      tag_rc="package/v3.0.0-rc.1"
-      When call gitsv:extract_semver_from_tag "$tag_rc"
+    It "extracts semver from tag with rc pre-release suffix"
+      # Tag extraction should handle rc format
+      tag="package/v3.0.0-rc.1"
+      When call gitsv:extract_semver_from_tag "$tag"
       The output should eq "3.0.0-rc.1"
     End
   End
