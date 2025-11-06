@@ -43,6 +43,10 @@ readonly EXIT_OK=0
 readonly EXIT_ERROR=1
 readonly EXIT_NO_COMMITS=2
 readonly EXIT_INVALID_ARGS=3
+readonly EXIT_INTERRUPTED=130
+
+# Global interrupt flag
+INTERRUPTED=false
 
 # ============================================================================
 # Conventional Commit Configuration
@@ -528,6 +532,12 @@ function gitsv:process_commits() {
   while IFS= read -r commit_hash; do
     current_count=$((current_count + 1))
 
+    # Check for interruption
+    if [[ "$INTERRUPTED" == "true" ]]; then
+      echo:SemVer "Processing interrupted at commit $current_count/$total_commits"
+      break
+    fi
+
     # Get commit details
     local short_hash=$(git rev-parse --short "$commit_hash")
     local commit_msg=$(git log -1 --format=%B "$commit_hash")
@@ -664,11 +674,17 @@ ${st_bold}OPTIONS:${cl_reset}
   --list-keywords               List all configured conventional commit keywords
 
   ${st_bold}Starting Point:${cl_reset}
-  --from-first-commit           Start from the first commit in repo (default)
+  ${cl_cyan}(default: auto-detect based on repository size)${cl_reset}
+
+  --from-first-commit           Start from the first commit in repo
   --from-last-tag               Start from the most recent version tag
   --from-branch-start           Start from where current branch diverged
   --from-last-n-versions N      Start from N versions back
   --from-commit HASH            Start from specific commit hash
+
+  ${cl_grey}Auto-detection logic:
+  - Small repos (<500 commits, <25 branches): use full history
+  - Large repos: use from-last-tag or from-last-n-versions 50${cl_reset}
 
   ${st_bold}Configuration:${cl_reset}
   --initial-version VERSION     Initial version to use (default: 0.0.1)
@@ -708,10 +724,11 @@ ${st_bold}CONVENTIONAL COMMITS:${cl_reset}
     chore/docs/refactor/test/ci/perf: All bump ${cl_green}PATCH${cl_reset}
 
   ${st_bold}Color Scheme:${cl_reset}
-    ${cl_red}Red${cl_reset}     - Major version bump (breaking changes)
-    ${cl_yellow}Yellow${cl_reset}  - Minor version bump (new features)
-    ${cl_green}Green${cl_reset}   - Patch version bump (fixes, chores)
-    ${cl_purple}Purple${cl_reset}  - Pre-release versions (-alpha, -beta, -rc)
+    ${st_bold}${cl_lwhite}Bold White${cl_reset} - Version assigned by git tag (=1.0.0)
+    ${cl_red}Red${cl_reset}        - Major version bump (breaking changes)
+    ${cl_yellow}Yellow${cl_reset}     - Minor version bump (new features)
+    ${cl_green}Green${cl_reset}      - Patch version bump (fixes, chores)
+    ${cl_grey}Grey${cl_reset}       - No version change (ignored commits)
 
 ${st_bold}OUTPUT FORMAT:${cl_reset}
   <hash> | <commit message> | <version before> → <version after> | <diff>
@@ -722,7 +739,7 @@ EOF
 ## Parse command line arguments
 function parse:cli:arguments() {
   # Default values
-  STRATEGY="from-first-commit"
+  STRATEGY="auto"  # Auto-detect optimal strategy based on repo size
   STRATEGY_PARAM=""
   INITIAL_VERSION="0.0.1"
   USE_TMUX="false"
@@ -794,13 +811,86 @@ function parse:cli:arguments() {
 }
 
 # ============================================================================
+# PHASE 7: Repository Statistics and Smart Defaults
+# ============================================================================
+
+## Count total commits in repository
+## @return number of commits
+function gitsv:count_total_commits() {
+  git rev-list --count HEAD 2>/dev/null || echo "0"
+}
+
+## Count number of branches in repository
+## @return number of branches
+function gitsv:count_branches() {
+  git branch -a 2>/dev/null | wc -l | tr -d ' '
+}
+
+## Determine optimal default strategy based on repository size
+## @return strategy name (from-last-tag, from-last-n-versions, or from-first-commit)
+function gitsv:determine_optimal_strategy() {
+  local total_commits=$(gitsv:count_total_commits)
+  local branch_count=$(gitsv:count_branches)
+
+  echo:SemVer "Repository statistics: $total_commits commits, $branch_count branches"
+
+  # Check if repository has version tags
+  local has_tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | head -n1)
+
+  # Performance thresholds
+  local COMMIT_THRESHOLD=500
+  local BRANCH_THRESHOLD=25
+
+  # Determine optimal strategy
+  if [[ $total_commits -gt $COMMIT_THRESHOLD ]] || [[ $branch_count -gt $BRANCH_THRESHOLD ]]; then
+    # Large repository - use optimized strategies
+    if [[ -n "$has_tags" ]]; then
+      echo:SemVer "${cl_yellow}Large repository detected${cl_reset} - using optimized strategy: from-last-tag"
+      echo "from-last-tag"
+    else
+      echo:SemVer "${cl_yellow}Large repository detected${cl_reset} - using optimized strategy: from-last-n-versions 50"
+      echo "from-last-n-versions"
+    fi
+  else
+    # Small/medium repository - can use full history
+    echo:SemVer "Repository size is manageable - using full history strategy"
+    echo "from-first-commit"
+  fi
+}
+
+# ============================================================================
 # Main Entry Point
 # ============================================================================
+
+## Handle interrupt signal (Ctrl+C)
+function on_interrupt() {
+  echo "" >&2
+  echo "${cl_yellow}Interrupted by user (Ctrl+C)${cl_reset}" >&2
+  INTERRUPTED=true
+
+  # Cleanup tmux progress if it was active
+  if type -t tmux:cleanup_progress >/dev/null 2>&1; then
+    tmux:cleanup_progress 2>/dev/null || true
+  fi
+
+  exit $EXIT_INTERRUPTED
+}
 
 ## Cleanup function
 function on_exit() {
   local exit_code=$?
-  echo:SemVer "Exiting with code $exit_code"
+
+  # Cleanup tmux progress if still active
+  if type -t tmux:cleanup_progress >/dev/null 2>&1; then
+    tmux:cleanup_progress 2>/dev/null || true
+  fi
+
+  if [[ $exit_code -eq $EXIT_INTERRUPTED ]]; then
+    echo:SemVer "Processing interrupted"
+  else
+    echo:SemVer "Exiting with code $exit_code"
+  fi
+
   return $exit_code
 }
 
@@ -834,6 +924,16 @@ function main() {
     return $EXIT_INVALID_ARGS
   fi
 
+  # Auto-detect optimal strategy if not specified
+  if [[ "$STRATEGY" == "auto" ]]; then
+    STRATEGY=$(gitsv:determine_optimal_strategy)
+
+    # If strategy is from-last-n-versions, set default param
+    if [[ "$STRATEGY" == "from-last-n-versions" ]] && [[ -z "$STRATEGY_PARAM" ]]; then
+      STRATEGY_PARAM="50"
+    fi
+  fi
+
   # Get starting commit
   local start_commit=$(gitsv:get_start_commit "$STRATEGY" "$STRATEGY_PARAM")
   if [[ $? -ne 0 ]] || [[ -z "$start_commit" ]]; then
@@ -851,8 +951,9 @@ function main() {
   return $?
 }
 
-# Setup exit trap
-trap on_exit EXIT INT TERM
+# Setup exit and interrupt traps
+trap on_exit EXIT
+trap on_interrupt INT TERM
 
 # Run main if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
