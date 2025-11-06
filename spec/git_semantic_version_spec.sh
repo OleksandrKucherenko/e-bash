@@ -9,6 +9,11 @@
 
 eval "$(shellspec - -c) exit 1"
 
+# Helper functions to strip ANSI color codes
+# $1 = stdout, $2 = stderr, $3 = exit status
+no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+
 # Mock logger to avoid noise in tests
 Mock logger:init
   echo "$@" >/dev/null
@@ -172,7 +177,7 @@ Describe "git.semantic-version.sh"
     It "validates bump type"
       When call gitsv:add_keyword "custom" "invalid"
       The status should be failure
-      The stderr should include "Invalid bump type"
+      The result of function no_colors_stderr should include "Invalid bump type"
     End
 
     It "allows major bump type"
@@ -302,7 +307,7 @@ Describe "git.semantic-version.sh"
     It "returns the first commit hash in repository"
       When call gitsv:get_first_commit
       The status should be success
-      The output should be present
+      The result of function no_colors_stdout should include "cacb"
     End
   End
 
@@ -310,8 +315,8 @@ Describe "git.semantic-version.sh"
     It "returns latest semver tag if exists"
       When call gitsv:get_last_version_tag
       The status should be success
-      # Output should be a version or empty (repo might have tags)
-      The output should be present
+      # Output should be a version (1.1.0 in this repo)
+      The result of function no_colors_stdout should include "1."
     End
 
     It "strips 'v' prefix from tags"
@@ -324,8 +329,8 @@ Describe "git.semantic-version.sh"
     It "returns commit hash for latest version tag"
       When call gitsv:get_last_version_tag_commit
       The status should be success
-      # Output might be empty or a commit hash
-      The output should be present
+      # Output is a commit hash (40 hex chars)
+      The result of function no_colors_stdout should include "8649d55"
     End
   End
 
@@ -334,7 +339,7 @@ Describe "git.semantic-version.sh"
       When call gitsv:get_branch_start_commit
       The status should be success
       # Should return a commit hash
-      The output should not be blank
+      The result of function no_colors_stdout should include "cacb"
     End
   End
 
@@ -343,14 +348,14 @@ Describe "git.semantic-version.sh"
       When call gitsv:get_commit_from_n_versions_back 1
       The status should be success
       # Should return a commit hash
-      The output should be present
+      The result of function no_colors_stdout should include "8649d55"
     End
 
     It "handles when N is larger than version count"
       When call gitsv:get_commit_from_n_versions_back 9999
       The status should be success
       # Should fallback to first commit
-      The output should not be blank
+      The result of function no_colors_stdout should include "cacb"
     End
   End
 
@@ -358,45 +363,45 @@ Describe "git.semantic-version.sh"
     It "displays help with --help"
       When run script bin/git.semantic-version.sh --help
       The status should be success
-      The output should include "USAGE:"
-      The output should include "OPTIONS:"
-      The output should include "EXAMPLES:"
+      The result of function no_colors_stdout should include "USAGE:"
+      The result of function no_colors_stdout should include "OPTIONS:"
+      The result of function no_colors_stdout should include "EXAMPLES:"
     End
 
     It "accepts --initial-version parameter"
       When run script bin/git.semantic-version.sh --initial-version 5.0.0 --help
       The status should be success
-      The output should include "USAGE:"
+      The result of function no_colors_stdout should include "USAGE:"
     End
 
     It "rejects invalid --initial-version format"
       When run script bin/git.semantic-version.sh --initial-version invalid
       The status should be failure
-      The error should include "Invalid initial version"
+      The result of function no_colors_stderr should include "Invalid initial version"
     End
 
     It "accepts --add-keyword parameter"
       When run script bin/git.semantic-version.sh --add-keyword wip:patch --help
       The status should be success
-      The output should include "USAGE:"
+      The result of function no_colors_stdout should include "USAGE:"
     End
 
     It "rejects invalid --add-keyword format"
       When run script bin/git.semantic-version.sh --add-keyword invalid
       The status should be failure
-      The error should include "Invalid keyword format"
+      The result of function no_colors_stderr should include "Invalid keyword format"
     End
 
     It "accepts multiple --add-keyword parameters"
       When run script bin/git.semantic-version.sh --add-keyword wip:patch --add-keyword exp:none --help
       The status should be success
-      The output should include "USAGE:"
+      The result of function no_colors_stdout should include "USAGE:"
     End
 
     It "rejects unknown options"
       When run script bin/git.semantic-version.sh --unknown-option
       The status should be failure
-      The error should include "Unknown option"
+      The result of function no_colors_stderr should include "Unknown option"
     End
   End
 
@@ -404,14 +409,14 @@ Describe "git.semantic-version.sh"
     It "processes commits from recent history"
       When run script bin/git.semantic-version.sh --from-commit HEAD~5 --initial-version 1.0.0
       The status should be success
-      The output should include "Semantic Version History"
-      The output should include "Summary:"
+      The result of function no_colors_stdout should include "Semantic Version History"
+      The result of function no_colors_stdout should include "Summary:"
     End
 
     It "works with --from-last-tag strategy"
       When run script bin/git.semantic-version.sh --from-last-tag --initial-version 1.0.0
       The status should be success
-      The output should include "Semantic Version History"
+      The result of function no_colors_stdout should include "Semantic Version History"
     End
 
     It "validates not in git repository"
