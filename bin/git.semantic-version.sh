@@ -14,6 +14,9 @@
 if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
 shopt -s extdebug
 
+# Skip automatic argument parsing during module loading
+export SKIP_ARGS_PARSING=1
+
 # Setup paths
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
 readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
@@ -40,6 +43,47 @@ readonly EXIT_OK=0
 readonly EXIT_ERROR=1
 readonly EXIT_NO_COMMITS=2
 readonly EXIT_INVALID_ARGS=3
+
+# ============================================================================
+# Conventional Commit Configuration
+# ============================================================================
+
+## Default mapping of conventional commit types to bump types
+## Format: "commit_type:bump_type" where bump_type is major|minor|patch|none
+declare -A -g CONVENTIONAL_KEYWORDS=(
+  [feat]="minor"
+  [fix]="patch"
+  [chore]="patch"
+  [docs]="patch"
+  [style]="patch"
+  [refactor]="patch"
+  [perf]="patch"
+  [test]="patch"
+  [build]="patch"
+  [ci]="patch"
+  [merge]="none"
+)
+
+## Add extra conventional commit keywords
+## @param $1 - keyword name
+## @param $2 - bump type (major|minor|patch|none)
+function gitsv:add_keyword() {
+  local keyword="$1"
+  local bump_type="$2"
+
+  # Validate bump type
+  case "$bump_type" in
+    major|minor|patch|none)
+      CONVENTIONAL_KEYWORDS[$keyword]="$bump_type"
+      echo:SemVer "Added keyword: $keyword → $bump_type"
+      return 0
+      ;;
+    *)
+      echo "${cl_red}Error: Invalid bump type '$bump_type'. Must be major, minor, patch, or none.${cl_reset}" >&2
+      return 1
+      ;;
+  esac
+}
 
 # ============================================================================
 # PHASE 1: Conventional Commit Parsing
@@ -102,23 +146,16 @@ function gitsv:determine_bump() {
   # Parse commit type
   commit_type=$(gitsv:parse_commit_type "$commit_msg")
 
-  case "$commit_type" in
-    feat)
-      echo "minor"
-      ;;
-    fix|chore|docs|refactor|test|ci|perf|style|build)
-      echo "patch"
-      ;;
-    merge)
-      echo "none"
-      ;;
-    unknown)
-      echo "patch"  # Treat unknown commits as patch
-      ;;
-    *)
-      echo "patch"
-      ;;
-  esac
+  # Look up bump type from configuration
+  if [[ -n "${CONVENTIONAL_KEYWORDS[$commit_type]}" ]]; then
+    echo "${CONVENTIONAL_KEYWORDS[$commit_type]}"
+  elif [[ "$commit_type" == "unknown" ]]; then
+    # Treat unknown commits as patch
+    echo "patch"
+  else
+    # Fallback for any other case
+    echo "patch"
+  fi
 
   return 0
 }
@@ -420,22 +457,30 @@ function gitsv:process_commits() {
     local version_after=$(gitsv:bump_version "$current_version" "$bump_type")
     local diff=$(gitsv:version_diff "$version_before" "$version_after")
 
-    # Color the diff based on bump type
+    # Color the diff based on bump type and pre-release status
     local colored_diff="$diff"
-    case "$bump_type" in
-      major)
-        colored_diff="${cl_red}${st_bold}${diff}${cl_reset}"
-        ;;
-      minor)
-        colored_diff="${cl_green}${diff}${cl_reset}"
-        ;;
-      patch)
-        colored_diff="${cl_yellow}${diff}${cl_reset}"
-        ;;
-      none)
-        colored_diff="${cl_grey}${diff}${cl_reset}"
-        ;;
-    esac
+
+    # Check if version has pre-release suffix (-alpha, -beta, -rc, etc.)
+    if [[ "$version_after" =~ -[a-zA-Z] ]]; then
+      # Pre-release version - purple
+      colored_diff="${cl_purple}${diff}${cl_reset}"
+    else
+      # Regular version - color by bump type
+      case "$bump_type" in
+        major)
+          colored_diff="${cl_red}${st_bold}${diff}${cl_reset}"
+          ;;
+        minor)
+          colored_diff="${cl_yellow}${diff}${cl_reset}"
+          ;;
+        patch)
+          colored_diff="${cl_green}${diff}${cl_reset}"
+          ;;
+        none)
+          colored_diff="${cl_grey}${diff}${cl_reset}"
+          ;;
+      esac
+    fi
 
     # Format and print line
     printf "%s | %-60s | %s → %s | %s\n" \
@@ -501,6 +546,11 @@ ${st_bold}OPTIONS:${cl_reset}
 
   ${st_bold}Configuration:${cl_reset}
   --initial-version VERSION     Initial version to use (default: 0.0.1)
+  --add-keyword TYPE:BUMP       Add custom conventional commit keyword
+                                TYPE is the commit prefix (e.g., wip)
+                                BUMP is major, minor, patch, or none
+                                Can be specified multiple times
+                                Example: --add-keyword wip:patch
   --tmux-progress               Enable tmux progress display (if tmux available)
 
 ${st_bold}EXAMPLES:${cl_reset}
@@ -516,14 +566,26 @@ ${st_bold}EXAMPLES:${cl_reset}
   # Show last 3 versions of changes
   $SCRIPT_NAME --from-last-n-versions 3
 
+  # Add custom keyword 'wip' that bumps patch version
+  $SCRIPT_NAME --add-keyword wip:patch
+
+  # Multiple custom keywords
+  $SCRIPT_NAME --add-keyword wip:patch --add-keyword experiment:none
+
 ${st_bold}CONVENTIONAL COMMITS:${cl_reset}
   This tool follows the Conventional Commits specification (conventionalcommits.org)
 
   ${st_bold}Commit Types:${cl_reset}
-    feat:      New feature (bumps ${cl_green}MINOR${cl_reset})
-    fix:       Bug fix (bumps ${cl_yellow}PATCH${cl_reset})
+    feat:      New feature (bumps ${cl_yellow}MINOR${cl_reset})
+    fix:       Bug fix (bumps ${cl_green}PATCH${cl_reset})
     BREAKING:  Breaking change (bumps ${cl_red}MAJOR${cl_reset})
-    chore/docs/refactor/test/ci/perf: All bump ${cl_yellow}PATCH${cl_reset}
+    chore/docs/refactor/test/ci/perf: All bump ${cl_green}PATCH${cl_reset}
+
+  ${st_bold}Color Scheme:${cl_reset}
+    ${cl_red}Red${cl_reset}     - Major version bump (breaking changes)
+    ${cl_yellow}Yellow${cl_reset}  - Minor version bump (new features)
+    ${cl_green}Green${cl_reset}   - Patch version bump (fixes, chores)
+    ${cl_purple}Purple${cl_reset}  - Pre-release versions (-alpha, -beta, -rc)
 
 ${st_bold}OUTPUT FORMAT:${cl_reset}
   <hash> | <commit message> | <version before> → <version after> | <diff>
@@ -570,6 +632,19 @@ function parse:cli:arguments() {
         ;;
       --initial-version)
         INITIAL_VERSION="$2"
+        shift 2
+        ;;
+      --add-keyword)
+        # Parse keyword:bump format
+        local keyword_def="$2"
+        if [[ ! "$keyword_def" =~ ^([a-z]+):(major|minor|patch|none)$ ]]; then
+          echo "${cl_red}Error: Invalid keyword format '$keyword_def'${cl_reset}" >&2
+          echo "Expected format: TYPE:BUMP (e.g., wip:patch)" >&2
+          return $EXIT_INVALID_ARGS
+        fi
+        local kw_type="${BASH_REMATCH[1]}"
+        local kw_bump="${BASH_REMATCH[2]}"
+        gitsv:add_keyword "$kw_type" "$kw_bump" || return $EXIT_INVALID_ARGS
         shift 2
         ;;
       --tmux-progress)
