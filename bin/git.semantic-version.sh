@@ -176,11 +176,11 @@ function gitsv:determine_bump() {
   if [[ -n "${CONVENTIONAL_KEYWORDS[$commit_type]}" ]]; then
     echo "${CONVENTIONAL_KEYWORDS[$commit_type]}"
   elif [[ "$commit_type" == "unknown" ]]; then
-    # Treat unknown commits as patch
-    echo "patch"
+    # Ignore unknown commits (non-conventional format)
+    echo "none"
   else
     # Fallback for any other case
-    echo "patch"
+    echo "none"
   fi
 
   return 0
@@ -259,6 +259,14 @@ function gitsv:version_diff() {
 ## @return commit hash
 function gitsv:get_first_commit() {
   git rev-list --max-parents=0 HEAD 2>/dev/null | head -n1
+}
+
+## Get git tags for a specific commit
+## @param $1 - commit hash
+## @return tag names (comma-separated if multiple)
+function gitsv:get_commit_tags() {
+  local commit_hash="$1"
+  git tag --points-at "$commit_hash" 2>/dev/null | tr '\n' ',' | sed 's/,$//'
 }
 
 ## Get the latest semantic version tag
@@ -401,33 +409,40 @@ function gitsv:get_start_commit() {
 ## @param $3 - version before
 ## @param $4 - version after
 ## @param $5 - version diff
+## @param $6 - git tag (optional)
 function gitsv:format_output_line() {
   local hash="$1"
   local msg="$2"
   local ver_before="$3"
   local ver_after="$4"
   local diff="$5"
+  local tag="${6:--}"
 
-  # Truncate message to 60 chars
-  if [[ ${#msg} -gt 60 ]]; then
-    msg="${msg:0:57}..."
+  # Truncate message to 50 chars (reduced to fit tag column)
+  if [[ ${#msg} -gt 50 ]]; then
+    msg="${msg:0:47}..."
   fi
 
-  # Format: hash | message | version_before → version_after | diff
-  printf "%s | %-60s | %s → %s | %s\n" "$hash" "$msg" "$ver_before" "$ver_after" "$diff"
+  # Truncate tag to 15 chars if too long
+  if [[ ${#tag} -gt 15 ]]; then
+    tag="${tag:0:12}..."
+  fi
+
+  # Format: hash | message | tag | version_before → version_after | diff
+  printf "%s | %-50s | %-15s | %s → %s | %s\n" "$hash" "$msg" "$tag" "$ver_before" "$ver_after" "$diff"
 }
 
 ## Print table header
 function gitsv:print_header() {
   echo "${st_bold}${cl_cyan}Semantic Version History${cl_reset}"
-  echo "─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
-  printf "%s | %-60s | %s | %s\n" "Commit " "Message" "Version Change" "Diff"
-  echo "─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+  echo "──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+  printf "%s | %-50s | %-15s | %s | %s\n" "Commit " "Message" "Tag" "Version Change" "Diff"
+  echo "──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 }
 
 ## Print table footer
 function gitsv:print_footer() {
-  echo "─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
+  echo "──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────"
 }
 
 # ============================================================================
@@ -485,6 +500,7 @@ function gitsv:process_commits() {
     local short_hash=$(git rev-parse --short "$commit_hash")
     local commit_msg=$(git log -1 --format=%B "$commit_hash")
     local first_line=$(git log -1 --format=%s "$commit_hash")
+    local commit_tags=$(gitsv:get_commit_tags "$commit_hash")
 
     # Determine bump type
     local bump_type=$(gitsv:determine_bump "$commit_msg")
@@ -519,13 +535,20 @@ function gitsv:process_commits() {
       esac
     fi
 
+    # Format tag display with color if present
+    local display_tag="${commit_tags:--}"
+    if [[ -n "$commit_tags" && "$commit_tags" != "-" ]]; then
+      display_tag="${cl_cyan}${commit_tags}${cl_reset}"
+    fi
+
     # Format and print line
-    printf "%s | %-60s | %s → %s | %s\n" \
+    gitsv:format_output_line \
       "$short_hash" \
-      "${first_line:0:60}" \
+      "$first_line" \
       "$version_before" \
       "$version_after" \
-      "$colored_diff"
+      "$colored_diff" \
+      "$display_tag"
 
     # Update current version
     current_version="$version_after"

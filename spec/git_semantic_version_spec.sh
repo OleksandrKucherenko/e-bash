@@ -162,9 +162,9 @@ Describe "git.semantic-version.sh"
       The output should eq "none"
     End
 
-    It "returns patch for unknown commit type"
+    It "returns none for unknown commit type"
       When call gitsv:determine_bump "random commit"
-      The output should eq "patch"
+      The output should eq "none"
     End
   End
 
