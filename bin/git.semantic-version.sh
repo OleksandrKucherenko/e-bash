@@ -518,19 +518,18 @@ function gitsv:process_commits() {
   gitsv:print_header
 
   # Setup tmux progress if enabled
-  if [[ "$use_tmux" == "true" ]]; then
-    if [[ -z "$TMUX" ]]; then
-      echo:SemVer "${cl_yellow}Warning: --tmux-progress requires running inside a tmux session${cl_reset}"
-      echo:SemVer "Continuing without tmux progress display..."
-    else
-      # Load tmux utilities on demand
-      if ! type -t tmux:init_progress >/dev/null 2>&1; then
-        # shellcheck source=../.scripts/_tmux.sh
-        source "$E_BASH/_tmux.sh"
-      fi
-      tmux:init_progress
-      tmux:setup_trap
+  # Note: We're guaranteed to be in tmux at this point if use_tmux="true"
+  # because main() auto-starts tmux and re-execs before reaching here
+  if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
+    # Load tmux utilities on demand
+    if ! type -t tmux:init_progress >/dev/null 2>&1; then
+      # shellcheck source=../.scripts/_tmux.sh
+      source "$E_BASH/_tmux.sh"
     fi
+
+    echo:SemVer "${cl_cyan}Initializing tmux progress display...${cl_reset}"
+    tmux:init_progress
+    tmux:setup_trap
   fi
 
   # Process each commit
@@ -699,7 +698,7 @@ ${st_bold}OPTIONS:${cl_reset}
                                 Can be specified multiple times
                                 Example: --add-keyword wip:patch
   --tmux-progress               Enable tmux progress display
-                                ${cl_grey}(requires running inside a tmux session)${cl_reset}
+                                ${cl_grey}(auto-starts tmux session if not already in one)${cl_reset}
 
 ${st_bold}EXAMPLES:${cl_reset}
   # Show version history from first commit
@@ -719,6 +718,9 @@ ${st_bold}EXAMPLES:${cl_reset}
 
   # Multiple custom keywords
   $SCRIPT_NAME --add-keyword wip:patch --add-keyword experiment:none
+
+  # Enable tmux progress display (auto-starts tmux if needed)
+  $SCRIPT_NAME --tmux-progress --from-first-commit
 
 ${st_bold}CONVENTIONAL COMMITS:${cl_reset}
   This tool follows the Conventional Commits specification (conventionalcommits.org)
@@ -893,8 +895,19 @@ function on_exit() {
 
   if [[ $exit_code -eq $EXIT_INTERRUPTED ]]; then
     echo:SemVer "Processing interrupted"
+  elif [[ $exit_code -eq 0 ]]; then
+    echo:SemVer "Completed successfully"
   else
     echo:SemVer "Exiting with code $exit_code"
+  fi
+
+  # If we started the tmux session, give user time to see results
+  if [[ -n "$TMUX_STARTED_BY_SCRIPT" ]] && [[ $exit_code -eq 0 ]]; then
+    echo ""
+    echo "${cl_cyan}${st_bold}Press Enter to exit tmux session...${cl_reset}"
+    read -r
+    # Kill the tmux session we created
+    tmux kill-session -t "$TMUX_SESSION_NAME" 2>/dev/null || true
   fi
 
   return $exit_code
@@ -915,6 +928,22 @@ function main() {
   if [[ "$LIST_KEYWORDS" == "true" ]]; then
     gitsv:list_keywords
     return $EXIT_OK
+  fi
+
+  # Auto-start tmux if --tmux-progress is enabled but not in tmux session
+  if [[ "$USE_TMUX" == "true" ]] && [[ -z "$TMUX" ]]; then
+    echo "${cl_cyan}--tmux-progress enabled: Starting tmux session...${cl_reset}" >&2
+
+    # Generate unique session name
+    local session_name="git-semver-$$"
+
+    # Mark that we started tmux (for cleanup)
+    export TMUX_STARTED_BY_SCRIPT=1
+    export TMUX_SESSION_NAME="$session_name"
+
+    # Start tmux and re-execute this script with same arguments
+    exec tmux new-session -s "$session_name" "$0" "$@"
+    # exec replaces process, nothing below runs
   fi
 
   # Verify we're in a git repository
