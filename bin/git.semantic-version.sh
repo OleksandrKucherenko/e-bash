@@ -557,13 +557,14 @@ function gitsv:process_commits() {
     # Color the diff based on bump type and pre-release status
     local colored_diff="$diff"
 
-    # Check if version has pre-release suffix (-alpha, -beta, -rc, etc.)
-    if [[ "$version_after" =~ -[a-zA-Z] ]]; then
-      # Pre-release version - purple
-      colored_diff="${cl_purple}${diff}${cl_reset}"
-    elif [[ "$bump_type" == "tag" ]]; then
+    # Check tag-based version first (takes precedence)
+    if [[ "$bump_type" == "tag" ]]; then
       # Tag-based version - bold light white
       colored_diff="${st_bold}${cl_lwhite}${diff}${cl_reset}"
+    # Check if version has pre-release suffix (-alpha, -beta, -rc, etc.)
+    elif [[ "$version_after" =~ -[a-zA-Z] ]]; then
+      # Pre-release version - purple
+      colored_diff="${cl_purple}${diff}${cl_reset}"
     else
       # Regular version - color by bump type
       case "$bump_type" in
