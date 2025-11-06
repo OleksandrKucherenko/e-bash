@@ -518,14 +518,19 @@ function gitsv:process_commits() {
   gitsv:print_header
 
   # Setup tmux progress if enabled
-  if [[ "$use_tmux" == "true" ]] && [[ -n "$TMUX" ]]; then
-    # Load tmux utilities on demand
-    if ! type -t tmux:init_progress >/dev/null 2>&1; then
-      # shellcheck source=../.scripts/_tmux.sh
-      source "$E_BASH/_tmux.sh"
+  if [[ "$use_tmux" == "true" ]]; then
+    if [[ -z "$TMUX" ]]; then
+      echo:SemVer "${cl_yellow}Warning: --tmux-progress requires running inside a tmux session${cl_reset}"
+      echo:SemVer "Continuing without tmux progress display..."
+    else
+      # Load tmux utilities on demand
+      if ! type -t tmux:init_progress >/dev/null 2>&1; then
+        # shellcheck source=../.scripts/_tmux.sh
+        source "$E_BASH/_tmux.sh"
+      fi
+      tmux:init_progress
+      tmux:setup_trap
     fi
-    tmux:init_progress
-    tmux:setup_trap
   fi
 
   # Process each commit
@@ -693,7 +698,8 @@ ${st_bold}OPTIONS:${cl_reset}
                                 BUMP is major, minor, patch, or none
                                 Can be specified multiple times
                                 Example: --add-keyword wip:patch
-  --tmux-progress               Enable tmux progress display (if tmux available)
+  --tmux-progress               Enable tmux progress display
+                                ${cl_grey}(requires running inside a tmux session)${cl_reset}
 
 ${st_bold}EXAMPLES:${cl_reset}
   # Show version history from first commit
