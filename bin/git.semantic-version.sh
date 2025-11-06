@@ -554,34 +554,32 @@ function gitsv:process_commits() {
       diff=$(gitsv:version_diff "$version_before" "$version_after")
     fi
 
-    # Color the diff based on bump type and pre-release status
+    # Color the diff based on bump type
     local colored_diff="$diff"
 
-    # Check tag-based version first (takes precedence)
-    if [[ "$bump_type" == "tag" ]]; then
-      # Tag-based version - bold light white
-      colored_diff="${st_bold}${cl_lwhite}${diff}${cl_reset}"
-    # Check if version has pre-release suffix (-alpha, -beta, -rc, etc.)
-    elif [[ "$version_after" =~ -[a-zA-Z] ]]; then
-      # Pre-release version - purple
-      colored_diff="${cl_purple}${diff}${cl_reset}"
-    else
-      # Regular version - color by bump type
-      case "$bump_type" in
-        major)
-          colored_diff="${cl_red}${st_bold}${diff}${cl_reset}"
-          ;;
-        minor)
-          colored_diff="${cl_yellow}${diff}${cl_reset}"
-          ;;
-        patch)
-          colored_diff="${cl_green}${diff}${cl_reset}"
-          ;;
-        none)
-          colored_diff="${cl_grey}${diff}${cl_reset}"
-          ;;
-      esac
-    fi
+    # Color based on bump type only
+    case "$bump_type" in
+      tag)
+        # Tag-based version assignment - bold light white
+        colored_diff="${st_bold}${cl_lwhite}${diff}${cl_reset}"
+        ;;
+      major)
+        # Major version bump - red bold
+        colored_diff="${cl_red}${st_bold}${diff}${cl_reset}"
+        ;;
+      minor)
+        # Minor version bump - yellow
+        colored_diff="${cl_yellow}${diff}${cl_reset}"
+        ;;
+      patch)
+        # Patch version bump - green
+        colored_diff="${cl_green}${diff}${cl_reset}"
+        ;;
+      none)
+        # No version change - grey
+        colored_diff="${cl_grey}${diff}${cl_reset}"
+        ;;
+    esac
 
     # Format tag display with color if present
     # Show all tags (not just semver ones) in display
