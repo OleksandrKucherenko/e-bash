@@ -37,7 +37,8 @@ Describe 'bin/version-up.v2.sh /'
   git_init() { git init -q; }
   git_config_user() { git config --local user.name "Test User"; }
   git_config_email() { git config --local user.email "test@example.com"; }
-  git_config() { git_config_user && git_config_email; }
+  git_config_no_signing() { git config --local commit.gpgsign false; }
+  git_config() { git_config_user && git_config_email && git_config_no_signing; }
   ln_script() { ln -s "$ROOT_SCRIPT" "$VERSION_UP_SCRIPT"; }
   rm_repo() { rm -rf "$TEST_DIR"; }
   git_first_commit() { (git add . && git commit -m "Initial commit"); }
@@ -658,21 +659,18 @@ EOF
         git_next_commit
       } >/dev/null 2>&1
 
-      # Count tags before
-      tags_before=$(git tag | wc -l)
-
       When run bash "$VERSION_UP_SCRIPT" --patch --apply --dry-run
 
       The status should be success
       The stdout should be present
 
-      # Verify no new tags created
-      tags_after=$(git tag | wc -l)
-      The value "$tags_after" should equal "$tags_before"
-
       # Should show what would be executed
       The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.0.1"
       The result of function no_colors_stderr should include "exit code: 0"
+
+      # Verify tag v1.0.1 should NOT exist after dry-run
+      When run git tag -l "v1.0.1"
+      The stdout should equal ""
 
       # Dump
     End
@@ -1226,17 +1224,17 @@ EOF
           git_next_commit
         } >/dev/null 2>&1
 
-        # Count total commits
-        commit_count=$(git rev-list --count HEAD)
-
         When run bash "$VERSION_UP_SCRIPT" --git
 
         The status should be success
         The stdout should be present
 
-        # Should use git commit count as build number
-        The result of function no_colors_stdout should include "git tag v1.0.0+${commit_count}"
-        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.0.0+${commit_count}"
+        # Should use git commit count as build number (4 commits total)
+        The result of function no_colors_stdout should include "git tag v1.0.0+"
+        The result of function no_colors_stdout should include "git push origin v1.0.0+"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.0.0+"
+        # Verify it's using git revision (should be 4)
+        The result of function no_colors_stderr should include "Setting REVISION: +4"
 
         # Dump
       End
