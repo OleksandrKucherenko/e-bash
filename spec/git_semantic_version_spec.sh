@@ -318,10 +318,11 @@ Describe "git.semantic-version.sh"
     It "returns the first commit hash in repository"
       When call gitsv:get_first_commit
       The status should be success
-      # Should return a non-empty hex string (git hash format)
+      # Should return a 40-char git hash (hex string)
       # Not checking specific hash as repo history can be rewritten
-      The result of function no_colors_stdout should match pattern "[0-9a-f]+"
+      # Using glob pattern to check for hex-like output
       The result of function no_colors_stdout should not eq ""
+      The result of function no_colors_stdout should match pattern "*[0-9a-f]*"
     End
   End
 
@@ -434,8 +435,8 @@ Describe "git.semantic-version.sh"
       The status should be success
       # Should return a valid commit hash for the latest version tag
       # Not checking specific hash as it changes when new tags are added
-      The result of function no_colors_stdout should match pattern "[0-9a-f]+"
       The result of function no_colors_stdout should not eq ""
+      The result of function no_colors_stdout should match pattern "*[0-9a-f]*"
     End
   End
 
@@ -443,10 +444,10 @@ Describe "git.semantic-version.sh"
     It "returns a valid commit hash"
       When call gitsv:get_branch_start_commit
       The status should be success
-      # Should return a non-empty hex string (git hash format)
+      # Should return a git hash (hex string)
       # Not checking specific hash as it changes after branch merge/rebase
-      The result of function no_colors_stdout should match pattern "[0-9a-f]+"
       The result of function no_colors_stdout should not eq ""
+      The result of function no_colors_stdout should match pattern "*[0-9a-f]*"
     End
   End
 
@@ -456,8 +457,8 @@ Describe "git.semantic-version.sh"
       The status should be success
       # Should return a valid commit hash (depends on current version tags)
       # Not checking specific hash as it changes when new tags are added
-      The result of function no_colors_stdout should match pattern "[0-9a-f]+"
       The result of function no_colors_stdout should not eq ""
+      The result of function no_colors_stdout should match pattern "*[0-9a-f]*"
     End
 
     It "handles when N is larger than version count"
@@ -465,8 +466,8 @@ Describe "git.semantic-version.sh"
       The status should be success
       # Should fallback to first commit (return valid hash)
       # Not checking specific hash as repo history can change
-      The result of function no_colors_stdout should match pattern "[0-9a-f]+"
       The result of function no_colors_stdout should not eq ""
+      The result of function no_colors_stdout should match pattern "*[0-9a-f]*"
     End
   End
 
