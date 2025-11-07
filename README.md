@@ -34,6 +34,26 @@
 
 ## Local Dev Environment - Requirements
 
+### Option 1: Docker Development (Recommended)
+
+Use the pre-built Docker image with all dependencies included:
+
+```bash
+# Interactive development shell
+./scripts/docker-dev.sh shell
+
+# Run tests
+./scripts/docker-dev.sh test
+
+# Verify dependencies
+./scripts/docker-dev.sh verify
+
+# Build image locally
+./scripts/docker-dev.sh build
+```
+
+### Option 2: Native Installation
+
 - DirEnv - https://github.com/direnv/direnv
 - ShellFormat - https://github.com/mvdan/sh
 - ShellCheck - https://github.com/koalaman/shellcheck

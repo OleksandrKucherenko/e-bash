@@ -1,8 +1,14 @@
 # CI Optimization Guide
 
-This document describes the CI optimization strategies implemented to reduce execution time from ~60s to ~15-20s.
+This document describes the CI optimization strategies implemented to reduce execution time from ~60s to ~5-10s.
 
 ## Current Optimizations (Implemented)
+
+### 0. Docker Strategy (Latest - Recommended)
+- **Custom Docker Image**: Pre-built Ubuntu image with all dependencies
+- **GitHub Container Registry**: Cached and versioned images
+- **Instant Setup**: ~5-10s vs ~60s for dependency installation
+- **See**: [Docker CI Strategy](DOCKER_CI_STRATEGY.md) for full details
 
 ### 1. GitHub Actions Caching
 - **Homebrew packages**: Cache `/opt/homebrew` (macOS) and `/home/linuxbrew/.linuxbrew` (Ubuntu)

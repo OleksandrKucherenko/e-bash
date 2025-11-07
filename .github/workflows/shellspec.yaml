@@ -84,8 +84,13 @@ jobs:
           shellspec --no-kcov
   
   shellspec-ubuntu:
-    name: "Ubuntu"
-    runs-on: ubuntu-22.04
+    name: "Ubuntu (Docker)"
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}/e-bash-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
       - name: Checkout Code with full history
@@ -94,99 +99,31 @@ jobs:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
       
-      - name: Cache APT packages
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt
-          key: ${{ runner.os }}-apt-${{ hashFiles('**/*.sh') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-
-      
-      - name: Cache Homebrew installation
-        uses: actions/cache@v4
-        with:
-          path: |
-            /home/linuxbrew/.linuxbrew
-            ~/.cache/Homebrew
-          key: ${{ runner.os }}-homebrew-${{ hashFiles('.envrc') }}
-          restore-keys: |
-            ${{ runner.os }}-homebrew-
-      
-      - name: Cache local binaries
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/bin
-          key: ${{ runner.os }}-local-bin-${{ hashFiles('.envrc') }}
-          restore-keys: |
-            ${{ runner.os }}-local-bin-
-      
-      - name: Setup PATH for local binaries
+      - name: Setup project dependencies (Docker)
         run: |
-          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
-          mkdir -p "${HOME}/.local/bin"
-      
-      - name: Install system dependencies with pre-installation
-        run: |
-          # Install system packages in parallel for speed
-          sudo apt-get update -qq &
-          
-          # Pre-install common dependencies that Homebrew packages need
-          sudo apt-get install -y -qq \
-            curl build-essential procps file git \
-            gawk sed grep coreutils jq shellcheck \
-            libc6-dev gcc g++ make pkg-config \
-            zlib1g-dev libssl-dev libffi-dev \
-            python3-dev python3-pip &
-          
-          wait
-          echo "System dependencies installed"
-      
-      - name: Install or restore Homebrew (optimized)
-        run: |
-          if [ ! -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
-            echo "Installing Homebrew..."
-            # Install Homebrew with minimal dependencies
-            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          else
-            echo "Homebrew restored from cache"
-          fi
-          
-          # Setup Homebrew environment
-          echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          echo "HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew" >> "$GITHUB_ENV"
-          echo "HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar" >> "$GITHUB_ENV"
-          echo "HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew" >> "$GITHUB_ENV"
-      
-      - name: Install missing tools in parallel
-        run: |
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          
-          # Install direnv (lightweight)
-          if ! command -v direnv &> /dev/null; then
-            curl -sfL https://direnv.net/install.sh | bash &
-          fi
-          
-          # Install shellspec (essential for tests)
-          if ! command -v shellspec &> /dev/null; then
-            brew install shellspec &
-          fi
-          
-          # Install GNU tools that aren't available via apt with correct names
-          brew install grep gnu-sed &
-          
-          wait
-          echo "Missing tools installed"
-      
-      - name: Setup project dependencies
-        run: |
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          # Allow .envrc execution and export environment to GitHub Actions
+          # All dependencies are pre-installed in the Docker image
+          # Just need to setup direnv and export environment
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
-          echo "Dependencies loaded via DIRENV"
+          echo "Dependencies loaded from pre-built Docker image"
+      
+      - name: Verify dependencies
+        run: |
+          echo "=== Verifying pre-installed dependencies ==="
+          echo "Bash: $(bash --version | head -1)"
+          echo "Git: $(git --version)"
+          echo "Direnv: $(direnv version)"
+          echo "Shellspec: $(shellspec --version)"
+          echo "Shellcheck: $(shellcheck --version | head -1)"
+          echo "Shfmt: $(shfmt --version)"
+          echo "GNU Grep: $(ggrep --version | head -1)"
+          echo "GNU Sed: $(gsed --version | head -1)"
+          echo "GNU Awk: $(gawk --version | head -1)"
+          echo "JQ: $(jq --version)"
+          echo "Kcov: $(kcov --version | head -1)"
+          echo "Watchman: $(watchman --version)"
       
       - name: Run shellspec tests
         run: |
-          # Environment variables from .envrc are now available (includes GNU tools setup)
-          shellspec --no-kcov
+          # Environment variables from .envrc are now available
+          shellspec
