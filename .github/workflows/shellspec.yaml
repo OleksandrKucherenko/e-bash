@@ -1,6 +1,10 @@
 name: "Shellspec"
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
 
 env:
   SHELLSPEC_VERSION: 0.28.1
