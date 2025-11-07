@@ -3,19 +3,18 @@ FROM ubuntu:22.04
 
 # Set environment variables for non-interactive installation
 ENV DEBIAN_FRONTEND=noninteractive
-ENV HOMEBREW_NO_AUTO_UPDATE=1
-ENV HOMEBREW_NO_INSTALL_CLEANUP=1
-ENV HOMEBREW_NO_ENV_HINTS=1
 ENV CI=true
 
-# Install system dependencies
+# Install system dependencies and tools available via apt
 RUN apt-get update -qq && \
     apt-get install -y -qq \
     curl \
+    wget \
     build-essential \
     procps \
     file \
     git \
+    git-lfs \
     gawk \
     sed \
     grep \
@@ -35,45 +34,59 @@ RUN apt-get update -qq && \
     python3-pip \
     ca-certificates \
     gnupg \
-    lsb-release && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install Homebrew
-RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Set up Homebrew environment
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
-ENV HOMEBREW_PREFIX="/home/linuxbrew/.linuxbrew"
-ENV HOMEBREW_CELLAR="/home/linuxbrew/.linuxbrew/Cellar"
-ENV HOMEBREW_REPOSITORY="/home/linuxbrew/.linuxbrew/Homebrew"
-
-# Install Homebrew dependencies that aren't available via apt or need specific versions
-RUN brew install \
+    lsb-release \
     bash \
-    git-lfs \
-    shellspec \
-    grep \
-    gnu-sed \
-    kcov \
-    watchman && \
-    brew cleanup
+    unzip && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install direnv
 RUN mkdir -p ~/.local/bin && \
     curl -sfL https://direnv.net/install.sh | bash && \
     mv ~/.local/bin/direnv /usr/local/bin/
 
-# Install shellcheck and shfmt via webi (specific versions)
+# Install shfmt (shellcheck already installed via apt)
 RUN mkdir -p ~/.local/bin && \
-    curl -sS https://webi.sh/shellcheck | sh && \
     curl -sS https://webi.sh/shfmt | sh && \
-    mv ~/.local/bin/shellcheck /usr/local/bin/ && \
     mv ~/.local/bin/shfmt /usr/local/bin/
+
+# Install shellspec
+RUN curl -fsSL https://git.io/shellspec | sh -s -- --yes && \
+    ln -sf ~/.local/lib/shellspec/shellspec /usr/local/bin/shellspec
+
+# Install GNU grep and sed (for compatibility with .envrc)
+RUN apt-get update -qq && \
+    apt-get install -y -qq \
+    grep \
+    sed && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install kcov for coverage (if needed)
+RUN apt-get update -qq && \
+    apt-get install -y -qq \
+    cmake \
+    libcurl4-openssl-dev \
+    libelf-dev \
+    libdw-dev \
+    binutils-dev && \
+    git clone https://github.com/SimonKagstrom/kcov.git /tmp/kcov && \
+    cd /tmp/kcov && \
+    mkdir build && cd build && \
+    cmake .. && make && make install && \
+    cd / && rm -rf /tmp/kcov && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install watchman (Facebook's file watching service)
+RUN cd /tmp && \
+    wget https://github.com/facebook/watchman/releases/download/v2023.11.20.00/watchman-v2023.11.20.00-linux.zip && \
+    unzip watchman-v2023.11.20.00-linux.zip && \
+    cp watchman-v2023.11.20.00-linux/bin/* /usr/local/bin/ && \
+    cp watchman-v2023.11.20.00-linux/lib/* /usr/local/lib/ && \
+    rm -rf watchman-*
 
 # Create symbolic links for GNU tools (matching .envrc expectations)
 RUN mkdir -p /usr/local/bin/gnu && \
-    ln -sf /home/linuxbrew/.linuxbrew/bin/ggrep /usr/local/bin/gnu/ggrep && \
-    ln -sf /home/linuxbrew/.linuxbrew/bin/gsed /usr/local/bin/gnu/gsed && \
+    ln -sf /usr/bin/grep /usr/local/bin/gnu/ggrep && \
+    ln -sf /usr/bin/sed /usr/local/bin/gnu/gsed && \
     ln -sf /usr/bin/gawk /usr/local/bin/gnu/gawk && \
     ln -sf /usr/bin/timeout /usr/local/bin/gnu/timeout
 
@@ -88,7 +101,8 @@ USER runner
 WORKDIR /home/runner
 
 # Verify installations
-RUN bash --version && \
+RUN echo "=== Verifying installations ===" && \
+    bash --version && \
     git --version && \
     direnv version && \
     shellspec --version && \
@@ -99,7 +113,8 @@ RUN bash --version && \
     gawk --version && \
     jq --version && \
     kcov --version && \
-    watchman --version
+    watchman --version && \
+    echo "=== All tools verified ==="
 
 # Set default command
 CMD ["/bin/bash"]
