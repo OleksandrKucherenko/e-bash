@@ -39,7 +39,7 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Homebrew
-RUN /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Set up Homebrew environment
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
@@ -59,11 +59,13 @@ RUN brew install \
     brew cleanup
 
 # Install direnv
-RUN curl -sfL https://direnv.net/install.sh | bash && \
+RUN mkdir -p ~/.local/bin && \
+    curl -sfL https://direnv.net/install.sh | bash && \
     mv ~/.local/bin/direnv /usr/local/bin/
 
 # Install shellcheck and shfmt via webi (specific versions)
-RUN curl -sS https://webi.sh/shellcheck | sh && \
+RUN mkdir -p ~/.local/bin && \
+    curl -sS https://webi.sh/shellcheck | sh && \
     curl -sS https://webi.sh/shfmt | sh && \
     mv ~/.local/bin/shellcheck /usr/local/bin/ && \
     mv ~/.local/bin/shfmt /usr/local/bin/

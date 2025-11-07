@@ -84,13 +84,8 @@ jobs:
           shellspec --no-kcov
   
   shellspec-ubuntu:
-    name: "Ubuntu (Docker)"
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/${{ github.repository }}/e-bash-ci:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    name: "Ubuntu (Optimized)"
+    runs-on: ubuntu-22.04
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
       - name: Checkout Code with full history
@@ -99,31 +94,95 @@ jobs:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
       
-      - name: Setup project dependencies (Docker)
+      - name: Try to use Docker image
+        id: docker_check
         run: |
-          # All dependencies are pre-installed in the Docker image
-          # Just need to setup direnv and export environment
+          if docker pull ghcr.io/${{ github.repository }}/e-bash-ci:latest 2>/dev/null; then
+            echo "docker_available=true" >> $GITHUB_OUTPUT
+            echo "Docker image available, will use container"
+          else
+            echo "docker_available=false" >> $GITHUB_OUTPUT
+            echo "Docker image not available, will use optimized setup"
+          fi
+      
+      - name: Run tests with Docker (if available)
+        if: steps.docker_check.outputs.docker_available == 'true'
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}:/workspace \
+            -w /workspace \
+            ghcr.io/${{ github.repository }}/e-bash-ci:latest \
+            bash -c "direnv allow . && direnv export gha > /tmp/env && source /tmp/env && shellspec"
+      
+      - name: Cache APT packages (fallback)
+        if: steps.docker_check.outputs.docker_available == 'false'
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: ${{ runner.os }}-apt-${{ hashFiles('**/*.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+      
+      - name: Cache Homebrew installation (fallback)
+        if: steps.docker_check.outputs.docker_available == 'false'
+        uses: actions/cache@v4
+        with:
+          path: |
+            /home/linuxbrew/.linuxbrew
+            ~/.cache/Homebrew
+          key: ${{ runner.os }}-homebrew-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            ${{ runner.os }}-homebrew-
+      
+      - name: Cache local binaries (fallback)
+        if: steps.docker_check.outputs.docker_available == 'false'
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin
+          key: ${{ runner.os }}-local-bin-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            ${{ runner.os }}-local-bin-
+      
+      - name: Setup dependencies (fallback)
+        if: steps.docker_check.outputs.docker_available == 'false'
+        run: |
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+          mkdir -p "${HOME}/.local/bin"
+          
+          # Install system dependencies
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            curl build-essential procps file git \
+            gawk sed grep coreutils jq shellcheck \
+            libc6-dev gcc g++ make pkg-config \
+            zlib1g-dev libssl-dev libffi-dev \
+            python3-dev python3-pip
+          
+          # Install or restore Homebrew
+          if [ ! -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+          
+          # Setup Homebrew environment
+          echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          
+          # Install missing tools
+          if ! command -v direnv &> /dev/null; then
+            curl -sfL https://direnv.net/install.sh | bash
+          fi
+          
+          if ! command -v shellspec &> /dev/null; then
+            brew install shellspec
+          fi
+          
+          brew install grep gnu-sed
+          
+          # Setup project dependencies
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
-          echo "Dependencies loaded from pre-built Docker image"
       
-      - name: Verify dependencies
+      - name: Run shellspec tests (fallback)
+        if: steps.docker_check.outputs.docker_available == 'false'
         run: |
-          echo "=== Verifying pre-installed dependencies ==="
-          echo "Bash: $(bash --version | head -1)"
-          echo "Git: $(git --version)"
-          echo "Direnv: $(direnv version)"
-          echo "Shellspec: $(shellspec --version)"
-          echo "Shellcheck: $(shellcheck --version | head -1)"
-          echo "Shfmt: $(shfmt --version)"
-          echo "GNU Grep: $(ggrep --version | head -1)"
-          echo "GNU Sed: $(gsed --version | head -1)"
-          echo "GNU Awk: $(gawk --version | head -1)"
-          echo "JQ: $(jq --version)"
-          echo "Kcov: $(kcov --version | head -1)"
-          echo "Watchman: $(watchman --version)"
-      
-      - name: Run shellspec tests
-        run: |
-          # Environment variables from .envrc are now available
-          shellspec
+          shellspec --no-kcov
