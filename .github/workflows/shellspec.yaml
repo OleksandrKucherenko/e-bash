@@ -14,6 +14,8 @@ env:
   HOMEBREW_NO_ENV_HINTS: 1
   # Enable CI auto-install mode for dependencies
   CI_E_BASH_INSTALL_DEPENDENCIES: 1
+  # Skip heavy dependencies in CI for faster execution
+  CI_SKIP_HEAVY_DEPS: 1
 
 jobs:
   shellspec-macos:
@@ -26,36 +28,59 @@ jobs:
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
+      
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar
+            /opt/homebrew/bin
+          key: ${{ runner.os }}-homebrew-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            ${{ runner.os }}-homebrew-
+      
+      - name: Cache local binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin
+          key: ${{ runner.os }}-local-bin-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            ${{ runner.os }}-local-bin-
+      
       - name: Setup PATH for local binaries
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           mkdir -p "${HOME}/.local/bin"
-      - name: Install DIRENV
+      
+      - name: Install essential dependencies only
         run: |
-          # Install direnv for macOS
-          brew install direnv
-      - name: Verify installation order and setup
+          # Install only essential tools for CI, skip development-only dependencies
+          if ! command -v direnv &> /dev/null; then
+            brew install direnv
+          fi
+          if ! command -v shellspec &> /dev/null; then
+            brew install shellspec
+          fi
+          # Skip: watchman, kcov (not needed for basic tests)
+          echo "Essential dependencies installed"
+      
+      - name: Setup project dependencies using DIRENV (CI mode)
         run: |
-          # Verify critical tools are available in correct order
-          echo "=== Verifying installation order ==="
-          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
-          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
-          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
-          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
-      - name: Setup project dependencies using DIRENV and CI auto-install mode
-        run: |
+          # Set CI-specific environment to skip heavy dependencies
+          export CI_SKIP_HEAVY_DEPS=1
           # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
-          echo "Dependencies loaded via DIRENV with CI auto-install mode"
+          echo "Dependencies loaded via DIRENV in CI mode"
+      
       - name: Run shellspec Tests
         run: |
           # Environment variables from .envrc are now available
-          shellspec
+          shellspec --no-kcov
   
   shellspec-ubuntu:
     name: "Ubuntu"
-    # kcov only works on ubuntu 22.04, on ubuntu-latest installation fails
     runs-on: ubuntu-22.04
     if: "!contains(github.event.head_commit.message, 'ci skip')"
     steps:
@@ -64,47 +89,87 @@ jobs:
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
+      
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: ${{ runner.os }}-apt-${{ hashFiles('**/*.sh') }}
+          restore-keys: |
+            ${{ runner.os }}-apt-
+      
+      - name: Cache Homebrew installation
+        uses: actions/cache@v4
+        with:
+          path: |
+            /home/linuxbrew/.linuxbrew
+            ~/.cache/Homebrew
+          key: ${{ runner.os }}-homebrew-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            ${{ runner.os }}-homebrew-
+      
+      - name: Cache local binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin
+          key: ${{ runner.os }}-local-bin-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            ${{ runner.os }}-local-bin-
+      
       - name: Setup PATH for local binaries
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           mkdir -p "${HOME}/.local/bin"
-      - name: Install system dependencies
+      
+      - name: Install system dependencies (optimized)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
-      - name: Install Homebrew (required for dependency script)
+          # Use system packages where possible instead of Homebrew
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            curl build-essential procps file git \
+            gawk sed grep coreutils jq \
+            shellcheck
+          # Skip kcov for faster CI (only needed for coverage)
+          echo "System dependencies installed"
+      
+      - name: Install or restore Homebrew
         run: |
-          # Install Homebrew for Linux - required by .envrc dependencies
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          # Add Homebrew to PATH for current and future steps
+          if [ ! -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
+            echo "Installing Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          else
+            echo "Homebrew restored from cache"
+          fi
+          # Add Homebrew to PATH
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
-          # Set up Homebrew environment variables
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           echo "HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew" >> "$GITHUB_ENV"
           echo "HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar" >> "$GITHUB_ENV"
           echo "HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew" >> "$GITHUB_ENV"
-      - name: Install DIRENV
+      
+      - name: Install essential tools only
         run: |
-          # Install direnv for Ubuntu (must be after Homebrew for dependency order)
-          curl -sfL https://direnv.net/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Verify installation order and setup
+          # Install only what's not available via apt
+          if ! command -v direnv &> /dev/null; then
+            curl -sfL https://direnv.net/install.sh | bash
+          fi
+          if ! command -v shellspec &> /dev/null; then
+            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+            brew install shellspec
+          fi
+          echo "Essential tools installed"
+      
+      - name: Setup project dependencies (CI mode)
         run: |
-          # Verify critical tools are available in correct order
-          echo "=== Verifying installation order ==="
-          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
-          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
-          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
-          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
-      - name: Setup project dependencies using DIRENV and CI auto-install mode
-        run: |
-          # Ensure Homebrew is in PATH for this step
+          # Set CI-specific environment to skip heavy dependencies
+          export CI_SKIP_HEAVY_DEPS=1
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
-          echo "Dependencies loaded via DIRENV with CI auto-install mode"
+          echo "Dependencies loaded via DIRENV in CI mode"
+      
       - name: Run shellspec tests
         run: |
           # Environment variables from .envrc are now available (includes GNU tools setup)
-          shellspec
+          shellspec --no-kcov
