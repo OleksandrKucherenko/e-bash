@@ -3,7 +3,7 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-05-27
+## Last revisit: 2025-11-07
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -44,7 +44,7 @@ Describe 'bin/version-up.v2.sh /'
   git_first_commit() { (git add . && git commit -m "Initial commit"); }
   git_next_commit() { (git add . && git commit -m "Next commit${1:-" $(date)"}"); }
   git_create_tag() { git tag "$1"; }
-  random_change() { date >>random.txt; }
+  random_change() { echo "$(date) - $$-$RANDOM" >>random.txt; }
   #endregion
 
   Before 'mk_repo; git_init; git_config; ln_script'
