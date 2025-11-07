@@ -14,8 +14,6 @@ env:
   HOMEBREW_NO_ENV_HINTS: 1
   # Enable CI auto-install mode for dependencies
   CI_E_BASH_INSTALL_DEPENDENCIES: 1
-  # Skip heavy dependencies in CI for faster execution
-  CI_SKIP_HEAVY_DEPS: 1
 
 jobs:
   shellspec-macos:
@@ -53,26 +51,32 @@ jobs:
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           mkdir -p "${HOME}/.local/bin"
       
-      - name: Install essential dependencies only
+      - name: Pre-install heavy dependencies in parallel
         run: |
-          # Install only essential tools for CI, skip development-only dependencies
+          # Install heavy dependencies in background to leverage caching
+          echo "Pre-installing heavy dependencies..."
+          
+          # Install core dependencies first
           if ! command -v direnv &> /dev/null; then
-            brew install direnv
+            brew install direnv &
           fi
           if ! command -v shellspec &> /dev/null; then
-            brew install shellspec
+            brew install shellspec &
           fi
-          # Skip: watchman, kcov (not needed for basic tests)
-          echo "Essential dependencies installed"
+          
+          # Install other dependencies in parallel (background)
+          brew install grep gnu-sed gawk coreutils jq &
+          
+          # Wait for core dependencies
+          wait
+          echo "Core dependencies installed"
       
-      - name: Setup project dependencies using DIRENV (CI mode)
+      - name: Setup project dependencies using DIRENV
         run: |
-          # Set CI-specific environment to skip heavy dependencies
-          export CI_SKIP_HEAVY_DEPS=1
           # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
-          echo "Dependencies loaded via DIRENV in CI mode"
+          echo "Dependencies loaded via DIRENV"
       
       - name: Run shellspec Tests
         run: |
@@ -121,53 +125,66 @@ jobs:
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           mkdir -p "${HOME}/.local/bin"
       
-      - name: Install system dependencies (optimized)
+      - name: Install system dependencies with pre-installation
         run: |
-          # Use system packages where possible instead of Homebrew
-          sudo apt-get update -qq
+          # Install system packages in parallel for speed
+          sudo apt-get update -qq &
+          
+          # Pre-install common dependencies that Homebrew packages need
           sudo apt-get install -y -qq \
             curl build-essential procps file git \
-            gawk sed grep coreutils jq \
-            shellcheck
-          # Skip kcov for faster CI (only needed for coverage)
+            gawk sed grep coreutils jq shellcheck \
+            libc6-dev gcc g++ make pkg-config \
+            zlib1g-dev libssl-dev libffi-dev \
+            python3-dev python3-pip &
+          
+          wait
           echo "System dependencies installed"
       
-      - name: Install or restore Homebrew
+      - name: Install or restore Homebrew (optimized)
         run: |
           if [ ! -f "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
             echo "Installing Homebrew..."
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # Install Homebrew with minimal dependencies
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           else
             echo "Homebrew restored from cache"
           fi
-          # Add Homebrew to PATH
+          
+          # Setup Homebrew environment
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           echo "HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew" >> "$GITHUB_ENV"
           echo "HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar" >> "$GITHUB_ENV"
           echo "HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew" >> "$GITHUB_ENV"
       
-      - name: Install essential tools only
+      - name: Install missing tools in parallel
         run: |
-          # Install only what's not available via apt
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          
+          # Install direnv (lightweight)
           if ! command -v direnv &> /dev/null; then
-            curl -sfL https://direnv.net/install.sh | bash
+            curl -sfL https://direnv.net/install.sh | bash &
           fi
+          
+          # Install shellspec (essential for tests)
           if ! command -v shellspec &> /dev/null; then
-            eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-            brew install shellspec
+            brew install shellspec &
           fi
-          echo "Essential tools installed"
+          
+          # Install GNU tools that aren't available via apt with correct names
+          brew install grep gnu-sed &
+          
+          wait
+          echo "Missing tools installed"
       
-      - name: Setup project dependencies (CI mode)
+      - name: Setup project dependencies
         run: |
-          # Set CI-specific environment to skip heavy dependencies
-          export CI_SKIP_HEAVY_DEPS=1
           eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
           # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
-          echo "Dependencies loaded via DIRENV in CI mode"
+          echo "Dependencies loaded via DIRENV"
       
       - name: Run shellspec tests
         run: |

@@ -11,20 +11,20 @@ This document describes the CI optimization strategies implemented to reduce exe
 
 ### 2. Dependency Optimization
 - **System packages first**: Use `apt-get` packages instead of Homebrew where possible
-- **Essential only**: Skip development-only tools in CI (`CI_SKIP_HEAVY_DEPS=1`)
+- **Parallel installation**: Install dependencies in background processes
+- **Pre-install common libraries**: Install build dependencies that Homebrew packages need
 - **Conditional installation**: Only install missing dependencies
 
-### 3. Skipped Dependencies in CI
-- `git-lfs`: Not needed for basic tests
-- `shellcheck`: Available via apt
-- `shfmt`: Development-only tool
-- `kcov`: Coverage tool (disabled with `--no-kcov`)
-- `watchman`: Development file watcher
+### 3. System Package Strategy
+- **Ubuntu**: Use `apt-get` for: `gawk`, `sed`, `grep`, `coreutils`, `jq`, `shellcheck`
+- **macOS**: Use Homebrew but install in parallel
+- **Build dependencies**: Pre-install `gcc`, `make`, `zlib-dev`, `libssl-dev` to speed up Homebrew
 
 ### 4. Performance Improvements
-- **Parallel apt installs**: Install multiple packages in single command
+- **Parallel installation**: Use background processes (`&`) and `wait`
 - **Quiet mode**: Use `-qq` flags to reduce log noise
-- **Conditional checks**: Skip installation if tool already exists
+- **NONINTERACTIVE mode**: Skip Homebrew prompts
+- **Pre-install build tools**: Reduce compilation time for Homebrew packages
 
 ## Expected Performance
 
