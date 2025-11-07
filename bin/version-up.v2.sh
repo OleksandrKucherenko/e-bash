@@ -33,11 +33,11 @@ readonly VERSION_FILE=version.properties
 # shellcheck source=../.scripts/_commons.sh
 # shellcheck source=../.scripts/_logger.sh
 # shellcheck source=../.scripts/_arguments.sh
-source "$E_BASH/_arguments.sh"
+source "$E_BASH/.scripts/_arguments.sh"
 # shellcheck source=../.scripts/_dependencies.sh
-source "$E_BASH/_dependencies.sh"
+source "$E_BASH/.scripts/_dependencies.sh"
 # shellcheck source=../.scripts/_semver.sh
-source "$E_BASH/_semver.sh" # connect advanced version parser
+source "$E_BASH/.scripts/_semver.sh" # connect advanced version parser
 #endregion
 
 # create custom logger echo:Ver, printf:Ver
@@ -634,7 +634,17 @@ function apply_git_changes() {
 	echo "Applying git repository version up... no push, only local tag assignment!"
 	echo ''
 
-	git tag "$(compose)"
+	# Check for tag conflicts before applying
+	local proposed_tag="$(compose)"
+	local proposed_hash=$(tag_hash "$proposed_tag")
+	local current_head=$(head_hash)
+	
+	if [[ -n "$proposed_hash" && "$proposed_hash" != "$current_head" ]]; then
+		error_conflict_tag
+		exit 1
+	fi
+
+	git tag "$proposed_tag"
 
 	# confirm that tag applied
 	git --no-pager log \
