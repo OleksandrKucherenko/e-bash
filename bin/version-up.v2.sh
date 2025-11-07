@@ -26,18 +26,18 @@ export SKIP_ARGS_PARSING=1 # skip arguments parsing during script loading
 readonly VERSION_FILE=version.properties
 
 #region Helper scripts attaching
-[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && cd .. && pwd)/.scripts"
 
 # Import all required modules
 # shellcheck source=../.scripts/_colors.sh
 # shellcheck source=../.scripts/_commons.sh
 # shellcheck source=../.scripts/_logger.sh
 # shellcheck source=../.scripts/_arguments.sh
-source "$E_BASH/.scripts/_arguments.sh"
+source "$E_BASH/_arguments.sh"
 # shellcheck source=../.scripts/_dependencies.sh
-source "$E_BASH/.scripts/_dependencies.sh"
+source "$E_BASH/_dependencies.sh"
 # shellcheck source=../.scripts/_semver.sh
-source "$E_BASH/.scripts/_semver.sh" # connect advanced version parser
+source "$E_BASH/_semver.sh" # connect advanced version parser
 #endregion
 
 # create custom logger echo:Ver, printf:Ver
