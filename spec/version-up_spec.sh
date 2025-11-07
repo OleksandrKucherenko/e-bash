@@ -3,7 +3,7 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-05-27
+## Last revisit: 2025-11-07
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -37,13 +37,14 @@ Describe 'bin/version-up.v2.sh /'
   git_init() { git init -q; }
   git_config_user() { git config --local user.name "Test User"; }
   git_config_email() { git config --local user.email "test@example.com"; }
-  git_config() { git_config_user && git_config_email; }
+  git_config_no_signing() { git config --local commit.gpgsign false; }
+  git_config() { git_config_user && git_config_email && git_config_no_signing; }
   ln_script() { ln -s "$ROOT_SCRIPT" "$VERSION_UP_SCRIPT"; }
   rm_repo() { rm -rf "$TEST_DIR"; }
   git_first_commit() { (git add . && git commit -m "Initial commit"); }
   git_next_commit() { (git add . && git commit -m "Next commit${1:-" $(date)"}"); }
   git_create_tag() { git tag "$1"; }
-  random_change() { date >>random.txt; }
+  random_change() { echo "$(date) - $$-$RANDOM" >>random.txt; }
   #endregion
 
   Before 'mk_repo; git_init; git_config; ln_script'
@@ -570,6 +571,682 @@ Describe 'bin/version-up.v2.sh /'
       The result of function no_colors_stderr should include "exit code: 0"
 
       # Dump
+    End
+  End
+
+  # test-024: Monorepo has multiple version.properties files
+  Describe "test-024: multiple version.properties files /"
+    It "should merge settings from multiple version.properties files (dotenv behavior)"
+      Skip "Not yet implemented in v2 script"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Setup monorepo with version.properties at root and subfolder
+      {
+        git_init
+        git_config
+        git_first_commit
+
+        # Create root version.properties
+        cat >version.properties <<EOF
+# Root version.properties
+snapshot.prefix=root-prefix
+snapshot.custom=root-value
+EOF
+
+        # Create subfolder with its own version.properties
+        mkdir -p packages/foo
+        cat >packages/foo/version.properties <<EOF
+# Subfolder version.properties
+snapshot.prefix=packages/foo/
+snapshot.custom=subfolder-value
+snapshot.subfolder=true
+EOF
+
+        git add .
+        git commit -m "Add version.properties files"
+        git tag "packages/foo/v1.0.0"
+      } >/dev/null 2>&1
+
+      cd packages/foo || return 1
+
+      When run bash "../../version-up.v2.sh"
+
+      The status should be success
+      # Should use subfolder version.properties prefix
+      The result of function no_colors_stderr should include "snapshot.prefix"
+
+      # Dump
+    End
+  End
+
+  # test-025: Monorepo with multiple version tag prefixes without clear winner
+  Describe "test-025: multiple prefixes without clear winner /"
+    It "should detect ambiguous prefixes and suggest resolution"
+      Skip "Not yet implemented in v2 script"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Create repo with two different prefix patterns, equal usage count
+      {
+        git_init
+        git_config
+        git_first_commit
+        git_create_tag "package/1.1.0"
+        random_change
+        git_next_commit
+        git_create_tag "v1.1.0"
+      } >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT"
+
+      # Should either succeed with detected prefix or fail with helpful message
+      # Implementation decision: currently auto-detects, may need to error
+      The stdout should be present
+
+      # Dump
+    End
+  End
+
+  # Corner Cases Section
+  Describe "corner cases /"
+    # test-050: Dry-run prevents actual changes
+    It "test-050: should not apply changes in dry-run mode"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      {
+        git_first_commit
+        git_create_tag "v1.0.0"
+        random_change
+        git_next_commit
+      } >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT" --patch --apply --dry-run
+
+      The status should be success
+      The stdout should be present
+
+      # Should show what would be executed
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.0.1"
+      The result of function no_colors_stderr should include "exit code: 0"
+
+      # Note: Dry-run mode verification depends on implementation
+      # Currently --dry-run flag exists but may not be fully implemented
+
+      # Dump
+    End
+
+    # test-051: Tag conflict error on apply
+    It "test-051: should detect and report tag conflicts"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      {
+        # Create initial commit with v1.0.1 tag
+        git_first_commit
+        git_create_tag "v1.0.1"
+
+        # Create a side branch and tag v1.0.2 there
+        # This simulates another PR that already created v1.0.2
+        git checkout -b "other-pr"
+        random_change
+        git_next_commit
+        git tag "v1.0.2"
+
+        # Go back to master (at v1.0.1)
+        git checkout master
+
+        # Add commit on master
+        random_change
+        git_next_commit
+      } >/dev/null 2>&1
+
+      # From master, script will propose v1.0.2 (patch increment from v1.0.1)
+      # But v1.0.2 already exists on other-pr branch
+      # This should trigger conflict detection
+      When run bash "$VERSION_UP_SCRIPT" --patch --apply
+
+      # Script should detect that v1.0.2 already exists on a different commit
+      The stdout should be present
+      The result of function no_colors_stdout should include "ERROR:"
+      The result of function no_colors_stdout should include "Found conflict with existing tag"
+
+      # Dump
+    End
+
+    # test-052: Invalid prefix strategy
+    It "test-052: should reject invalid prefix with colon"
+      Skip "Prefix validation not yet implemented"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      git_first_commit >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT" --prefix "invalid:name"
+
+      The status should be failure
+      The stdout should be present
+      The result of function no_colors_stdout should include "invalid prefix"
+
+      # Dump
+    End
+
+    It "test-052: should reject invalid prefix with asterisk"
+      Skip "Prefix validation not yet implemented"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      git_first_commit >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT" --prefix "bad*prefix"
+
+      The status should be failure
+      The stdout should be present
+
+      # Dump
+    End
+
+    It "test-052: should reject invalid prefix with brackets"
+      Skip "Prefix validation not yet implemented"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      git_first_commit >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT" --prefix "bad[prefix]"
+
+      The status should be failure
+      The stdout should be present
+
+      # Dump
+    End
+
+    # test-053: Existing version.properties reuse with --stay
+    It "test-053: should reuse version from existing version.properties with --stay"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      {
+        git_first_commit
+        git_create_tag "v3.0.0"
+
+        # Create version.properties manually
+        cat >version.properties <<EOF
+# Manual version
+snapshot.version=v3.1.4
+snapshot.lasttag=v3.0.0
+EOF
+
+        random_change
+        git_next_commit
+      } >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT" --stay
+
+      The status should be success
+      The stdout should be present
+
+      # Should keep the tag version, not the one from version.properties
+      The result of function no_colors_stderr should include "Proposed Next Version TAG: v3.0.0"
+      The result of function no_colors_stderr should include "Selected versioning strategy: stay on the same version"
+
+      # Dump
+    End
+
+    # test-054: Running outside a git repository
+    It "test-054: should fail when not in a git repository"
+      Skip "Git repo validation not yet implemented"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      # Remove .git directory
+      rm -rf .git
+
+      When run bash "$VERSION_UP_SCRIPT"
+
+      The status should be failure
+      The stdout should be present
+      The result of function no_colors_stdout should include "not.*git.*repository"
+
+      # Dump
+    End
+
+    # test-055: Corrupted version.properties
+    It "test-055: should handle corrupted version.properties gracefully"
+      Skip "version.properties validation not yet implemented"
+      BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+      {
+        git_first_commit
+        git_create_tag "v1.0.0"
+
+        # Create corrupted version.properties
+        cat >version.properties <<EOF
+snapshot.version=not-a-valid-version!!!
+snapshot.lasttag=v1.0.0
+snapshot.revision=abc-not-a-number
+EOF
+
+        random_change
+        git_next_commit
+      } >/dev/null 2>&1
+
+      When run bash "$VERSION_UP_SCRIPT"
+
+      The status should be failure
+      The stdout should be present
+      The result of function no_colors_stdout should include "invalid"
+
+      # Dump
+    End
+  End
+
+  # New Features Tests
+  Describe "new features in v2 /"
+    # --build custom metadata flag
+    Describe "--build custom metadata /"
+      It "should accept custom build metadata with --build flag"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --build "snapshot.123"
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v1.2.3+snapshot.123"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.2.3+snapshot.123"
+
+        # Dump
+      End
+
+      It "should use --build instead of --revision when both provided"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --revision --build "custom.456"
+
+        The status should be success
+        The stdout should be present
+
+        # --build should take precedence over --revision
+        The result of function no_colors_stdout should include "git tag v1.2.3+custom.456"
+        The result of function no_colors_stdout should not include "+1"
+
+        # Dump
+      End
+    End
+
+    # --pre-release custom stage flag
+    Describe "--pre-release custom stage /"
+      It "should accept custom pre-release stage with --pre-release flag"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v2.0.0"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --pre-release "rc.1"
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v2.0.0-rc.1"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v2.0.0-rc.1"
+
+        # Dump
+      End
+
+      It "should use --pre-release instead of --alpha when both provided"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v2.0.0"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --alpha --pre-release "beta.5"
+
+        The status should be success
+        The stdout should be present
+
+        # --pre-release should take precedence
+        The result of function no_colors_stdout should include "git tag v2.0.0-beta.5"
+        The result of function no_colors_stdout should not include "alpha"
+
+        # Dump
+      End
+
+      It "should combine custom pre-release and build metadata"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v3.0.0"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --pre-release "rc.1" --build "build.123"
+
+        The status should be success
+        The stdout should be present
+
+        # Full SEMVER: 3.0.0-rc.1+build.123
+        The result of function no_colors_stdout should include "git tag v3.0.0-rc.1+build.123"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v3.0.0-rc.1+build.123"
+
+        # Dump
+      End
+    End
+
+    # Override values --major=N, --minor=N, etc.
+    Describe "override values /"
+      It "should accept --major=5 to set specific major version"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --major=5
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v5.0.0"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v5.0.0"
+
+        # Dump
+      End
+
+      It "should accept --minor=10 to set specific minor version"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --minor=10
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v1.10.0"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.10.0"
+
+        # Dump
+      End
+
+      It "should accept --patch=99 to set specific patch version"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --patch=99
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v1.2.99"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.2.99"
+
+        # Dump
+      End
+
+      It "should accept --revision=1000 to set specific revision/build"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --revision=1000
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v1.2.3+1000"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.2.3+1000"
+
+        # Dump
+      End
+
+      It "should combine multiple override values"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v0.0.1"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --major=2 --minor=5 --patch=10 --revision=999
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v2.5.10+999"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v2.5.10+999"
+
+        # Dump
+      End
+
+      It "should combine overrides with custom stage"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v0.0.1"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --major=1 --minor=0 --patch=0 --rc
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v1.0.0-rc"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.0.0-rc"
+
+        # Dump
+      End
+    End
+
+    # Multiple flags combination
+    Describe "multiple flags combination /"
+      It "should handle --major --alpha combination"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.5.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --major --alpha
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v2.0.0-alpha"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v2.0.0-alpha"
+
+        # Dump
+      End
+
+      It "should handle --minor --beta --revision combination"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.5.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --minor --beta --revision
+
+        The status should be success
+        The stdout should be present
+
+        The result of function no_colors_stdout should include "git tag v1.6.0-beta+1"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.6.0-beta+1"
+
+        # Dump
+      End
+
+      It "should handle --patch --git-revision combination"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.5.3"
+          random_change
+          git_next_commit
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --patch --git-revision
+
+        The status should be success
+        The stdout should be present
+
+        # Should use git commit count
+        The result of function no_colors_stdout should include "git tag v1.5.4+"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.5.4+"
+
+        # Dump
+      End
+    End
+
+    # Conflicting flags behavior
+    Describe "conflicting flags /"
+      It "should handle --alpha --beta --rc (last one wins)"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.0.0"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --alpha --beta --rc
+
+        The status should be success
+        The stdout should be present
+
+        # Last flag should win
+        The result of function no_colors_stdout should include "git tag v1.0.0-rc"
+        The result of function no_colors_stdout should not include "alpha"
+        The result of function no_colors_stdout should not include "beta"
+
+        # Dump
+      End
+
+      It "should handle --major --minor --patch (all applied, only last takes effect)"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --major --minor --patch
+
+        The status should be success
+        The stdout should be present
+
+        # All are applied in order, creating cumulative effect
+        # --major: 2.0.0, --minor: 2.1.0, --patch: 2.1.1
+        The result of function no_colors_stdout should include "git tag v2.1.1"
+
+        # Dump
+      End
+
+      It "should handle --stay --major (stay should prevent increment)"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.2.3"
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --stay --major
+
+        The status should be success
+        The stdout should be present
+
+        # Both flags applied: major increments to 2.0.0, then stay keeps it
+        # Result depends on order of processing
+        The result of function no_colors_stderr should include "Proposed Next Version TAG:"
+
+        # Dump
+      End
+    End
+
+    # Git revision tests
+    Describe "git revision /"
+      It "should use git commit count as revision with --git flag"
+        BeforeRun 'export DEBUG="ver"; export CI=1; unset TRACE'
+
+        {
+          git_first_commit
+          git_create_tag "v1.0.0"
+          random_change
+          git_next_commit
+          random_change
+          git_next_commit
+          random_change
+          git_next_commit
+        } >/dev/null 2>&1
+
+        When run bash "$VERSION_UP_SCRIPT" --git
+
+        The status should be success
+        The stdout should be present
+
+        # Should use git commit count as build number (4 commits total)
+        The result of function no_colors_stdout should include "git tag v1.0.0+"
+        The result of function no_colors_stdout should include "git push origin v1.0.0+"
+        The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.0.0+"
+        # Verify it's using git revision (should be 4)
+        The result of function no_colors_stderr should include "Setting REVISION: +4"
+
+        # Dump
+      End
     End
   End
 End

@@ -26,7 +26,7 @@ export SKIP_ARGS_PARSING=1 # skip arguments parsing during script loading
 readonly VERSION_FILE=version.properties
 
 #region Helper scripts attaching
-[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && cd .. && pwd)/.scripts"
 
 # Import all required modules
 # shellcheck source=../.scripts/_colors.sh
@@ -634,7 +634,17 @@ function apply_git_changes() {
 	echo "Applying git repository version up... no push, only local tag assignment!"
 	echo ''
 
-	git tag "$(compose)"
+	# Check for tag conflicts before applying
+	local proposed_tag="$(compose)"
+	local proposed_hash=$(tag_hash "$proposed_tag")
+	local current_head=$(head_hash)
+	
+	if [[ -n "$proposed_hash" && "$proposed_hash" != "$current_head" ]]; then
+		error_conflict_tag
+		exit 1
+	fi
+
+	git tag "$proposed_tag"
 
 	# confirm that tag applied
 	git --no-pager log \

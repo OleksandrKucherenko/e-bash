@@ -1,11 +1,17 @@
 name: "Shellspec"
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
 
 env:
   SHELLSPEC_VERSION: 0.28.1
   TERM: xterm-256color
   HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
   # Enable CI auto-install mode for dependencies
   CI_E_BASH_INSTALL_DEPENDENCIES: 1
 
