@@ -12,7 +12,7 @@
 
 # Setup terminal and bash options
 if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
-shopt -s extdebug
+# shopt -s extdebug  # COMMENTED OUT - causes issues with shellspec junit formatter
 
 # Skip automatic argument parsing during module loading
 export SKIP_ARGS_PARSING=1
@@ -1079,12 +1079,14 @@ function main() {
   return $?
 }
 
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+${__SOURCED__:+return}
+
 # Setup exit and interrupt traps
 trap on_exit EXIT
 trap on_interrupt INT TERM
 
-# Run main if executed directly
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
-  exit $?
-fi
+# Run main function
+main "$@"
+exit $?
