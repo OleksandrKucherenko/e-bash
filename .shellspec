@@ -8,13 +8,5 @@
 ## Default kcov (coverage) options
 --kcov
 --kcov-options "--include-path=. --path-strip-level=1"
---kcov-options "--include-pattern=.sh"
---kcov-options "--exclude-pattern=/.shellspec,/spec/,/coverage/,/report/"
-
-## Example: Include script "myprog" with no extension
-# --kcov-options "--include-pattern=.sh,myprog"
-
-## Example: Only specified files/directories
---kcov-options "--include-pattern=.scripts/"
---kcov-options "--include-pattern=bin/version-up.v2.sh"
---kcov-options "--include-pattern=bin/git.semantic-version.sh"
+--kcov-options "--exclude-pattern=/.shellspec,/spec/,/coverage/,/report/,/demos/"
+--kcov-options "--include-pattern=.scripts/,bin/"

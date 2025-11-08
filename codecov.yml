@@ -1,0 +1,45 @@
+# Codecov Configuration
+# https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true  # Don't fail CI based on coverage
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+        informational: true
+
+comment:
+  layout: "reach,diff,flags,tree,footer"
+  behavior: default  # Post new comment for each commit
+  require_changes: false  # Always comment, even if coverage unchanged
+  require_base: true  # Only comment when base commit is found
+  require_head: true  # Only comment when head commit is found
+
+codecov:
+  notify:
+    wait_for_ci: false  # Don't wait for other CI checks
+
+# Ignore test files and demos in coverage calculations
+ignore:
+  - "spec/**/*"
+  - "demos/**/*"
+  - ".shellspec"
+  - "coverage/**/*"
+
+# Component-based coverage (optional, for detailed reports)
+component_management:
+  individual_components:
+    - component_id: "scripts"
+      name: "Utility Scripts"
+      paths:
+        - ".scripts/**/*.sh"
+    - component_id: "bin"
+      name: "Binary Scripts"
+      paths:
+        - "bin/**/*.sh"

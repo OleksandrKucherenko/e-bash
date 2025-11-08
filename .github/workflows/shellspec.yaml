@@ -79,6 +79,14 @@ jobs:
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
+
+      - name: Fetch PR base branch for coverage comparison
+        if: github.event_name == 'pull_request'
+        run: |
+          # Fetch the base branch to enable Codecov comparison
+          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+          echo "Base branch ${{ github.base_ref }} fetched for coverage comparison"
+
       - name: Setup PATH for local binaries
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
