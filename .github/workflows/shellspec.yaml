@@ -52,19 +52,21 @@ jobs:
         run: |
           # Environment variables from .envrc are now available
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
-          # even when all tests pass. We run shellspec and check output for actual results.
-          shellspec || {
-            # If shellspec fails, check if it's the known bug (all tests passed but exit code != 0)
+          # even when all tests pass. We capture output and check for successful test completion.
+          output=$(shellspec 2>&1) || {
             echo "Shellspec exited with code $?, checking if tests actually passed..."
-            # Re-run to capture output and check for test results
-            if shellspec 2>&1 | grep -q "0 failures"; then
-              echo "✅ All tests passed - ignoring shellspec exit code bug"
+            echo "$output"
+            
+            # Check if all tests passed by looking for the expected test count and no failures
+            if echo "$output" | grep -q "ok 163" && ! echo "$output" | grep -q "not ok"; then
+              echo "✅ All 163 tests passed - ignoring shellspec exit code bug"
               exit 0
             else
-              echo "❌ Tests actually failed"
+              echo "❌ Tests actually failed or incomplete"
               exit 1
             fi
           }
+          echo "$output"
   
   shellspec-ubuntu:
     name: "Ubuntu"
@@ -122,19 +124,21 @@ jobs:
           # Environment variables from .envrc are now available (includes GNU tools setup)
           # Run with kcov to generate coverage reports
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
-          # even when all tests pass. We run shellspec and check output for actual results.
-          shellspec --kcov || {
-            # If shellspec fails, check if it's the known bug (all tests passed but exit code != 0)
+          # even when all tests pass. We capture output and check for successful test completion.
+          output=$(shellspec --kcov 2>&1) || {
             echo "Shellspec exited with code $?, checking if tests actually passed..."
-            # Re-run to capture output and check for test results
-            if shellspec --kcov 2>&1 | grep -q "0 failures"; then
-              echo "✅ All tests passed - ignoring shellspec exit code bug"
+            echo "$output"
+            
+            # Check if all tests passed by looking for the expected test count and no failures
+            if echo "$output" | grep -q "ok 163" && ! echo "$output" | grep -q "not ok"; then
+              echo "✅ All 163 tests passed - ignoring shellspec exit code bug"
               exit 0
             else
-              echo "❌ Tests actually failed"
+              echo "❌ Tests actually failed or incomplete"
               exit 1
             fi
           }
+          echo "$output"
 
       - name: Generate coverage summary
         if: always()
