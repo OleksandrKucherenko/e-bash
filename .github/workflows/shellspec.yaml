@@ -104,7 +104,43 @@ jobs:
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
           echo "Dependencies loaded via DIRENV with CI auto-install mode"
-      - name: Run shellspec tests
+      - name: Run shellspec tests with coverage
         run: |
           # Environment variables from .envrc are now available (includes GNU tools setup)
-          shellspec
+          # Run with kcov to generate coverage reports
+          shellspec --kcov
+
+      - name: Generate coverage summary
+        if: always()
+        run: |
+          # Extract coverage percentage from cobertura.xml
+          if [ -f coverage/cobertura.xml ]; then
+            coverage=$(grep -oP 'line-rate="\K[0-9.]+' coverage/cobertura.xml | head -1 | awk '{printf "%.1f%%", $1*100}')
+            echo "## 📊 Code Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Line Coverage:** $coverage" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📁 Full HTML report available in workflow artifacts" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Coverage report not generated" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload coverage to Codecov
+        if: github.event_name == 'pull_request'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/cobertura.xml
+          flags: shellspec-ubuntu
+          name: shellspec-ubuntu-22.04
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-ubuntu
+          path: coverage/
+          retention-days: 30
