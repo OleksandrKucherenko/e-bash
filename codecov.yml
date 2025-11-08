@@ -2,17 +2,22 @@
 # https://docs.codecov.com/docs/codecov-yaml
 
 coverage:
+  precision: 2
+  round: down
+  range: "70...100"
   status:
     project:
       default:
         target: auto
         threshold: 1%
         informational: true  # Don't fail CI based on coverage
+        if_ci_failed: error  # Don't process if CI failed
     patch:
       default:
         target: auto
         threshold: 1%
         informational: true
+        if_ci_failed: error
 
 comment:
   layout: "reach,diff,flags,tree,footer"
@@ -25,11 +30,11 @@ codecov:
   notify:
     wait_for_ci: false  # Don't wait for other CI checks
   branch: master  # Explicitly set the default branch
+  max_report_age: 24h  # Accept reports up to 24 hours old
+  require_ci_to_pass: false  # Don't require CI to pass before processing
   
-# Ensure coverage is processed for all branches
-branches:
-  - master
-  - main
+# Note: Branch processing is handled automatically by Codecov
+# No need for explicit branches configuration
 
 # Ignore test files and demos in coverage calculations
 ignore:
@@ -37,15 +42,25 @@ ignore:
   - "demos/**/*"
   - ".shellspec"
   - "coverage/**/*"
+  - "*.md"
+  - "docs/**/*"
+  - "LICENSE"
+  - "COPYRIGHT"
+  - "Makefile"
+
+# Parser configurations for better coverage processing
+parsers:
+  v1:
+    include_full_missed_files: true  # Include files with no coverage data
 
 # Component-based coverage (optional, for detailed reports)
 component_management:
   individual_components:
-    - component_id: "scripts"
-      name: "Utility Scripts"
-      paths:
-        - ".scripts/**/*.sh"
     - component_id: "bin"
       name: "Binary Scripts"
       paths:
         - "bin/**/*.sh"
+    - component_id: "demos"
+      name: "Demo Scripts"
+      paths:
+        - "demos/**/*.sh"
