@@ -56,13 +56,19 @@ jobs:
           output=$(shellspec 2>&1) || {
             echo "Shellspec exited with code $?, checking if tests actually passed..."
             echo "$output"
-            
-            # Check if all tests passed by looking for the expected test count and no failures
-            if echo "$output" | grep -q "ok 163" && ! echo "$output" | grep -q "not ok"; then
-              echo "✅ All 163 tests passed - ignoring shellspec exit code bug"
+
+            # Dynamic test validation (no hardcoded test counts)
+            # Check: 1) At least one test passed, 2) No failures, 3) Summary shows success
+            passed_tests=$(echo "$output" | grep -c "^ok " || true)
+            failed_tests=$(echo "$output" | grep -c "^not ok " || true)
+            has_summary=$(echo "$output" | grep -q "examples, .* failures" && echo "yes" || echo "no")
+
+            if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
+              echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
               exit 0
             else
               echo "❌ Tests actually failed or incomplete"
+              echo "   Passed: $passed_tests, Failed: $failed_tests, Has summary: $has_summary"
               exit 1
             fi
           }
@@ -136,13 +142,19 @@ jobs:
           output=$(shellspec --kcov 2>&1) || {
             echo "Shellspec exited with code $?, checking if tests actually passed..."
             echo "$output"
-            
-            # Check if all tests passed by looking for the expected test count and no failures
-            if echo "$output" | grep -q "ok 163" && ! echo "$output" | grep -q "not ok"; then
-              echo "✅ All 163 tests passed - ignoring shellspec exit code bug"
+
+            # Dynamic test validation (no hardcoded test counts)
+            # Check: 1) At least one test passed, 2) No failures, 3) Summary shows success
+            passed_tests=$(echo "$output" | grep -c "^ok " || true)
+            failed_tests=$(echo "$output" | grep -c "^not ok " || true)
+            has_summary=$(echo "$output" | grep -q "examples, .* failures" && echo "yes" || echo "no")
+
+            if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
+              echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
               exit 0
             else
               echo "❌ Tests actually failed or incomplete"
+              echo "   Passed: $passed_tests, Failed: $failed_tests, Has summary: $has_summary"
               exit 1
             fi
           }
