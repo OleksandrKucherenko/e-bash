@@ -176,7 +176,7 @@ jobs:
           fi
 
       - name: Upload coverage to Codecov
-        if: github.event_name == 'pull_request'
+        if: always()
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage/cobertura.xml
@@ -184,6 +184,9 @@ jobs:
           name: shellspec-ubuntu-22.04
           fail_ci_if_error: false
           verbose: true
+          # Override branch detection for master branch pushes
+          override_branch: ${{ github.ref_name }}
+          override_commit: ${{ github.sha }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

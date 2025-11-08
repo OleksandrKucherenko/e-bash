@@ -24,6 +24,12 @@ comment:
 codecov:
   notify:
     wait_for_ci: false  # Don't wait for other CI checks
+  branch: master  # Explicitly set the default branch
+  
+# Ensure coverage is processed for all branches
+branches:
+  - master
+  - main
 
 # Ignore test files and demos in coverage calculations
 ignore:
