@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Generate and upload code coverage manually
-# Usage: ./.scripts/generate-coverage.sh [upload]
+# Usage: ./bin/generate-coverage.sh [upload]
 
 set -euo pipefail
 
