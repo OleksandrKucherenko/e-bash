@@ -469,6 +469,32 @@ Describe "git.semantic-version.sh"
       The result of function no_colors_stdout should not eq ""
       The result of function no_colors_stdout should match pattern "*[0-9a-f]*"
     End
+
+    It "handles empty tag list (no semver tags exist) - regression test"
+      # Mock git tag to return empty list
+      git() {
+        case "$1" in
+          tag)
+            # Return empty output (no tags)
+            echo ""
+            ;;
+          rev-list)
+            # Return a valid commit hash for first commit
+            command git rev-list --max-parents=0 HEAD 2>/dev/null
+            ;;
+          *)
+            command git "$@"
+            ;;
+        esac
+      }
+
+      # Test with n=1 (the problematic case from bug report)
+      When call gitsv:get_commit_from_n_versions_back 1
+      The status should be success
+      # Should fallback to first commit, not return empty string
+      The result of function no_colors_stdout should not eq ""
+      The result of function no_colors_stdout should match pattern "*[0-9a-f]*"
+    End
   End
 
   Describe "Command line argument parsing"

@@ -379,6 +379,15 @@ function gitsv:get_commit_from_n_versions_back() {
 
   # Get all version tags sorted
   local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V)
+
+  # Explicitly check for empty tag list before counting
+  # wc -l counts trailing newline, so empty string still reports as 1 line
+  if [[ -z "$tags" ]]; then
+    # No tags exist, fall back to first commit
+    gitsv:get_first_commit
+    return 0
+  fi
+
   local tag_count=$(echo "$tags" | wc -l)
 
   if [[ $tag_count -lt $n ]]; then
@@ -393,7 +402,8 @@ function gitsv:get_commit_from_n_versions_back() {
   if [[ -n "$target_tag" ]]; then
     git rev-list -n 1 "$target_tag" 2>/dev/null
   else
-    echo ""
+    # Should not reach here, but fall back to first commit for safety
+    gitsv:get_first_commit
   fi
 }
 
