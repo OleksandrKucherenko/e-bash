@@ -194,3 +194,17 @@ jobs:
           name: coverage-report-ubuntu
           path: coverage/
           retention-days: 30
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload test results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-ubuntu
+          path: report/
+          retention-days: 30

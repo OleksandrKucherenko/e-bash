@@ -3,7 +3,7 @@
 --format t
 --skip-message quiet
 --pending-message quiet
-# --output junit  # Disabled due to junit formatter bug with unbound variable
+--output junit
 
 ## Default kcov (coverage) options
 --kcov
