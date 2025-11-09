@@ -290,49 +290,41 @@ function repo_uninstall() {
       if [ "$DRY_RUN" = true ]; then
         echo -e "${CYAN}dry run: clean .mise.toml configuration${NC}"
       else
-        # Remove E_BASH related lines and the comment
-        # Handles both [env] and [[env]] sections
-        sed -i.bak '/# e-bash scripts configuration/d; /E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
+        # Use a simple and reliable approach
+        # Step 1: Remove the e-bash comment line
+        sed -i.bak '/# e-bash scripts configuration/d' ".mise.toml"
 
-        # Remove empty [[env]] or [env]] sections using awk
-        # This handles sections that became empty after removing E_BASH
+        # Step 2: Remove E_BASH and _.path lines
+        sed -i '/E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
+
+        # Step 3: Remove empty [[env]] and [env]] sections using awk
         awk '
-        BEGIN { in_env=0; env_header=""; env_content="" }
-        /^\[env\]$/ || /^\[\[env\]\]$/ {
-          if (in_env && env_content != "") {
-            print env_header
-            print env_content
+        /^\[\[env\]\]$/ {
+          # Found [[env]] section, read the next line
+          if ((getline line) > 0) {
+            # If the next line has content, print both
+            if (line ~ /[^[:space:]]/) {
+              print "[[env]]"
+              print line
+            }
+            # If the next line is empty or another section, skip this empty [[env]]
           }
-          in_env=1
-          env_header=$0
-          env_content=""
           next
         }
-        /^\[/ && !(/^\[env\]$/ || /^\[\[env\]\]$/) {
-          if (in_env && env_content != "") {
-            print env_header
-            print env_content
+        /^\[env\]$/ {
+          # Found [env] section, read the next line
+          if ((getline line) > 0) {
+            # If the next line has content, print both
+            if (line ~ /[^[:space:]]/) {
+              print "[env]"
+              print line
+            }
+            # If the next line is empty or another section, skip this empty [env]
           }
-          in_env=0
-          print
           next
         }
-        in_env && NF > 0 {
-          if (env_content != "") env_content = env_content "\n" $0
-          else env_content = $0
-          next
-        }
-        in_env && NF == 0 {
-          if (env_content != "") env_content = env_content "\n" $0
-          next
-        }
-        !in_env { print }
-        END {
-          if (in_env && env_content != "") {
-            print env_header
-            print env_content
-          }
-        }
+        # Print all other lines
+        { print }
         ' ".mise.toml" > ".mise.toml.tmp" && mv ".mise.toml.tmp" ".mise.toml"
 
         rm -f ".mise.toml.bak"
