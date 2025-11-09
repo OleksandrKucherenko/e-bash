@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-07-06
+## Last revisit: 2025-11-09
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -298,7 +298,7 @@ function repo_uninstall() {
         # This handles sections that became empty after removing E_BASH
         awk '
         BEGIN { in_env=0; env_header=""; env_content="" }
-        /^\[\[*env\]\]*$/ {
+        /^\[\[?env\]\]?$/ {
           if (in_env && env_content != "") {
             print env_header
             print env_content
@@ -308,7 +308,7 @@ function repo_uninstall() {
           env_content=""
           next
         }
-        /^\[/ && !/^\[\[*env\]\]*$/ {
+        /^\[/ && !/^\[\[?env\]\]?$/ {
           if (in_env && env_content != "") {
             print env_header
             print env_content
@@ -1000,12 +1000,39 @@ function update_mise_configuration() {
   get_mise_env_value() {
     local key="$1"
     # Check both [env] and [[env]] sections
-    # Fixed regex: \]* at end (not \]\]) to match both [env] and [[env]]
-    sed -n '/^\[\[*env\]\]*$/,/^\[/p' ".mise.toml" | \
+    # Fixed regex to match both [env] and [[env]] patterns
+    sed -n '/^\[\[?env\]\]?$/,/^\[/p' ".mise.toml" | \
       grep "^${key}[[:space:]]*=" | \
       head -1 | \
       cut -d'=' -f2- | \
       sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  }
+
+  # Helper: Check if _.path already exists in env sections
+  has_existing_path() {
+    # Check both [env] and [[env]] sections for existing _.path
+    sed -n '/^\[\[?env\]\]?$/,/^\[/p' ".mise.toml" | \
+      grep -q "^[[:space:]]*_.path[[:space:]]*="
+  }
+
+  # Helper: Get existing _.path entries as a comma-separated string
+  get_existing_paths() {
+    sed -n '/^\[\[?env\]\]?$/,/^\[/p' ".mise.toml" | \
+      grep "^[[:space:]]*_.path[[:space:]]*=" | \
+      head -1 | \
+      cut -d'=' -f2- | \
+      sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  }
+
+  # Helper: Check if a specific path entry exists in the existing paths
+  has_path_entry() {
+    local path_entry="$1"
+    local existing_paths=$(get_existing_paths)
+    if [ -n "$existing_paths" ]; then
+      echo "$existing_paths" | grep -q "\"${path_entry}\""
+    else
+      return 1
+    fi
   }
 
   # Check if E_BASH is already configured in any [env] or [[env]] section
@@ -1026,6 +1053,11 @@ function update_mise_configuration() {
     grep -q "^\\[\\[env\\]\\]" ".mise.toml" && has_env_array=true
   fi
 
+  # Check if we already have _.path entries and if our entries are already included
+  local has_existing_paths=$(has_existing_path && echo "true" || echo "false")
+  local has_scripts_path=$(has_path_entry "{{config_root}}/${SCRIPTS_DIR}" && echo "true" || echo "false")
+  local has_bin_path=$(has_path_entry "{{config_root}}/bin" && echo "true" || echo "false")
+
   # Append configuration based on existing structure
   if [ "$has_env_array" = true ]; then
     # Append new [[env]] array entry to end of file
@@ -1034,7 +1066,30 @@ function update_mise_configuration() {
       echo "# e-bash scripts configuration"
       echo "[[env]]"
       echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
-      echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+
+      # Handle _.path: merge with existing or create new
+      if [ "$has_existing_paths" = true ]; then
+        # We need to update the existing _.path, but since this is [[env]] array,
+        # we'll just add our missing entries to this new section
+        echo -n "_.path = ["
+        local first=true
+
+        # Add our entries
+        if [ "$has_scripts_path" = false ]; then
+          echo -n "\"{{config_root}}/${SCRIPTS_DIR}\""
+          first=false
+        fi
+
+        if [ "$has_bin_path" = false ]; then
+          [ "$first" = false ] && echo -n ", "
+          echo -n "\"{{config_root}}/bin\""
+        fi
+
+        echo "]"
+      else
+        # Create new _.path with our entries
+        echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+      fi
     } >>".mise.toml"
     echo -e "${GREEN}Added e-bash configuration as new [[env]] entry in ${YELLOW}${PWD}/.mise.toml${NC}"
   elif [ "$has_env_table" = true ]; then
@@ -1042,12 +1097,41 @@ function update_mise_configuration() {
     # Find the line number where [env] section ends
     local env_end=$(awk '/^\[env\]/{start=NR; next} start && /^\[/{print NR-1; found=1; exit} END{if(start && !found) print NR}' ".mise.toml")
 
-    # Create temp file with insertion
+    # Handle _.path merging for [env] section
+    local new_path=""
+    if [ "$has_existing_paths" = true ]; then
+      # Get existing paths and merge with ours
+      local existing_paths=$(get_existing_paths)
+      local all_paths="${existing_paths}"
+
+      # Add our entries if they don't exist
+      if [ "$has_scripts_path" = false ]; then
+        # Remove brackets and add comma if needed
+        all_paths=$(echo "$all_paths" | sed 's/^\[//; s/\]$//')
+        [ "${all_paths}" != "" ] && all_paths="${all_paths}, "
+        all_paths="${all_paths}\"{{config_root}}/${SCRIPTS_DIR}\""
+      fi
+
+      if [ "$has_bin_path" = false ]; then
+        # Remove brackets and add comma if needed
+        all_paths=$(echo "$all_paths" | sed 's/^\[//; s/\]$//')
+        [ "${all_paths}" != "" ] && all_paths="${all_paths}, "
+        all_paths="${all_paths}\"{{config_root}}/bin\""
+      fi
+
+      new_path="[${all_paths}]"
+    else
+      # Create new _.path
+      new_path="[\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+    fi
+
+    # Create temp file with insertion, removing existing _.path lines
     {
-      head -n "$env_end" ".mise.toml"
+      # Output lines before the insertion point, excluding existing _.path
+      head -n "$env_end" ".mise.toml" | grep -v "^[[:space:]]*_.path[[:space:]]*="
       echo "# e-bash scripts configuration"
       echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
-      echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+      echo "_.path = ${new_path}"
       tail -n +$((env_end + 1)) ".mise.toml"
     } > ".mise.toml.tmp"
 
