@@ -294,10 +294,17 @@ function repo_uninstall() {
         # Handles both [env] and [[env]] sections
         sed -i.bak '/# e-bash scripts configuration/d; /E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
 
-        # Remove empty [[env]] or [env] sections that only had e-bash config
-        # If section only has the header left, remove it too
-        # Fixed regex: \]* at end (not \]\]) to match both [env] and [[env]]
-        sed -i.bak2 '/^\[\[*env\]\]*$/{ N; /^\[\[*env\]\]*\n$/d; }' ".mise.toml"
+        # Remove empty [[env]] or [env] sections and trailing blank lines
+        # Loop to handle multiple trailing empty sections at EOF
+        # Note: sed with N command fails at EOF, so we use a loop with simpler patterns
+        while [ -f ".mise.toml" ]; do
+          local last_line=$(tail -n 1 ".mise.toml")
+          if [ "$last_line" = "[[env]]" ] || [ "$last_line" = "[env]" ] || [ "$last_line" = "" ]; then
+            sed -i.bak2 '${/^\[\[*env\]\]*$/d}; ${/^$/d}' ".mise.toml"
+          else
+            break
+          fi
+        done
 
         rm -f ".mise.toml.bak" ".mise.toml.bak2"
         echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
