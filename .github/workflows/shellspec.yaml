@@ -53,15 +53,16 @@ jobs:
           # Environment variables from .envrc are now available
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
           # even when all tests pass. We capture output and check for successful test completion.
-          output=$(shellspec 2>&1) || {
-            echo "Shellspec exited with code $?, checking if tests actually passed..."
-            echo "$output"
+          # Using tee to save output to log file while displaying it
+          shellspec 2>&1 | tee /tmp/test_output.txt || {
+            exit_code=$?
+            echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
 
             # Dynamic test validation (no hardcoded test counts)
             # Check: 1) At least one test passed, 2) No failures, 3) Summary shows success
-            passed_tests=$(echo "$output" | grep -c "^ok " || true)
-            failed_tests=$(echo "$output" | grep -c "^not ok " || true)
-            has_summary=$(echo "$output" | grep -q "examples, .* failures" && echo "yes" || echo "no")
+            passed_tests=$(grep -c "^ok " /tmp/test_output.txt || true)
+            failed_tests=$(grep -c "^not ok " /tmp/test_output.txt || true)
+            has_summary=$(grep -q "examples, .* failures" /tmp/test_output.txt && echo "yes" || echo "no")
 
             if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
               echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
@@ -72,7 +73,24 @@ jobs:
               exit 1
             fi
           }
-          echo "$output"
+
+      - name: Display failed tests summary
+        if: always()
+        run: |
+          if [ -f /tmp/test_output.txt ]; then
+            failed=$(grep "^not ok " /tmp/test_output.txt || true)
+            if [ -n "$failed" ]; then
+              echo ""
+              echo "================================================"
+              echo "❌ FAILED TESTS SUMMARY"
+              echo "================================================"
+              echo "$failed"
+              echo "================================================"
+            else
+              echo ""
+              echo "✅ All tests passed!"
+            fi
+          fi
   
   shellspec-ubuntu:
     name: "Ubuntu"
@@ -139,15 +157,16 @@ jobs:
           # Run with kcov to generate coverage reports
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
           # even when all tests pass. We capture output and check for successful test completion.
-          output=$(shellspec --kcov 2>&1) || {
-            echo "Shellspec exited with code $?, checking if tests actually passed..."
-            echo "$output"
+          # Using tee to save output to log file while displaying it
+          shellspec --kcov 2>&1 | tee /tmp/test_output.txt || {
+            exit_code=$?
+            echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
 
             # Dynamic test validation (no hardcoded test counts)
             # Check: 1) At least one test passed, 2) No failures, 3) Summary shows success
-            passed_tests=$(echo "$output" | grep -c "^ok " || true)
-            failed_tests=$(echo "$output" | grep -c "^not ok " || true)
-            has_summary=$(echo "$output" | grep -q "examples, .* failures" && echo "yes" || echo "no")
+            passed_tests=$(grep -c "^ok " /tmp/test_output.txt || true)
+            failed_tests=$(grep -c "^not ok " /tmp/test_output.txt || true)
+            has_summary=$(grep -q "examples, .* failures" /tmp/test_output.txt && echo "yes" || echo "no")
 
             if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
               echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
@@ -158,7 +177,24 @@ jobs:
               exit 1
             fi
           }
-          echo "$output"
+
+      - name: Display failed tests summary
+        if: always()
+        run: |
+          if [ -f /tmp/test_output.txt ]; then
+            failed=$(grep "^not ok " /tmp/test_output.txt || true)
+            if [ -n "$failed" ]; then
+              echo ""
+              echo "================================================"
+              echo "❌ FAILED TESTS SUMMARY"
+              echo "================================================"
+              echo "$failed"
+              echo "================================================"
+            else
+              echo ""
+              echo "✅ All tests passed!"
+            fi
+          fi
 
       - name: Generate coverage summary
         if: always()
