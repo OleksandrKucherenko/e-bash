@@ -284,6 +284,21 @@ function repo_uninstall() {
     fi
   fi
 
+  # Clean .mise.toml if it exists
+  if [ -f ".mise.toml" ]; then
+    if grep -q "E_BASH" ".mise.toml"; then
+      if [ "$DRY_RUN" = true ]; then
+        echo -e "${CYAN}dry run: clean .mise.toml configuration${NC}"
+      else
+        # Remove E_BASH related lines and the comment
+        sed -i.bak '/# e-bash scripts configuration/d; /E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
+        rm -f ".mise.toml.bak"
+        echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
+      fi
+      ((uninstall_steps++))
+    fi
+  fi
+
   if [ $uninstall_steps -eq 0 ]; then
     echo -e "${YELLOW}No e-bash files found to remove${NC}"
   else
@@ -822,7 +837,7 @@ function install_scripts() {
 
 ## Perform post-installation customizations
 function post_installation_steps() {
-  echo -e "${BLUE}Performing post-installation steps: [integrate with DIRENV], [copy installer to bin]${NC}"
+  echo -e "${BLUE}Performing post-installation steps: [integrate with DIRENV/MISE], [copy installer to bin]${NC}"
 
   # Check for .envrc file and update it if found
   if [ -f ".envrc" ] && [ "$DRY_RUN" == false ]; then
@@ -831,6 +846,15 @@ function post_installation_steps() {
     local prefix=""
     [ "$DRY_RUN" == true ] && prefix="${CYAN}dry run: ${NC}"
     echo -e "${prefix}${GRAY}Skipping DIRENV integration. No ${YELLOW}${PWD}/.envrc${GRAY} file.${NC}" >&2
+  fi
+
+  # Check for .mise.toml file and update it if found
+  if [ -f ".mise.toml" ] && [ "$DRY_RUN" == false ]; then
+    update_mise_configuration
+  else
+    local prefix=""
+    [ "$DRY_RUN" == true ] && prefix="${CYAN}dry run: ${NC}"
+    echo -e "${prefix}${GRAY}Skipping MISE integration. No ${YELLOW}${PWD}/.mise.toml${GRAY} file.${NC}" >&2
   fi
 
   # Check for bin directory and copy installer script
@@ -924,6 +948,45 @@ function update_envrc_configuration() {
 
   echo -e "${GREEN}Added e-bash configuration to ${YELLOW}${PWD}/.envrc${NC}"
   echo -e "${YELLOW}Run 'direnv allow' to apply the changes${NC}"
+  return 0
+}
+
+## Append e-bash configuration to mise.toml file. Exit code.
+function update_mise_configuration() {
+  # Check if our configuration is already in mise.toml
+  if [ -f ".mise.toml" ] && grep -q "E_BASH" ".mise.toml"; then
+    echo -e "${GRAY}Skipping MISE integration. Configuration already exists in ${YELLOW}${PWD}/.mise.toml${NC}"
+    return 0
+  fi
+
+  # Determine if [env] section already exists
+  local has_env_section=false
+  if [ -f ".mise.toml" ] && grep -q "^\[env\]" ".mise.toml"; then
+    has_env_section=true
+  fi
+
+  # Append or create mise.toml configuration
+  if [ "$has_env_section" = true ]; then
+    # Append to existing [env] section
+    {
+      echo "# e-bash scripts configuration"
+      echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
+      echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+    } >>".mise.toml"
+    echo -e "${GREEN}Added e-bash configuration to existing [env] section in ${YELLOW}${PWD}/.mise.toml${NC}"
+  else
+    # Create new [env] section
+    {
+      echo ""
+      echo "# e-bash scripts configuration"
+      echo "[env]"
+      echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
+      echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+    } >>".mise.toml"
+    echo -e "${GREEN}Added e-bash configuration to ${YELLOW}${PWD}/.mise.toml${NC}"
+  fi
+
+  echo -e "${YELLOW}Run 'mise trust' to apply the changes${NC}"
   return 0
 }
 

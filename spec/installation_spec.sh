@@ -193,6 +193,37 @@ Describe 'bin/install.e-bash.sh'
       The file ".scripts/_colors.sh" should be present
     End
 
+    It 'should integrate with mise.toml if file exists'
+      touch .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add mise.toml" -q 2>/dev/null || git commit -m "Add mise.toml" -q
+
+      When run ./install.e-bash.sh install
+
+      The status should be success
+      The output should include "Installation complete"
+      The output should include "Added e-bash configuration to"
+      The output should include ".mise.toml"
+      The file ".mise.toml" should be present
+      The contents of file ".mise.toml" should include "E_BASH"
+      The contents of file ".mise.toml" should include "{{config_root}}/.scripts"
+      The contents of file ".mise.toml" should include "_.path"
+    End
+
+    It 'should not modify mise.toml if it already has E_BASH configuration'
+      touch .mise.toml
+      echo '[env]' >> .mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add mise.toml with E_BASH" -q 2>/dev/null || git commit -m "Add mise.toml with E_BASH" -q
+
+      When run ./install.e-bash.sh install
+
+      The status should be success
+      The output should include "Installation complete"
+      The result of function no_colors_output should include "Skipping MISE integration. Configuration already exists"
+    End
+
     It 'should detect "main" branch correctly'
       git_rename_main
 
@@ -913,13 +944,30 @@ Describe 'bin/install.e-bash.sh'
       echo 'export E_BASH="$PWD/.scripts"' >> .envrc
       echo 'PATH_add "$PWD/.scripts"' >> .envrc
 
-      When run ./install.e-bash.sh uninstall --confirm 
+      When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
       The stderr should include "installer: e-bash scripts"
       The output should include "Uninstall complete!"
       The file ".envrc" should not include "E_BASH"
       The file ".envrc" should not include "PATH_add"
+    End
+
+    It 'should clean .mise.toml E_BASH configuration'
+      mock_install
+      touch .mise.toml
+      echo '# e-bash scripts configuration' >> .mise.toml
+      echo '[env]' >> .mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >> .mise.toml
+
+      When run ./install.e-bash.sh uninstall --confirm
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
+      The file ".mise.toml" should not include "E_BASH"
+      The file ".mise.toml" should not include "_.path"
     End
 
     It 'should preserve user files during uninstall'
