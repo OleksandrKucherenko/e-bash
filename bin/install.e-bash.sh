@@ -960,7 +960,7 @@ function update_envrc_configuration() {
 ## Append e-bash configuration to mise.toml file. Exit code.
 function update_mise_configuration() {
   # Helper: Read value from [env] or [[env]] section
-  local get_mise_env_value() {
+  get_mise_env_value() {
     local key="$1"
     # Check both [env] and [[env]] sections
     sed -n '/^\[\[*env\]\]/,/^\[/p' ".mise.toml" | \
