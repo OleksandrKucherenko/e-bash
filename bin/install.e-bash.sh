@@ -990,7 +990,7 @@ function update_mise_configuration() {
 
   # Append configuration based on existing structure
   if [ "$has_env_array" = true ]; then
-    # Append to existing [[env]] array of tables
+    # Append new [[env]] array entry to end of file
     {
       echo ""
       echo "# e-bash scripts configuration"
@@ -1000,12 +1000,20 @@ function update_mise_configuration() {
     } >>".mise.toml"
     echo -e "${GREEN}Added e-bash configuration as new [[env]] entry in ${YELLOW}${PWD}/.mise.toml${NC}"
   elif [ "$has_env_table" = true ]; then
-    # Append to existing [env] table
+    # Insert into existing [env] section (before next section or EOF)
+    # Find the line number where [env] section ends
+    local env_end=$(awk '/^\[env\]/{start=NR; next} start && /^\[/{print NR-1; exit} END{if(start && !found) print NR}' ".mise.toml")
+
+    # Create temp file with insertion
     {
+      head -n "$env_end" ".mise.toml"
       echo "# e-bash scripts configuration"
       echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
       echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
-    } >>".mise.toml"
+      tail -n +$((env_end + 1)) ".mise.toml"
+    } > ".mise.toml.tmp"
+
+    mv ".mise.toml.tmp" ".mise.toml"
     echo -e "${GREEN}Added e-bash configuration to existing [env] section in ${YELLOW}${PWD}/.mise.toml${NC}"
   else
     # Create new [env] table (prefer single table for simplicity)

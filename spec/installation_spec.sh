@@ -224,6 +224,28 @@ Describe 'bin/install.e-bash.sh'
       The result of function no_colors_output should include "Skipping MISE integration"
     End
 
+    It 'should insert into existing [env] section before other sections'
+      touch .mise.toml
+      echo '[env]' >> .mise.toml
+      echo 'NODE_ENV = "development"' >> .mise.toml
+      echo '' >> .mise.toml
+      echo '[tools]' >> .mise.toml
+      echo 'node = "20"' >> .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add mise.toml with [env] and [tools]" -q 2>/dev/null || git commit -m "Add mise.toml with [env] and [tools]" -q
+
+      When run ./install.e-bash.sh install
+
+      The status should be success
+      The output should include "Installation complete"
+      The output should include "Added e-bash configuration to existing [env] section"
+      The file ".mise.toml" should be present
+      # Verify E_BASH is in the [env] section, not after [tools]
+      The result of "sed -n '/^\[env\]/,/^\[tools\]/p' .mise.toml | grep -c E_BASH" should equal 1
+      The contents of file ".mise.toml" should include "NODE_ENV"
+      The contents of file ".mise.toml" should include "[tools]"
+    End
+
     It 'should handle mise.toml with [[env]] array of tables'
       touch .mise.toml
       echo '[[env]]' >> .mise.toml
