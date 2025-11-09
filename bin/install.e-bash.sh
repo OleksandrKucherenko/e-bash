@@ -298,7 +298,7 @@ function repo_uninstall() {
         # This handles sections that became empty after removing E_BASH
         awk '
         BEGIN { in_env=0; env_header=""; env_content="" }
-        /^\[\[?env\]\]?$/ {
+        /^\[env\]$/ || /^\[\[env\]\]$/ {
           if (in_env && env_content != "") {
             print env_header
             print env_content
@@ -308,7 +308,7 @@ function repo_uninstall() {
           env_content=""
           next
         }
-        /^\[/ && !/^\[\[?env\]\]?$/ {
+        /^\[/ && !(/^\[env\]$/ || /^\[\[env\]\]$/) {
           if (in_env && env_content != "") {
             print env_header
             print env_content
@@ -1001,7 +1001,7 @@ function update_mise_configuration() {
     local key="$1"
     # Check both [env] and [[env]] sections
     # Fixed regex to match both [env] and [[env]] patterns
-    sed -n '/^\[\[?env\]\]?$/,/^\[/p' ".mise.toml" | \
+    sed -n '/^\[env\]\|^\[\[env\]\]$/,/^\[/p' ".mise.toml" | \
       grep "^${key}[[:space:]]*=" | \
       head -1 | \
       cut -d'=' -f2- | \
@@ -1011,13 +1011,13 @@ function update_mise_configuration() {
   # Helper: Check if _.path already exists in env sections
   has_existing_path() {
     # Check both [env] and [[env]] sections for existing _.path
-    sed -n '/^\[\[?env\]\]?$/,/^\[/p' ".mise.toml" | \
+    sed -n '/^\[env\]\|^\[\[env\]\]$/,/^\[/p' ".mise.toml" | \
       grep -q "^[[:space:]]*_.path[[:space:]]*="
   }
 
   # Helper: Get existing _.path entries as a comma-separated string
   get_existing_paths() {
-    sed -n '/^\[\[?env\]\]?$/,/^\[/p' ".mise.toml" | \
+    sed -n '/^\[env\]\|^\[\[env\]\]$/,/^\[/p' ".mise.toml" | \
       grep "^[[:space:]]*_.path[[:space:]]*=" | \
       head -1 | \
       cut -d'=' -f2- | \

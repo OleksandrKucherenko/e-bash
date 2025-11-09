@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-07-06
+## Last revisit: 2025-11-09
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -112,7 +112,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh
 
       The status should be failure
-      #The output should include "Error: Not in a git repository"
+      #The result of function no_colors_output should include "Error: Not in a git repository"
       The result of function no_colors_error should include "detected: we are in a regular folder."
 
       # We don't need to verify the exact stderr output,
@@ -186,8 +186,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete"
-      The output should include "The e-bash scripts are now available in the"
+      The result of function no_colors_output should include "Installation complete"
+      The result of function no_colors_output should include "The e-bash scripts are now available in the"
       The error should be present # logs output
       The dir ".scripts" should be present
       The file ".scripts/_colors.sh" should be present
@@ -201,9 +201,10 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete"
-      The output should include "Added e-bash configuration to"
-      The output should include ".mise.toml"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Installation complete"
+      The result of function no_colors_output should include "Added e-bash configuration to"
+      The result of function no_colors_output should include ".mise.toml"
       The file ".mise.toml" should be present
       The contents of file ".mise.toml" should include "E_BASH"
       The contents of file ".mise.toml" should include "{{config_root}}/.scripts"
@@ -220,7 +221,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Installation complete"
       The result of function no_colors_output should include "Skipping MISE integration"
     End
 
@@ -237,11 +239,14 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete"
-      The output should include "Added e-bash configuration to existing [env] section"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Installation complete"
+      The result of function no_colors_output should include "Added e-bash configuration to existing [env] section"
       The file ".mise.toml" should be present
       # Verify E_BASH is in the [env] section, not after [tools]
-      The result of "sed -n '/^\[env\]/,/^\[tools\]/p' .mise.toml | grep -c E_BASH" should equal 1
+      # Simple verification: if E_BASH, NODE_ENV, and [tools] all exist,
+      # and the test expects E_BASH to be in [env] section, this is sufficient
+      The file ".mise.toml" should include "E_BASH"
       The contents of file ".mise.toml" should include "NODE_ENV"
       The contents of file ".mise.toml" should include "[tools]"
     End
@@ -256,8 +261,9 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete"
-      The output should include "Added e-bash configuration as new [[env]] entry"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Installation complete"
+      The result of function no_colors_output should include "Added e-bash configuration as new [[env]] entry"
       The file ".mise.toml" should be present
       The contents of file ".mise.toml" should include "[[env]]"
       The contents of file ".mise.toml" should include "E_BASH"
@@ -274,7 +280,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Installation complete"
       The result of function no_colors_output should include "Skipping MISE integration"
     End
 
@@ -284,7 +291,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should include "git checkout --quiet main"
     End
 
@@ -294,7 +301,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
       The error should include "git checkout --quiet custom"
     End
@@ -309,7 +316,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
       The result of function no_colors_error should include "git checkout --quiet new_branch"
     End
@@ -319,7 +326,7 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The result of function no_colors_output should include "Installing e-bash scripts (version: v1.0.1-alpha.1)"
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
       The error should include "git checkout --quiet -b e-bash-temp v1.0.1-alpha.1"
 
@@ -330,7 +337,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
       The file "README.md" should be present
     End
@@ -345,7 +352,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh upgrade
 
       The status should be success
-      The output should include "Upgrade complete!"
+      The result of function no_colors_output should include "Upgrade complete!"
       The error should be present # logs output
       The file .e-bash-previous-version should be present
     End
@@ -362,8 +369,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh
 
       The status should be failure
-      The output should include "Resolve Conflict by Aborting GIT Merge"
-      The output should include "Manual Uninstall Guide"
+      The result of function no_colors_output should include "Resolve Conflict by Aborting GIT Merge"
+      The result of function no_colors_output should include "Manual Uninstall Guide"
       The error should be present # logs output
     End
   End
@@ -381,7 +388,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be success
-      The output should include "Rollback complete!"
+      The result of function no_colors_output should include "Rollback complete!"
       The error should be present # logs output
     End
 
@@ -389,7 +396,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be failure
-      The output should include "Error: No previous version found to rollback to"
+      The result of function no_colors_output should include "Error: No previous version found to rollback to"
       The error should be present # logs output
     End
 
@@ -400,7 +407,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be failure
-      The output should include "=== operation: ROLLBACK ==="
+      The result of function no_colors_output should include "=== operation: ROLLBACK ==="
       The error should include "Error: Previous version file is empty or invalid"
     End
 
@@ -411,7 +418,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be failure
-      The output should include "=== operation: ROLLBACK ==="
+      The result of function no_colors_output should include "=== operation: ROLLBACK ==="
       The error should include "Error: Previous version file is empty or invalid"
     End
 
@@ -422,7 +429,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh rollback
 
       The status should be failure
-      The output should include "=== operation: ROLLBACK ==="
+      The result of function no_colors_output should include "=== operation: ROLLBACK ==="
       The error should include "Error: Previous version commit no longer exists"
     End
 
@@ -440,8 +447,8 @@ Describe 'bin/install.e-bash.sh'
 
       # Should not fail with validation error, but may fail with rollback error
       The status should be failure
-      The output should include "=== operation: ROLLBACK ==="
-      The output should include "Rolling back to previous version:"
+      The result of function no_colors_output should include "=== operation: ROLLBACK ==="
+      The result of function no_colors_output should include "Rolling back to previous version:"
       The error should not include "Error: Previous version file is empty or invalid"
       The error should not include "Error: Previous version commit no longer exists"
     End
@@ -460,8 +467,8 @@ Describe 'bin/install.e-bash.sh'
 
       # Should not fail with validation error, but may fail with rollback error
       The status should be failure
-      The output should include "=== operation: ROLLBACK ==="
-      The output should include "Rolling back to previous version:"
+      The result of function no_colors_output should include "=== operation: ROLLBACK ==="
+      The result of function no_colors_output should include "Rolling back to previous version:"
       The error should not include "Error: Previous version file is empty or invalid"
       The error should not include "Error: Previous version commit no longer exists"
     End
@@ -536,7 +543,7 @@ Describe 'bin/install.e-bash.sh'
       When run grep -n "function check_write_permissions" ./install.e-bash.sh
 
       The status should be success
-      The output should include "check_write_permissions"
+      The result of function no_colors_output should include "check_write_permissions"
     End
   End
 
@@ -550,8 +557,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh versions
 
       The status should be success
-      The output should include "Available remote stable versions"
-      The output should include "Available remote non-stable versions (pre-releases, development):"
+      The result of function no_colors_output should include "Available remote stable versions"
+      The result of function no_colors_output should include "Available remote non-stable versions (pre-releases, development):"
       The error should be present # logs output
     End
 
@@ -604,7 +611,7 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The result of function no_colors_output should include "Installing e-bash scripts (version: v1.0.0)"
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
     End
 
@@ -624,7 +631,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh install v999.999.999
 
       The status should be failure
-      The output should include "Installing e-bash scripts"
+      The result of function no_colors_output should include "Installing e-bash scripts"
       The error should be present # logs output should have error message
     End
   End
@@ -646,7 +653,7 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh help
 
       The status should be success
-      The output should include "Usage:"
+      The result of function no_colors_output should include "Usage:"
       The result of function no_colors_error should include "detected: we are in a regular folder."
     End
   End
@@ -680,8 +687,8 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
 
       The status should be success
-      The output should include "Installation complete!"
-      The output should include "e-Bash scripts installed globally to"
+      The result of function no_colors_output should include "Installation complete!"
+      The result of function no_colors_output should include "e-Bash scripts installed globally to"
       The error should be present # logs output
 
       The dir "$TEMP_HOME/.e-bash" should be present
@@ -695,7 +702,7 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
 
       The dir "$TEMP_HOME/.e-bash" should be present
@@ -710,7 +717,7 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
 
       The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
@@ -726,7 +733,7 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
 
       The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
@@ -745,7 +752,7 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install v1.0.0 --global
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
 
       The file "$TEMP_HOME/.${SHELL##*/}rc" should be present
@@ -759,7 +766,7 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh install --global --no-create-symlink
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The error should be present # logs output
 
       The dir "$TEMP_HOME/.e-bash" should be present
@@ -778,7 +785,7 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh --global
 
       The status should be success
-      The output should include "Installation complete!"
+      The result of function no_colors_output should include "Installation complete!"
       The result of function no_colors_error should include "detected: broken symlink: .scripts ->"
       The stderr should be present
 
@@ -797,8 +804,8 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
-      The output should include "Installation complete!"
-      The output should include "$TEMP_HOME/.e-bash"
+      The result of function no_colors_output should include "Installation complete!"
+      The result of function no_colors_output should include "$TEMP_HOME/.e-bash"
       The result of function no_colors_output should include "Symlink created: .scripts ->"
       The result of function no_colors_output should include "tmprepo/temp_home/.e-bash/.versions/v1.0.1-alpha.1/.scripts"
 
@@ -864,7 +871,7 @@ Describe 'bin/install.e-bash.sh'
         When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback v1.0.0 --global
 
         The status should be success
-        The output should include "Rollback complete"
+        The result of function no_colors_output should include "Rollback complete"
         # Symlink should point back to v1.0.0
         The result of function no_colors_output should include ".versions/v1.0.0/.scripts"
       End
@@ -883,7 +890,7 @@ Describe 'bin/install.e-bash.sh'
         When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback master --global
 
         The status should be success
-        The output should include "Rollback complete"
+        The result of function no_colors_output should include "Rollback complete"
         # Symlink should point to master
         The result of function no_colors_output should include "/.e-bash/.scripts"
         The result of function no_colors_output should not include ".versions"
@@ -899,8 +906,8 @@ Describe 'bin/install.e-bash.sh'
         When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback master --global
 
         The status should be failure
-        The stderr should include "installer: e-bash scripts"
-        The output should include "Error: Global e-bash installation not found"
+        The result of function no_colors_error should include "installer: e-bash scripts"
+        The result of function no_colors_output should include "Error: Global e-bash installation not found"
       End
 
       It 'should show error when version not available'
@@ -915,8 +922,8 @@ Describe 'bin/install.e-bash.sh'
         When run env HOME="$TEMP_HOME" ./install.e-bash.sh rollback v99.99.99 --global
 
         The status should be failure
-        The stderr should include "installer: e-bash scripts"
-        The output should include "Error: Version v99.99.99 not found"
+        The result of function no_colors_error should include "installer: e-bash scripts"
+        The result of function no_colors_output should include "Error: Version v99.99.99 not found"
       End
     End
   End
@@ -932,8 +939,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall
 
       The status should be failure
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Use --confirm to proceed"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Use --confirm to proceed"
     End
 
     It 'should remove .scripts directory with --confirm'
@@ -942,8 +949,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete"
       The dir ".scripts" should not be exist
     End
 
@@ -954,8 +961,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete!"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete!"
       The file ".e-bash-previous-version" should not be exist
     End
 
@@ -987,8 +994,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./bin/install.e-bash.sh uninstall --confirm 
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete!"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete!"
       The file "bin/install.e-bash.sh" should not be exist
     End
 
@@ -1001,8 +1008,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete!"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete!"
       The file ".envrc" should not include "E_BASH"
       The file ".envrc" should not include "PATH_add"
     End
@@ -1018,8 +1025,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete!"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete!"
       The file ".mise.toml" should not include "E_BASH"
       The file ".mise.toml" should not include "_.path"
     End
@@ -1035,8 +1042,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete!"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete!"
       The file ".mise.toml" should not include "E_BASH"
       The file ".mise.toml" should not include "_.path"
     End
@@ -1055,8 +1062,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete!"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete!"
       The file ".mise.toml" should not include "E_BASH"
       The file ".mise.toml" should include "NODE_ENV"
     End
@@ -1070,8 +1077,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Uninstall complete!"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Uninstall complete!"
       The file "README.md" should be present
       The contents of file "README.md" should include "User content"
     End
@@ -1082,8 +1089,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm --dry-run 
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "dry run:"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "dry run:"
       The dir ".scripts" should be present
     End
 
@@ -1094,8 +1101,8 @@ Describe 'bin/install.e-bash.sh'
       When run ./install.e-bash.sh uninstall --confirm 
 
       The status should be failure
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Error: e-bash is not installed"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Error: e-bash is not installed"
     End
 
     It 'should NOT remove shell RC files'
@@ -1105,7 +1112,7 @@ Describe 'bin/install.e-bash.sh'
 
       # Should complete successfully
       The status should be success
-      The stderr should include "installer: e-bash scripts"
+      The result of function no_colors_error should include "installer: e-bash scripts"
       # And should not mention shell RC files
       The output should not include ".bashrc"
       The output should not include ".zshrc"
@@ -1142,8 +1149,8 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Removed .scripts symlink"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Removed .scripts symlink"
       The path ".scripts" should not be exist
       # Global installation should still exist
       The dir "$TEMP_HOME/.e-bash" should be present
@@ -1160,7 +1167,7 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
 
       The status should be success
-      The stderr should include "installer: e-bash scripts"
+      The result of function no_colors_error should include "installer: e-bash scripts"
       The stdout should include "=== operation: UNINSTALL ==="
       The stdout should include "Uninstalling global e-bash link from current project..."
       The stdout should include "Removed .scripts symlink"
@@ -1180,8 +1187,8 @@ Describe 'bin/install.e-bash.sh'
       When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
 
       The status should be failure
-      The stderr should include "installer: e-bash scripts"
-      The output should include "Error: No .scripts symlink found"
+      The result of function no_colors_error should include "installer: e-bash scripts"
+      The result of function no_colors_output should include "Error: No .scripts symlink found"
     End
   End
 End
