@@ -296,7 +296,8 @@ function repo_uninstall() {
 
         # Remove empty [[env]] or [env] sections that only had e-bash config
         # If section only has the header left, remove it too
-        sed -i.bak2 '/^\[\[*env\]\]$/{ N; /^\[\[*env\]\]\n$/d; }' ".mise.toml"
+        # Fixed regex: \]* at end (not \]\]) to match both [env] and [[env]]
+        sed -i.bak2 '/^\[\[*env\]\]*$/{ N; /^\[\[*env\]\]*\n$/d; }' ".mise.toml"
 
         rm -f ".mise.toml.bak" ".mise.toml.bak2"
         echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
@@ -963,7 +964,8 @@ function update_mise_configuration() {
   get_mise_env_value() {
     local key="$1"
     # Check both [env] and [[env]] sections
-    sed -n '/^\[\[*env\]\]/,/^\[/p' ".mise.toml" | \
+    # Fixed regex: \]* at end (not \]\]) to match both [env] and [[env]]
+    sed -n '/^\[\[*env\]\]*$/,/^\[/p' ".mise.toml" | \
       grep "^${key}[[:space:]]*=" | \
       head -1 | \
       cut -d'=' -f2- | \
