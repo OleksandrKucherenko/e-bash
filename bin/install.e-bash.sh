@@ -1004,7 +1004,7 @@ function update_mise_configuration() {
   elif [ "$has_env_table" = true ]; then
     # Insert into existing [env] section (before next section or EOF)
     # Find the line number where [env] section ends
-    local env_end=$(awk '/^\[env\]/{start=NR; next} start && /^\[/{print NR-1; exit} END{if(start && !found) print NR}' ".mise.toml")
+    local env_end=$(awk '/^\[env\]/{start=NR; next} start && /^\[/{print NR-1; found=1; exit} END{if(start && !found) print NR}' ".mise.toml")
 
     # Create temp file with insertion
     {
