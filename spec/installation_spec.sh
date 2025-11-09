@@ -221,7 +221,39 @@ Describe 'bin/install.e-bash.sh'
 
       The status should be success
       The output should include "Installation complete"
-      The result of function no_colors_output should include "Skipping MISE integration. Configuration already exists"
+      The result of function no_colors_output should include "Skipping MISE integration"
+    End
+
+    It 'should handle mise.toml with [[env]] array of tables'
+      touch .mise.toml
+      echo '[[env]]' >> .mise.toml
+      echo 'NODE_ENV = "development"' >> .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add mise.toml with [[env]]" -q 2>/dev/null || git commit -m "Add mise.toml with [[env]]" -q
+
+      When run ./install.e-bash.sh install
+
+      The status should be success
+      The output should include "Installation complete"
+      The output should include "Added e-bash configuration as new [[env]] entry"
+      The file ".mise.toml" should be present
+      The contents of file ".mise.toml" should include "[[env]]"
+      The contents of file ".mise.toml" should include "E_BASH"
+      The contents of file ".mise.toml" should include "NODE_ENV"
+    End
+
+    It 'should not modify mise.toml with [[env]] if E_BASH exists'
+      touch .mise.toml
+      echo '[[env]]' >> .mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add mise.toml with [[env]] and E_BASH" -q 2>/dev/null || git commit -m "Add mise.toml with [[env]] and E_BASH" -q
+
+      When run ./install.e-bash.sh install
+
+      The status should be success
+      The output should include "Installation complete"
+      The result of function no_colors_output should include "Skipping MISE integration"
     End
 
     It 'should detect "main" branch correctly'
@@ -953,7 +985,7 @@ Describe 'bin/install.e-bash.sh'
       The file ".envrc" should not include "PATH_add"
     End
 
-    It 'should clean .mise.toml E_BASH configuration'
+    It 'should clean .mise.toml E_BASH configuration with [env]'
       mock_install
       touch .mise.toml
       echo '# e-bash scripts configuration' >> .mise.toml
@@ -968,6 +1000,43 @@ Describe 'bin/install.e-bash.sh'
       The output should include "Uninstall complete!"
       The file ".mise.toml" should not include "E_BASH"
       The file ".mise.toml" should not include "_.path"
+    End
+
+    It 'should clean .mise.toml E_BASH configuration with [[env]]'
+      mock_install
+      touch .mise.toml
+      echo '# e-bash scripts configuration' >> .mise.toml
+      echo '[[env]]' >> .mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >> .mise.toml
+
+      When run ./install.e-bash.sh uninstall --confirm
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
+      The file ".mise.toml" should not include "E_BASH"
+      The file ".mise.toml" should not include "_.path"
+    End
+
+    It 'should preserve other [[env]] entries when cleaning'
+      mock_install
+      touch .mise.toml
+      echo '[[env]]' >> .mise.toml
+      echo 'NODE_ENV = "development"' >> .mise.toml
+      echo '' >> .mise.toml
+      echo '# e-bash scripts configuration' >> .mise.toml
+      echo '[[env]]' >> .mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >> .mise.toml
+
+      When run ./install.e-bash.sh uninstall --confirm
+
+      The status should be success
+      The stderr should include "installer: e-bash scripts"
+      The output should include "Uninstall complete!"
+      The file ".mise.toml" should not include "E_BASH"
+      The file ".mise.toml" should include "NODE_ENV"
     End
 
     It 'should preserve user files during uninstall'

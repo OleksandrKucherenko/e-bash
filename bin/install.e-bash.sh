@@ -291,8 +291,14 @@ function repo_uninstall() {
         echo -e "${CYAN}dry run: clean .mise.toml configuration${NC}"
       else
         # Remove E_BASH related lines and the comment
+        # Handles both [env] and [[env]] sections
         sed -i.bak '/# e-bash scripts configuration/d; /E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
-        rm -f ".mise.toml.bak"
+
+        # Remove empty [[env]] or [env] sections that only had e-bash config
+        # If section only has the header left, remove it too
+        sed -i.bak2 '/^\[\[*env\]\]$/{ N; /^\[\[*env\]\]\n$/d; }' ".mise.toml"
+
+        rm -f ".mise.toml.bak" ".mise.toml.bak2"
         echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
       fi
       ((uninstall_steps++))
@@ -953,21 +959,48 @@ function update_envrc_configuration() {
 
 ## Append e-bash configuration to mise.toml file. Exit code.
 function update_mise_configuration() {
-  # Check if our configuration is already in mise.toml
-  if [ -f ".mise.toml" ] && grep -q "E_BASH" ".mise.toml"; then
-    echo -e "${GRAY}Skipping MISE integration. Configuration already exists in ${YELLOW}${PWD}/.mise.toml${NC}"
-    return 0
+  # Helper: Read value from [env] or [[env]] section
+  local get_mise_env_value() {
+    local key="$1"
+    # Check both [env] and [[env]] sections
+    sed -n '/^\[\[*env\]\]/,/^\[/p' ".mise.toml" | \
+      grep "^${key}[[:space:]]*=" | \
+      head -1 | \
+      cut -d'=' -f2- | \
+      sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  }
+
+  # Check if E_BASH is already configured in any [env] or [[env]] section
+  if [ -f ".mise.toml" ]; then
+    local existing_value=$(get_mise_env_value "E_BASH")
+    if [ -n "$existing_value" ]; then
+      echo -e "${GRAY}Skipping MISE integration. E_BASH already configured in ${YELLOW}${PWD}/.mise.toml${NC}"
+      return 0
+    fi
   fi
 
-  # Determine if [env] section already exists
-  local has_env_section=false
-  if [ -f ".mise.toml" ] && grep -q "^\[env\]" ".mise.toml"; then
-    has_env_section=true
+  # Determine the type of env section that exists
+  local has_env_table=false       # [env] - single table
+  local has_env_array=false       # [[env]] - array of tables
+
+  if [ -f ".mise.toml" ]; then
+    grep -q "^\\[env\\]" ".mise.toml" && has_env_table=true
+    grep -q "^\\[\\[env\\]\\]" ".mise.toml" && has_env_array=true
   fi
 
-  # Append or create mise.toml configuration
-  if [ "$has_env_section" = true ]; then
-    # Append to existing [env] section
+  # Append configuration based on existing structure
+  if [ "$has_env_array" = true ]; then
+    # Append to existing [[env]] array of tables
+    {
+      echo ""
+      echo "# e-bash scripts configuration"
+      echo "[[env]]"
+      echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
+      echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+    } >>".mise.toml"
+    echo -e "${GREEN}Added e-bash configuration as new [[env]] entry in ${YELLOW}${PWD}/.mise.toml${NC}"
+  elif [ "$has_env_table" = true ]; then
+    # Append to existing [env] table
     {
       echo "# e-bash scripts configuration"
       echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
@@ -975,7 +1008,7 @@ function update_mise_configuration() {
     } >>".mise.toml"
     echo -e "${GREEN}Added e-bash configuration to existing [env] section in ${YELLOW}${PWD}/.mise.toml${NC}"
   else
-    # Create new [env] section
+    # Create new [env] table (prefer single table for simplicity)
     {
       echo ""
       echo "# e-bash scripts configuration"
