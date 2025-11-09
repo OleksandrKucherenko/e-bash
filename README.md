@@ -7,6 +7,7 @@
   - [Local Dev Environment - Requirements](#local-dev-environment---requirements)
   - [TDD - Test Driven Development, run tests on file change](#tdd---test-driven-development-run-tests-on-file-change)
   - [Usage](#usage)
+    - [Manual installation](#manual-installation)
     - [Colors](#colors)
     - [Script Dependencies](#script-dependencies)
     - [Logger](#logger)
@@ -67,6 +68,12 @@ watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
 
 # run failed only unit tests on file change without coverage
 watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick --no-kcov --"
+
+# Multiple Jobs (parallel execution)
+# shellspec -j 8  
+# 40.34s user 10.62s system 38% cpu 2:12.97 total
+# shellspec -j 4  
+# 40.35s user 10.28s system 40% cpu 2:03.77 total
 ```
 
 ## Usage
@@ -418,3 +425,4 @@ demos/demo.colors.sh
 - [bash-core](https://github.com/bash-bastion/bash-core/blob/main/pkg/src/util/util.sh#L17-L38), trap enhancement
 - [bash-bastion](https://github.com/bash-bastion) BASH helpers
 - https://github.com/dylanaraps/writing-a-tui-in-bash
+- [bash-toml](https://github.com/bash-bastion/bash-toml) TOML Support (also INI files support!)
