@@ -54,8 +54,9 @@ jobs:
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
           # even when all tests pass. We capture output and check for successful test completion.
           # Using tee to save output to log file while displaying it
+          set -o pipefail  # Make pipe return first non-zero exit code
           shellspec 2>&1 | tee /tmp/test_output.txt || {
-            exit_code=$?
+            exit_code=${PIPESTATUS[0]}  # Get shellspec exit code, not tee's
             echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
 
             # Dynamic test validation (no hardcoded test counts)
@@ -158,8 +159,9 @@ jobs:
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
           # even when all tests pass. We capture output and check for successful test completion.
           # Using tee to save output to log file while displaying it
+          set -o pipefail  # Make pipe return first non-zero exit code
           shellspec --kcov 2>&1 | tee /tmp/test_output.txt || {
-            exit_code=$?
+            exit_code=${PIPESTATUS[0]}  # Get shellspec exit code, not tee's
             echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
 
             # Dynamic test validation (no hardcoded test counts)
