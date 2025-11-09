@@ -294,19 +294,48 @@ function repo_uninstall() {
         # Handles both [env] and [[env]] sections
         sed -i.bak '/# e-bash scripts configuration/d; /E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
 
-        # Remove empty [[env]] or [env] sections and trailing blank lines
-        # Loop to handle multiple trailing empty sections at EOF
-        # Note: sed with N command fails at EOF, so we use a loop with simpler patterns
-        while [ -f ".mise.toml" ]; do
-          local last_line=$(tail -n 1 ".mise.toml")
-          if [ "$last_line" = "[[env]]" ] || [ "$last_line" = "[env]" ] || [ "$last_line" = "" ]; then
-            sed -i.bak2 '${/^\[\[*env\]\]*$/d}; ${/^$/d}' ".mise.toml"
-          else
-            break
-          fi
-        done
+        # Remove empty [[env]] or [env]] sections using awk
+        # This handles sections that became empty after removing E_BASH
+        awk '
+        BEGIN { in_env=0; env_header=""; env_content="" }
+        /^\[\[*env\]\]*$/ {
+          if (in_env && env_content != "") {
+            print env_header
+            print env_content
+          }
+          in_env=1
+          env_header=$0
+          env_content=""
+          next
+        }
+        /^\[/ && !/^\[\[*env\]\]*$/ {
+          if (in_env && env_content != "") {
+            print env_header
+            print env_content
+          }
+          in_env=0
+          print
+          next
+        }
+        in_env && NF > 0 {
+          if (env_content != "") env_content = env_content "\n" $0
+          else env_content = $0
+          next
+        }
+        in_env && NF == 0 {
+          if (env_content != "") env_content = env_content "\n" $0
+          next
+        }
+        !in_env { print }
+        END {
+          if (in_env && env_content != "") {
+            print env_header
+            print env_content
+          }
+        }
+        ' ".mise.toml" > ".mise.toml.tmp" && mv ".mise.toml.tmp" ".mise.toml"
 
-        rm -f ".mise.toml.bak" ".mise.toml.bak2"
+        rm -f ".mise.toml.bak"
         echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
       fi
       ((uninstall_steps++))
