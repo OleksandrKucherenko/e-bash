@@ -1007,12 +1007,13 @@ function update_mise_configuration() {
   # Helper: Check if _.path already exists in env sections
   has_existing_path() {
     # Check both [env] and [[env]] sections using AWK (portable)
-    awk '
+    # Returns "true" if found, empty if not (safe for set -e)
+    local result=$(awk '
       /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
       /^\[/ { in_env=0 }
-      in_env && /^[[:space:]]*_.path[[:space:]]*=/ { found=1; exit }
-      END { exit !found }
-    ' ".mise.toml"
+      in_env && /^[[:space:]]*_.path[[:space:]]*=/ { print "true"; exit }
+    ' ".mise.toml")
+    [ "$result" = "true" ]
   }
 
   # Helper: Get existing _.path entries as a comma-separated string
