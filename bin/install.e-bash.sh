@@ -991,29 +991,43 @@ function update_mise_configuration() {
   # Helper: Read value from [env] or [[env]] section
   get_mise_env_value() {
     local key="$1"
-    # Check both [env] and [[env]] sections
-    # Fixed regex to match both [env] and [[env]] patterns
-    sed -n '/^\[env\]\|^\[\[env\]\]$/,/^\[/p' ".mise.toml" | \
-      grep "^${key}[[:space:]]*=" | \
-      head -1 | \
-      cut -d'=' -f2- | \
-      sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+    # Check both [env] and [[env]] sections using AWK (portable)
+    awk -v key="$key" '
+      /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
+      /^\[/ { in_env=0 }
+      in_env && $0 ~ "^"key"[[:space:]]*=" {
+        sub("^"key"[[:space:]]*=[[:space:]]*", "")
+        sub("[[:space:]]*$", "")
+        print
+        exit
+      }
+    ' ".mise.toml"
   }
 
   # Helper: Check if _.path already exists in env sections
   has_existing_path() {
-    # Check both [env] and [[env]] sections for existing _.path
-    sed -n '/^\[env\]\|^\[\[env\]\]$/,/^\[/p' ".mise.toml" | \
-      grep -q "^[[:space:]]*_.path[[:space:]]*="
+    # Check both [env] and [[env]] sections using AWK (portable)
+    awk '
+      /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
+      /^\[/ { in_env=0 }
+      in_env && /^[[:space:]]*_.path[[:space:]]*=/ { found=1; exit }
+      END { exit !found }
+    ' ".mise.toml"
   }
 
   # Helper: Get existing _.path entries as a comma-separated string
   get_existing_paths() {
-    sed -n '/^\[env\]\|^\[\[env\]\]$/,/^\[/p' ".mise.toml" | \
-      grep "^[[:space:]]*_.path[[:space:]]*=" | \
-      head -1 | \
-      cut -d'=' -f2- | \
-      sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+    # Check both [env] and [[env]] sections using AWK (portable)
+    awk '
+      /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
+      /^\[/ { in_env=0 }
+      in_env && /^[[:space:]]*_.path[[:space:]]*=/ {
+        sub("^[[:space:]]*_.path[[:space:]]*=[[:space:]]*", "")
+        sub("[[:space:]]*$", "")
+        print
+        exit
+      }
+    ' ".mise.toml"
   }
 
   # Helper: Check if a specific path entry exists in the existing paths
