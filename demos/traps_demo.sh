@@ -8,10 +8,9 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-# Enable debug output for traps module
-export DEBUG="${DEBUG:-trap}"
-
 # Setup paths
+# Note: Set DEBUG=trap to see detailed debug output
+# export DEBUG="${DEBUG:-trap}"
 export E_BASH="${E_BASH:-.scripts}"
 
 # Load the traps module

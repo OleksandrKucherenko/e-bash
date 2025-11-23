@@ -13,6 +13,8 @@ eval "$(shellspec - -c) exit 1"
 
 export SCRIPT_DIR=".scripts"
 export E_BASH=".scripts"
+# Disable debug output for tests to avoid pollution
+export DEBUG=""
 
 Describe '_traps.sh nested loading:'
   Include ".scripts/_traps.sh"
@@ -23,7 +25,8 @@ Describe '_traps.sh nested loading:'
       cat > /tmp/test_trap_script_a.sh << 'EOF'
 #!/usr/bin/env bash
 export E_BASH="${E_BASH:-.scripts}"
-source "$E_BASH/_traps.sh"
+export DEBUG=""
+source "$E_BASH/_traps.sh" >/dev/null 2>&1
 
 cleanup_a() {
   echo "cleanup_a"
@@ -35,7 +38,8 @@ EOF
       cat > /tmp/test_trap_script_b.sh << 'EOF'
 #!/usr/bin/env bash
 export E_BASH="${E_BASH:-.scripts}"
-source "$E_BASH/_traps.sh"
+export DEBUG=""
+source "$E_BASH/_traps.sh" >/dev/null 2>&1
 
 cleanup_b() {
   echo "cleanup_b"
@@ -266,7 +270,8 @@ EOF
 if [[ "${LIB_DB_TRAP_LOADED}" != "yes" ]]; then
   export LIB_DB_TRAP_LOADED="yes"
   export E_BASH="${E_BASH:-.scripts}"
-  source "$E_BASH/_traps.sh"
+  export DEBUG=""
+  source "$E_BASH/_traps.sh" >/dev/null 2>&1
 
   db_cleanup() {
     echo "db_cleanup"

@@ -13,6 +13,8 @@ eval "$(shellspec - -c) exit 1"
 
 export SCRIPT_DIR=".scripts"
 export E_BASH=".scripts"
+# Disable debug output for tests to avoid pollution
+export DEBUG=""
 
 Describe '_traps.sh:'
   Include ".scripts/_traps.sh"

@@ -21,12 +21,6 @@ source "$E_BASH/_logger.sh"
 # shellcheck source=./_dependencies.sh
 source "$E_BASH/_dependencies.sh"
 
-# Initialize logger with trap tag
-logger trap "$@"
-
-# Bash version check - requires Bash 5.0+ for nameref support
-dependency bash "5.*.*" "brew install bash"
-
 # Global variable prefixes
 __TRAP_PREFIX="__TRAP_HANDLERS_SIG_"
 __TRAP_LEGACY_PREFIX="__TRAP_LEGACY_SIG_"
@@ -537,7 +531,8 @@ function _Trap::list_all_signals() {
   echo "${signals[@]}"
 }
 
-# Module loaded successfully
-printf:Trap "${cl_green}✓${cl_reset} Traps module loaded\n"
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+${__SOURCED__:+return}
 
-return 0
+logger trap "$@" # declare echo:Trap & printf:Trap functions
