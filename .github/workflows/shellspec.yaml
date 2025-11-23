@@ -27,16 +27,31 @@ jobs:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
 
+      - name: Detect Homebrew Path
+        id: brew_path
+        shell: bash
+        run: |
+          # Detect the correct Homebrew path based on architecture
+          if [ -d "/opt/homebrew" ]; then
+            echo "path=/opt/homebrew" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=/usr/local/Homebrew" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Cache Homebrew packages
         uses: actions/cache@v4
         with:
           path: |
+            ${{ steps.brew_path.outputs.path }}
             ~/Library/Caches/Homebrew
-            /usr/local/Homebrew
-            /opt/homebrew
           key: brew-${{ runner.os }}-v1
           restore-keys: |
             brew-${{ runner.os }}-
+
+      - name: Add Homebrew to PATH
+        shell: bash
+        run: |
+          echo "${{ steps.brew_path.outputs.path }}/bin" >> $GITHUB_PATH
 
       - name: Setup PATH for local binaries
         run: |
@@ -105,6 +120,12 @@ jobs:
           git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
           echo "Base branch ${{ github.base_ref }} fetched for coverage comparison"
 
+      - name: Detect Homebrew Path
+        id: brew_path
+        shell: bash
+        run: |
+          echo "path=/home/linuxbrew/.linuxbrew" >> "$GITHUB_OUTPUT"
+
       - name: Setup PATH for local binaries
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
@@ -113,7 +134,7 @@ jobs:
       - name: Cache Homebrew packages
         uses: actions/cache@v4
         with:
-          path: /home/linuxbrew/.linuxbrew
+          path: ${{ steps.brew_path.outputs.path }}
           key: brew-${{ runner.os }}-v1
           restore-keys: |
             brew-${{ runner.os }}-
@@ -122,22 +143,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
-      - name: Install Homebrew (required for dependency script)
+      - name: Install Homebrew (Linux only)
         run: |
           # Check if Homebrew is already installed (from cache)
-          if [ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+          if [ ! -x ${{ steps.brew_path.outputs.path }}/bin/brew ]; then
             echo "Installing Homebrew for Linux..."
-            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           else
             echo "Homebrew found in cache, skipping installation"
           fi
-          # Add Homebrew to PATH for current and future steps
-          echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
+
+      - name: Add Homebrew to PATH
+        shell: bash
+        run: |
+          echo "${{ steps.brew_path.outputs.path }}/bin" >> $GITHUB_PATH
           # Set up Homebrew environment variables
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-          echo "HOMEBREW_PREFIX=/home/linuxbrew/.linuxbrew" >> "$GITHUB_ENV"
-          echo "HOMEBREW_CELLAR=/home/linuxbrew/.linuxbrew/Cellar" >> "$GITHUB_ENV"
-          echo "HOMEBREW_REPOSITORY=/home/linuxbrew/.linuxbrew/Homebrew" >> "$GITHUB_ENV"
+          eval "$(${{ steps.brew_path.outputs.path }}/bin/brew shellenv)"
+          echo "HOMEBREW_PREFIX=${{ steps.brew_path.outputs.path }}" >> "$GITHUB_ENV"
+          echo "HOMEBREW_CELLAR=${{ steps.brew_path.outputs.path }}/Cellar" >> "$GITHUB_ENV"
+          echo "HOMEBREW_REPOSITORY=${{ steps.brew_path.outputs.path }}/Homebrew" >> "$GITHUB_ENV"
       - name: Install DIRENV
         run: |
           # Install direnv for Ubuntu (must be after Homebrew for dependency order)
@@ -154,7 +178,7 @@ jobs:
       - name: Setup project dependencies using DIRENV and CI auto-install mode
         run: |
           # Ensure Homebrew is in PATH for this step
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          eval "$(${{ steps.brew_path.outputs.path }}/bin/brew shellenv)"
           # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
