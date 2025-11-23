@@ -16,8 +16,9 @@ source "$E_BASH/_colors.sh"
 # shellcheck disable=SC1090 source=../.scripts/_logger.sh
 source "$E_BASH/_logger.sh"
 
-# Global DRY_RUN and SILENT, can be overridden per command with DRY_RUN_{SUFFIX}, SILENT_{SUFFIX}
+# Global DRY_RUN, UNDO_RUN and SILENT, can be overridden per command with DRY_RUN_{SUFFIX}, UNDO_RUN_{SUFFIX}, SILENT_{SUFFIX}
 export DRY_RUN=${DRY_RUN:-false}
+export UNDO_RUN=${UNDO_RUN:-false}
 export SILENT=${SILENT:-false}
 
 # Shared execution function
@@ -42,7 +43,7 @@ function dryrun:exec() {
 
 # Function to generate wrappers for given commands
 function dry-run() {
-  local cmd suffix dry_var silent_var
+  local cmd suffix dry_var undo_var silent_var
   while [ $# -gt 0 ]; do
     cmd="$1"
     shift
@@ -53,12 +54,17 @@ function dry-run() {
       suffix="_$(echo "$cmd" | tr '[:lower:]' '[:upper:]')"
     fi
     dry_var="DRY_RUN${suffix}"
+    undo_var="UNDO_RUN${suffix}"
     silent_var="SILENT${suffix}"
 
     # Generate run:{cmd}
     eval "
     function run:${cmd}() {
-      local is_silent=\${${silent_var}:-\${SILENT:-false}}
+      local is_dry=\${${dry_var}:-\${DRY_RUN:-false}} is_undo=\${${undo_var}:-\${UNDO_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
+      if [ \"\$is_dry\" = true ] || [ \"\$is_undo\" = true ]; then
+        echo:Dry \"${cmd} \$*\"
+        return 0
+      fi
       dryrun:exec Exec \"\$is_silent\" ${cmd} \"\$@\"
     }
     "
@@ -66,8 +72,8 @@ function dry-run() {
     # Generate dry:{cmd}
     eval "
     function dry:${cmd}() {
-      local is_dry=\${${dry_var}:-\${DRY_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
-      if [ \"\$is_dry\" = true ]; then
+      local is_dry=\${${dry_var}:-\${DRY_RUN:-false}} is_undo=\${${undo_var}:-\${UNDO_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
+      if [ \"\$is_dry\" = true ] || [ \"\$is_undo\" = true ]; then
         echo:Dry \"${cmd} \$*\"
         return 0
       fi
@@ -78,7 +84,11 @@ function dry-run() {
     # Generate rollback:{cmd} with undo:{cmd}
     eval "
     function rollback:${cmd}() {
-      local is_dry=\${${dry_var}:-\${DRY_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
+      local is_undo=\${${undo_var}:-\${UNDO_RUN:-false}} is_dry=\${${dry_var}:-\${DRY_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
+      if [ \"\$is_undo\" != true ]; then
+        echo:Rollback \"(dry) ${cmd} \$*\"
+        return 0
+      fi
       if [ \"\$is_dry\" = true ]; then
         echo:Rollback \"(dry) ${cmd} \$*\"
         return 0
@@ -94,7 +104,14 @@ function dry-run() {
 function rollback:func() {
   local func_name="$1"
   shift
-  local is_dry=${DRY_RUN:-false} is_silent=${SILENT:-false}
+  local is_undo=${UNDO_RUN:-false} is_dry=${DRY_RUN:-false} is_silent=${SILENT:-false}
+  if [ "$is_undo" != true ]; then
+    echo:Rollback "(dry-func): ${func_name} $*"
+    if type "$func_name" &>/dev/null; then
+      declare -f "$func_name" | tail -n +3 | head -n -1 | sed 's/^/    /' >&2
+    fi
+    return 0
+  fi
   if [ "$is_dry" = true ]; then
     echo:Rollback "(dry-func): ${func_name} $*"
     if type "$func_name" &>/dev/null; then

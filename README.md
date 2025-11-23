@@ -14,6 +14,7 @@
     - [Common(s) Functions And Inputs](#commons-functions-and-inputs)
     - [UI: Selector](#ui-selector)
     - [UI: Ask for Password](#ui-ask-for-password)
+    - [Dry-Run Wrapper System](#dry-run-wrapper-system)
   - [Semver - Semantic Versioning](#semver---semantic-versioning)
   - [Self-Update](#self-update)
     - [Troubleshooting](#troubleshooting)
@@ -272,6 +273,45 @@ source ".scripts/_commons.sh"
 echo -n "Enter password: "
 password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
+
+### Dry-Run Wrapper System
+
+Safe command execution with three-mode operation: normal, dry-run (preview), and undo/rollback. Provides automatic logging, exit status tracking, and flexible per-command configuration.
+
+```bash
+source "$E_BASH/_dryrun.sh"
+
+# Create wrappers for commands
+dry-run git docker kubectl
+
+# Normal mode - execute commands, rollback shows dry-run
+dry:git pull origin main
+dry:docker build -t app .
+rollback:kubectl delete deployment app  # Safe: shows dry-run
+
+# Dry-run mode - preview all operations
+DRY_RUN=true ./deploy.sh
+
+# Undo mode - execute rollbacks, block normal commands
+UNDO_RUN=true ./deploy.sh
+```
+
+**Three Execution Modes:**
+
+| Mode    | DRY_RUN | UNDO_RUN | Normal Commands | Rollback Commands |
+| ------- | ------- | -------- | --------------- | ----------------- |
+| Normal  | false   | false    | Execute         | Dry-run (safe)    |
+| Dry-run | true    | false    | Dry-run         | Dry-run           |
+| Undo    | false   | true     | Dry-run         | **Execute**       |
+
+**Features:**
+- ✅ Color-coded logging with exit status (`execute:`, `dry run:`, `undoing:`)
+- ✅ Command-specific overrides (`DRY_RUN_GIT=false`)
+- ✅ Silent mode support (`SILENT_GIT=true`)
+- ✅ Function-based rollbacks (`rollback:func cleanup_fn`)
+- ✅ Variable precedence: command-specific → global → default
+
+More details: [Dry-Run Wrapper System](docs/dryrun-wrapper.md), [Demo script](demos/demo.dryrun.modes.sh).
 
 ## Semver - Semantic Versioning
 
