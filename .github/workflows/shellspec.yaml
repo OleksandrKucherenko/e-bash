@@ -44,7 +44,7 @@ jobs:
           path: |
             ${{ steps.brew_path.outputs.path }}
             ~/Library/Caches/Homebrew
-          key: brew-${{ runner.os }}-v1
+          key: brew-${{ runner.os }}-${{ hashFiles('.envrc', '.github/workflows/shellspec.yaml') }}
           restore-keys: |
             brew-${{ runner.os }}-
 
@@ -135,7 +135,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.brew_path.outputs.path }}
-          key: brew-${{ runner.os }}-v1
+          key: brew-${{ runner.os }}-${{ hashFiles('.envrc', '.github/workflows/shellspec.yaml') }}
           restore-keys: |
             brew-${{ runner.os }}-
 
