@@ -49,7 +49,7 @@ jobs:
           path: |
             ${{ steps.brew_path.outputs.path }}
             ${{ steps.brew_path.outputs.cache_dir }}
-          key: brew-${{ runner.os }}-${{ hashFiles('.envrc', '.github/workflows/shellspec.yaml') }}
+          key: brew-${{ runner.os }}-${{ hashFiles('.envrc') }}
           restore-keys: |
             brew-${{ runner.os }}-
 
@@ -152,7 +152,7 @@ jobs:
           path: |
             ${{ steps.brew_path.outputs.path }}
             ${{ steps.brew_path.outputs.cache_dir }}
-          key: brew-${{ runner.os }}-${{ hashFiles('.envrc', '.github/workflows/shellspec.yaml') }}
+          key: brew-${{ runner.os }}-${{ hashFiles('.envrc') }}
           restore-keys: |
             brew-${{ runner.os }}-
 
