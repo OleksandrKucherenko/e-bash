@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-26
+## Last revisit: 2025-11-23
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -496,7 +496,7 @@ logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 # old version of function names
-alias now=time:now
+alias now='time:now'
 alias print_time_diff=time:diff
 alias validate_input=validate:input
 alias validate_yn_input=validate:input:yn
