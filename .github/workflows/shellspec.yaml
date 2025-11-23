@@ -26,6 +26,18 @@ jobs:
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew
+            /opt/homebrew
+          key: brew-${{ runner.os }}-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            brew-${{ runner.os }}-
+
       - name: Setup PATH for local binaries
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
@@ -97,14 +109,28 @@ jobs:
         run: |
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           mkdir -p "${HOME}/.local/bin"
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: /home/linuxbrew/.linuxbrew
+          key: brew-${{ runner.os }}-${{ hashFiles('.envrc') }}
+          restore-keys: |
+            brew-${{ runner.os }}-
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
       - name: Install Homebrew (required for dependency script)
         run: |
-          # Install Homebrew for Linux - required by .envrc dependencies
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          # Check if Homebrew is already installed (from cache)
+          if [ ! -x /home/linuxbrew/.linuxbrew/bin/brew ]; then
+            echo "Installing Homebrew for Linux..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          else
+            echo "Homebrew found in cache, skipping installation"
+          fi
           # Add Homebrew to PATH for current and future steps
           echo "/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin" >> "$GITHUB_PATH"
           # Set up Homebrew environment variables
