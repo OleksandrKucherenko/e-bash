@@ -14,6 +14,8 @@ env:
   HOMEBREW_NO_ENV_HINTS: 1
   # Enable CI auto-install mode for dependencies
   CI_E_BASH_INSTALL_DEPENDENCIES: 1
+  # Cache key hash for dependencies
+  ENV_HASH: ${{ hashFiles('.envrc') }}
 
 jobs:
   shellspec-macos:
@@ -49,7 +51,7 @@ jobs:
           path: |
             ${{ steps.brew_path.outputs.path }}
             ${{ steps.brew_path.outputs.cache_dir }}
-          key: brew-${{ runner.os }}-${{ hashFiles('.envrc') }}
+          key: brew-${{ runner.os }}-${{ env.ENV_HASH }}
           restore-keys: |
             brew-${{ runner.os }}-
 
@@ -152,7 +154,7 @@ jobs:
           path: |
             ${{ steps.brew_path.outputs.path }}
             ${{ steps.brew_path.outputs.cache_dir }}
-          key: brew-${{ runner.os }}-${{ hashFiles('.envrc') }}
+          key: brew-${{ runner.os }}-${{ env.ENV_HASH }}
           restore-keys: |
             brew-${{ runner.os }}-
 
