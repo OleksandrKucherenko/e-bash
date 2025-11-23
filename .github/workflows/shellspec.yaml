@@ -31,11 +31,16 @@ jobs:
         id: brew_path
         shell: bash
         run: |
-          # Detect the correct Homebrew path based on architecture
-          if [ -d "/opt/homebrew" ]; then
-            echo "path=/opt/homebrew" >> "$GITHUB_OUTPUT"
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "path=/home/linuxbrew/.linuxbrew" >> "$GITHUB_OUTPUT"
+            echo "cache_dir=/home/runner/.cache/Homebrew" >> "$GITHUB_OUTPUT"
           else
-            echo "path=/usr/local/Homebrew" >> "$GITHUB_OUTPUT"
+            if [ -d "/opt/homebrew" ]; then
+              echo "path=/opt/homebrew" >> "$GITHUB_OUTPUT"
+            else
+              echo "path=/usr/local/Homebrew" >> "$GITHUB_OUTPUT"
+            fi
+            echo "cache_dir=$HOME/Library/Caches/Homebrew" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Cache Homebrew packages
@@ -43,7 +48,7 @@ jobs:
         with:
           path: |
             ${{ steps.brew_path.outputs.path }}
-            ~/Library/Caches/Homebrew
+            ${{ steps.brew_path.outputs.cache_dir }}
           key: brew-${{ runner.os }}-${{ hashFiles('.envrc', '.github/workflows/shellspec.yaml') }}
           restore-keys: |
             brew-${{ runner.os }}-
@@ -124,7 +129,17 @@ jobs:
         id: brew_path
         shell: bash
         run: |
-          echo "path=/home/linuxbrew/.linuxbrew" >> "$GITHUB_OUTPUT"
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "path=/home/linuxbrew/.linuxbrew" >> "$GITHUB_OUTPUT"
+            echo "cache_dir=/home/runner/.cache/Homebrew" >> "$GITHUB_OUTPUT"
+          else
+            if [ -d "/opt/homebrew" ]; then
+              echo "path=/opt/homebrew" >> "$GITHUB_OUTPUT"
+            else
+              echo "path=/usr/local/Homebrew" >> "$GITHUB_OUTPUT"
+            fi
+            echo "cache_dir=$HOME/Library/Caches/Homebrew" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Setup PATH for local binaries
         run: |
@@ -134,7 +149,9 @@ jobs:
       - name: Cache Homebrew packages
         uses: actions/cache@v4
         with:
-          path: ${{ steps.brew_path.outputs.path }}
+          path: |
+            ${{ steps.brew_path.outputs.path }}
+            ${{ steps.brew_path.outputs.cache_dir }}
           key: brew-${{ runner.os }}-${{ hashFiles('.envrc', '.github/workflows/shellspec.yaml') }}
           restore-keys: |
             brew-${{ runner.os }}-
