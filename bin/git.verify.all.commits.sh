@@ -14,43 +14,11 @@ export ARGS_DEFINITION="-h,--help -v,--version=:0.1.0 --debug=DEBUG:* --branch -
 # Setup logging (following user's e-bash logging guidelines)
 DEBUG=${DEBUG:-"-debug,verify,success,error,warning,info"}
 
-# Ensure logging functions are available even without e-bash environment
-if ! declare -f echo:Info >/dev/null 2>&1; then
-  function echo:Info() { echo "$*"; }
-fi
-if ! declare -f echo:Success >/dev/null 2>&1; then
-  function echo:Success() { echo "$*"; }
-fi
-if ! declare -f echo:Error >/dev/null 2>&1; then
-  function echo:Error() { echo "$*" >&2; }
-fi
-if ! declare -f echo:Warning >/dev/null 2>&1; then
-  function echo:Warning() { echo "$*" >&2; }
-fi
-if ! declare -f echo:Verify >/dev/null 2>&1; then
-  function echo:Verify() { echo "$*"; }
-fi
-if ! declare -f echo:Progress >/dev/null 2>&1; then
-  function echo:Progress() { echo "$*"; }
-fi
-if ! declare -f echo:Debug >/dev/null 2>&1; then
-  function echo:Debug() { :; }
-fi
-
 # shellcheck source=../.scripts/_colors.sh
 # shellcheck source=../.scripts/_logger.sh
 # shellcheck source=../.scripts/_commons.sh
 # shellcheck source=../.scripts/_arguments.sh
 source "${E_BASH}/_arguments.sh" 2>/dev/null || true
-
-# Setup loggers with color-coded prefixes (only if e-bash is available)
-if command -v logger:init >/dev/null 2>&1; then
-  logger:init verify " "
-  logger:init success "${cl_green}[Success]${cl_reset} "
-  logger:init error " "
-  logger:init warning "${cl_yellow}[Warning]${cl_reset} "
-  logger:init debug "${cl_gray}[Debug]${cl_reset} "
-fi
 
 # Source the conventional commits validation script
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
@@ -143,12 +111,12 @@ function reword_commit() {
         # Create a temporary script for git rebase
         local temp_script
         temp_script=$(mktemp)
-        echo "#!/bin/bash" > "$temp_script"
-        echo "if [ \$GIT_COMMIT = $commit_hash ]; then" >> "$temp_script"
-        echo "    echo \"$new_message\"" >> "$temp_script"
-        echo "else" >> "$temp_script"
-        echo "    cat" >> "$temp_script"
-        echo "fi" >> "$temp_script"
+        echo "#!/bin/bash" >"$temp_script"
+        echo "if [ \$GIT_COMMIT = $commit_hash ]; then" >>"$temp_script"
+        echo "    echo \"$new_message\"" >>"$temp_script"
+        echo "else" >>"$temp_script"
+        echo "    cat" >>"$temp_script"
+        echo "fi" >>"$temp_script"
         chmod +x "$temp_script"
 
         # Use filter-repo or filter-branch to reword the commit
@@ -220,9 +188,9 @@ function patch_commits() {
     local fixed_count=0
     local total_count=${#failed_commits[@]}
 
-    for ((i=0; i<total_count; i++)); do
+    for ((i = 0; i < total_count; i++)); do
         local commit_hash="${failed_commits[i]}"
-        echo:Progress "Processing commit $((i+1))/$total_count: ${cl_yellow}${commit_hash:0:8}${cl_reset}"
+        echo:Progress "Processing commit $((i + 1))/$total_count: ${cl_yellow}${commit_hash:0:8}${cl_reset}"
 
         reword_commit "$commit_hash"
         echo
@@ -393,15 +361,35 @@ function show_help() {
     } >&1
 }
 
-# Parse command line arguments
-[ -n "$version" ] && echo "$version" && exit 0
-[ -n "$help" ] && show_help && exit 0
+# DEBUG: Temporarily comment out source guard execution for debugging
+# if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+#     echo "DEBUG: Script would execute here"
+# fi
 
-# Check if we're in a git repository
-if ! git rev-parse --git-dir >/dev/null 2>&1; then
-    echo:Error "Not in a git repository"
-    exit 1
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+# DO NOT allow execution of code bellow those line in shellspec tests
+${__SOURCED__:+return}
+
+# Setup loggers with color-coded prefixes (only if e-bash is available)
+logger:init verify " "
+logger:init success "${cl_green}[Success]${cl_reset} "
+logger:init error " "
+logger:init warning "${cl_yellow}[Warning]${cl_reset} "
+logger:init debug "${cl_gray}[Debug]${cl_reset} "
+
+# Source guard - only execute when run directly, not when sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    # Parse command line arguments
+    [ -n "$version" ] && echo "$version" && exit 0
+    [ -n "$help" ] && show_help && exit 0
+
+    # Check if we're in a git repository
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo:Error "Not in a git repository"
+        exit 1
+    fi
+
+    # Run main function
+    main "$@"
 fi
-
-# Run main function
-main "$@"
