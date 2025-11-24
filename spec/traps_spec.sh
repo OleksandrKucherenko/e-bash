@@ -155,8 +155,8 @@ Describe '_traps.sh:'
     list_handler_b() { echo "b"; }
 
     It 'lists handlers for specific signal'
-      trap:on list_handler_a EXIT
-      trap:on list_handler_b EXIT
+      trap:on list_handler_a EXIT 2>/dev/null
+      trap:on list_handler_b EXIT 2>/dev/null
       When call trap:list EXIT
       The output should include "list_handler_a"
       The output should include "list_handler_b"
@@ -168,7 +168,7 @@ Describe '_traps.sh:'
     End
 
     It 'lists all signals when no argument provided'
-      trap:on list_handler_a INT
+      trap:on list_handler_a INT 2>/dev/null
       When call trap:list
       The output should include "INT"
     End
@@ -179,9 +179,9 @@ Describe '_traps.sh:'
     clear_handler_b() { echo "b"; }
 
     It 'clears all handlers for signal'
-      trap:on clear_handler_a EXIT
-      trap:on clear_handler_b EXIT
-      trap:clear EXIT
+      trap:on clear_handler_a EXIT 2>/dev/null
+      trap:on clear_handler_b EXIT 2>/dev/null
+      trap:clear EXIT 2>/dev/null
 
       # After clear, list shows signal with empty handler list
       When call trap:list EXIT
@@ -207,10 +207,10 @@ Describe '_traps.sh:'
     End
 
     It 'pops and restores trap state'
-      trap:on push_handler_outer EXIT
-      trap:push EXIT
-      trap:on push_handler_inner EXIT
-      trap:pop EXIT
+      trap:on push_handler_outer EXIT 2>/dev/null
+      trap:push EXIT 2>/dev/null
+      trap:on push_handler_inner EXIT 2>/dev/null
+      trap:pop EXIT 2>/dev/null
 
       # After pop, only outer should remain
       When call trap:list EXIT
@@ -229,17 +229,17 @@ Describe '_traps.sh:'
       h2() { echo "2"; }
       h3() { echo "3"; }
 
-      trap:on h1 EXIT
-      trap:push EXIT
+      trap:on h1 EXIT 2>/dev/null
+      trap:push EXIT 2>/dev/null
 
-      trap:on h2 EXIT
-      trap:push EXIT
+      trap:on h2 EXIT 2>/dev/null
+      trap:push EXIT 2>/dev/null
 
-      trap:on h3 EXIT
+      trap:on h3 EXIT 2>/dev/null
 
       # Pop back twice
-      trap:pop EXIT
-      trap:pop EXIT
+      trap:pop EXIT 2>/dev/null
+      trap:pop EXIT 2>/dev/null
 
       # Only h1 should remain
       When call trap:list EXIT
@@ -295,11 +295,11 @@ Describe '_traps.sh:'
     global_handler() { echo "global"; }
 
     It 'creates scoped trap section'
-      trap:on global_handler EXIT
+      trap:on global_handler EXIT 2>/dev/null
 
-      trap:scope:begin EXIT
-      trap:on scope_handler EXIT
-      trap:scope:end EXIT
+      trap:scope:begin EXIT 2>/dev/null
+      trap:on scope_handler EXIT 2>/dev/null
+      trap:scope:end EXIT 2>/dev/null
 
       # After scope end, only global should remain
       When call trap:list EXIT
@@ -311,21 +311,21 @@ Describe '_traps.sh:'
   Describe 'Signal normalization:'
     It 'normalizes SIGTERM to TERM'
       norm_term() { echo "term"; }
-      trap:on norm_term SIGTERM
+      trap:on norm_term SIGTERM 2>/dev/null
       When call trap:list TERM
       The output should include "norm_term"
     End
 
     It 'normalizes lowercase to uppercase'
       norm_hup() { echo "hup"; }
-      trap:on norm_hup hup
+      trap:on norm_hup hup 2>/dev/null
       When call trap:list HUP
       The output should include "norm_hup"
     End
 
     It 'normalizes numeric signals using kill -l'
       norm_int() { echo "int"; }
-      trap:on norm_int 2  # SIGINT is typically signal 2
+      trap:on norm_int 2 2>/dev/null  # SIGINT is typically signal 2
       When call trap:list INT
       The output should include "norm_int"
     End
@@ -353,9 +353,9 @@ Describe '_traps.sh:'
       # Set a legacy trap before loading our module
       trap 'echo legacy_trap' USR1
 
-      # Initialize our handler
+      # Initialize our handler (suppress logger output during setup)
       legacy_test() { echo "new_handler"; }
-      trap:on legacy_test USR1
+      trap:on legacy_test USR1 2>/dev/null
 
       # List should show both
       When call trap:list USR1
