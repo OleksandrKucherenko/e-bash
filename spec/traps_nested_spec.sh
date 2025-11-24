@@ -18,12 +18,13 @@ export DEBUG=""
 
 # Mock logger functions to prevent "command not found" errors
 # But still produce output so tests can verify messages
+# Note: Logger functions output to STDERR, not STDOUT
 Mock printf:Trap
-  printf "$@"
+  printf "$@" >&2
 End
 
 Mock echo:Trap
-  echo "$@"
+  echo "$@" >&2
 End
 
 Describe '_traps.sh nested loading:'
