@@ -263,7 +263,16 @@ function trap:restore() {
 #          trap:push  # all active signals
 #
 function trap:push() {
-  local signals=("${@:-$(_Trap::list_all_signals)}")
+  local signals=()
+
+  if [[ $# -eq 0 ]]; then
+    # No arguments - snapshot all active signals
+    # Read into array properly (word splitting intended)
+    signals=($(_Trap::list_all_signals))
+  else
+    # Specific signals provided
+    signals=("$@")
+  fi
 
   __TRAP_STACK_LEVEL=$((__TRAP_STACK_LEVEL + 1))
   local stack_var="${__TRAP_STACK_PREFIX}${__TRAP_STACK_LEVEL}"

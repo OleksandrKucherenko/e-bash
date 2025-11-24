@@ -235,6 +235,47 @@ Describe '_traps.sh:'
       The output should not include "h2"
       The output should not include "h3"
     End
+
+    It 'snapshots all active signals when called without arguments'
+      multi_sig_a() { echo "a"; }
+      multi_sig_b() { echo "b"; }
+      multi_sig_c() { echo "c"; }
+
+      # Register handlers for multiple signals
+      trap:on multi_sig_a EXIT
+      trap:on multi_sig_b INT
+      trap:on multi_sig_c TERM
+
+      # Push without arguments (should snapshot all)
+      trap:push
+
+      # Modify all signals
+      new_handler() { echo "new"; }
+      trap:on new_handler EXIT
+      trap:on new_handler INT
+      trap:on new_handler TERM
+
+      # Pop should restore all signals
+      trap:pop
+
+      # Verify original handlers restored for all signals
+      exit_list=$(trap:list EXIT)
+      int_list=$(trap:list INT)
+      term_list=$(trap:list TERM)
+
+      # Check EXIT restored
+      echo "$exit_list" | grep -q "multi_sig_a" || exit 1
+      echo "$exit_list" | grep -q "new_handler" && exit 1
+
+      # Check INT restored
+      echo "$int_list" | grep -q "multi_sig_b" || exit 1
+      echo "$int_list" | grep -q "new_handler" && exit 1
+
+      # Check TERM restored
+      When call trap:list TERM
+      The output should include "multi_sig_c"
+      The output should not include "new_handler"
+    End
   End
 
   Describe 'trap:scope:begin and trap:scope:end:'
