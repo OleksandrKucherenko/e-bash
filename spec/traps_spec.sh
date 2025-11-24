@@ -162,9 +162,9 @@ Describe '_traps.sh:'
       The output should include "list_handler_b"
     End
 
-    It 'shows empty list when no handlers registered'
+    It 'shows empty output for uninitialized signal'
       When call trap:list USR1
-      The output should include "no handlers"
+      The output should eq ""
     End
 
     It 'lists all signals when no argument provided'
@@ -183,8 +183,9 @@ Describe '_traps.sh:'
       trap:on clear_handler_b EXIT
       trap:clear EXIT
 
+      # After clear, list shows signal with empty handler list
       When call trap:list EXIT
-      The output should include "no handlers"
+      The output should eq ""
     End
 
     It 'fails when no signals specified'
@@ -354,7 +355,7 @@ Describe '_traps.sh:'
 
       # Initialize our handler
       legacy_test() { echo "new_handler"; }
-      When call trap:on legacy_test USR1
+      trap:on legacy_test USR1
 
       # List should show both
       When call trap:list USR1

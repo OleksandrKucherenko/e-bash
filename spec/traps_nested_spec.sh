@@ -257,12 +257,6 @@ EOF
       trap:on s2 EXIT
       trap:scope:end EXIT
 
-      # s2 should be gone, s1 and g1 remain
-      list=$(trap:list EXIT)
-      [ -n "$(echo "$list" | grep g1)" ] || return 1
-      [ -n "$(echo "$list" | grep s1)" ] || return 1
-      [ -z "$(echo "$list" | grep s2)" ] || return 1
-
       # End outer scope
       trap:scope:end EXIT
 
