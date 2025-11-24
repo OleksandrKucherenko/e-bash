@@ -895,7 +895,381 @@ Use: tail -n +M  # Where M = total_lines - N + 1
 Use: sed 's/old/new/' file > temp && mv temp file
 ```
 
-### Case Study 3: Recurring ShellSpec Timing Bug
+### Case Study 3: Advanced Mock Strategy for Complex Logger Systems
+
+#### The Challenge
+
+**Problem:** Testing modules that use sophisticated logger systems with multiple tag-based output destinations, color formatting, and mixed stdout/stderr routing.
+
+**Real Example:** The `_dryrun.sh` module uses a complex logger system:
+- Different logger tags (Exec, Dry, Rollback, etc.)
+- Mixed output destinations (stdout for dry-run, stderr for execution)
+- Color codes for different message types
+- Conditional output based on environment variables
+
+#### The Discovery Process
+
+1. **Initial Approach:** Simple mocking failed because logger functions have complex behavior
+2. **Analysis:** Identified that each logger tag needs separate mocking strategy
+3. **Solution Development:** Created comprehensive mock patterns that match actual logger behavior
+
+#### The Unique Mock Strategy
+
+**Comprehensive Logger Mocking Pattern:**
+```bash
+# Mock execution logger (outputs to stderr)
+Mock printf:Exec
+  printf "$@" >&2  # Match actual behavior
+End
+
+Mock echo:Exec
+  echo "$@" >&2   # Match actual behavior
+End
+
+# Mock dry-run logger (outputs to stdout)
+Mock printf:Dry
+  printf "$@"     # Output to stdout for dry run messages
+End
+
+Mock echo:Dry
+  echo "$@"       # Output to stdout for dry run messages
+End
+
+# Mock rollback logger (mixed output)
+Mock printf:Rollback
+  printf "$@" >&2  # Status messages to stderr
+End
+
+Mock echo:Rollback
+  echo "$@"        # Dry-run messages to stdout
+End
+
+# Mock log output function (pass-through)
+Mock log:Output
+  cat  # Pass through the output as expected by tests
+End
+```
+
+**Color Variable Isolation:**
+```bash
+# Mock color variables to avoid dependency on _colors.sh
+BeforeAll "export cl_red='' cl_green='' cl_cyan='' cl_reset='' cl_grey='' cl_gray=''"
+```
+
+#### Key Insights Gained
+
+**1. Match Output Destinations Exactly**
+- **Critical:** Mocks must replicate the exact output routing (stdout vs stderr)
+- **Pattern:** Study actual function behavior to determine output destinations
+- **Why Important:** Tests verify output content and destination routing
+
+**2. Mock Each Logger Tag Separately**
+- **Pattern:** `printf:Tag`, `echo:Tag` for each logger tag used
+- **Benefit:** Enables testing of tag-specific behavior
+- **Example:** `printf:Exec`, `printf:Dry`, `printf:Rollback`
+
+**3. Handle Dependency Isolation**
+- **Pattern:** Mock external dependencies like color variables
+- **Benefit:** Tests run without loading entire dependency chain
+- **Technique:** `BeforeAll "export cl_red='' cl_green=''"`
+
+#### Advanced Application: Testing Dynamic Function Behavior
+
+**Testing Generated Functions:**
+```bash
+It "creates wrapper functions with correct behavior"
+  When call dry-run "echo" "CUSTOM"
+
+  # Verify function existence
+  The function "run:echo" should be defined
+  The function "dry:echo" should be defined
+  The function "rollback:echo" should be defined
+End
+
+It "respects per-command environment variables"
+  BeforeCall "export DRY_RUN_ECHO=true"
+  When call run:echo "test"
+
+  # Should not execute, just log
+  The function should be called
+  The output should include "echo test"
+End
+```
+
+#### Why This Experience is Valuable
+
+**1. Complex System Testing:** Shows how to test modules with sophisticated internal systems
+**2. Output Routing Verification:** Demonstrates testing of stdout/stderr routing behavior
+**3. Dependency Isolation:** Provides patterns for testing without full dependency chain
+**4. Dynamic Code Testing:** Enables testing of eval-generated and dynamic functions
+
+#### Applicability to Other Projects
+
+**When to Use This Pattern:**
+- Modules with complex logging/output systems
+- Scripts that generate functions dynamically
+- Code with multiple output destinations
+- Projects with tag-based logging systems
+- Testing environment-specific behavior
+
+**Adaptation Guidelines:**
+- Study actual function behavior to determine output patterns
+- Create mocks that match exact output routing
+- Isolate color/formatting dependencies
+- Test both function generation and execution behavior
+
+### Case Study 4: Cross-Platform ANSI Color Handling
+
+#### The Challenge
+
+**Problem:** Tests failing due to ANSI color codes in output that differ between platforms and terminals.
+
+**Real Examples:**
+- Version scripts output colored text in production
+- Logger systems add color codes based on terminal capabilities
+- Different platforms handle ANSI escape sequences differently
+
+**Test Failures:**
+```
+expected "version: 1.0.0"
+got "version: \x1B[32m1.0.0\x1B[0m"
+```
+
+#### The Discovery Process
+
+1. **Platform Testing:** Identified that color codes appear differently on Linux vs macOS
+2. **Terminal Detection:** Found scripts that add colors only when connected to TTY
+3. **Solution Research:** Developed multiple approaches to handle ANSI codes consistently
+
+#### Two Proven Solutions
+
+**Solution 1: Pre-Processing Color Stripping**
+```bash
+# Define helper functions to strip ANSI escape sequences
+no_colors_stdout() {
+  echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '
+}
+
+no_colors_stderr() {
+  echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '
+}
+```
+
+**Solution 2: Environment Variable Control**
+```bash
+# Disable colors via environment
+It 'disables colors in output'
+  NO_COLOR=1
+  When call my_command
+  The output should not include pattern '\x1B\['
+End
+```
+
+#### Application in Tests
+
+**Using Helper Functions:**
+```bash
+It 'outputs version without colors'
+  When run ./version.sh
+  The result of function no_colors_stdout should include "1.0.0"
+End
+
+It 'outputs error message without colors'
+  When run ./script.sh invalid
+  The result of function no_colors_stderr should include "error"
+End
+```
+
+#### Why This Experience is Valuable
+
+**1. Cross-Platform Consistency:** Ensures tests work regardless of color support
+**2. Output Normalization:** Provides predictable test assertions
+**3. Terminal Independence:** Tests work in CI/CD without TTY
+**4. Multiple Approaches:** Offers flexibility for different scenarios
+
+#### Best Practices Established
+
+**1. Choose Approach Based on Need:**
+- **Helper functions:** For precise control and testing both colored and uncolored output
+- **Environment variables:** For completely disabling colors in tests
+
+**2. Comprehensive Regex Pattern:**
+```bash
+# This pattern handles most ANSI escape sequences:
+\x1B\[[0-9;]*[A-Za-z]  # CSI sequences (colors, formatting)
+\x1B\([A-Z]           # ESC sequences (alternate character sets)
+\x0F                  # Shift Out (control character)
+```
+
+**3. Test Both Scenarios When Possible:**
+```bash
+It 'shows colors in terminal'
+  When run ./script.sh
+  The output should include pattern '\x1B\['  # Verify colors present
+End
+
+It 'hides colors when NO_COLOR=1'
+  NO_COLOR=1
+  When run ./script.sh
+  The output should not include pattern '\x1B\['
+End
+```
+
+### Case Study 5: Git Repository Simulation for Testing Git-Dependent Scripts
+
+#### The Challenge
+
+**Problem:** Testing scripts that require realistic git environments - including commits, tags, branches, and remote configurations - without using actual network resources or affecting the real repository.
+
+**Real Example:** The `install.e-bash.sh` script needs:
+- Git repository with commit history
+- Version tags for semantic versioning
+- Remote origin configuration
+- Branch structure (e-bash-scripts branch)
+- File staging and commit capabilities
+
+#### The Discovery Process
+
+1. **Manual Testing:** Initially tested in real repositories, causing side effects
+2. **Isolation Need:** Realized tests required isolated git environments
+3. **Pattern Development:** Created systematic approach to git repository simulation
+
+#### Complete Git Repository Simulation Pattern
+
+**Infrastructure Setup:**
+```bash
+% TEST_DIR: "$SHELLSPEC_TMPBASE/tmprepo"
+
+temp_repo() {
+  mkdir -p "$TEST_DIR" || true
+  cd "$TEST_DIR" || exit 1
+}
+
+cleanup_temp_repo() {
+  rm -rf "$TEST_DIR"
+}
+```
+
+**Git Environment Setup:**
+```bash
+git_init() { git init -q; }
+git_config_user() { git config --local user.name "Test User"; }
+git_config_email() { git config --local user.email "test@example.com"; }
+git_config_no_signing() { git config --local commit.gpgsign false; }
+git_config() { git_config_user && git_config_email && git_config_no_signing; }
+
+# Branch and remote setup
+git_master_to_main() { git branch -m main; }
+git_add_bindir() { mkdir bin && touch bin/.gitkeep && git add bin/.gitkeep && git commit --amend -q --no-edit; }
+```
+
+**Realistic Repository State Simulation:**
+```bash
+mock_install() {
+  # Create .scripts directory with actual e-bash scripts
+  mkdir -p .scripts
+  cp -r "$SHELLSPEC_PROJECT_ROOT/.scripts/"* .scripts/ 2>/dev/null || true
+
+  # Add .scripts to git (simulating real installation)
+  git add .scripts
+  git commit --no-gpg-sign -m "Install e-bash scripts" -q 2>/dev/null || git commit -m "Install e-bash scripts" -q
+
+  # Create version tags for semantic versioning tests
+  git tag v1.0.0 2>/dev/null || true
+
+  # Set up git remote as the install script would expect
+  git remote add e-bash https://github.com/OleksandrKucherenko/e-bash.git 2>/dev/null || true
+
+  # Create e-bash-scripts branch pointing to the tagged commit
+  git branch e-bash-scripts 2>/dev/null || true
+}
+```
+
+**Test Usage Pattern:**
+```bash
+Describe 'bin/install.e-bash.sh'
+  Before 'temp_repo; git_init; git_config; cp_install'
+  After 'cleanup_temp_repo'
+
+  It 'should install latest version successfully'
+    BeforeCall 'mock_install'
+    When run ./install.e-bash.sh install
+
+    The status should be success
+    The path .scripts should be directory
+    The file .scripts/_logger.sh should be file
+  End
+End
+```
+
+#### Advanced Git Scenarios
+
+**Testing Version Operations:**
+```bash
+# Functions to simulate different version states
+install_latest() { ./install.e-bash.sh install 2>/dev/null >/dev/null; }
+install_alpha() { ./install.e-bash.sh install v1.0.1-alpha.1 2>/dev/null >/dev/null; }
+install_stable() { ./install.e-bash.sh install v1.0.0 2>/dev/null >/dev/null; }
+
+# Global installation with temp HOME
+install_global() { HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null; }
+```
+
+**Testing Rollback Scenarios:**
+```bash
+# Simulate multiple commits for rollback testing
+git_first_commit() { (git add . && git commit -m "Initial commit"); }
+git_next_commit() { (git add . && git commit -m "Next commit${1:-" $(date)"}"); }
+git_create_tag() { git tag "$1"; }
+```
+
+#### Key Insights Gained
+
+**1. Complete Environment Isolation**
+- **Critical:** Use temporary directories completely separate from project
+- **Pattern:** `$SHELLSPEC_TMPBASE/tmprepo` for test-specific git repos
+- **Benefit:** No side effects on actual development repository
+
+**2. Realistic Git State Simulation**
+- **Commits:** Create actual commit history for version detection
+- **Tags:** Add version tags to test semantic versioning
+- **Remotes:** Configure fake remotes for git operations
+- **Branches:** Create expected branch structure
+
+**3. Performance Optimization**
+- **Quiet Operations:** Use `-q` flag to avoid noisy output
+- **Error Suppression:** Redirect output when appropriate
+- **Conditional Operations:** Use `|| true` for operations that might fail
+
+**4. Script-Specific Requirements**
+- **Study Target Script:** Understand what git state the script expects
+- **Minimal Setup:** Create only what's necessary for tests
+- **Consistent Naming:** Use clear, descriptive helper function names
+
+#### Why This Experience is Valuable
+
+**1. Realistic Testing:** Tests scripts in authentic git environments
+**2. Network Independence:** No dependency on external git repositories
+**3. Deterministic Results:** Controlled, reproducible test conditions
+**4. Comprehensive Coverage:** Can test various git states and scenarios
+
+#### Applicability to Other Projects
+
+**When to Use This Pattern:**
+- Testing git hooks or git-based automation
+- Scripts that analyze git history or tags
+- Installation scripts that work with git repositories
+- CI/CD pipeline testing
+- Version management tools
+- Release automation scripts
+
+**Adaptation Guidelines:**
+- Analyze what git state your script requires
+- Create minimal setup functions for your needs
+- Use temporary directories for isolation
+- Test both success and failure scenarios
+
+### Case Study 6: Recurring ShellSpec Timing Bug
 
 #### The Third Application of the Same Fix
 
@@ -1205,6 +1579,9 @@ fi
 5. **Use ShellSpec debugging tools** - `--xtrace`, `--dry-run`, `--focus` are invaluable
 6. **Isolate test environments** - Prevent test interference with proper setup/teardown
 7. **Test cross-platform compatibility** - GNU vs BSD tool differences can cause mysterious failures
+8. **Master complex mocking strategies** - Match exact output routing for sophisticated systems
+9. **Handle ANSI color codes consistently** - Strip or disable colors for cross-platform tests
+10. **Simulate realistic git environments** - Create isolated git repos for testing git-dependent scripts
 
 ### Universal Testing Principles:
 1. **Manual verification first** - Always reproduce issues outside the test framework
@@ -1227,8 +1604,10 @@ fi
 **Last Updated:** 2025-11-24
 **Context:** This guide represents the combined experience from:
 1. Systematic _dryrun.sh module testing implementation with comprehensive mock strategies and cross-platform compatibility
-2. Debugging 4 failing ShellSpec tests discovering unique execution order, timing patterns, and macOS compatibility issues
-3. Real-world troubleshooting of context-dependent script behavior and help message detection bugs
-4. Cross-platform compatibility debugging identifying GNU vs BSD tool differences
+2. Analysis of 8 spec files identifying unique testing patterns including advanced mocking, git simulation, and ANSI color handling
+3. Debugging 4 failing ShellSpec tests discovering unique execution order, timing patterns, and macOS compatibility issues
+4. Real-world troubleshooting of context-dependent script behavior and help message detection bugs
+5. Cross-platform compatibility debugging identifying GNU vs BSD tool differences
+6. Development of comprehensive testing strategies for complex logger systems, git-dependent scripts, and dynamic function generation
 
-**Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns and debugging techniques.
+**Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns, advanced mocking strategies, and debugging techniques.
