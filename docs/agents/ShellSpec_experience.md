@@ -777,7 +777,125 @@ cat install.e-bash.sh | bash -s -- --help
   - Piped execution: `$0` = interpreter name (`bash`)
   - Source execution: `$0` = calling script path
 
-### Case Study 2: Recurring ShellSpec Timing Bug
+### Case Study 2: macOS Compatibility Issue - BSD vs GNU Tools
+
+#### The Issue
+
+**Test Failure:**
+```
+not ok 99 - _dryrun.sh rollback:func function Should display function body when function exists and in dry mode # FAILED
+# (in specfile spec/dryrun_spec.sh, line 408)
+# When call rollback:func test_function
+# The error should include This is a test
+#
+#   expected "head: illegal line count -- -1" to include "This is a test"
+#
+```
+
+**Expected Behavior:** The `rollback:func` function should display the function body when a function exists and dry run mode is enabled.
+
+**Actual Behavior:** Test failed with `head: illegal line count -- -1` error instead of showing the function body.
+
+#### The Discovery Process
+
+1. **Initial Analysis:** Error message indicated `head` command failure with negative line count
+2. **Root Cause Investigation:** Found usage of `head -n -1` in `.scripts/_dryrun.sh:111` and `:118`
+3. **Platform Testing:** Verified that `head -n -1` works on GNU/Linux but fails on macOS BSD head
+
+#### The Unique Bug
+
+**Faulty Code:**
+```bash
+declare -f "$func_name" | tail -n +3 | head -n -1 | sed 's/^/    /' >&2
+```
+
+**The Problem:** The `head -n -1` syntax is GNU-specific and means "all lines except the last one." macOS BSD `head` doesn't support negative line numbers, causing the error.
+
+**Platform Differences:**
+- **GNU head (Linux):** `head -n -1` → Removes last line (supported)
+- **BSD head (macOS):** `head -n -1` → Error: "illegal line count -- -1" (not supported)
+
+**Debugging Technique:**
+```bash
+# Test the difference directly
+echo -e "line1\nline2\nline3" | head -n -1  # Works on Linux, fails on macOS
+echo -e "line1\nline2\nline3" | sed '$d'      # Works on both platforms
+```
+
+#### The Fix
+
+**Cross-Platform Solution:**
+```bash
+# Replace GNU-specific head -n -1 with portable sed '$d'
+declare -f "$func_name" | tail -n +3 | sed '$d' | sed 's/^/    /' >&2
+```
+
+**Why This Works:**
+- `sed '$d'` deletes the last line and works on both GNU and BSD sed
+- Maintains the exact same functionality: "show function body without first and last lines"
+- No dependency on GNU-specific tool features
+
+#### Key Lessons Learned
+
+**1. Always Test Cross-Platform Compatibility**
+- **GNU tools:** Often have extended features not available on BSD/macOS
+- **BSD tools:** More restrictive but portable across platforms
+- **Assumption:** Never assume GNU-specific features are available
+
+**2. Common GNU vs BSD Differences to Watch**
+```bash
+# GNU-only (fails on macOS):
+head -n -1          # Negative line counts
+tail -n +2          # Positive offsets (sometimes works differently)
+sed -i 's/old/new/' # In-place editing (different syntax on BSD)
+
+# Cross-platform alternatives:
+sed '$d'            # Delete last line
+sed '1d'            # Delete first line
+sed 's/old/new/' | sponge  # Use sponge for in-place like behavior
+```
+
+**3. Systematic Cross-Platform Testing Strategy**
+```bash
+# Identify potentially problematic commands
+grep -r "head -n -" .scripts/
+grep -r "tail -n +" .scripts/
+grep -r "sed -i" .scripts/
+
+# Test alternatives on both platforms
+test_portable_command() {
+  local input="line1\nline2\nline3"
+  echo -e "$input" | command_that_might_fail
+  echo -e "$input" | portable_alternative
+}
+```
+
+**4. Documentation and Prevention**
+- Document platform-specific requirements in README
+- Add cross-platform compatibility testing to CI
+- Use portable alternatives by default, GNU features only when necessary
+
+#### Prevention Checklist
+
+**Before Using GNU-Specific Features:**
+- [ ] Is this feature essential for functionality?
+- [ ] Is there a portable alternative?
+- [ ] Have we tested on target platforms?
+- [ ] Is the platform dependency documented?
+
+**Common Portable Alternatives:**
+```bash
+# Instead of: head -n -N (remove last N lines)
+Use: sed -e :a -e '$d;N;2,$ba' -e 'P;D'  # Complex but portable
+
+# Instead of: head -n +N (skip first N lines)
+Use: tail -n +M  # Where M = total_lines - N + 1
+
+# Instead of: sed -i (in-place edit)
+Use: sed 's/old/new/' file > temp && mv temp file
+```
+
+### Case Study 3: Recurring ShellSpec Timing Bug
 
 #### The Third Application of the Same Fix
 
@@ -1086,6 +1204,7 @@ fi
 4. **One evaluation per example** - Chain commands instead of multiple `When run`
 5. **Use ShellSpec debugging tools** - `--xtrace`, `--dry-run`, `--focus` are invaluable
 6. **Isolate test environments** - Prevent test interference with proper setup/teardown
+7. **Test cross-platform compatibility** - GNU vs BSD tool differences can cause mysterious failures
 
 ### Universal Testing Principles:
 1. **Manual verification first** - Always reproduce issues outside the test framework
@@ -1108,7 +1227,8 @@ fi
 **Last Updated:** 2025-11-24
 **Context:** This guide represents the combined experience from:
 1. Systematic _dryrun.sh module testing implementation with comprehensive mock strategies and cross-platform compatibility
-2. Debugging 3 failing ShellSpec tests discovering unique execution order and timing patterns
+2. Debugging 4 failing ShellSpec tests discovering unique execution order, timing patterns, and macOS compatibility issues
 3. Real-world troubleshooting of context-dependent script behavior and help message detection bugs
+4. Cross-platform compatibility debugging identifying GNU vs BSD tool differences
 
-**Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects, compressed into actionable patterns and debugging techniques.
+**Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns and debugging techniques.

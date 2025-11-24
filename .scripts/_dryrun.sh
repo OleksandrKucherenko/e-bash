@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-23
+## Last revisit: 2025-11-24
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -108,14 +108,14 @@ function rollback:func() {
   if [ "$is_undo" != true ]; then
     echo:Rollback "(dry-func): ${func_name} $*"
     if type "$func_name" &>/dev/null; then
-      declare -f "$func_name" | tail -n +3 | head -n -1 | sed 's/^/    /' >&2
+      declare -f "$func_name" | tail -n +3 | sed '$d' | sed 's/^/    /' >&2
     fi
     return 0
   fi
   if [ "$is_dry" = true ]; then
     echo:Rollback "(dry-func): ${func_name} $*"
     if type "$func_name" &>/dev/null; then
-      declare -f "$func_name" | tail -n +3 | head -n -1 | sed 's/^/    /' >&2
+      declare -f "$func_name" | tail -n +3 | sed '$d' | sed 's/^/    /' >&2
     fi
     return 0
   fi
