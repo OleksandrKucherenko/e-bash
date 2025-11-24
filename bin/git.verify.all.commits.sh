@@ -9,22 +9,48 @@
 # Verify all commits in repository for Conventional Commits compliance
 # This script replaces ci_verify_all_commits.js by using git.conventional.commits.sh
 
-export ARGS_DEFINITION="-h,--help -v,--version=:0.1.0 --debug=DEBUG:* --branch"
+export ARGS_DEFINITION="-h,--help -v,--version=:0.1.0 --debug=DEBUG:* --branch --patch"
 
 # Setup logging (following user's e-bash logging guidelines)
 DEBUG=${DEBUG:-"-debug,verify,success,error,warning,info"}
+
+# Ensure logging functions are available even without e-bash environment
+if ! declare -f echo:Info >/dev/null 2>&1; then
+  function echo:Info() { echo "$*"; }
+fi
+if ! declare -f echo:Success >/dev/null 2>&1; then
+  function echo:Success() { echo "$*"; }
+fi
+if ! declare -f echo:Error >/dev/null 2>&1; then
+  function echo:Error() { echo "$*" >&2; }
+fi
+if ! declare -f echo:Warning >/dev/null 2>&1; then
+  function echo:Warning() { echo "$*" >&2; }
+fi
+if ! declare -f echo:Verify >/dev/null 2>&1; then
+  function echo:Verify() { echo "$*"; }
+fi
+if ! declare -f echo:Progress >/dev/null 2>&1; then
+  function echo:Progress() { echo "$*"; }
+fi
+if ! declare -f echo:Debug >/dev/null 2>&1; then
+  function echo:Debug() { :; }
+fi
+
 # shellcheck source=../.scripts/_colors.sh
 # shellcheck source=../.scripts/_logger.sh
 # shellcheck source=../.scripts/_commons.sh
 # shellcheck source=../.scripts/_arguments.sh
-source "${E_BASH}/_arguments.sh"
+source "${E_BASH}/_arguments.sh" 2>/dev/null || true
 
-# Setup loggers with color-coded prefixes
-logger:init verify " "
-logger:init success "${cl_green}[Success]${cl_reset} "
-logger:init error " "
-logger:init warning "${cl_yellow}[Warning]${cl_reset} "
-logger:init debug "${cl_gray}[Debug]${cl_reset} "
+# Setup loggers with color-coded prefixes (only if e-bash is available)
+if command -v logger:init >/dev/null 2>&1; then
+  logger:init verify " "
+  logger:init success "${cl_green}[Success]${cl_reset} "
+  logger:init error " "
+  logger:init warning "${cl_yellow}[Warning]${cl_reset} "
+  logger:init debug "${cl_gray}[Debug]${cl_reset} "
+fi
 
 # Source the conventional commits validation script
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
@@ -65,6 +91,156 @@ function validate_commit() {
     fi
 
     return 1
+}
+
+#
+# Check if git has any uncommitted changes
+#
+function check_working_tree_clean() {
+    if ! git diff-index --quiet HEAD --; then
+        echo:Error "❌ You have uncommitted changes. Please commit or stash them first."
+        echo:Error "   Use 'git status' to see what changes need to be committed."
+        exit 1
+    fi
+}
+
+#
+# Create a backup branch before modifying git history
+#
+function create_backup_branch() {
+    local backup_branch="backup-before-rewrite-$(date +%Y%m%d-%H%M%S)"
+    echo:Verify "📦 Creating backup branch: ${cl_yellow}${backup_branch}${cl_reset}"
+    git branch "$backup_branch"
+    echo:Success "✅ Backup created. You can restore with: git checkout ${backup_branch}"
+}
+
+#
+# Interactively reword a single commit message
+#
+function reword_commit() {
+    local commit_hash="$1"
+    local commit_msg
+    commit_msg=$(git log -1 --pretty=%B "$commit_hash")
+
+    echo:Verify "🔍 Current commit message:"
+    echo:Info "   ${cl_gray}${commit_msg}${cl_reset}"
+    echo
+
+    # Show suggested conventional commit format
+    echo:Info "💡 Suggested format: ${cl_green}type(scope): description${cl_reset}"
+    echo:Info "   Valid types: ${cl_cyan}feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert${cl_reset}"
+    echo
+
+    # Get new message from user
+    echo:Verify "✏️  Enter new commit message (or press Enter to skip):"
+    read -r new_message
+    echo
+
+    if [[ -n "$new_message" ]]; then
+        # Use git rebase to reword the commit
+        echo:Verify "🔄 Rewording commit ${cl_yellow}${commit_hash:0:8}${cl_reset}..."
+
+        # Create a temporary script for git rebase
+        local temp_script
+        temp_script=$(mktemp)
+        echo "#!/bin/bash" > "$temp_script"
+        echo "if [ \$GIT_COMMIT = $commit_hash ]; then" >> "$temp_script"
+        echo "    echo \"$new_message\"" >> "$temp_script"
+        echo "else" >> "$temp_script"
+        echo "    cat" >> "$temp_script"
+        echo "fi" >> "$temp_script"
+        chmod +x "$temp_script"
+
+        # Use filter-repo or filter-branch to reword the commit
+        if git filter-branch -f --msg-filter "$temp_script" HEAD~100..HEAD 2>/dev/null; then
+            echo:Success "✅ Commit message updated successfully"
+        else
+            echo:Warning "⚠️  Could not reword commit using filter-branch, trying alternative method..."
+            # Alternative: use git commit --amend for the most recent commit
+            if [[ "$commit_hash" == "$(git rev-parse HEAD)" ]]; then
+                git commit --amend -m "$new_message"
+                echo:Success "✅ Latest commit amended successfully"
+            else
+                echo:Error "❌ Failed to reword commit. This commit is not the latest commit."
+                echo:Info "   To reword older commits, consider using: git rebase -i"
+            fi
+        fi
+
+        rm -f "$temp_script"
+    else
+        echo:Info "⏭️  Skipped commit ${commit_hash:0:8}"
+    fi
+}
+
+#
+# Interactive patch mode for fixing commits
+#
+function patch_commits() {
+    local failed_commits=("$@")
+
+    if [[ ${#failed_commits[@]} -eq 0 ]]; then
+        echo:Success "✅ No commits need fixing!"
+        return 0
+    fi
+
+    echo:Warning "⚠️  You're about to modify git history. This will change commit hashes!"
+    echo:Warning "   Make sure you understand the implications before proceeding."
+    echo
+
+    # Show commits that need fixing
+    echo:Info "📝 Commits that need fixing:"
+    for commit_hash in "${failed_commits[@]}"; do
+        local commit_msg commit_author commit_date
+        commit_msg=$(git log -1 --pretty=%B "$commit_hash" | head -1)
+        commit_author=$(git log -1 --pretty=%an "$commit_hash")
+        commit_date=$(git log -1 --pretty=%ad --date=short "$commit_hash")
+
+        echo:Error "   🔴 ${cl_yellow}${commit_hash:0:8}${cl_reset} by ${cl_cyan}${commit_author}${cl_reset} (${cl_gray}${commit_date}${cl_reset})"
+        echo:Error "      \"${cl_red}${commit_msg}${cl_reset}\""
+        echo
+    done
+
+    # Ask for confirmation
+    echo:Verify "Do you want to reword these commits? [y/N]:"
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        echo:Info "❌ Patch mode cancelled."
+        exit 0
+    fi
+
+    # Safety checks
+    check_working_tree_clean
+    create_backup_branch
+
+    echo
+    echo:Verify "🔄 Starting interactive rewording process..."
+    echo
+
+    # Process each failed commit
+    local fixed_count=0
+    local total_count=${#failed_commits[@]}
+
+    for ((i=0; i<total_count; i++)); do
+        local commit_hash="${failed_commits[i]}"
+        echo:Progress "Processing commit $((i+1))/$total_count: ${cl_yellow}${commit_hash:0:8}${cl_reset}"
+
+        reword_commit "$commit_hash"
+        echo
+
+        if [[ $? -eq 0 ]]; then
+            ((fixed_count++))
+        fi
+    done
+
+    echo
+    echo:Success "🎉 Patch process completed!"
+    echo:Info "   Fixed: ${cl_green}${fixed_count}${cl_reset}/${total_count} commits"
+
+    if [[ $fixed_count -gt 0 ]]; then
+        echo:Warning "⚠️  Git history has been rewritten. You may need to:"
+        echo:Info "   - Force push if working with remote: git push --force-with-lease"
+        echo:Info "   - Notify collaborators about the history change"
+    fi
 }
 
 #
@@ -156,8 +332,15 @@ function main() {
         echo:Error "   Valid types: ${cl_cyan}feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert${cl_reset}"
         echo:Error "   Use ${cl_yellow}!${cl_reset} for breaking changes: ${cl_green}feat!: breaking change${cl_reset}"
         echo:Error "   Reference: ${cl_blue}https://www.conventionalcommits.org/${cl_reset}"
+        echo
 
-        exit 1
+        # If patch mode is enabled, run interactive patch process
+        if [[ -n "$patch" ]]; then
+            patch_commits "${failed_commits[@]}"
+        else
+            echo:Info "💡 To fix these commits interactively, run with --patch flag"
+            exit 1
+        fi
     fi
 }
 
@@ -172,10 +355,16 @@ function show_help() {
         echo "${cl_yellow}OPTIONS:${cl_reset}"
         echo "    --help, -h     Show this help message"
         echo "    --debug        Enable debug logging"
+        echo "    --branch       Only check commits of current branch (from master/main)"
+        echo "    --patch        Interactive mode to fix non-conventional commit messages"
         echo ""
         echo "${cl_yellow}DESCRIPTION:${cl_reset}"
         echo "    This script validates all commits in the current git repository to ensure"
         echo "    they follow the Conventional Commits specification."
+        echo ""
+        echo "    With --patch mode, you can interactively fix non-conventional commit messages"
+        echo "    by rewriting git history. This creates a backup branch and allows you to"
+        echo "    reword each invalid commit."
         echo ""
         echo "    It checks each commit message against the pattern:"
         echo "    ${cl_green}type(scope): description${cl_reset}"
@@ -191,6 +380,12 @@ function show_help() {
         echo "${cl_yellow}EXIT CODES:${cl_reset}"
         echo "    0 - All commits are valid"
         echo "    1 - One or more commits failed validation"
+        echo ""
+        echo "${cl_yellow}PATCH MODE WARNINGS:${cl_reset}"
+        echo "    ⚠️  --patch mode rewrites git history, changing commit hashes"
+        echo "    ⚠️  Always creates backup branch before making changes"
+        echo "    ⚠️  Requires force push if working with remote repositories"
+        echo "    ⚠️  Notify collaborators before rewriting shared history"
         echo ""
         echo "${cl_yellow}REFERENCE:${cl_reset}"
         echo "    https://www.conventionalcommits.org/"

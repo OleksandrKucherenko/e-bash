@@ -8,6 +8,11 @@
 
 # set -x
 
+# Ensure logging functions are available even without e-bash environment
+if ! declare -f echo:Debug >/dev/null 2>&1; then
+  function echo:Debug() { :; }
+fi
+
 export __commit_msg=""
 export __commit_sha=""
 
@@ -106,11 +111,21 @@ function conventional:parse() {
       parsed["breaking"]="!"
     fi
 
-    # Copy parsed results to global variable
-    eval "declare -g -A ${output_variable}"
-    for key in "${!parsed[@]}"; do
-      eval "${output_variable}[${key}]='${parsed[$key]}'"
-    done
+    # Copy parsed results to global variable using safe methods
+    if [[ "$output_variable" == "__conventional_parse_result" ]]; then
+      # Direct assignment for the global variable (most efficient)
+      for key in "${!parsed[@]}"; do
+        __conventional_parse_result[$key]="${parsed[$key]}"
+      done
+    else
+      # For custom variable names, use printf with proper escaping
+      eval "declare -g -A ${output_variable}"
+      for key in "${!parsed[@]}"; do
+        # Use printf to safely escape the value
+        printf -v escaped_value '%q' "${parsed[$key]}"
+        eval "${output_variable}[${key}]=${escaped_value}"
+      done
+    fi
 
     return 0
   else
@@ -170,8 +185,7 @@ function conventional:is_valid_commit() {
   # Determine if input is a commit hash or message
   if [[ "$input" =~ ^[a-f0-9]{7,40}$ ]]; then
     # Input looks like a commit hash, fetch the message
-    commit_message=$(git log -1 --pretty=%B "$input" 2>/dev/null)
-    if [[ $? -ne 0 ]]; then
+    if ! commit_message=$(git log -1 --pretty=%B "$input" 2>/dev/null); then
       return 1 # Failed to fetch commit message
     fi
     # Set global variables for commit hash
@@ -205,7 +219,10 @@ function conventional:is_version_commit() {
   local commit_msg
 
   # Get full commit message
-  commit_msg=$(git log -1 --pretty=%B "$commit_sha" 2>/dev/null | tr '\n' ' ')
+  if ! commit_msg=$(git log -1 --pretty=%B "$commit_sha" 2>/dev/null); then
+    return 1 # Failed to fetch commit message
+  fi
+  commit_msg=$(echo "$commit_msg" | tr '\n' ' ')
 
   # export commit message for debugging and other processing
   export __commit_msg="$commit_msg"
