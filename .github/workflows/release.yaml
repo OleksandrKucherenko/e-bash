@@ -1,0 +1,161 @@
+name: "Release Distribution"
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'
+
+env:
+  TERM: xterm-256color
+
+jobs:
+  create-release:
+    name: "Create Release"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "📦 Building release for version: $VERSION"
+
+      - name: Verify required files and directories
+        run: |
+          echo "🔍 Verifying distribution contents..."
+
+          # Check directories
+          for dir in .scripts bin docs demos; do
+            if [ ! -d "$dir" ]; then
+              echo "❌ ERROR: Directory $dir not found"
+              exit 1
+            fi
+            echo "✅ Directory: $dir"
+          done
+
+          # Check files
+          for file in README.md LICENSE; do
+            if [ ! -f "$file" ]; then
+              echo "❌ ERROR: File $file not found"
+              exit 1
+            fi
+            echo "✅ File: $file"
+          done
+
+          echo "✅ All required files and directories present"
+
+      - name: Create distribution archive
+        run: |
+          ARCHIVE_NAME="e-bash.${{ steps.version.outputs.version }}.zip"
+          echo "📦 Creating distribution archive: $ARCHIVE_NAME"
+
+          # Create ZIP archive with specified contents
+          zip -r "$ARCHIVE_NAME" \
+            .scripts/ \
+            bin/ \
+            docs/ \
+            demos/ \
+            README.md \
+            LICENSE \
+            -x "*.git*" \
+            -x "*__pycache__*" \
+            -x "*.pyc" \
+            -x "*node_modules*" \
+            -x "*.DS_Store"
+
+          # Verify archive was created
+          if [ ! -f "$ARCHIVE_NAME" ]; then
+            echo "❌ ERROR: Failed to create archive"
+            exit 1
+          fi
+
+          # Show archive info
+          echo "✅ Archive created successfully"
+          ls -lh "$ARCHIVE_NAME"
+          echo ""
+          echo "📋 Archive contents:"
+          unzip -l "$ARCHIVE_NAME"
+
+          # Store archive name for next step
+          echo "archive_name=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
+        id: archive
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+
+          # Create release notes
+          cat > release_notes.md << EOF
+          ## e-bash ${VERSION}
+
+          Distribution package for e-bash version ${VERSION}.
+
+          ### 📦 Installation
+
+          \`\`\`bash
+          # Download and extract
+          wget https://github.com/OleksandrKucherenko/e-bash/releases/download/${TAG}/e-bash.${VERSION}.zip
+          unzip e-bash.${VERSION}.zip -d e-bash
+
+          # Or use the quick install script
+          curl -sSL https://git.new/e-bash | bash -s --
+          \`\`\`
+
+          ### 📂 Package Contents
+
+          - \`.scripts/\` - Core library functions (16 modules)
+          - \`bin/\` - Standalone tools and scripts (11 executables)
+          - \`docs/\` - Comprehensive documentation
+          - \`demos/\` - Demo scripts showing usage patterns
+          - \`README.md\` - Project documentation
+          - \`LICENSE\` - MIT License
+
+          ### 🔗 Resources
+
+          - **Repository:** https://github.com/OleksandrKucherenko/e-bash
+          - **Documentation:** https://github.com/OleksandrKucherenko/e-bash/tree/master/docs
+          - **Issues:** https://github.com/OleksandrKucherenko/e-bash/issues
+
+          ---
+
+          For detailed changelog, see [CHANGELOG.md](https://github.com/OleksandrKucherenko/e-bash/blob/master/CHANGELOG.md)
+          EOF
+
+          echo "✅ Release notes generated"
+          cat release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "e-bash ${{ steps.version.outputs.version }}"
+          body_path: release_notes.md
+          files: ${{ steps.archive.outputs.archive_name }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        run: |
+          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Archive:** ${{ steps.archive.outputs.archive_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📦 Distribution package is now available in GitHub Releases" >> $GITHUB_STEP_SUMMARY
