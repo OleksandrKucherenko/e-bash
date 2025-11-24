@@ -7,6 +7,7 @@
   - [Local Dev Environment - Requirements](#local-dev-environment---requirements)
   - [TDD - Test Driven Development, run tests on file change](#tdd---test-driven-development-run-tests-on-file-change)
   - [Usage](#usage)
+    - [Manual installation](#manual-installation)
     - [Colors](#colors)
     - [Script Dependencies](#script-dependencies)
     - [Logger](#logger)
@@ -20,6 +21,7 @@
     - [Troubleshooting](#troubleshooting)
   - [Profile BASH script execution](#profile-bash-script-execution)
   - [Colors support in my terminal](#colors-support-in-my-terminal)
+  - [Emoji support in my terminal](#emoji-support-in-my-terminal)
   - [References](#references)
 
 ## Roadmap
@@ -135,7 +137,7 @@ echo -e "${cl_red}Hello World${cl_reset}"
 
 ### Script Dependencies
 
-![Bootstrap](docs/bootstrap.direnv.gif)
+![Bootstrap](docs/images/bootstrap.direnv.gif)
 
 ```bash
 source ".scripts/_dependencies.sh"
@@ -251,7 +253,7 @@ echo "Extracted: ${new_value}"
 
 ### UI: Selector
 
-![Selector](docs/ui.selector.gif)
+![Selector](docs/images/ui.selector.gif)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -264,7 +266,7 @@ selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_rese
 
 ### UI: Ask for Password
 
-![Ask for Password](docs/ui.ask-for-password.gif)
+![Ask for Password](docs/images/ui.ask-for-password.gif)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -284,16 +286,29 @@ source "$E_BASH/_dryrun.sh"
 # Create wrappers for commands
 dry-run git docker kubectl
 
-# Normal mode - execute commands, rollback shows dry-run
+# Normal, safe operation, does not mutate anything
+run:git status
+
+# Normal mode - execute commands, if no DRY_RUN set
 dry:git pull origin main
 dry:docker build -t app .
-rollback:kubectl delete deployment app  # Safe: shows dry-run
 
-# Dry-run mode - preview all operations
-DRY_RUN=true ./deploy.sh
+# Normal mode - Register rollback command, executed only when UNDO_RUN is set
+rollback:kubectl delete deployment app
 
-# Undo mode - execute rollbacks, block normal commands
-UNDO_RUN=true ./deploy.sh
+# Dry-run mode - preview operation in terminal without executing it
+DRY_RUN=true dry:git pull origin main
+
+# Undo mode - execute rollbacks, only when UNDO_RUN=true
+UNDO_RUN=true rollback:git reset --hard
+
+function rollback_fn() {
+  echo "Cleaning up..."
+  echo "Possible execution of multiple commands..."
+}
+
+# Rollback via special function
+rollback:func rollback_fn
 ```
 
 **Three Execution Modes:**
@@ -306,8 +321,8 @@ UNDO_RUN=true ./deploy.sh
 
 **Features:**
 - ✅ Color-coded logging with exit status (`execute:`, `dry run:`, `undoing:`)
-- ✅ Command-specific overrides (`DRY_RUN_GIT=false`)
-- ✅ Silent mode support (`SILENT_GIT=true`)
+- ✅ Command-specific overrides (`DRY_RUN_GIT=false`, pattern: `DRY_RUN_*`)
+- ✅ Silent mode support (`SILENT_GIT=true`, pattern: `SILENT_*`)
 - ✅ Function-based rollbacks (`rollback:func cleanup_fn`)
 - ✅ Variable precedence: command-specific → global → default
 
@@ -422,7 +437,7 @@ source ".scripts/_self-update.sh" && self-update:rollback:version "v1.0.0" "${fu
 
 ## Profile BASH script execution
 
-![Profiler](docs/profiler.version-up.gif)
+![Profiler](docs/images/profiler.version-up.gif)
 
 ```bash
 # print timestamp for each line of executed script
@@ -443,11 +458,21 @@ bin/profiler/profile.sh bin/version-up.sh
 
 ## Colors support in my terminal
 
-![Terminal Colors](docs/terminal.colors.gif)
+![Terminal Colors](docs/images/terminal.colors.gif)
 
 ```bash
 # print all colors for easier selection
 demos/demo.colors.sh
+```
+
+## Emoji support in my terminal
+
+Run this command if you want to see how your terminal setup support emojis.
+
+![Terminal Emoji](docs/images/terminal.emojis.gif)
+
+```bash
+demos/demo.emojis.sh
 ```
 
 ## References
