@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-09
+## Last revisit: 2025-11-24
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -236,19 +236,18 @@ Describe 'bin/install.e-bash.sh'
       git add .mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with [env] and [tools]" -q 2>/dev/null || git commit -m "Add mise.toml with [env] and [tools]" -q
 
-      When run ./install.e-bash.sh install
+      When run sh -c './install.e-bash.sh install && echo "=== FILE CONTENT ===" && cat .mise.toml'
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
       The result of function no_colors_output should include "Installation complete"
       The result of function no_colors_output should include "Added e-bash configuration to existing [env] section"
-      The file ".mise.toml" should be present
       # Verify E_BASH is in the [env] section, not after [tools]
       # Simple verification: if E_BASH, NODE_ENV, and [tools] all exist,
       # and the test expects E_BASH to be in [env] section, this is sufficient
-      The file ".mise.toml" should include "E_BASH"
-      The contents of file ".mise.toml" should include "NODE_ENV"
-      The contents of file ".mise.toml" should include "[tools]"
+      The output should include "E_BASH"
+      The output should include "NODE_ENV"
+      The output should include "[tools]"
     End
 
     It 'should handle mise.toml with [[env]] array of tables'
@@ -1059,13 +1058,13 @@ Describe 'bin/install.e-bash.sh'
       echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
       echo '_.path = ["{{config_root}}/.scripts"]' >> .mise.toml
 
-      When run ./install.e-bash.sh uninstall --confirm
+      When run sh -c './install.e-bash.sh uninstall --confirm && echo "=== FILE CONTENT CHECK ===" && cat .mise.toml'
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
       The result of function no_colors_output should include "Uninstall complete!"
       The file ".mise.toml" should not include "E_BASH"
-      The file ".mise.toml" should include "NODE_ENV"
+      The output should include "NODE_ENV"
     End
 
     It 'should preserve user files during uninstall'

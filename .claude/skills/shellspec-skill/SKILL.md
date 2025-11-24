@@ -90,11 +90,11 @@ End
 
 ### Execution Modes
 
-| Mode | Use Case | Isolation | Coverage |
-|------|----------|-----------|----------|
-| `When call func` | Unit test functions | Same shell (fast) | ✅ Yes |
-| `When run script` | Integration test | New process | ✅ Yes |
-| `When run source` | Hybrid approach | Subshell | ✅ Yes |
+| Mode              | Use Case            | Isolation         | Coverage |
+| ----------------- | ------------------- | ----------------- | -------- |
+| `When call func`  | Unit test functions | Same shell (fast) | ✅ Yes    |
+| `When run script` | Integration test    | New process       | ✅ Yes    |
+| `When run source` | Hybrid approach     | Subshell          | ✅ Yes    |
 
 **Recommended**: Use `When call` for unit tests (fastest), `When run script` for integration tests.
 
@@ -215,13 +215,13 @@ End
 
 **Decision Matrix**:
 
-| Dependency | Mock? | Rationale |
-|------------|-------|-----------|
-| Network (curl, wget) | ✅ Always | Slow, unreliable |
-| Date/time | ✅ Always | Reproducibility |
-| Random values | ✅ Always | Deterministic tests |
-| System commands (grep, sed) | ❌ Rarely | Fast, stable |
-| File I/O | ⚠️ Sometimes | Use temp dirs |
+| Dependency                  | Mock?       | Rationale           |
+| --------------------------- | ----------- | ------------------- |
+| Network (curl, wget)        | ✅ Always    | Slow, unreliable    |
+| Date/time                   | ✅ Always    | Reproducibility     |
+| Random values               | ✅ Always    | Deterministic tests |
+| System commands (grep, sed) | ❌ Rarely    | Fast, stable        |
+| File I/O                    | ⚠️ Sometimes | Use temp dirs       |
 
 **Recommended action**: Mock boundaries (network, time, random), trust stable commands
 
@@ -506,6 +506,7 @@ For deeper coverage of advanced patterns, see:
 - **Advanced Patterns**: See [references/advanced-patterns.md](references/advanced-patterns.md) for complex mocking, spies, state management
 - **Troubleshooting Guide**: See [references/troubleshooting.md](references/troubleshooting.md) for systematic debugging
 - **Real-World Examples**: See [references/real-world-examples.md](references/real-world-examples.md) for production patterns from top OSS projects
+- **Collected Experience**: See [references/collected-experience.md](references/collected-experience.md) for lessons learned from multiple projects
 
 ## Quick Reference
 

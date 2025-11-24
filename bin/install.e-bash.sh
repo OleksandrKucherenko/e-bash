@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-09
+## Last revisit: 2025-11-24
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -117,7 +117,8 @@ function print_usage() {
   local exit_code=${1:-0}
 
   local script_name="$0"
-  if [[ "$0" =~ bash ]]; then
+  # Show curl help only when script is executed via bash (not when run as script)
+  if [[ "$0" == "bash" ]]; then
     script_name="curl -sSL ${REMOTE_SHORT} | bash -s --"
   fi
 
