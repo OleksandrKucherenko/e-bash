@@ -16,6 +16,15 @@ export E_BASH=".scripts"
 # Disable debug output for tests to avoid pollution
 export DEBUG=""
 
+# Mock logger functions to prevent "command not found" errors
+Mock printf:Trap
+  :
+End
+
+Mock echo:Trap
+  :
+End
+
 Describe '_traps.sh:'
   Include ".scripts/_traps.sh"
 
