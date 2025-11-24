@@ -17,12 +17,13 @@ export E_BASH=".scripts"
 export DEBUG=""
 
 # Mock logger functions to prevent "command not found" errors
+# But still produce output so tests can verify messages
 Mock printf:Trap
-  :
+  printf "$@"
 End
 
 Mock echo:Trap
-  :
+  echo "$@"
 End
 
 Describe '_traps.sh:'
