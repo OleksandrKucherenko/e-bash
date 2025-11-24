@@ -19,6 +19,7 @@ readonly REMOTE_NAME="e-bash"
 readonly REMOTE_MASTER="master"
 readonly REMOTE_URL="https://github.com/OleksandrKucherenko/e-bash.git"
 readonly REMOTE_INSTALL_SH="https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh"
+readonly REMOTE_SHORT="https://git.new/e-bash"
 readonly TEMP_BRANCH="e-bash-temp"
 readonly SCRIPTS_BRANCH="e-bash-scripts"
 readonly SCRIPTS_DIR=".scripts"
@@ -49,7 +50,7 @@ GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
 CONFIRM=false       # Confirm destructive operations (like uninstall)
 # SILENT flag removed - script should be polished by default
-ARGS=()             # Clean argument after preparse_args
+ARGS=() # Clean argument after preparse_args
 
 # Helpers
 readonly EXIT_OK=0
@@ -115,9 +116,14 @@ function on_return() {
 function print_usage() {
   local exit_code=${1:-0}
 
+  local script_name="$0"
+  if [[ "$0" =~ bash ]]; then
+    script_name="curl -sSL ${REMOTE_SHORT} | bash -s --"
+  fi
+
   echo -e "${BLUE}e-Bash Scripts Installer${NC}"
   echo ""
-  echo -e "Usage: $0 [options] [command] [version]"
+  echo -e "Usage: ${script_name} [options] [command] [version]"
   echo ""
   echo -e "Options:"
   echo -e "  ${YELLOW}--dry-run${NC}             - Run in dry run mode (no changes)"
@@ -138,14 +144,14 @@ function print_usage() {
   echo -e "  ${PURPLE}v1.2.3${NC}   - Specific tagged version"
   echo ""
   echo -e "Examples:"
-  echo -e "  $0                      ${GRAY}# Install latest version${NC}"
-  echo -e "  $0 install v1.0.0       ${GRAY}# Install specific version${NC}"
-  echo -e "  $0 upgrade              ${GRAY}# Upgrade to latest version${NC}"
-  echo -e "  $0 upgrade v2.0.0       ${GRAY}# Upgrade to specific version${NC}"
-  echo -e "  $0 rollback             ${GRAY}# Rollback to previous version${NC}"
-  echo -e "  $0 versions             ${GRAY}# List available versions${NC}"
-  echo -e "  $0 help                 ${GRAY}# Show this help message${NC}"
-  echo -e "  $0 --global install     ${GRAY}# Install to user's HOME directory${NC}"
+  echo -e "  ${script_name}                      ${GRAY}# Install latest version${NC}"
+  echo -e "  ${script_name} install v1.0.0       ${GRAY}# Install specific version${NC}"
+  echo -e "  ${script_name} upgrade              ${GRAY}# Upgrade to latest version${NC}"
+  echo -e "  ${script_name} upgrade v2.0.0       ${GRAY}# Upgrade to specific version${NC}"
+  echo -e "  ${script_name} rollback             ${GRAY}# Rollback to previous version${NC}"
+  echo -e "  ${script_name} versions             ${GRAY}# List available versions${NC}"
+  echo -e "  ${script_name} help                 ${GRAY}# Show this help message${NC}"
+  echo -e "  ${script_name} --global install     ${GRAY}# Install to user's HOME directory${NC}"
 
   exit "${exit_code}"
 }
@@ -325,7 +331,7 @@ function repo_uninstall() {
         }
         # Print all other lines
         { print }
-        ' ".mise.toml" > ".mise.toml.tmp" && mv ".mise.toml.tmp" ".mise.toml"
+        ' ".mise.toml" >".mise.toml.tmp" && mv ".mise.toml.tmp" ".mise.toml"
 
         rm -f ".mise.toml.bak"
         echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
@@ -1052,8 +1058,8 @@ function update_mise_configuration() {
   fi
 
   # Determine the type of env section that exists
-  local has_env_table=false       # [env] - single table
-  local has_env_array=false       # [[env]] - array of tables
+  local has_env_table=false # [env] - single table
+  local has_env_array=false # [[env]] - array of tables
 
   if [ -f ".mise.toml" ]; then
     grep -q "^\\[env\\]" ".mise.toml" && has_env_table=true
@@ -1140,7 +1146,7 @@ function update_mise_configuration() {
       echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
       echo "_.path = ${new_path}"
       tail -n +$((env_end + 1)) ".mise.toml"
-    } > ".mise.toml.tmp"
+    } >".mise.toml.tmp"
 
     mv ".mise.toml.tmp" ".mise.toml"
     echo -e "${GREEN}Added e-bash configuration to existing [env] section in ${YELLOW}${PWD}/.mise.toml${NC}"
@@ -1876,10 +1882,10 @@ function main_ebash() {
   local args="$*"
   # if $args are empty, print <empty>
   [ -z "$args" ] && args="<empty>"
-  
+
   local command="${1:-auto}"
   local version="${2:-master}"
-  
+
   # Always show the main installer message
   echo -e "${PURPLE}installer: e-bash scripts, arguments: ${GRAY}$args${NC}" >&2
 
