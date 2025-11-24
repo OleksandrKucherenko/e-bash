@@ -15,11 +15,13 @@
     - [Common(s) Functions And Inputs](#commons-functions-and-inputs)
     - [UI: Selector](#ui-selector)
     - [UI: Ask for Password](#ui-ask-for-password)
+    - [Dry-Run Wrapper System](#dry-run-wrapper-system)
   - [Semver - Semantic Versioning](#semver---semantic-versioning)
   - [Self-Update](#self-update)
     - [Troubleshooting](#troubleshooting)
   - [Profile BASH script execution](#profile-bash-script-execution)
   - [Colors support in my terminal](#colors-support-in-my-terminal)
+  - [Emoji support in my terminal](#emoji-support-in-my-terminal)
   - [References](#references)
 
 ## Roadmap
@@ -141,7 +143,7 @@ echo -e "${cl_red}Hello World${cl_reset}"
 
 ### Script Dependencies
 
-![Bootstrap](docs/bootstrap.direnv.gif)
+![Bootstrap](docs/images/bootstrap.direnv.gif)
 
 ```bash
 source ".scripts/_dependencies.sh"
@@ -257,7 +259,7 @@ echo "Extracted: ${new_value}"
 
 ### UI: Selector
 
-![Selector](docs/ui.selector.gif)
+![Selector](docs/images/ui.selector.gif)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -270,7 +272,7 @@ selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_rese
 
 ### UI: Ask for Password
 
-![Ask for Password](docs/ui.ask-for-password.gif)
+![Ask for Password](docs/images/ui.ask-for-password.gif)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -279,6 +281,58 @@ source ".scripts/_commons.sh"
 echo -n "Enter password: "
 password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
+
+### Dry-Run Wrapper System
+
+Safe command execution with three-mode operation: normal, dry-run (preview), and undo/rollback. Provides automatic logging, exit status tracking, and flexible per-command configuration.
+
+```bash
+source "$E_BASH/_dryrun.sh"
+
+# Create wrappers for commands
+dry-run git docker kubectl
+
+# Normal, safe operation, does not mutate anything
+run:git status
+
+# Normal mode - execute commands, if no DRY_RUN set
+dry:git pull origin main
+dry:docker build -t app .
+
+# Normal mode - Register rollback command, executed only when UNDO_RUN is set
+rollback:kubectl delete deployment app
+
+# Dry-run mode - preview operation in terminal without executing it
+DRY_RUN=true dry:git pull origin main
+
+# Undo mode - execute rollbacks, only when UNDO_RUN=true
+UNDO_RUN=true rollback:git reset --hard
+
+function rollback_fn() {
+  echo "Cleaning up..."
+  echo "Possible execution of multiple commands..."
+}
+
+# Rollback via special function
+rollback:func rollback_fn
+```
+
+**Three Execution Modes:**
+
+| Mode    | DRY_RUN | UNDO_RUN | Normal Commands | Rollback Commands |
+| ------- | ------- | -------- | --------------- | ----------------- |
+| Normal  | false   | false    | Execute         | Dry-run (safe)    |
+| Dry-run | true    | false    | Dry-run         | Dry-run           |
+| Undo    | false   | true     | Dry-run         | **Execute**       |
+
+**Features:**
+- ✅ Color-coded logging with exit status (`execute:`, `dry run:`, `undoing:`)
+- ✅ Command-specific overrides (`DRY_RUN_GIT=false`, pattern: `DRY_RUN_*`)
+- ✅ Silent mode support (`SILENT_GIT=true`, pattern: `SILENT_*`)
+- ✅ Function-based rollbacks (`rollback:func cleanup_fn`)
+- ✅ Variable precedence: command-specific → global → default
+
+More details: [Dry-Run Wrapper System](docs/dryrun-wrapper.md), [Demo script](demos/demo.dryrun.modes.sh).
 
 ## Semver - Semantic Versioning
 
@@ -389,7 +443,7 @@ source ".scripts/_self-update.sh" && self-update:rollback:version "v1.0.0" "${fu
 
 ## Profile BASH script execution
 
-![Profiler](docs/profiler.version-up.gif)
+![Profiler](docs/images/profiler.version-up.gif)
 
 ```bash
 # print timestamp for each line of executed script
@@ -410,11 +464,21 @@ bin/profiler/profile.sh bin/version-up.sh
 
 ## Colors support in my terminal
 
-![Terminal Colors](docs/terminal.colors.gif)
+![Terminal Colors](docs/images/terminal.colors.gif)
 
 ```bash
 # print all colors for easier selection
 demos/demo.colors.sh
+```
+
+## Emoji support in my terminal
+
+Run this command if you want to see how your terminal setup support emojis.
+
+![Terminal Emoji](docs/images/terminal.emojis.gif)
+
+```bash
+demos/demo.emojis.sh
 ```
 
 ## References

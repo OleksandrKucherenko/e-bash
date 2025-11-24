@@ -53,3 +53,8 @@ patches/
 *.img
 *.dmg
 *.vpc
+
+# MISE tools for AI Coding
+mise.toml
+.mcp.json
+.env.secrets.json

@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-07-06
+## Last revisit: 2025-11-24
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -19,6 +19,7 @@ readonly REMOTE_NAME="e-bash"
 readonly REMOTE_MASTER="master"
 readonly REMOTE_URL="https://github.com/OleksandrKucherenko/e-bash.git"
 readonly REMOTE_INSTALL_SH="https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh"
+readonly REMOTE_SHORT="https://git.new/e-bash"
 readonly TEMP_BRANCH="e-bash-temp"
 readonly SCRIPTS_BRANCH="e-bash-scripts"
 readonly SCRIPTS_DIR=".scripts"
@@ -49,7 +50,7 @@ GLOBAL=false        # Global installation (to HOME directory)
 CREATE_SYMLINK=true # Create symlink to global e-bash scripts
 CONFIRM=false       # Confirm destructive operations (like uninstall)
 # SILENT flag removed - script should be polished by default
-ARGS=()             # Clean argument after preparse_args
+ARGS=() # Clean argument after preparse_args
 
 # Helpers
 readonly EXIT_OK=0
@@ -115,9 +116,15 @@ function on_return() {
 function print_usage() {
   local exit_code=${1:-0}
 
+  local script_name="$0"
+  # Show curl help only when script is executed via bash (not when run as script)
+  if [[ "$0" == "bash" ]]; then
+    script_name="curl -sSL ${REMOTE_SHORT} | bash -s --"
+  fi
+
   echo -e "${BLUE}e-Bash Scripts Installer${NC}"
   echo ""
-  echo -e "Usage: $0 [options] [command] [version]"
+  echo -e "Usage: ${script_name} [options] [command] [version]"
   echo ""
   echo -e "Options:"
   echo -e "  ${YELLOW}--dry-run${NC}             - Run in dry run mode (no changes)"
@@ -138,14 +145,14 @@ function print_usage() {
   echo -e "  ${PURPLE}v1.2.3${NC}   - Specific tagged version"
   echo ""
   echo -e "Examples:"
-  echo -e "  $0                      ${GRAY}# Install latest version${NC}"
-  echo -e "  $0 install v1.0.0       ${GRAY}# Install specific version${NC}"
-  echo -e "  $0 upgrade              ${GRAY}# Upgrade to latest version${NC}"
-  echo -e "  $0 upgrade v2.0.0       ${GRAY}# Upgrade to specific version${NC}"
-  echo -e "  $0 rollback             ${GRAY}# Rollback to previous version${NC}"
-  echo -e "  $0 versions             ${GRAY}# List available versions${NC}"
-  echo -e "  $0 help                 ${GRAY}# Show this help message${NC}"
-  echo -e "  $0 --global install     ${GRAY}# Install to user's HOME directory${NC}"
+  echo -e "  ${script_name}                      ${GRAY}# Install latest version${NC}"
+  echo -e "  ${script_name} install v1.0.0       ${GRAY}# Install specific version${NC}"
+  echo -e "  ${script_name} upgrade              ${GRAY}# Upgrade to latest version${NC}"
+  echo -e "  ${script_name} upgrade v2.0.0       ${GRAY}# Upgrade to specific version${NC}"
+  echo -e "  ${script_name} rollback             ${GRAY}# Rollback to previous version${NC}"
+  echo -e "  ${script_name} versions             ${GRAY}# List available versions${NC}"
+  echo -e "  ${script_name} help                 ${GRAY}# Show this help message${NC}"
+  echo -e "  ${script_name} --global install     ${GRAY}# Install to user's HOME directory${NC}"
 
   exit "${exit_code}"
 }
@@ -279,6 +286,56 @@ function repo_uninstall() {
         sed -i.bak '/E_BASH/d; /PATH_add.*\.scripts/d; /_setup_gnu_symbolic_links/d' ".envrc"
         rm -f ".envrc.bak"
         echo -e "${GREEN}Cleaned .envrc configuration${NC}"
+      fi
+      ((uninstall_steps++))
+    fi
+  fi
+
+  # Clean .mise.toml if it exists
+  if [ -f ".mise.toml" ]; then
+    if grep -q "E_BASH" ".mise.toml"; then
+      if [ "$DRY_RUN" = true ]; then
+        echo -e "${CYAN}dry run: clean .mise.toml configuration${NC}"
+      else
+        # Use a simple and reliable approach
+        # Step 1: Remove the e-bash comment line
+        sed -i.bak '/# e-bash scripts configuration/d' ".mise.toml"
+
+        # Step 2: Remove E_BASH and _.path lines
+        sed -i '/E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
+
+        # Step 3: Remove empty [[env]] and [env]] sections using awk
+        awk '
+        /^\[\[env\]\]$/ {
+          # Found [[env]] section, read the next line
+          if ((getline line) > 0) {
+            # If the next line has content, print both
+            if (line ~ /[^[:space:]]/) {
+              print "[[env]]"
+              print line
+            }
+            # If the next line is empty or another section, skip this empty [[env]]
+          }
+          next
+        }
+        /^\[env\]$/ {
+          # Found [env] section, read the next line
+          if ((getline line) > 0) {
+            # If the next line has content, print both
+            if (line ~ /[^[:space:]]/) {
+              print "[env]"
+              print line
+            }
+            # If the next line is empty or another section, skip this empty [env]
+          }
+          next
+        }
+        # Print all other lines
+        { print }
+        ' ".mise.toml" >".mise.toml.tmp" && mv ".mise.toml.tmp" ".mise.toml"
+
+        rm -f ".mise.toml.bak"
+        echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
       fi
       ((uninstall_steps++))
     fi
@@ -822,7 +879,7 @@ function install_scripts() {
 
 ## Perform post-installation customizations
 function post_installation_steps() {
-  echo -e "${BLUE}Performing post-installation steps: [integrate with DIRENV], [copy installer to bin]${NC}"
+  echo -e "${BLUE}Performing post-installation steps: [integrate with DIRENV/MISE], [copy installer to bin]${NC}"
 
   # Check for .envrc file and update it if found
   if [ -f ".envrc" ] && [ "$DRY_RUN" == false ]; then
@@ -831,6 +888,15 @@ function post_installation_steps() {
     local prefix=""
     [ "$DRY_RUN" == true ] && prefix="${CYAN}dry run: ${NC}"
     echo -e "${prefix}${GRAY}Skipping DIRENV integration. No ${YELLOW}${PWD}/.envrc${GRAY} file.${NC}" >&2
+  fi
+
+  # Check for .mise.toml file and update it if found
+  if [ -f ".mise.toml" ] && [ "$DRY_RUN" == false ]; then
+    update_mise_configuration
+  else
+    local prefix=""
+    [ "$DRY_RUN" == true ] && prefix="${CYAN}dry run: ${NC}"
+    echo -e "${prefix}${GRAY}Skipping MISE integration. No ${YELLOW}${PWD}/.mise.toml${GRAY} file.${NC}" >&2
   fi
 
   # Check for bin directory and copy installer script
@@ -924,6 +990,180 @@ function update_envrc_configuration() {
 
   echo -e "${GREEN}Added e-bash configuration to ${YELLOW}${PWD}/.envrc${NC}"
   echo -e "${YELLOW}Run 'direnv allow' to apply the changes${NC}"
+  return 0
+}
+
+## Append e-bash configuration to mise.toml file. Exit code.
+function update_mise_configuration() {
+  # Helper: Read value from [env] or [[env]] section
+  get_mise_env_value() {
+    local key="$1"
+    # Check both [env] and [[env]] sections using AWK (portable)
+    awk -v key="$key" '
+      /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
+      /^\[/ { in_env=0 }
+      in_env && $0 ~ "^"key"[[:space:]]*=" {
+        sub("^"key"[[:space:]]*=[[:space:]]*", "")
+        sub("[[:space:]]*$", "")
+        print
+        exit
+      }
+    ' ".mise.toml"
+  }
+
+  # Helper: Check if _.path already exists in env sections
+  has_existing_path() {
+    # Check both [env] and [[env]] sections using AWK (portable)
+    # Returns "true" if found, empty if not (safe for set -e)
+    local result=$(awk '
+      /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
+      /^\[/ { in_env=0 }
+      in_env && /^[[:space:]]*_.path[[:space:]]*=/ { print "true"; exit }
+    ' ".mise.toml")
+    [ "$result" = "true" ]
+  }
+
+  # Helper: Get existing _.path entries as a comma-separated string
+  get_existing_paths() {
+    # Check both [env] and [[env]] sections using AWK (portable)
+    awk '
+      /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
+      /^\[/ { in_env=0 }
+      in_env && /^[[:space:]]*_.path[[:space:]]*=/ {
+        sub("^[[:space:]]*_.path[[:space:]]*=[[:space:]]*", "")
+        sub("[[:space:]]*$", "")
+        print
+        exit
+      }
+    ' ".mise.toml"
+  }
+
+  # Helper: Check if a specific path entry exists in the existing paths
+  has_path_entry() {
+    local path_entry="$1"
+    local existing_paths=$(get_existing_paths)
+    if [ -n "$existing_paths" ]; then
+      echo "$existing_paths" | grep -q "\"${path_entry}\""
+    else
+      return 1
+    fi
+  }
+
+  # Check if E_BASH is already configured in any [env] or [[env]] section
+  if [ -f ".mise.toml" ]; then
+    local existing_value=$(get_mise_env_value "E_BASH")
+    if [ -n "$existing_value" ]; then
+      echo -e "${GRAY}Skipping MISE integration. E_BASH already configured in ${YELLOW}${PWD}/.mise.toml${NC}"
+      return 0
+    fi
+  fi
+
+  # Determine the type of env section that exists
+  local has_env_table=false # [env] - single table
+  local has_env_array=false # [[env]] - array of tables
+
+  if [ -f ".mise.toml" ]; then
+    grep -q "^\\[env\\]" ".mise.toml" && has_env_table=true
+    grep -q "^\\[\\[env\\]\\]" ".mise.toml" && has_env_array=true
+  fi
+
+  # Check if we already have _.path entries and if our entries are already included
+  local has_existing_paths=$(has_existing_path && echo "true" || echo "false")
+  local has_scripts_path=$(has_path_entry "{{config_root}}/${SCRIPTS_DIR}" && echo "true" || echo "false")
+  local has_bin_path=$(has_path_entry "{{config_root}}/bin" && echo "true" || echo "false")
+
+  # Append configuration based on existing structure
+  if [ "$has_env_array" = true ]; then
+    # Append new [[env]] array entry to end of file
+    {
+      echo ""
+      echo "# e-bash scripts configuration"
+      echo "[[env]]"
+      echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
+
+      # Handle _.path: merge with existing or create new
+      if [ "$has_existing_paths" = true ]; then
+        # We need to update the existing _.path, but since this is [[env]] array,
+        # we'll just add our missing entries to this new section
+        echo -n "_.path = ["
+        local first=true
+
+        # Add our entries
+        if [ "$has_scripts_path" = false ]; then
+          echo -n "\"{{config_root}}/${SCRIPTS_DIR}\""
+          first=false
+        fi
+
+        if [ "$has_bin_path" = false ]; then
+          [ "$first" = false ] && echo -n ", "
+          echo -n "\"{{config_root}}/bin\""
+        fi
+
+        echo "]"
+      else
+        # Create new _.path with our entries
+        echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+      fi
+    } >>".mise.toml"
+    echo -e "${GREEN}Added e-bash configuration as new [[env]] entry in ${YELLOW}${PWD}/.mise.toml${NC}"
+  elif [ "$has_env_table" = true ]; then
+    # Insert into existing [env] section (before next section or EOF)
+    # Find the line number where [env] section ends
+    local env_end=$(awk '/^\[env\]/{start=NR; next} start && /^\[/{print NR-1; found=1; exit} END{if(start && !found) print NR}' ".mise.toml")
+
+    # Handle _.path merging for [env] section
+    local new_path=""
+    if [ "$has_existing_paths" = true ]; then
+      # Get existing paths and merge with ours
+      local existing_paths=$(get_existing_paths)
+      local all_paths="${existing_paths}"
+
+      # Add our entries if they don't exist
+      if [ "$has_scripts_path" = false ]; then
+        # Remove brackets and add comma if needed
+        all_paths=$(echo "$all_paths" | sed 's/^\[//; s/\]$//')
+        [ "${all_paths}" != "" ] && all_paths="${all_paths}, "
+        all_paths="${all_paths}\"{{config_root}}/${SCRIPTS_DIR}\""
+      fi
+
+      if [ "$has_bin_path" = false ]; then
+        # Remove brackets and add comma if needed
+        all_paths=$(echo "$all_paths" | sed 's/^\[//; s/\]$//')
+        [ "${all_paths}" != "" ] && all_paths="${all_paths}, "
+        all_paths="${all_paths}\"{{config_root}}/bin\""
+      fi
+
+      new_path="[${all_paths}]"
+    else
+      # Create new _.path
+      new_path="[\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+    fi
+
+    # Create temp file with insertion, removing existing _.path lines
+    {
+      # Output lines before the insertion point, excluding existing _.path
+      head -n "$env_end" ".mise.toml" | grep -v "^[[:space:]]*_.path[[:space:]]*="
+      echo "# e-bash scripts configuration"
+      echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
+      echo "_.path = ${new_path}"
+      tail -n +$((env_end + 1)) ".mise.toml"
+    } >".mise.toml.tmp"
+
+    mv ".mise.toml.tmp" ".mise.toml"
+    echo -e "${GREEN}Added e-bash configuration to existing [env] section in ${YELLOW}${PWD}/.mise.toml${NC}"
+  else
+    # Create new [env] table (prefer single table for simplicity)
+    {
+      echo ""
+      echo "# e-bash scripts configuration"
+      echo "[env]"
+      echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
+      echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
+    } >>".mise.toml"
+    echo -e "${GREEN}Added e-bash configuration to ${YELLOW}${PWD}/.mise.toml${NC}"
+  fi
+
+  echo -e "${YELLOW}Run 'mise trust' to apply the changes${NC}"
   return 0
 }
 
@@ -1643,10 +1883,10 @@ function main_ebash() {
   local args="$*"
   # if $args are empty, print <empty>
   [ -z "$args" ] && args="<empty>"
-  
+
   local command="${1:-auto}"
   local version="${2:-master}"
-  
+
   # Always show the main installer message
   echo -e "${PURPLE}installer: e-bash scripts, arguments: ${GRAY}$args${NC}" >&2
 
