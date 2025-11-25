@@ -51,79 +51,12 @@ jobs:
 
       - name: Validate semver format
         id: validate
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          TAG="${{ steps.version.outputs.tag }}"
-
-          echo "🔍 Validating semver format for: $VERSION"
-
-          # Semver regex pattern (supports major.minor.patch with optional pre-release and build metadata)
-          # Examples: 1.0.0, 1.0.0-alpha, 1.0.0-beta.1, 1.0.0+meta, 1.0.0-rc.1+build.123
-          SEMVER_REGEX='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
-
-          if [[ ! "$VERSION" =~ $SEMVER_REGEX ]]; then
-            echo "❌ ERROR: Tag '$TAG' does not follow semantic versioning format"
-            echo "Expected format: vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]"
-            echo "Examples: v1.0.0, v1.0.0-alpha, v1.0.0-beta.1, v1.0.0-rc.1+build.123"
-
-            # Write error to GitHub step summary
-            cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## ❌ Release Validation Failed
-
-          **Tag:** \`$TAG\`
-          **Version:** \`$VERSION\`
-
-          ### Issue
-          Tag does not follow semantic versioning format.
-
-          ### Expected Format
-          \`vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]\`
-
-          ### Valid Examples
-          - \`v1.0.0\` - Standard release
-          - \`v1.0.0-alpha\` - Pre-release
-          - \`v1.0.0-beta.1\` - Pre-release with number
-          - \`v1.0.0-rc.1+build.123\` - Pre-release with build metadata
-
-          ### Action Required
-          Please create a new tag following the semver format.
-          EOF
-
-            echo "is_valid=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-
-          echo "✅ Valid semver format: $VERSION"
-          echo "is_valid=true" >> $GITHUB_OUTPUT
+        run: ./.github/scripts/release/validate-version.sh "${{ steps.version.outputs.version }}" "${{ steps.version.outputs.tag }}"
 
       - name: Run ShellCheck on core scripts
         if: steps.validate.outputs.is_valid == 'true'
         continue-on-error: true
-        run: |
-          echo "🔍 Running ShellCheck on .scripts/ and bin/ directories..."
-
-          # Check if shellcheck is available
-          if ! command -v shellcheck &> /dev/null; then
-            echo "⚠️  ShellCheck not found, installing..."
-            sudo apt-get update
-            sudo apt-get install -y shellcheck
-          fi
-
-          # Run shellcheck on all shell scripts (SC1091=source file not found, SC2086=word splitting)
-          EXIT_CODE=0
-          while IFS= read -r file; do
-            echo "Checking: $file"
-            if ! shellcheck -e SC1091 -e SC2086 "$file"; then
-              EXIT_CODE=1
-            fi
-          done < <(find .scripts bin -type f -name "*.sh")
-
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ All shell scripts passed ShellCheck"
-          else
-            echo "⚠️  Some ShellCheck warnings found (non-blocking)"
-            exit 0  # Don't fail the workflow
-          fi
+        run: ./.github/scripts/release/check-quality.sh
 
       - name: Delete existing release if tag was reassigned
         if: steps.validate.outputs.is_valid == 'true'
@@ -145,145 +78,23 @@ jobs:
 
       - name: Verify required files and directories
         if: steps.validate.outputs.is_valid == 'true'
-        run: |
-          echo "🔍 Verifying distribution contents..."
-
-          # Check directories
-          for dir in .scripts bin docs demos; do
-            if [ ! -d "$dir" ]; then
-              echo "❌ ERROR: Directory $dir not found"
-              exit 1
-            fi
-            echo "✅ Directory: $dir"
-          done
-
-          # Check files
-          for file in README.md LICENSE; do
-            if [ ! -f "$file" ]; then
-              echo "❌ ERROR: File $file not found"
-              exit 1
-            fi
-            echo "✅ File: $file"
-          done
-
-          echo "✅ All required files and directories present"
+        run: ./.github/scripts/release/verify-contents.sh
 
       - name: Create distribution archive
         if: steps.validate.outputs.is_valid == 'true'
         id: archive
-        run: |
-          ARCHIVE_NAME="e-bash.${{ steps.version.outputs.version }}.zip"
-          echo "📦 Creating distribution archive: $ARCHIVE_NAME"
-
-          # Create ZIP archive with specified contents
-          zip -r "$ARCHIVE_NAME" \
-            .scripts/ \
-            bin/ \
-            docs/ \
-            demos/ \
-            README.md \
-            LICENSE \
-            -x "*.git*" \
-            -x "*__pycache__*" \
-            -x "*.pyc" \
-            -x "*node_modules*" \
-            -x "*.DS_Store"
-
-          # Verify archive was created
-          if [ ! -f "$ARCHIVE_NAME" ]; then
-            echo "❌ ERROR: Failed to create archive"
-            exit 1
-          fi
-
-          # Verify archive integrity
-          echo ""
-          echo "🔍 Verifying archive integrity..."
-          if unzip -t "$ARCHIVE_NAME" >/dev/null 2>&1; then
-            echo "✅ Archive integrity verified"
-          else
-            echo "❌ ERROR: Archive integrity check failed"
-            exit 1
-          fi
-
-          # Calculate checksum
-          echo ""
-          echo "🔐 Calculating checksum..."
-          CHECKSUM=$(sha256sum "$ARCHIVE_NAME" | cut -d' ' -f1)
-          echo "SHA256: $CHECKSUM"
-
-          # Show archive info
-          echo ""
-          echo "✅ Archive created successfully"
-          ls -lh "$ARCHIVE_NAME"
-          echo ""
-          echo "📋 Archive contents (first 50 files):"
-          unzip -l "$ARCHIVE_NAME" | head -n 52
-
-          # Store outputs for next steps
-          echo "archive_name=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
-          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+        run: ./.github/scripts/release/create-archive.sh "${{ steps.version.outputs.version }}"
 
       - name: Generate release notes
         if: steps.validate.outputs.is_valid == 'true'
         id: release_notes
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          TAG="${{ steps.version.outputs.tag }}"
-          COMMIT_SHA="${{ github.sha }}"
-          CHECKSUM="${{ steps.archive.outputs.checksum }}"
-          ARCHIVE_NAME="${{ steps.archive.outputs.archive_name }}"
-
-          # Create release notes
-          cat > release_notes.md << EOF
-          ## e-bash ${VERSION}
-
-          Distribution package for e-bash version ${VERSION}.
-
-          **Commit:** \`${COMMIT_SHA:0:7}\` ([view full commit](https://github.com/OleksandrKucherenko/e-bash/commit/${COMMIT_SHA}))
-
-          ### 🔐 Integrity Verification
-
-          \`\`\`bash
-          # SHA256 Checksum
-          ${CHECKSUM}  ${ARCHIVE_NAME}
-
-          # Verify after download
-          echo "${CHECKSUM}  ${ARCHIVE_NAME}" | sha256sum -c
-          \`\`\`
-
-          ### 📦 Installation
-
-          \`\`\`bash
-          # Download and extract
-          wget https://github.com/OleksandrKucherenko/e-bash/releases/download/${TAG}/e-bash.${VERSION}.zip
-          unzip e-bash.${VERSION}.zip -d e-bash
-
-          # Or use the quick install script
-          curl -sSL https://git.new/e-bash | bash -s --
-          \`\`\`
-
-          ### 📂 Package Contents
-
-          - \`.scripts/\` - Core library functions (16 modules)
-          - \`bin/\` - Standalone tools and scripts (11 executables)
-          - \`docs/\` - Comprehensive documentation
-          - \`demos/\` - Demo scripts showing usage patterns
-          - \`README.md\` - Project documentation
-          - \`LICENSE\` - MIT License
-
-          ### 🔗 Resources
-
-          - **Repository:** https://github.com/OleksandrKucherenko/e-bash
-          - **Documentation:** https://github.com/OleksandrKucherenko/e-bash/tree/master/docs
-          - **Issues:** https://github.com/OleksandrKucherenko/e-bash/issues
-
-          ---
-
-          For detailed changelog, see [CHANGELOG.md](https://github.com/OleksandrKucherenko/e-bash/blob/master/CHANGELOG.md)
-          EOF
-
-          echo "✅ Release notes generated"
-          cat release_notes.md
+          ./.github/scripts/release/generate-release-notes.sh \
+            "${{ steps.version.outputs.version }}" \
+            "${{ steps.version.outputs.tag }}" \
+            "${{ github.sha }}" \
+            "${{ steps.archive.outputs.checksum }}" \
+            "${{ steps.archive.outputs.archive_name }}"
 
       - name: Create GitHub Release
         if: steps.validate.outputs.is_valid == 'true'
@@ -302,36 +113,10 @@ jobs:
       - name: Release Summary
         if: steps.validate.outputs.is_valid == 'true'
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          TAG="${{ steps.version.outputs.tag }}"
-          ARCHIVE_NAME="${{ steps.archive.outputs.archive_name }}"
-          CHECKSUM="${{ steps.archive.outputs.checksum }}"
-          COMMIT_SHA="${{ github.sha }}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG}"
-
-          cat >> $GITHUB_STEP_SUMMARY << EOF
-          ## 🎉 Release Created Successfully!
-
-          ### 📋 Release Information
-          - **Version:** \`${VERSION}\`
-          - **Tag:** \`${TAG}\`
-          - **Commit:** [\`${COMMIT_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${COMMIT_SHA})
-          - **Release URL:** ${RELEASE_URL}
-
-          ### 📦 Distribution Package
-          - **Archive:** \`${ARCHIVE_NAME}\`
-          - **SHA256:** \`${CHECKSUM}\`
-
-          ### 📥 Quick Download
-          \`\`\`bash
-          wget https://github.com/${{ github.repository }}/releases/download/${TAG}/${ARCHIVE_NAME}
-          \`\`\`
-
-          ### ✅ Next Steps
-          - View the release: ${RELEASE_URL}
-          - Verify checksum after download
-          - Update documentation if needed
-
-          ---
-          🚀 Distribution package is now available in [GitHub Releases](${RELEASE_URL})
-          EOF
+          ./.github/scripts/release/release-summary.sh \
+            "${{ steps.version.outputs.version }}" \
+            "${{ steps.version.outputs.tag }}" \
+            "${{ github.sha }}" \
+            "${{ steps.archive.outputs.checksum }}" \
+            "${{ steps.archive.outputs.archive_name }}" \
+            "${{ github.repository }}"
