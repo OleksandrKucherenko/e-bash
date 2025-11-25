@@ -12,16 +12,9 @@
 
 eval "$(shellspec - -c) exit 1"
 
-# Define script paths for cleaner usage
-PROJECT_ROOT="$(pwd)"
-SCRIPT_DIR="${PROJECT_ROOT}/bin"
-CONVENTIONAL_SCRIPT="${SCRIPT_DIR}/git.conventional.commits.sh"
-
-# Set E_BASH variable manually for tests
-export E_BASH="${PROJECT_ROOT}/.scripts"
-
 Describe 'git.conventional.commits.sh'
-  Include "$CONVENTIONAL_SCRIPT"
+  # Include the script using relative path from project root
+  Include bin/git.conventional.commits.sh
 
   BeforeEach 'setup_test_environment'
   AfterEach 'cleanup_test_environment'
@@ -150,7 +143,15 @@ Describe 'git.conventional.commits.sh'
     End
 
     It 'handles multi-line commit messages'
-      local multi_line="$(cat "${PROJECT_ROOT}/spec/bin/fixture-feat.txt")"
+      # Read multi-line data and parse it
+      multi_line="feat: add authentication
+
+Implement OAuth 2.0 authentication flow with support for:
+- Google OAuth
+- GitHub OAuth
+- Email/password fallback
+
+BREAKING CHANGE: Old authentication method is no longer supported"
 
       When call conventional:parse "$multi_line"
       The status should be success
@@ -161,7 +162,14 @@ Describe 'git.conventional.commits.sh'
     End
 
     It 'detects breaking change in footer'
-      When call conventional:parse "$(cat "${PROJECT_ROOT}/spec/bin/fixture-feat-oauth.txt")"
+      # Read multi-line data and parse it
+      oauth_content="feat!: implement OAuth authentication
+
+Complete rewrite of authentication system using OAuth 2.0.
+
+BREAKING CHANGE: Sessions from v1 are incompatible with v2"
+
+      When call conventional:parse "$oauth_content"
       The status should be success
 
       The variable __conventional_parse_result[breaking] should eq "!"
