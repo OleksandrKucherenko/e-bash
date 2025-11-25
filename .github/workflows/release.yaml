@@ -65,6 +65,30 @@ jobs:
             echo "❌ ERROR: Tag '$TAG' does not follow semantic versioning format"
             echo "Expected format: vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]"
             echo "Examples: v1.0.0, v1.0.0-alpha, v1.0.0-beta.1, v1.0.0-rc.1+build.123"
+
+            # Write error to GitHub step summary
+            cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ❌ Release Validation Failed
+
+          **Tag:** \`$TAG\`
+          **Version:** \`$VERSION\`
+
+          ### Issue
+          Tag does not follow semantic versioning format.
+
+          ### Expected Format
+          \`vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]\`
+
+          ### Valid Examples
+          - \`v1.0.0\` - Standard release
+          - \`v1.0.0-alpha\` - Pre-release
+          - \`v1.0.0-beta.1\` - Pre-release with number
+          - \`v1.0.0-rc.1+build.123\` - Pre-release with build metadata
+
+          ### Action Required
+          Please create a new tag following the semver format.
+          EOF
+
             echo "is_valid=false" >> $GITHUB_OUTPUT
             exit 1
           fi
@@ -171,15 +195,33 @@ jobs:
             exit 1
           fi
 
+          # Verify archive integrity
+          echo ""
+          echo "🔍 Verifying archive integrity..."
+          if unzip -t "$ARCHIVE_NAME" >/dev/null 2>&1; then
+            echo "✅ Archive integrity verified"
+          else
+            echo "❌ ERROR: Archive integrity check failed"
+            exit 1
+          fi
+
+          # Calculate checksum
+          echo ""
+          echo "🔐 Calculating checksum..."
+          CHECKSUM=$(sha256sum "$ARCHIVE_NAME" | cut -d' ' -f1)
+          echo "SHA256: $CHECKSUM"
+
           # Show archive info
+          echo ""
           echo "✅ Archive created successfully"
           ls -lh "$ARCHIVE_NAME"
           echo ""
-          echo "📋 Archive contents:"
-          unzip -l "$ARCHIVE_NAME"
+          echo "📋 Archive contents (first 50 files):"
+          unzip -l "$ARCHIVE_NAME" | head -n 52
 
-          # Store archive name for next step
+          # Store outputs for next steps
           echo "archive_name=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
 
       - name: Generate release notes
         if: steps.validate.outputs.is_valid == 'true'
@@ -187,12 +229,27 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${{ steps.version.outputs.tag }}"
+          COMMIT_SHA="${{ github.sha }}"
+          CHECKSUM="${{ steps.archive.outputs.checksum }}"
+          ARCHIVE_NAME="${{ steps.archive.outputs.archive_name }}"
 
           # Create release notes
           cat > release_notes.md << EOF
           ## e-bash ${VERSION}
 
           Distribution package for e-bash version ${VERSION}.
+
+          **Commit:** \`${COMMIT_SHA:0:7}\` ([view full commit](https://github.com/OleksandrKucherenko/e-bash/commit/${COMMIT_SHA}))
+
+          ### 🔐 Integrity Verification
+
+          \`\`\`bash
+          # SHA256 Checksum
+          ${CHECKSUM}  ${ARCHIVE_NAME}
+
+          # Verify after download
+          echo "${CHECKSUM}  ${ARCHIVE_NAME}" | sha256sum -c
+          \`\`\`
 
           ### 📦 Installation
 
@@ -245,10 +302,36 @@ jobs:
       - name: Release Summary
         if: steps.validate.outputs.is_valid == 'true'
         run: |
-          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Archive:** ${{ steps.archive.outputs.archive_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📦 Distribution package is now available in GitHub Releases" >> $GITHUB_STEP_SUMMARY
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
+          ARCHIVE_NAME="${{ steps.archive.outputs.archive_name }}"
+          CHECKSUM="${{ steps.archive.outputs.checksum }}"
+          COMMIT_SHA="${{ github.sha }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${TAG}"
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🎉 Release Created Successfully!
+
+          ### 📋 Release Information
+          - **Version:** \`${VERSION}\`
+          - **Tag:** \`${TAG}\`
+          - **Commit:** [\`${COMMIT_SHA:0:7}\`](https://github.com/${{ github.repository }}/commit/${COMMIT_SHA})
+          - **Release URL:** ${RELEASE_URL}
+
+          ### 📦 Distribution Package
+          - **Archive:** \`${ARCHIVE_NAME}\`
+          - **SHA256:** \`${CHECKSUM}\`
+
+          ### 📥 Quick Download
+          \`\`\`bash
+          wget https://github.com/${{ github.repository }}/releases/download/${TAG}/${ARCHIVE_NAME}
+          \`\`\`
+
+          ### ✅ Next Steps
+          - View the release: ${RELEASE_URL}
+          - Verify checksum after download
+          - Update documentation if needed
+
+          ---
+          🚀 Distribution package is now available in [GitHub Releases](${RELEASE_URL})
+          EOF
