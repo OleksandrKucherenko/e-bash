@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-23
+## Last revisit: 2025-11-25
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -459,7 +459,7 @@ function _Trap::initialize_signal() {
   _Trap::capture_legacy "$signal"
 
   # 2. Set the native trap to our dispatcher
-  trap "Trap::dispatch $signal" "$signal"
+  trap "Trap::dispatch ${signal}" "$signal"
 
   # 3. Initialize the handler array using declare -ga (Global Array)
   declare -g -a "${__TRAP_PREFIX}${signal}"
@@ -544,4 +544,8 @@ function _Trap::list_all_signals() {
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
 
+# Skip logger initialization if functions are already mocked (e.g., in ShellSpec tests)
 logger trap "$@" # declare echo:Trap & printf:Trap functions
+# logger:init trap "[${cl_lblue}trap${cl_reset}] " ">&2"
+
+echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"

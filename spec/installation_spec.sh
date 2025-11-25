@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-24
+## Last revisit: 2025-11-25
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -56,8 +56,8 @@ Describe 'bin/install.e-bash.sh'
   do_rollback() { ./install.e-bash.sh rollback 2>/dev/null >/dev/null; }
   do_rollback_global() { HOME="$TEMP_HOME" ./install.e-bash.sh rollback --global 2>/dev/null >/dev/null; }
   do_versions() { ./install.e-bash.sh versions 2>/dev/null >/dev/null; }
-  do_uninstall() { ./install.e-bash.sh uninstall --confirm  2>/dev/null >/dev/null; }
-  do_uninstall_global() { HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global  2>/dev/null >/dev/null; }
+  do_uninstall() { ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null; }
+  do_uninstall_global() { HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 2>/dev/null >/dev/null; }
 
   # Mock installation state without network access
   # Simulates a successful local installation by creating expected directory structure
@@ -75,10 +75,10 @@ Describe 'bin/install.e-bash.sh'
 
     # Set up git remote and branches as the install script would
     git remote add e-bash https://github.com/OleksandrKucherenko/e-bash.git 2>/dev/null || true
-    
+
     # Create e-bash-scripts branch pointing to the tagged commit
     git branch e-bash-scripts 2>/dev/null || true
-    
+
     # Create a temporary branch to simulate e-bash-temp pointing to v1.0.0
     git branch e-bash-temp 2>/dev/null || true
 
@@ -91,7 +91,7 @@ Describe 'bin/install.e-bash.sh'
     local previous_version="${1:-v1.0.0}"
     # Get current HEAD as "previous" version
     local current_hash=$(git rev-parse HEAD)
-    echo "$current_hash" > .e-bash-previous-version
+    echo "$current_hash" >.e-bash-previous-version
     git add .e-bash-previous-version
     git commit --no-gpg-sign -m "Upgrade e-bash (mock)" -q 2>/dev/null || git commit -m "Upgrade e-bash (mock)" -q
     return 0
@@ -213,8 +213,8 @@ Describe 'bin/install.e-bash.sh'
 
     It 'should not modify mise.toml if it already has E_BASH configuration'
       touch .mise.toml
-      echo '[env]' >> .mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
+      echo '[env]' >>.mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
       git add .mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with E_BASH" -q 2>/dev/null || git commit -m "Add mise.toml with E_BASH" -q
 
@@ -228,11 +228,11 @@ Describe 'bin/install.e-bash.sh'
 
     It 'should insert into existing [env] section before other sections'
       touch .mise.toml
-      echo '[env]' >> .mise.toml
-      echo 'NODE_ENV = "development"' >> .mise.toml
-      echo '' >> .mise.toml
-      echo '[tools]' >> .mise.toml
-      echo 'node = "20"' >> .mise.toml
+      echo '[env]' >>.mise.toml
+      echo 'NODE_ENV = "development"' >>.mise.toml
+      echo '' >>.mise.toml
+      echo '[tools]' >>.mise.toml
+      echo 'node = "20"' >>.mise.toml
       git add .mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with [env] and [tools]" -q 2>/dev/null || git commit -m "Add mise.toml with [env] and [tools]" -q
 
@@ -252,8 +252,8 @@ Describe 'bin/install.e-bash.sh'
 
     It 'should handle mise.toml with [[env]] array of tables'
       touch .mise.toml
-      echo '[[env]]' >> .mise.toml
-      echo 'NODE_ENV = "development"' >> .mise.toml
+      echo '[[env]]' >>.mise.toml
+      echo 'NODE_ENV = "development"' >>.mise.toml
       git add .mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with [[env]]" -q 2>/dev/null || git commit -m "Add mise.toml with [[env]]" -q
 
@@ -271,8 +271,8 @@ Describe 'bin/install.e-bash.sh'
 
     It 'should not modify mise.toml with [[env]] if E_BASH exists'
       touch .mise.toml
-      echo '[[env]]' >> .mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
+      echo '[[env]]' >>.mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
       git add .mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with [[env]] and E_BASH" -q 2>/dev/null || git commit -m "Add mise.toml with [[env]] and E_BASH" -q
 
@@ -412,7 +412,7 @@ Describe 'bin/install.e-bash.sh'
 
     It 'should fail with invalid commit hash format'
       # Create file with invalid hash
-      echo "not-a-valid-hash-!!!" > .e-bash-previous-version
+      echo "not-a-valid-hash-!!!" >.e-bash-previous-version
 
       When run ./install.e-bash.sh rollback
 
@@ -423,7 +423,7 @@ Describe 'bin/install.e-bash.sh'
 
     It 'should fail with non-existent commit hash'
       # Create file with valid format but non-existent hash
-      echo "0000000000000000000000000000000000000000" > .e-bash-previous-version
+      echo "0000000000000000000000000000000000000000" >.e-bash-previous-version
 
       When run ./install.e-bash.sh rollback
 
@@ -440,7 +440,7 @@ Describe 'bin/install.e-bash.sh'
 
       # Get a valid commit hash
       local valid_hash=$(git rev-parse HEAD)
-      echo "$valid_hash" > .e-bash-previous-version
+      echo "$valid_hash" >.e-bash-previous-version
 
       When run ./install.e-bash.sh rollback
 
@@ -460,7 +460,7 @@ Describe 'bin/install.e-bash.sh'
 
       # Get a valid short commit hash
       local valid_hash=$(git rev-parse --short HEAD)
-      echo "$valid_hash" > .e-bash-previous-version
+      echo "$valid_hash" >.e-bash-previous-version
 
       When run ./install.e-bash.sh rollback
 
@@ -512,7 +512,7 @@ Describe 'bin/install.e-bash.sh'
       touch .scripts/test.sh
       make_readonly
 
-      When run ./install.e-bash.sh uninstall --confirm 
+      When run ./install.e-bash.sh uninstall --confirm
 
       The status should be failure
       The error should include "Error:"
@@ -945,7 +945,7 @@ Describe 'bin/install.e-bash.sh'
     It 'should remove .scripts directory with --confirm'
       mock_install
 
-      When run ./install.e-bash.sh uninstall --confirm 
+      When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -955,9 +955,9 @@ Describe 'bin/install.e-bash.sh'
 
     It 'should remove .e-bash-previous-version file'
       mock_install
-      mock_upgrade  # Create previous version file
+      mock_upgrade # Create previous version file
 
-      When run ./install.e-bash.sh uninstall --confirm 
+      When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -990,7 +990,7 @@ Describe 'bin/install.e-bash.sh'
       cp_install
       mv install.e-bash.sh bin/
 
-      When run ./bin/install.e-bash.sh uninstall --confirm 
+      When run ./bin/install.e-bash.sh uninstall --confirm
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -1001,8 +1001,8 @@ Describe 'bin/install.e-bash.sh'
     It 'should clean .envrc E_BASH configuration'
       mock_install
       touch .envrc
-      echo 'export E_BASH="$PWD/.scripts"' >> .envrc
-      echo 'PATH_add "$PWD/.scripts"' >> .envrc
+      echo 'export E_BASH="$PWD/.scripts"' >>.envrc
+      echo 'PATH_add "$PWD/.scripts"' >>.envrc
 
       When run ./install.e-bash.sh uninstall --confirm
 
@@ -1016,10 +1016,10 @@ Describe 'bin/install.e-bash.sh'
     It 'should clean .mise.toml E_BASH configuration with [env]'
       mock_install
       touch .mise.toml
-      echo '# e-bash scripts configuration' >> .mise.toml
-      echo '[env]' >> .mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
-      echo '_.path = ["{{config_root}}/.scripts"]' >> .mise.toml
+      echo '# e-bash scripts configuration' >>.mise.toml
+      echo '[env]' >>.mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >>.mise.toml
 
       When run ./install.e-bash.sh uninstall --confirm
 
@@ -1033,10 +1033,10 @@ Describe 'bin/install.e-bash.sh'
     It 'should clean .mise.toml E_BASH configuration with [[env]]'
       mock_install
       touch .mise.toml
-      echo '# e-bash scripts configuration' >> .mise.toml
-      echo '[[env]]' >> .mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
-      echo '_.path = ["{{config_root}}/.scripts"]' >> .mise.toml
+      echo '# e-bash scripts configuration' >>.mise.toml
+      echo '[[env]]' >>.mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >>.mise.toml
 
       When run ./install.e-bash.sh uninstall --confirm
 
@@ -1050,13 +1050,13 @@ Describe 'bin/install.e-bash.sh'
     It 'should preserve other [[env]] entries when cleaning'
       mock_install
       touch .mise.toml
-      echo '[[env]]' >> .mise.toml
-      echo 'NODE_ENV = "development"' >> .mise.toml
-      echo '' >> .mise.toml
-      echo '# e-bash scripts configuration' >> .mise.toml
-      echo '[[env]]' >> .mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >> .mise.toml
-      echo '_.path = ["{{config_root}}/.scripts"]' >> .mise.toml
+      echo '[[env]]' >>.mise.toml
+      echo 'NODE_ENV = "development"' >>.mise.toml
+      echo '' >>.mise.toml
+      echo '# e-bash scripts configuration' >>.mise.toml
+      echo '[[env]]' >>.mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >>.mise.toml
 
       When run sh -c './install.e-bash.sh uninstall --confirm && echo "=== FILE CONTENT CHECK ===" && cat .mise.toml'
 
@@ -1071,9 +1071,9 @@ Describe 'bin/install.e-bash.sh'
       mock_install
       # Add user files
       touch .scripts/user-script.sh
-      echo "# User content" > README.md
+      echo "# User content" >README.md
 
-      When run ./install.e-bash.sh uninstall --confirm 
+      When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -1085,7 +1085,7 @@ Describe 'bin/install.e-bash.sh'
     It 'should support dry-run mode'
       mock_install
 
-      When run ./install.e-bash.sh uninstall --confirm --dry-run 
+      When run ./install.e-bash.sh uninstall --confirm --dry-run
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -1097,7 +1097,7 @@ Describe 'bin/install.e-bash.sh'
       # Fresh repo without e-bash
       rm -rf .scripts .e-bash-previous-version
 
-      When run ./install.e-bash.sh uninstall --confirm 
+      When run ./install.e-bash.sh uninstall --confirm
 
       The status should be failure
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -1107,7 +1107,7 @@ Describe 'bin/install.e-bash.sh'
     It 'should NOT remove shell RC files'
       mock_install
       # This is important - shell RC should not be touched
-      When run ./install.e-bash.sh uninstall --confirm 
+      When run ./install.e-bash.sh uninstall --confirm
 
       # Should complete successfully
       The status should be success
@@ -1145,7 +1145,7 @@ Describe 'bin/install.e-bash.sh'
       env HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null
 
       # Uninstall should only remove symlink
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -1163,7 +1163,7 @@ Describe 'bin/install.e-bash.sh'
 
       env HOME="$TEMP_HOME" ./install.e-bash.sh install --global 2>/dev/null >/dev/null
 
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -1183,7 +1183,7 @@ Describe 'bin/install.e-bash.sh'
       cp_install
 
       # No symlink created
-      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 
+      When run env HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global
 
       The status should be failure
       The result of function no_colors_error should include "installer: e-bash scripts"

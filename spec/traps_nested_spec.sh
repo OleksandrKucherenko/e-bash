@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-23
+## Last revisit: 2025-11-25
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -33,7 +33,7 @@ Describe '_traps.sh nested loading:'
   Describe 'Sequential sourcing:'
     setup_test_scripts() {
       # Create temporary test scripts
-      cat > /tmp/test_trap_script_a.sh << 'EOF'
+      cat >/tmp/test_trap_script_a.sh <<'EOF'
 #!/usr/bin/env bash
 export E_BASH="${E_BASH:-.scripts}"
 export DEBUG=""
@@ -46,7 +46,7 @@ cleanup_a() {
 trap:on cleanup_a EXIT
 EOF
 
-      cat > /tmp/test_trap_script_b.sh << 'EOF'
+      cat >/tmp/test_trap_script_b.sh <<'EOF'
 #!/usr/bin/env bash
 export E_BASH="${E_BASH:-.scripts}"
 export DEBUG=""
@@ -269,7 +269,7 @@ EOF
 
   Describe 'Library pattern (reusable sourcing):'
     setup_library() {
-      cat > /tmp/test_trap_lib_db.sh << 'EOF'
+      cat >/tmp/test_trap_lib_db.sh <<'EOF'
 #!/usr/bin/env bash
 # Library initialization guard
 if [[ "${LIB_DB_TRAP_LOADED}" != "yes" ]]; then
