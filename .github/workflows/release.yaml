@@ -1,0 +1,122 @@
+name: "Release Distribution"
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on any tag starting with 'v' (e.g., v1.0.0, v1.0.0-alpha, v1.0.0-beta.1+meta)
+
+  # Allows manual workflow dispatch for testing releases
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g., v1.2.3)'
+        required: true
+        type: string
+
+env:
+  TERM: xterm-256color
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+
+jobs:
+  create-release:
+    name: "Create Release"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Handle both push and workflow_dispatch events
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG_NAME="${{ github.event.inputs.tag }}"
+          else
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+          fi
+
+          # Extract version from tag (remove 'v' prefix)
+          VERSION="${TAG_NAME#v}"
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Building release for version: $VERSION (tag: $TAG_NAME)"
+
+      - name: Validate semver format
+        id: validate
+        run: ./.github/scripts/release/validate-version.sh "${{ steps.version.outputs.version }}" "${{ steps.version.outputs.tag }}"
+
+      - name: Run ShellCheck on core scripts
+        if: steps.validate.outputs.is_valid == 'true'
+        continue-on-error: true
+        run: ./.github/scripts/release/check-quality.sh
+
+      - name: Delete existing release if tag was reassigned
+        if: steps.validate.outputs.is_valid == 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          echo "🔍 Checking for existing release: $TAG"
+
+          # Check if release exists and delete it
+          if gh release view "$TAG" &>/dev/null; then
+            echo "🗑️  Deleting existing release for tag: $TAG"
+            gh release delete "$TAG" --yes --cleanup-tag || true
+            echo "✅ Existing release deleted"
+          else
+            echo "ℹ️  No existing release found for tag: $TAG"
+          fi
+
+      - name: Verify required files and directories
+        if: steps.validate.outputs.is_valid == 'true'
+        run: ./.github/scripts/release/verify-contents.sh
+
+      - name: Create distribution archive
+        if: steps.validate.outputs.is_valid == 'true'
+        id: archive
+        run: ./.github/scripts/release/create-archive.sh "${{ steps.version.outputs.version }}"
+
+      - name: Generate release notes
+        if: steps.validate.outputs.is_valid == 'true'
+        id: release_notes
+        run: |
+          ./.github/scripts/release/generate-release-notes.sh \
+            "${{ steps.version.outputs.version }}" \
+            "${{ steps.version.outputs.tag }}" \
+            "${{ github.sha }}" \
+            "${{ steps.archive.outputs.checksum }}" \
+            "${{ steps.archive.outputs.archive_name }}"
+
+      - name: Create GitHub Release
+        if: steps.validate.outputs.is_valid == 'true'
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "e-bash ${{ steps.version.outputs.version }}"
+          body_path: release_notes.md
+          files: ${{ steps.archive.outputs.archive_name }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        if: steps.validate.outputs.is_valid == 'true'
+        run: |
+          ./.github/scripts/release/release-summary.sh \
+            "${{ steps.version.outputs.version }}" \
+            "${{ steps.version.outputs.tag }}" \
+            "${{ github.sha }}" \
+            "${{ steps.archive.outputs.checksum }}" \
+            "${{ steps.archive.outputs.archive_name }}" \
+            "${{ github.repository }}"
