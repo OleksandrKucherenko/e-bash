@@ -57,7 +57,7 @@ echo "✅ Archive created successfully"
 ls -lh "$ARCHIVE_NAME"
 echo ""
 echo "📋 Archive contents (first 50 files):"
-unzip -l "$ARCHIVE_NAME" | head -n 52
+unzip -l "$ARCHIVE_NAME" | head -n 52 || true  # Ignore SIGPIPE from head
 
 # Output for GitHub Actions
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
