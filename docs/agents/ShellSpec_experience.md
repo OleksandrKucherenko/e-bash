@@ -1601,7 +1601,7 @@ fi
 
 ---
 
-**Last Updated:** 2025-11-24
+**Last Updated:** 2025-11-25
 **Context:** This guide represents the combined experience from:
 1. Systematic _dryrun.sh module testing implementation with comprehensive mock strategies and cross-platform compatibility
 2. Analysis of 8 spec files identifying unique testing patterns including advanced mocking, git simulation, and ANSI color handling
@@ -1610,8 +1610,15 @@ fi
 5. Cross-platform compatibility debugging identifying GNU vs BSD tool differences
 6. Development of comprehensive testing strategies for complex logger systems, git-dependent scripts, and dynamic function generation
 7. Complete git.verify.all.commits.sh unit test implementation discovering critical source guard patterns, exit call interception challenges, and comprehensive git repository testing strategies
+8. **Trap handler testing with stderr output management**: Solving "Unexpected output to stderr" failures by redirecting diagnostic messages to log files (16/16 tests passing in spec/traps_nested_spec.sh)
+9. **Fixture file path resolution challenges**: Eliminating external fixture file dependencies by embedding test data inline with multi-line strings (42/42 tests passing in spec/bin/git.conventional.commits_spec.sh)
 
-**Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns, advanced mocking strategies, and debugging techniques including the most valuable discovery: the `${__SOURCED__:+return}` source guard pattern for making any shell script testable.
+**Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns, advanced mocking strategies, and debugging techniques including:
+- The `${__SOURCED__:+return}` source guard pattern for making any shell script testable
+- Stderr redirection pattern `2>>"$LOG_FILE"` for debugging while preventing test pollution
+- Inline test data with multi-line strings for path-independent test reliability
+- Proper stdout/stderr assertion matching (`The output` vs `The error`)
+- Converting inline bash assertions to ShellSpec DSL (`When call echo "$var"` pattern)
 
 ---
 
@@ -2276,6 +2283,347 @@ git commit -m "$message" >/dev/null 2>&1
 
 ---
 
+### Case Study 8: Trap Handler Testing and Stderr Output Management
+
+#### The Challenge
+
+**Problem**: Testing signal trap handlers that output diagnostic messages to stderr causes "Unexpected output to stderr" failures in ShellSpec tests, even when the code works correctly.
+
+**Real Example**: The `_traps.sh` module implements sophisticated trap handling with:
+- Multiple signals (EXIT, INT, TERM, HUP)
+- Stack-based push/pop operations for scoped trap handlers
+- Diagnostic messages via `printf:Trap` and `echo:Trap` functions
+- Nested trap registration and duplicate detection
+- Complex library integration patterns
+
+**Initial Test Failures:**
+```
+Running: /bin/bash [bash 5.3.3(1)-release]
+................
+
+Failures:
+
+  1) _traps.sh nested loading: Sequential sourcing: accumulates handlers when scripts sourced sequentially
+     Dispatching trap for EXIT
+       → Executing: cleanup_a
+       → Executing: cleanup_b
+
+     Unexpected output to stderr occurred at line 74-80
+
+     # spec/traps_nested_spec.sh:72
+```
+
+All 16 tests were failing with stderr pollution from trap diagnostic messages.
+
+#### The Discovery Process
+
+1. **Initial Analysis**: Trap system outputs diagnostic messages to stderr via mocked `printf:Trap` and `echo:Trap` functions
+2. **First Attempt**: Added `The error should be present` but this failed because `trap:list` outputs to stdout, not stderr
+3. **User Feedback**: "try to redirect setup/given part of the unit tests to file instead of /dev/null, that allows to catch issues in setup"
+4. **Solution Development**: Redirect diagnostic stderr to a log file instead of suppressing it entirely
+
+#### The Unique Solution Pattern
+
+**Infrastructure Setup:**
+```bash
+Describe '_traps.sh nested loading:'
+  Include ".scripts/_traps.sh"
+
+  # Redirect diagnostic output to file for debugging
+  BeforeAll 'export TRAP_TEST_STDERR="/tmp/trap_test_stderr_$$.log"'
+  AfterAll 'rm -f "$TRAP_TEST_STDERR"'
+```
+
+**Systematic Stderr Redirection:**
+```bash
+# Replace all 2>/dev/null with 2>>"$TRAP_TEST_STDERR"
+It 'accumulates handlers when scripts sourced sequentially'
+  # Source both scripts (redirect diagnostic stderr to file)
+  source /tmp/test_trap_script_a.sh 2>>"$TRAP_TEST_STDERR"
+  source /tmp/test_trap_script_b.sh 2>>"$TRAP_TEST_STDERR"
+
+  # Both handlers should be registered
+  When call trap:list EXIT
+  The output should include "cleanup_a"
+  The output should include "cleanup_b"
+End
+```
+
+**Proper Assertion Type Matching:**
+```bash
+# ❌ WRONG - Checking stdout for stderr message
+It 'warns on duplicate handler registration'
+  trap:on dup_cleanup EXIT
+  When call trap:on dup_cleanup EXIT
+  The status should be success
+  The output should include "already registered"  # WRONG - message is on stderr
+End
+
+# ✅ CORRECT - Checking stderr for stderr message
+It 'warns on duplicate handler registration'
+  trap:on dup_cleanup EXIT 2>>"$TRAP_TEST_STDERR"
+  When call trap:on dup_cleanup EXIT
+  The status should be success
+  The error should include "already registered"  # CORRECT - matches stderr
+End
+```
+
+#### Converting Inline Assertions to ShellSpec DSL
+
+**Original Problematic Pattern:**
+```bash
+It 'does not duplicate handler without flag'
+  dup_cleanup2() { echo "dup2"; }
+  trap:on dup_cleanup2 EXIT
+  trap:on dup_cleanup2 EXIT
+
+  output=$(trap:list EXIT)
+  count=$(echo "$output" | grep -o "dup_cleanup2" | wc -l)
+  The variable count should eq 1  # ❌ WRONG - ShellSpec doesn't recognize variable
+End
+```
+
+**Corrected ShellSpec Pattern:**
+```bash
+It 'does not duplicate handler without flag'
+  dup_cleanup2() { echo "dup2"; }
+  trap:on dup_cleanup2 EXIT 2>>"$TRAP_TEST_STDERR"
+  trap:on dup_cleanup2 EXIT 2>>"$TRAP_TEST_STDERR"
+
+  # Should only appear once
+  output=$(trap:list EXIT 2>>"$TRAP_TEST_STDERR")
+  count=$(echo "$output" | grep -o "dup_cleanup2" | wc -l)
+
+  When call echo "$count"  # ✅ CORRECT - proper When call
+  The output should eq 1
+End
+```
+
+#### Key Insights Gained
+
+**1. Stderr Redirection for Debugging**
+- **Don't suppress completely**: Use `2>>"$LOG_FILE"` instead of `2>/dev/null`
+- **Benefit**: Allows debugging while preventing "unexpected output" failures
+- **User-driven**: Solution came from user feedback about debugging setup issues
+
+**2. Output Stream Matching**
+- **Critical**: Match assertion type to actual output stream
+- **Pattern**: Study function implementation to determine stdout vs stderr
+- **Examples**:
+  - `trap:list` → stdout → `The output should include`
+  - `trap:on` warnings → stderr → `The error should include`
+
+**3. ShellSpec DSL Conversion**
+- **Inline bash assertions don't work**: `The variable count should eq 1` fails
+- **Proper pattern**: Use `When call echo "$count"` + `The output should eq 1`
+- **Why**: ShellSpec needs the evaluation in `When call` block
+
+**4. Comprehensive Redirection**
+- **Pattern**: Every command that might output to stderr needs redirection
+- **Scope**: Setup, teardown, and test execution phases all need handling
+- **Example**: ~40+ occurrences of `2>>"$TRAP_TEST_STDERR"` throughout tests
+
+#### Why This Experience is Valuable
+
+**1. Real-World Complexity**: Testing sophisticated trap systems with diagnostic output
+**2. User-Driven Solution**: Incorporated user feedback about debugging needs
+**3. Stream Awareness**: Deep understanding of stdout vs stderr in assertions
+**4. Test Pattern Migration**: Converting bash-style tests to proper ShellSpec DSL
+
+#### Applicability to Other Projects
+
+**When to Use This Pattern:**
+- Testing systems that output diagnostic messages to stderr
+- Complex trap handlers or signal management code
+- Scripts with verbose debugging output
+- Any code where you need to debug test setup but prevent stderr pollution
+
+**Adaptation Guidelines:**
+- Create dedicated log file for diagnostic output
+- Identify all stderr-generating commands and redirect them
+- Match assertion types to actual output streams
+- Convert inline bash assertions to ShellSpec `When call` pattern
+- Keep log files for debugging failed tests
+
+**Result:**
+```
+Running: /bin/bash [bash 5.3.3(1)-release]
+................
+Finished in 0.45 seconds (user 0.32 seconds, sys 0.18 seconds)
+16 examples, 0 failures
+```
+
+All 16 trap handler tests passing with proper stderr management.
+
+---
+
+### Case Study 9: Fixture File Path Resolution Challenges
+
+#### The Challenge
+
+**Problem**: Tests using external fixture files fail when running full test suite but pass when run individually due to working directory path resolution differences.
+
+**Real Example**: The `git.conventional.commits_spec.sh` tests needed to load multi-line commit messages from fixture files:
+
+```bash
+# Original failing code
+It 'handles multi-line commit messages'
+  local multi_line="$(cat "${PROJECT_ROOT}/spec/bin/fixture-feat.txt")"
+  When call conventional:parse "$multi_line"
+  The status should be success
+  The variable __conventional_parse_result[type] should eq "feat"
+  The variable __conventional_parse_result[description] should eq "add authentication"
+  The variable __conventional_parse_result[footer] should include "BREAKING CHANGE"
+End
+```
+
+**Test Failures:**
+```
+not ok 49 - git.conventional.commits.sh conventional commit format parsing handles multi-line commit messages # FAILED
+cat: spec/bin/fixture-feat.txt: No such file or directory
+
+not ok 50 - git.conventional.commits.sh conventional commit format parsing detects breaking change in footer # FAILED
+cat: spec/bin/fixture-feat-oauth.txt: No such file or directory
+```
+
+#### The Discovery Process
+
+**1. Initial Hypothesis**: Path resolution issue with `PROJECT_ROOT=$(pwd)`
+**2. First Failed Attempt**: Use ShellSpec constant
+```bash
+# ❌ Doesn't work - syntax error
+PROJECT_ROOT="%const(SHELLSPEC_PROJECT_ROOT)"
+```
+
+**3. Second Failed Attempt**: Use `BASH_SOURCE` for relative path
+```bash
+# ❌ Still path issues in full suite
+SPEC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+```
+
+**4. Third Failed Attempt**: Use ShellSpec `Data` directive
+```bash
+# ❌ Complex syntax and execution issues
+Data
+  %here/fixture-feat.txt
+End
+```
+
+**5. Successful Solution**: Embed test data directly in tests
+
+#### The Working Solution Pattern
+
+**Inline Test Data with Multi-line Strings:**
+```bash
+It 'handles multi-line commit messages'
+  # Embed test data directly as multi-line string
+  multi_line="feat: add authentication
+
+Implement OAuth 2.0 authentication flow with support for:
+- Google OAuth
+- GitHub OAuth
+- Email/password fallback
+
+BREAKING CHANGE: Old authentication method is no longer supported"
+
+  When call conventional:parse "$multi_line"
+  The status should be success
+
+  The variable __conventional_parse_result[type] should eq "feat"
+  The variable __conventional_parse_result[description] should eq "add authentication"
+  The variable __conventional_parse_result[footer] should include "BREAKING CHANGE"
+End
+```
+
+**Complex Multi-line Test Data:**
+```bash
+It 'detects breaking change in footer'
+  # Use meaningful variable names for clarity
+  oauth_content="feat!: implement OAuth authentication
+
+Complete rewrite of authentication system using OAuth 2.0.
+
+BREAKING CHANGE: Sessions from v1 are incompatible with v2"
+
+  When call conventional:parse "$oauth_content"
+  The status should be success
+
+  The variable __conventional_parse_result[breaking] should eq "!"
+  The variable __conventional_parse_result[footer] should include "BREAKING CHANGE"
+End
+```
+
+#### Key Insights Gained
+
+**1. Path Resolution Complexity**
+- **Problem**: `pwd` returns different paths when running individual tests vs full suite
+- **Why**: ShellSpec changes working directory during test execution
+- **Impact**: External fixture files become unreliable in different execution contexts
+
+**2. Inline Test Data Benefits**
+- **Portability**: No dependency on external files or paths
+- **Reliability**: Works in any execution context (individual, suite, CI/CD)
+- **Readability**: Test data is visible directly in the test
+- **Maintainability**: Changes to test data don't require separate files
+- **Simplicity**: Eliminates path resolution complexity entirely
+
+**3. Multi-line String Handling in Bash**
+- **Pattern**: Direct multi-line strings in bash preserve newlines and formatting
+- **Syntax**: No special escaping needed for newlines within quoted strings
+- **Usage**: Perfect for embedding commit messages, config files, log output
+
+**4. Test Data Organization**
+- **Meaningful names**: Use `oauth_content`, `multi_line` instead of generic `data`
+- **Inline comments**: Explain what the test data represents
+- **Minimal scope**: Define test data in the specific test that uses it
+
+#### Why This Experience is Valuable
+
+**1. Eliminates External Dependencies**: No fixture files to maintain or lose
+**2. Cross-Platform Reliability**: Works regardless of path resolution differences
+**3. Self-Contained Tests**: Everything needed for the test is in one place
+**4. CI/CD Friendly**: No path setup required in different environments
+
+#### Applicability to Other Projects
+
+**When to Use Inline Test Data:**
+- Multi-line text content (commit messages, config files, log output)
+- Small to medium-sized test data (< 50 lines)
+- Tests that fail with path resolution issues
+- Cross-platform or CI/CD environments
+- Data that's specific to one or two tests
+
+**When to Keep External Fixtures:**
+- Very large test data (> 100 lines)
+- Binary files or complex formats
+- Shared data across many tests
+- Data that changes frequently and needs version control separation
+
+**Adaptation Pattern:**
+```bash
+# Instead of this:
+local data="$(cat "${PROJECT_ROOT}/spec/fixtures/test-data.txt")"
+When call parse_data "$data"
+
+# Do this:
+test_data="line 1
+line 2
+line 3"
+When call parse_data "$test_data"
+```
+
+**Result:**
+```
+Running: /home/linuxbrew/bin/bash [bash 5.3.3(1)-release] <quick mode>
+..........................................
+Finished in 1.02 seconds (user 0.68 seconds, sys 0.21 seconds)
+42 examples, 0 failures
+```
+
+Both previously failing tests now pass reliably in all execution contexts.
+
+---
+
 ## Updated Best Practices
 
 ### Script Testability Checklist
@@ -2308,5 +2656,10 @@ git commit -m "$message" >/dev/null 2>&1
 | Variable assertion fails | Wrong variable syntax | Use `local var=value` + `The variable var` |
 | Git test fails | Untracked vs tracked files | Modify existing tracked files |
 | Output expectation warnings | Missing expected output | Add `The output should include` |
+| Unexpected stderr output | Diagnostic messages to stderr | Redirect with `2>>"$LOG_FILE"` |
+| Wrong assertion type | Checking wrong stream | Match stream: stdout=output, stderr=error |
+| Inline bash assertions fail | Not using ShellSpec DSL | Use `When call echo "$var"` + `The output` |
+| Fixture file not found | Path resolution differences | Embed test data inline with multi-line strings |
+| Tests pass individually, fail in suite | Working directory changes | Use inline data or `$SHELLSPEC_PROJECT_ROOT` |
 
-This systematic approach to script integration, git repository testing, and advanced mocking strategies provides a comprehensive foundation for testing complex shell scripts with ShellSpec.
+This systematic approach to script integration, git repository testing, advanced mocking strategies, stderr output management, and fixture file handling provides a comprehensive foundation for testing complex shell scripts with ShellSpec.

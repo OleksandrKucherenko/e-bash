@@ -6,6 +6,9 @@
 # Get current date in YYYY-MM-DD format
 CURRENT_DATE=$(date +%Y-%m-%d)
 
+# Get the repository root directory so we can locate custom binaries
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
 # Declare STAGED_FILES as an array
 declare -a STAGED_FILES
 
@@ -45,6 +48,15 @@ fi
 if [[ ${#STAGED_FILES[@]} -eq 0 ]]; then
   echo "${cl_grey}No .sh files to process (pre-commit-copyright-last-revisit)${cl_reset}"
   exit 0
+fi
+
+# Make GNU tools available for script
+if ! command -v ggrep >/dev/null 2>&1 || ! command -v gsed >/dev/null 2>&1; then
+  gnubin_dir="$REPO_ROOT/bin/gnubin"
+
+  if [[ -d "$gnubin_dir" ]]; then
+    export PATH="$gnubin_dir:$PATH"
+  fi
 fi
 
 # Process all files

@@ -1,0 +1,5 @@
+feat: add OAuth2 support
+
+This allows users to authenticate with third-party providers.
+
+BREAKING CHANGE: Authentication endpoints have changed.

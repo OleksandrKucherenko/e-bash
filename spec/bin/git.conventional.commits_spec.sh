@@ -4,7 +4,7 @@
 # shellcheck disable=SC2329,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-25
+## Last revisit: 2025-11-26
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -22,6 +22,7 @@ Describe 'git.conventional.commits.sh'
   setup_test_environment() {
     export TEST_DIR=$(mktemp -d)
     export ORIGINAL_DIR=$(pwd)
+    export CONVENTIONAL_SCRIPT="${ORIGINAL_DIR}/bin/git.conventional.commits.sh"
     cd "$TEST_DIR"
 
     # Mock logger functions for testing

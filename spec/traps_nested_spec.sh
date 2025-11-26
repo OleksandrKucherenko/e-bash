@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-25
+## Last revisit: 2025-11-26
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -17,14 +17,16 @@ export E_BASH=".scripts"
 export DEBUG=""
 
 # Mock logger functions to prevent "command not found" errors
-# But still produce output so tests can verify messages
+# But respect DEBUG environment variable to avoid pollution
 # Note: Logger functions output to STDERR, not STDOUT
 Mock printf:Trap
-  printf "$@" >&2
+  # Only output if Trap is in DEBUG
+  [[ "$DEBUG" == *"Trap"* || "$DEBUG" == "*" ]] && printf "$@" >&2 || true
 End
 
 Mock echo:Trap
-  echo "$@" >&2
+  # Only output if Trap is in DEBUG
+  [[ "$DEBUG" == *"Trap"* || "$DEBUG" == "*" ]] && echo "$@" >&2 || true
 End
 
 Describe '_traps.sh nested loading:'
@@ -44,7 +46,7 @@ export DEBUG=""
 source "$E_BASH/_traps.sh" >/dev/null 2>&1
 
 cleanup_a() {
-  echo "cleanup_a"
+  echo "cleanup_a" >/dev/null
 }
 
 trap:on cleanup_a EXIT
@@ -57,7 +59,7 @@ export DEBUG=""
 source "$E_BASH/_traps.sh" >/dev/null 2>&1
 
 cleanup_b() {
-  echo "cleanup_b"
+  echo "cleanup_b" >/dev/null
 }
 
 trap:on cleanup_b EXIT
@@ -91,18 +93,25 @@ EOF
   End
 
   Describe 'Multiple sourcing prevention:'
-    dup_cleanup() { echo "dup_cleanup"; }
+    dup_cleanup() { echo "dup_cleanup" >/dev/null; }
 
     It 'warns on duplicate handler registration'
-      trap:on dup_cleanup EXIT 2>>"$TRAP_TEST_STDERR"
-      When call trap:on dup_cleanup EXIT
+      setup() {
+        trap:on dup_cleanup EXIT 2>>"$TRAP_TEST_STDERR"
+      }
+      BeforeCall 'setup 2>>"$TRAP_TEST_STDERR"'
 
+      test_duplicate() {
+        DEBUG=Trap trap:on dup_cleanup EXIT
+      }
+
+      When call test_duplicate
       The status should be success
       The error should include "already registered"
     End
 
     It 'does not duplicate handler without flag'
-      dup_cleanup2() { echo "dup2"; }
+      dup_cleanup2() { echo "dup2" >/dev/null; }
 
       trap:on dup_cleanup2 EXIT 2>>"$TRAP_TEST_STDERR"
       trap:on dup_cleanup2 EXIT 2>>"$TRAP_TEST_STDERR"
@@ -116,7 +125,7 @@ EOF
     End
 
     It 'allows duplicates with --allow-duplicates flag'
-      dup_cleanup3() { echo "dup3"; }
+      dup_cleanup3() { echo "dup3" >/dev/null; }
 
       trap:on dup_cleanup3 EXIT 2>>"$TRAP_TEST_STDERR"
       trap:on --allow-duplicates dup_cleanup3 EXIT 2>>"$TRAP_TEST_STDERR"
@@ -131,8 +140,8 @@ EOF
   End
 
   Describe 'Scoped handlers with push/pop:'
-    outer_handler() { echo "outer"; }
-    inner_handler() { echo "inner"; }
+    outer_handler() { echo "outer" >/dev/null; }
+    inner_handler() { echo "inner" >/dev/null; }
 
     It 'restores handler state after pop'
       # Setup outer scope
@@ -152,9 +161,9 @@ EOF
     End
 
     It 'supports nested push/pop (depth 3)'
-      h1() { echo "1"; }
-      h2() { echo "2"; }
-      h3() { echo "3"; }
+      h1() { echo "1" >/dev/null; }
+      h2() { echo "2" >/dev/null; }
+      h3() { echo "3" >/dev/null; }
 
       # Level 1
       trap:on h1 EXIT 2>>"$TRAP_TEST_STDERR"
@@ -181,8 +190,8 @@ EOF
     End
 
     It 'maintains separate stacks for different signals'
-      sig1_handler() { echo "sig1"; }
-      sig2_handler() { echo "sig2"; }
+      sig1_handler() { echo "sig1" >/dev/null; }
+      sig2_handler() { echo "sig2" >/dev/null; }
 
       # Setup different handlers for different signals
       trap:on sig1_handler INT 2>>"$TRAP_TEST_STDERR"
@@ -192,7 +201,7 @@ EOF
       trap:push INT 2>>"$TRAP_TEST_STDERR"
 
       # Add new handler to INT
-      sig1_new() { echo "sig1_new"; }
+      sig1_new() { echo "sig1_new" >/dev/null; }
       trap:on sig1_new INT 2>>"$TRAP_TEST_STDERR"
 
       # Pop INT - should restore
@@ -205,8 +214,8 @@ EOF
   End
 
   Describe 'Scoped cleanup pattern:'
-    scoped_handler() { echo "scoped"; }
-    global_handler() { echo "global"; }
+    scoped_handler() { echo "scoped" >/dev/null; }
+    global_handler() { echo "global" >/dev/null; }
 
     It 'auto-cleans handlers with scope:begin/end'
       # Global handler
@@ -224,9 +233,9 @@ EOF
     End
 
     It 'supports nested scopes'
-      g1() { echo "g1"; }
-      s1() { echo "s1"; }
-      s2() { echo "s2"; }
+      g1() { echo "g1" >/dev/null; }
+      s1() { echo "s1" >/dev/null; }
+      s2() { echo "s2" >/dev/null; }
 
       trap:on g1 EXIT 2>>"$TRAP_TEST_STDERR"
 
@@ -261,7 +270,7 @@ if [[ "${LIB_DB_TRAP_LOADED}" != "yes" ]]; then
   source "$E_BASH/_traps.sh" >/dev/null 2>&1
 
   db_cleanup() {
-    echo "db_cleanup"
+    echo "db_cleanup" >/dev/null
   }
 
   # Only register if not already registered
@@ -302,19 +311,26 @@ EOF
     End
 
     It 'prevents pop when stack is empty'
-      # Ensure stack is empty
-      while [ "$__TRAP_STACK_LEVEL" -gt 0 ]; do
-        trap:pop EXIT 2>>"$TRAP_TEST_STDERR" || break
-      done
+      setup() {
+        # Ensure stack is empty
+        while [ "$__TRAP_STACK_LEVEL" -gt 0 ]; do
+          trap:pop EXIT 2>>"$TRAP_TEST_STDERR" || break
+        done
+      }
+      BeforeCall 'setup 2>>"$TRAP_TEST_STDERR"'
 
-      When call trap:pop EXIT
+      test_empty_pop() {
+        DEBUG=Trap trap:pop EXIT
+      }
+
+      When call test_empty_pop
       The status should be failure
       The error should include "No trap state to pop"
     End
   End
 
   Describe 'Multiple signals with scoping:'
-    multi_handler() { echo "multi"; }
+    multi_handler() { echo "multi" >/dev/null; }
 
     It 'pushes and pops multiple signals together'
       # Register for multiple signals
@@ -324,8 +340,8 @@ EOF
       trap:push INT TERM HUP 2>>"$TRAP_TEST_STDERR"
 
       # Add new handlers
-      new_int() { echo "new_int"; }
-      new_term() { echo "new_term"; }
+      new_int() { echo "new_int" >/dev/null; }
+      new_term() { echo "new_term" >/dev/null; }
       trap:on new_int INT 2>>"$TRAP_TEST_STDERR"
       trap:on new_term TERM 2>>"$TRAP_TEST_STDERR"
 
