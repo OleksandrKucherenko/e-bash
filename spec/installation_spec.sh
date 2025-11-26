@@ -102,7 +102,7 @@ Describe 'bin/install.e-bash.sh/'
 	no_colors_error() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 	no_colors_output() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 
-	Describe 'Check Prerequisites:/'
+	Describe 'Check Prerequisites /'
 		Before 'temp_repo; cp_install'
 		After 'cleanup_temp_repo'
 
@@ -123,7 +123,7 @@ Describe 'bin/install.e-bash.sh/'
 		End
 	End
 
-	Describe 'Check Unstaged Changes:/'
+	Describe 'Check Unstaged Changes /'
 		git_stage_touch() {
 			touch file.txt
 			git add file.txt
@@ -173,7 +173,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test installation of e-bash scripts
-	Describe 'Install:/'
+	Describe 'Install /'
 		git_rename_custom() { git branch -m custom; }
 		git_rename_main() { git branch -m main; }
 		git_new_branch() { git checkout -b new_branch 1>/dev/null 2>&1; }
@@ -343,7 +343,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test upgrading e-bash
-	Describe 'Upgrade:/'
+	Describe 'Upgrade /'
 		Before 'temp_repo; git_init; git_config; cp_install; install_stable'
 		After 'cleanup_temp_repo'
 
@@ -375,7 +375,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test rollback functionality
-	Describe 'Rollback:/'
+	Describe 'Rollback /'
 		Before 'temp_repo; git_init; git_config; cp_install'
 		After 'cleanup_temp_repo'
 
@@ -474,7 +474,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test permission error handling
-	Describe 'Permission Errors:/'
+	Describe 'Permission Errors /'
 		make_readonly() {
 			chmod -w .
 		}
@@ -547,7 +547,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Scenario 5: Viewing available versions of e-Bash
-	Describe 'Versions:/'
+	Describe 'Versions /'
 
 		Before 'temp_repo; cp_install'
 		After 'cleanup_temp_repo'
@@ -601,7 +601,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test specific version installation
-	Describe 'Install Version:/'
+	Describe 'Install Version /'
 		Before 'temp_repo; git_init; git_config; cp_install'
 		After 'cleanup_temp_repo'
 
@@ -636,7 +636,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test helper functions
-	Describe 'Help:/'
+	Describe 'Help /'
 		Before 'temp_repo; cp_install'
 		After 'cleanup_temp_repo'
 
@@ -658,7 +658,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test global installation of e-bash scripts
-	Describe 'Global Install:/'
+	Describe 'Global Install /'
 		setup_temp_home() {
 			# Create a temporary directory to act as HOME
 			TEMP_HOME="$TEST_DIR/temp_home"
@@ -852,7 +852,7 @@ Describe 'bin/install.e-bash.sh/'
 			# Dump
 		End
 
-		Describe 'Global Rollback:/'
+		Describe 'Global Rollback /'
 			It 'should rollback from master to previous version'
 				# Setup: Install v1.0.0, then upgrade to master
 				mkdir -p "$TEMP_HOME/repo" && cd "$TEMP_HOME/repo" || return 1
@@ -928,7 +928,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test automated uninstall functionality
-	Describe 'Uninstall:/'
+	Describe 'Uninstall /'
 		Before 'temp_repo; git_init; git_config; cp_install'
 		After 'cleanup_temp_repo'
 
@@ -1119,7 +1119,7 @@ Describe 'bin/install.e-bash.sh/'
 	End
 
 	# Test global uninstall
-	Describe 'Global Uninstall:/'
+	Describe 'Global Uninstall /'
 		setup_temp_home() {
 			TEMP_HOME="$TEST_DIR/temp_home"
 			mkdir -p "$TEMP_HOME"

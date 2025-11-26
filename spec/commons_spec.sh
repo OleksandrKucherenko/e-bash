@@ -67,7 +67,7 @@ Describe "_commons.sh/"
 			The error should eq ''
 		End
 
-		Describe "With provided secret file:/"
+		Describe "With provided secret file /"
 			folder() { mkdir -p "$TEST_DIR"; }
 			file() { touch "$TEST_DIR/gitlab_ci_integration_test"; }
 			content() { echo "<secret>" >"$TEST_DIR/gitlab_ci_integration_test"; }
@@ -141,7 +141,7 @@ Describe "_commons.sh/"
 			The error should eq ''
 		End
 
-		Describe "With provided secret file:/"
+		Describe "With provided secret file /"
 			folder() { mkdir -p "$TEST_DIR"; }
 			file() { touch "$TEST_DIR/gitlab_ci_integration_test"; }
 			content() { echo "<secret>" >"$TEST_DIR/gitlab_ci_integration_test"; }

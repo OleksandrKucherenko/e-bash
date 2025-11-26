@@ -37,7 +37,7 @@ Describe "_dependencies.sh/"
 	# This runs before any test code, allowing tests to explicitly set CI if needed
 	BeforeEach "unset CI CI_E_BASH_INSTALL_DEPENDENCIES"
 
-	Describe "Dependency:/"
+	Describe "Dependency /"
 		It "Dependency OK on \`dependency bash \"5.*.*\" \"brew install bash\" --version\`"
 			When call dependency bash "5.*.*" "brew install bash" --version
 
@@ -116,7 +116,7 @@ Describe "_dependencies.sh/"
 		End
 	End
 
-	Describe "Optional:/"
+	Describe "Optional /"
 		It "Optional OK on \`optional bash \"5.*.*\" \"brew install bash\" --version --debug\`"
 			When call optional bash "5.*.*" "brew install bash" --version --debug
 
@@ -149,7 +149,7 @@ Describe "_dependencies.sh/"
 
 	End
 
-	Describe "Utilities:/"
+	Describe "Utilities /"
 		It "isDebug returns true when --debug flag is provided"
 			When call isDebug --debug
 			The status should be success
@@ -291,7 +291,7 @@ Describe "_dependencies.sh/"
 		End
 	End
 
-	Describe "CI Auto-Install Mode:/"
+	Describe "CI Auto-Install Mode /"
 		It "CI mode enabled with CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1 should auto-install missing tool"
 			export CI=1
 			export CI_E_BASH_INSTALL_DEPENDENCIES=1

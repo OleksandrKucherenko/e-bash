@@ -250,8 +250,8 @@ Describe '_arguments.sh'
 		Dump
 	End
 
-	Describe 'function parse:extract_output_definition():'
-		Describe "Parameters Matrix:"
+	Describe 'function parse:extract_output_definition() /'
+		Describe "Parameters Matrix /"
 			Parameters
 				"#00" --cookies --cookies "cookies|1|0"
 				"#01" --cookies --cookies= "cookies|1|0"

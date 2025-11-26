@@ -13,7 +13,7 @@ eval "$(shellspec - -c) exit 1"
 
 export SCRIPT_DIR=".scripts"
 
-Describe '_logger.sh:/'
+Describe '_logger.sh /'
 	Include ".scripts/_logger.sh"
 
 	# Cleanup mechanism

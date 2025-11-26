@@ -33,7 +33,7 @@ Mock echo:Trap
 	echo "$@" >&2
 End
 
-Describe '_traps.sh:/'
+Describe '_traps.sh /'
 	Include ".scripts/_traps.sh"
 
 	# Mock the trap dispatcher to prevent actual trap execution during tests
@@ -53,7 +53,7 @@ Describe '_traps.sh:/'
 		return 0
 	}
 
-	Describe 'Module initialization:/'
+	Describe 'Module initialization /'
 		It 'loads without errors'
 			# GIVEN: Mock functions are available and module was included
 			# WHEN: Check that core trap functions exist after module load
@@ -74,7 +74,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:on basic functionality:/'
+	Describe 'trap:on / basic functionality /'
 		cleanup_test() {
 			echo "cleanup_test executed"
 		}
@@ -112,7 +112,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:on multiple handlers:/'
+	Describe 'trap:on / multiple handlers /'
 		handler_a() { echo "handler_a"; }
 		handler_b() { echo "handler_b"; }
 		handler_c() { echo "handler_c"; }
@@ -133,7 +133,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:on duplicate handling:/'
+	Describe 'trap:on / duplicate handling /'
 		dup_handler() { echo "dup"; }
 
 		It 'warns when handler already registered'
@@ -152,7 +152,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:off functionality:/'
+	Describe 'trap:off / functionality /'
 		remove_handler() { echo "remove"; }
 
 		It 'removes handler from signal'
@@ -175,7 +175,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:list functionality:/'
+	Describe 'trap:list / functionality /'
 		list_handler_a() { echo "a"; }
 		list_handler_b() { echo "b"; }
 
@@ -199,7 +199,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:clear functionality:/'
+	Describe 'trap:clear / functionality /'
 		clear_handler_a() { echo "a"; }
 		clear_handler_b() { echo "b"; }
 
@@ -220,7 +220,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:push and trap:pop:/'
+	Describe 'trap:push and trap:pop /'
 		push_handler_outer() { echo "outer"; }
 		push_handler_inner() { echo "inner"; }
 
@@ -315,7 +315,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'trap:scope:begin and trap:scope:end:/'
+	Describe 'trap:scope:begin and trap:scope:end /'
 		scope_handler() { echo "scoped"; }
 		global_handler() { echo "global"; }
 
@@ -333,7 +333,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'Signal normalization:/'
+	Describe 'Signal normalization /'
 		It 'normalizes SIGTERM to TERM'
 			norm_term() { echo "term"; }
 			trap:on norm_term SIGTERM 2>/dev/null
@@ -356,7 +356,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'Trap dispatcher execution:/'
+	Describe 'Trap dispatcher execution /'
 		# Note: Dispatcher functionality verified via manual integration tests
 		# ShellSpec environment has limitations with signal delivery testing
 		# See spec/helpers/trap_dispatcher_e2e_minimal.sh for manual testing
@@ -412,7 +412,7 @@ Describe '_traps.sh:/'
 		End
 	End
 
-	Describe 'Legacy trap handling:/'
+	Describe 'Legacy trap handling /'
 		It 'captures existing trap configuration'
 			# Set a legacy trap before loading our module
 			trap 'echo legacy_trap' USR1

@@ -29,14 +29,25 @@ Mock echo:Trap
   [[ "$DEBUG" == *"Trap"* || "$DEBUG" == "*" ]] && echo "$@" >&2 || true
 End
 
-Describe '_traps.sh nested loading:'
+# Portable helper to count handler occurrences in trap:list output.
+count_handlers() {
+  local handler="${1?handler required}"
+  local data=${2-}
+
+  printf '%s\n' "$data" | awk -v handler="$handler" '
+    { count += gsub(handler, "") }
+    END { print count + 0 }
+  '
+}
+
+Describe '_traps.sh nested loading /'
   Include ".scripts/_traps.sh"
 
   # Redirect diagnostic output to file for debugging
   BeforeAll 'export TRAP_TEST_STDERR="/tmp/trap_test_stderr_$$.log"'
   AfterAll 'rm -f "$TRAP_TEST_STDERR"'
 
-  Describe 'Sequential sourcing:'
+  Describe 'Sequential sourcing /'
     # No setup needed - we'll source fixtures directly
 
     It 'accumulates handlers when scripts sourced sequentially'
@@ -60,7 +71,7 @@ Describe '_traps.sh nested loading:'
     End
   End
 
-  Describe 'Multiple sourcing prevention:'
+  Describe 'Multiple sourcing prevention /'
     dup_cleanup() { echo "dup_cleanup" >/dev/null; }
 
     It 'warns on duplicate handler registration'
@@ -86,7 +97,7 @@ Describe '_traps.sh nested loading:'
 
       # Should only appear once
       output=$(trap:list EXIT 2>>"$TRAP_TEST_STDERR")
-      count=$(echo "$output" | grep -o "dup_cleanup2" | wc -l)
+      count=$(count_handlers "dup_cleanup2" "$output")
 
       When call echo "$count"
       The output should eq 1
@@ -100,14 +111,14 @@ Describe '_traps.sh nested loading:'
 
       # Should appear twice
       output=$(trap:list EXIT 2>>"$TRAP_TEST_STDERR")
-      count=$(echo "$output" | grep -o "dup_cleanup3" | wc -l)
+      count=$(count_handlers "dup_cleanup3" "$output")
 
       When call echo "$count"
       The output should eq 2
     End
   End
 
-  Describe 'Scoped handlers with push/pop:'
+  Describe 'Scoped handlers with push/pop /'
     outer_handler() { echo "outer" >/dev/null; }
     inner_handler() { echo "inner" >/dev/null; }
 
@@ -181,7 +192,7 @@ Describe '_traps.sh nested loading:'
     End
   End
 
-  Describe 'Scoped cleanup pattern:'
+  Describe 'Scoped cleanup pattern /'
     scoped_handler() { echo "scoped" >/dev/null; }
     global_handler() { echo "global" >/dev/null; }
 
@@ -226,7 +237,7 @@ Describe '_traps.sh nested loading:'
     End
   End
 
-  Describe 'Library pattern (reusable sourcing):'
+  Describe 'Library pattern (reusable sourcing) /'
     # No setup needed - we'll source fixtures directly
 
     It 'prevents duplicate registration via guard pattern'
@@ -236,14 +247,14 @@ Describe '_traps.sh nested loading:'
 
       # Should only be registered once
       output=$(trap:list EXIT 2>>"$TRAP_TEST_STDERR")
-      count=$(echo "$output" | grep -o "db_cleanup" | wc -l)
+      count=$(count_handlers "db_cleanup" "$output")
 
       When call echo "$count"
       The output should eq 1
     End
   End
 
-  Describe 'Stack level tracking:'
+  Describe 'Stack level tracking /'
     It 'tracks stack level correctly'
       # Initial level should be 0
       trap:push EXIT 2>>"$TRAP_TEST_STDERR"
@@ -274,7 +285,7 @@ Describe '_traps.sh nested loading:'
     End
   End
 
-  Describe 'Multiple signals with scoping:'
+  Describe 'Multiple signals with scoping /'
     multi_handler() { echo "multi" >/dev/null; }
 
     It 'pushes and pops multiple signals together'
@@ -299,7 +310,7 @@ Describe '_traps.sh nested loading:'
     End
   End
 
-  Describe 'Error handling in nested contexts:'
+  Describe 'Error handling in nested contexts /'
   # Override Mock JUST for this block to always output errors
   # logic: We are testing errors, so we WANT to see them in stderr
   Mock echo:Trap
