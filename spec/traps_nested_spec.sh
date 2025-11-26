@@ -37,44 +37,12 @@ Describe '_traps.sh nested loading:'
   AfterAll 'rm -f "$TRAP_TEST_STDERR"'
 
   Describe 'Sequential sourcing:'
-    setup_test_scripts() {
-      # Create temporary test scripts
-      cat >/tmp/test_trap_script_a.sh <<'EOF'
-#!/usr/bin/env bash
-export E_BASH="${E_BASH:-.scripts}"
-export DEBUG=""
-source "$E_BASH/_traps.sh" >/dev/null 2>&1
-
-cleanup_a() {
-  echo "cleanup_a" >/dev/null
-}
-
-trap:on cleanup_a EXIT
-EOF
-
-      cat >/tmp/test_trap_script_b.sh <<'EOF'
-#!/usr/bin/env bash
-export E_BASH="${E_BASH:-.scripts}"
-export DEBUG=""
-source "$E_BASH/_traps.sh" >/dev/null 2>&1
-
-cleanup_b() {
-  echo "cleanup_b" >/dev/null
-}
-
-trap:on cleanup_b EXIT
-EOF
-
-      chmod +x /tmp/test_trap_script_a.sh
-      chmod +x /tmp/test_trap_script_b.sh
-    }
-
-    Before 'setup_test_scripts'
+    # No setup needed - we'll source fixtures directly
 
     It 'accumulates handlers when scripts sourced sequentially'
       # Source both scripts (redirect diagnostic stderr to file)
-      source /tmp/test_trap_script_a.sh 2>>"$TRAP_TEST_STDERR"
-      source /tmp/test_trap_script_b.sh 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_a.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_b.sh" 2>>"$TRAP_TEST_STDERR"
 
       # Both handlers should be registered
       When call trap:list EXIT
@@ -83,8 +51,8 @@ EOF
     End
 
     It 'preserves handler registration order'
-      source /tmp/test_trap_script_a.sh 2>>"$TRAP_TEST_STDERR"
-      source /tmp/test_trap_script_b.sh 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_a.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_b.sh" 2>>"$TRAP_TEST_STDERR"
 
       # cleanup_a should appear before cleanup_b in the output
       When call trap:list EXIT
@@ -259,35 +227,12 @@ EOF
   End
 
   Describe 'Library pattern (reusable sourcing):'
-    setup_library() {
-      cat >/tmp/test_trap_lib_db.sh <<'EOF'
-#!/usr/bin/env bash
-# Library initialization guard
-if [[ "${LIB_DB_TRAP_LOADED}" != "yes" ]]; then
-  export LIB_DB_TRAP_LOADED="yes"
-  export E_BASH="${E_BASH:-.scripts}"
-  export DEBUG=""
-  source "$E_BASH/_traps.sh" >/dev/null 2>&1
-
-  db_cleanup() {
-    echo "db_cleanup" >/dev/null
-  }
-
-  # Only register if not already registered
-  if ! trap:list EXIT 2>>"$TRAP_TEST_STDERR" | grep -q "db_cleanup"; then
-    trap:on db_cleanup EXIT
-  fi
-fi
-EOF
-      chmod +x /tmp/test_trap_lib_db.sh
-    }
-
-    Before 'setup_library'
+    # No setup needed - we'll source fixtures directly
 
     It 'prevents duplicate registration via guard pattern'
       # Source library twice (redirect diagnostic stderr to file)
-      source /tmp/test_trap_lib_db.sh 2>>"$TRAP_TEST_STDERR"
-      source /tmp/test_trap_lib_db.sh 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_lib_db.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_lib_db.sh" 2>>"$TRAP_TEST_STDERR"
 
       # Should only be registered once
       output=$(trap:list EXIT 2>>"$TRAP_TEST_STDERR")
@@ -355,20 +300,30 @@ EOF
   End
 
   Describe 'Error handling in nested contexts:'
-    It 'handles missing function gracefully during registration'
-      When call trap:on nonexistent_nested_handler EXIT
-      The status should be failure
-      The error should include "does not exist"
-    End
-
-    It 'recovers from stack corruption'
-      # Manually corrupt stack by unsetting variable
-      trap:push EXIT 2>>"$TRAP_TEST_STDERR"
-      unset "__TRAP_STACK_${__TRAP_STACK_LEVEL}"
-
-      When call trap:pop EXIT
-      The status should be failure
-      The error should include "Stack corruption"
-    End
+  # Override Mock JUST for this block to always output errors
+  # logic: We are testing errors, so we WANT to see them in stderr
+  Mock echo:Trap
+    echo "$@" >&2
   End
+
+  Mock printf:Trap
+    printf "$@" >&2
+  End
+
+  It 'handles missing function gracefully during registration'
+    When call trap:on nonexistent_nested_handler EXIT
+    The status should be failure
+    The error should include "does not exist"
+  End
+
+  It 'recovers from stack corruption'
+    # Manually corrupt stack by unsetting variable
+    trap:push EXIT 2>>"$TRAP_TEST_STDERR"
+    unset "__TRAP_STACK_${__TRAP_STACK_LEVEL}"
+
+    When call trap:pop EXIT
+    The status should be failure
+    The error should include "Stack corruption"
+  End
+End
 End

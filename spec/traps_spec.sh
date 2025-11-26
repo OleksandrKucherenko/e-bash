@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shell: sh altsh=shellspec
 # shellcheck shell=bash
-# shellcheck disable=SC2317,SC2016
+# shellcheck disable=SC2317,SC2016,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-11-26
