@@ -169,7 +169,7 @@ Describe 'bin/npm-versions.sh /'
     End
   End
 
-  Context 'exec:npm() - actual execution mode /'
+  Context 'run:npm() - actual execution mode /'
     BeforeEach 'setup_npm_mock'
 
     setup_npm_mock() {
@@ -201,27 +201,27 @@ Describe 'bin/npm-versions.sh /'
       }
     }
 
-    It 'executes npm config command'
-      When call exec:npm config set registry "https://registry.npmjs.org"
-      The error should include "execute: npm config set registry"
+    It 'executes npm config command via run:npm'
+      When call run:npm config set registry "https://registry.npmjs.org"
+      The error should include "npm config set registry"
       The status should be success
     End
 
-    It 'executes npm view and returns JSON output'
-      When call exec:npm view "test-package" versions --json
+    It 'executes npm view and returns JSON output via run:npm'
+      When call run:npm view "test-package" versions --json
       The output should include "1.0.0"
       The output should include "2.0.0"
       The status should be success
     End
 
-    It 'executes npm unpublish command'
-      When call exec:npm unpublish "test-package@1.0.0"
-      The error should include "execute: npm unpublish"
+    It 'executes npm unpublish command via run:npm'
+      When call run:npm unpublish "test-package@1.0.0"
+      The error should include "npm unpublish"
       The status should be success
     End
   End
 
-  Context 'exec:npm() - dry run mode /'
+  Context 'run:npm() - dry run mode /'
     BeforeEach 'enable_dry_run'
 
     enable_dry_run() {
@@ -230,20 +230,20 @@ Describe 'bin/npm-versions.sh /'
     }
 
     It 'simulates npm config without execution'
-      When call exec:npm config set registry "https://test.com"
-      The error should include "dry run: npm config set registry"
+      When call run:npm config set registry "https://test.com"
+      The error should include "npm config set registry"
       The status should be success
     End
 
-    It 'simulates npm view with mock data'
-      When call exec:npm view "test-package" versions --json
-      The output should eq '["0.0.1","0.0.2","0.0.3","1.0.0","1.0.1","1.1.0"]'
+    It 'simulates npm view without execution'
+      When call run:npm view "test-package" versions --json
+      The error should include "npm view"
       The status should be success
     End
 
     It 'simulates npm unpublish without execution'
-      When call exec:npm unpublish "test-package@1.0.0"
-      The error should include "dry run: npm unpublish"
+      When call run:npm unpublish "test-package@1.0.0"
+      The error should include "npm unpublish"
       The status should be success
     End
   End

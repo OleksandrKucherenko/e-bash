@@ -33,6 +33,8 @@ source "$E_BASH/_commons.sh"
 source "$E_BASH/_dependencies.sh"
 # shellcheck disable=SC1090 source="../.scripts/_arguments.sh"
 source "$E_BASH/_arguments.sh"
+# shellcheck disable=SC1090 source="../.scripts/_dryrun.sh"
+source "$E_BASH/_dryrun.sh"
 
 # Default package name
 DEFAULT_PACKAGE="@oleksandrkucherenko/mcp-obsidian"
@@ -44,6 +46,11 @@ DRY_RUN=${DRY_RUN:-false}
 
 # Set to true to silence npm command output
 SILENT_NPM=${SILENT_NPM:-false}
+
+# Setup dry-run wrapper for npm command
+dry-run npm
+# Map SILENT_NPM to control npm wrapper output
+export SILENT_NPM
 
 # Initialize loggers with domain-specific names
 logger npmv "$@" && logger:prefix npmv "${cl_cyan}[npmv]${cl_reset} "
@@ -80,11 +87,11 @@ function fetch_versions() {
   echo:Registry "From registry ${cl_yellow}${registry}${cl_reset}"
   
   # Configure NPM registry temporarily
-  exec:npm config set registry "$registry"
-  
+  run:npm config set registry "$registry"
+
   # Fetch versions using npm view command
   local versions
-  versions=$(exec:npm view "$package_name" versions --json 2>/dev/null) || {
+  versions=$(run:npm view "$package_name" versions --json 2>/dev/null) || {
     echo:Npmv "${cl_red}Error: Failed to fetch versions for ${cl_yellow}$package_name${cl_reset}"
     echo:Npmv "${cl_red}Please check if the package exists and you have access to it.${cl_reset}"
     return 1
@@ -282,7 +289,7 @@ function unpublish_version() {
   echo:Registry "${cl_cyan}Unpublishing ${cl_yellow}$package_name@$version${cl_reset}..."
   
   # Ensure we're using the configured registry
-  exec:npm unpublish "$package_name@$version" --registry="$REGISTRY" || {
+  run:npm unpublish "$package_name@$version" --registry="$REGISTRY" || {
     echo:Registry "${cl_red}Failed to unpublish ${cl_yellow}$package_name@$version${cl_reset}"
     return 1
   }
@@ -299,52 +306,13 @@ function verify_unpublish() {
   echo:Registry "${cl_cyan}Verifying ${cl_yellow}$package_name@$version${cl_cyan} is unpublished...${cl_reset}"
   
   # Check if version still exists (using configured registry)
-  if exec:npm view "$package_name@$version" version --registry="$REGISTRY" &>/dev/null; then
+  if run:npm view "$package_name@$version" version --registry="$REGISTRY" &>/dev/null; then
     echo:Registry "${cl_red}Failed: ${cl_yellow}$package_name@$version${cl_red} still exists in registry!${cl_reset}"
     return 1
   else
     echo:Registry "${cl_green}Verified: ${cl_yellow}$package_name@$version${cl_green} has been removed from registry.${cl_reset}"
     return 0
   fi
-}
-
-# Execute npm command with dry-run support
-# Arguments:
-#   $@: All arguments are passed to npm command
-# Returns:
-#   Command exit code or 0 if in dry-run mode
-function exec:npm() {
-  if [ "$DRY_RUN" = true ]; then
-    echo:Registry "${cl_cyan}dry run: npm $*${cl_reset}"
-    
-    # Special case for npm view in dry run mode, simulate output
-    if [[ "$1" == "view" && "$3" == "versions" && "$4" == "--json" ]]; then
-      echo '["0.0.1","0.0.2","0.0.3","1.0.0","1.0.1","1.1.0"]'
-    fi
-    
-    return 0
-  fi
-
-  # Is immediate exit on error enabled? Remember the state
-  local immediate_exit_on_error
-  [[ $- == *e* ]] && immediate_exit_on_error=true || immediate_exit_on_error=false
-  set +e # disable immediate exit on error
-
-  echo:Npm -n "${cl_cyan}execute:${cl_reset} npm $*"
-  local output result
-  output=$(npm "$@" 2>&1)
-  result=$?
-  echo:Npm "${cl_cyan} code: ${cl_yellow}$result${cl_reset}"
-  [ -n "$output" ] && [ "$SILENT_NPM" = false ] && echo:Npm "${cl_gray}$output${cl_reset}"
-
-  [ "$immediate_exit_on_error" = "true" ] && set -e # recover state
-  
-  if [ "$1" == "view" ] && [ "$3" == "versions" ] && [ "$4" == "--json" ]; then
-    # For view command, pass the output to stdout for capture
-    echo "$output"
-  fi
-  
-  return $result
 }
 
 # Parse command line arguments
