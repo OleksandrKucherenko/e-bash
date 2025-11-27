@@ -4,7 +4,7 @@
 # shellcheck disable=SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-25
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -20,7 +20,7 @@ VERIFY_SCRIPT="${SCRIPT_DIR}/git.verify.all.commits.sh"
 # Set E_BASH variable manually for tests
 export E_BASH="${PROJECT_ROOT}/.scripts"
 
-Describe 'git.verify.all.commits.sh'
+Describe 'bin/git.verify.all.commits.sh /'
   Include "$VERIFY_SCRIPT"
 
   BeforeEach 'setup_test_environment'

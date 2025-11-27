@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -29,7 +29,7 @@ End
 
 Include ".scripts/_dependencies.sh"
 
-Describe "_dependencies.sh/"
+Describe "_dependencies.sh /"
 	# Remove colors in output before each function call
 	BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset"
 

@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -22,7 +22,7 @@ eval "$(shellspec - -c) exit 1"
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
 
-Describe 'bin/install.e-bash.sh/'
+Describe 'bin/install.e-bash.sh /'
 	temp_repo() {
 		mkdir -p "$TEST_DIR"
 		cd "$TEST_DIR" || return 1

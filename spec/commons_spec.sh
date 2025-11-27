@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016,SC2288
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -23,7 +23,7 @@ End
 
 Include ".scripts/_commons.sh"
 
-Describe "_commons.sh/"
+Describe "_commons.sh /"
 	# remove colors in output
 	BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset"
 	BeforeCall 'export DEBUG="*"'
@@ -37,7 +37,7 @@ Describe "_commons.sh/"
 		# Dump
 	End
 
-	Describe "env:variable:or:secret:file/"
+	Describe "env:variable:or:secret:file /"
 		It "No variable or secret file provided error"
 			When call env:variable:or:secret:file "new_value" \
 				"GITLAB_CI_INTEGRATION_TEST" \
@@ -111,7 +111,7 @@ Describe "_commons.sh/"
 		End
 	End
 
-	Describe "env:variable:or:secret:file:optional/"
+	Describe "env:variable:or:secret:file:optional /"
 		It "No variable or secret file provided error"
 			When call env:variable:or:secret:file:optional "new_value" \
 				"GITLAB_CI_INTEGRATION_TEST" \

@@ -4,7 +4,7 @@
 # shellcheck disable=SC2329,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -12,7 +12,7 @@
 
 eval "$(shellspec - -c) exit 1"
 
-Describe 'git.conventional.commits.sh'
+Describe 'bin/git.conventional.commits.sh /'
   # Include the script using relative path from project root
   Include bin/git.conventional.commits.sh
 
@@ -66,7 +66,7 @@ Describe 'git.conventional.commits.sh'
     git commit -m "$message" >/dev/null 2>&1
   }
 
-  Context 'conventional commit type validation'
+  Context 'conventional commit type validation /'
     Parameters
       "feat"
       "fix"
@@ -88,7 +88,7 @@ Describe 'git.conventional.commits.sh'
     End
   End
 
-  Context 'invalid commit type validation'
+  Context 'invalid commit type validation /'
     Parameters
       "bad"
       "invalid"
@@ -103,7 +103,7 @@ Describe 'git.conventional.commits.sh'
     End
   End
 
-  Context 'conventional commit format parsing'
+  Context 'conventional commit format parsing /'
     It 'parses simple format: type: description'
       When call conventional:parse "feat: add new feature"
       The status should be success
@@ -178,7 +178,7 @@ BREAKING CHANGE: Sessions from v1 are incompatible with v2"
     End
   End
 
-  Context 'edge cases and malformed input'
+  Context 'edge cases and malformed input /'
     It 'rejects empty message'
       When call conventional:parse ""
       The status should be failure
@@ -211,7 +211,7 @@ BREAKING CHANGE: Sessions from v1 are incompatible with v2"
     End
   End
 
-  Context 'conventional:grep function'
+  Context 'conventional:grep function /'
     It 'generates valid regex pattern'
       When call conventional:grep
       The output should include "feat"
@@ -220,7 +220,7 @@ BREAKING CHANGE: Sessions from v1 are incompatible with v2"
       The output should include "(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|wip)"
     End
 
-    Context 'pattern validation'
+    Context 'pattern validation /'
       Parameters
         "feat"
         "fix"
@@ -242,7 +242,7 @@ BREAKING CHANGE: Sessions from v1 are incompatible with v2"
       End
     End
 
-    Context 'conventional:recompose function'
+    Context 'conventional:recompose function /'
       It 'recomposes simple commit correctly'
         # Set up a parsed result
         __conventional_parse_result[message]="feat: add feature"
@@ -296,7 +296,7 @@ BREAKING CHANGE: Sessions from v1 are incompatible with v2"
       End
     End
 
-    Context 'version commit detection'
+    Context 'version commit detection /'
       It 'identifies version commits correctly'
         create_test_commit "feat: add new feature"
         local commit_hash
@@ -316,14 +316,14 @@ BREAKING CHANGE: Sessions from v1 are incompatible with v2"
       End
     End
 
-    Context 'script execution modes'
+    Context 'script execution modes /'
       It 'works when sourced'
         When run source "$CONVENTIONAL_SCRIPT"
         The status should be success
       End
     End
 
-    Context 'error handling'
+    Context 'error handling /'
       It 'handles git log failures gracefully'
         # Mock git to fail
         git() {

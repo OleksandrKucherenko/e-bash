@@ -4,7 +4,7 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -37,7 +37,7 @@ Mock printf:Regex
 	printf "$@" >/dev/null
 End
 
-Describe "git.semantic-version.sh/"
+Describe "bin/git.semantic-version.sh /"
 	# Set E_BASH to point to .scripts before including the main script
 	# BeforeAll 'E_BASH="$(cd "$(dirname "$SHELLSPEC_SPECFILE")" && cd ../.scripts && pwd)"'
 	# Note: Commented out because the path calculation fails in test environment.
@@ -46,7 +46,7 @@ Describe "git.semantic-version.sh/"
 	# Source the script to load functions
 	Include "bin/git.semantic-version.sh"
 
-	Describe "gitsv:parse_commit_type()/"
+	Describe "gitsv:parse_commit_type() /"
 		It "detects feat commit"
 			When call gitsv:parse_commit_type "feat: add new feature"
 			The output should eq "feat"
@@ -103,7 +103,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:has_breaking_change()/"
+	Describe "gitsv:has_breaking_change() /"
 		It "detects breaking change with !"
 			When call gitsv:has_breaking_change "feat!: breaking change"
 			The status should be success
@@ -130,7 +130,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:determine_bump()/"
+	Describe "gitsv:determine_bump() /"
 		It "returns major for breaking change"
 			When call gitsv:determine_bump "feat!: breaking change"
 			The output should eq "major"
@@ -172,7 +172,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:add_keyword()/"
+	Describe "gitsv:add_keyword() /"
 		It "adds custom keyword successfully"
 			When call gitsv:add_keyword "wip" "patch"
 			The status should be success
@@ -205,7 +205,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:determine_bump() with custom keywords/"
+	Describe "gitsv:determine_bump() with custom keywords /"
 		It "respects added wip keyword"
 			BeforeCall "gitsv:add_keyword wip patch"
 			When call gitsv:determine_bump "wip: work in progress"
@@ -225,7 +225,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:bump_version()/"
+	Describe "gitsv:bump_version() /"
 		It "bumps patch version"
 			When call gitsv:bump_version "1.2.3" "patch"
 			The output should eq "1.2.4"
@@ -262,7 +262,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:version_diff()/"
+	Describe "gitsv:version_diff() /"
 		It "shows patch diff"
 			When call gitsv:version_diff "1.2.3" "1.2.4"
 			The output should eq "+0.0.1"
@@ -290,7 +290,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:format_output_line()/"
+	Describe "gitsv:format_output_line() /"
 		It "formats output line in markdown format"
 			When call gitsv:format_output_line "abc1234" "feat: add feature" "1.2.3" "1.3.0" "+0.1.0" "v1.3.0"
 			The output should include "| abc1234 |"
@@ -318,7 +318,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:get_first_commit()/"
+	Describe "gitsv:get_first_commit() /"
 		It "returns the first commit hash in repository"
 			When call gitsv:get_first_commit
 			The status should be success
@@ -330,7 +330,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:get_commit_tags()/"
+	Describe "gitsv:get_commit_tags() /"
 		It "returns empty string for commits without tags"
 			# Get a recent commit that likely has no tags
 			recent_commit="$(git rev-parse HEAD)"
@@ -345,7 +345,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:extract_semver_from_tag()/"
+	Describe "gitsv:extract_semver_from_tag() /"
 		It "extracts version from tag with v prefix"
 			When call gitsv:extract_semver_from_tag "v1.0.0"
 			The output should eq "1.0.0"
@@ -392,7 +392,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:extract_semvers_from_tags()/"
+	Describe "gitsv:extract_semvers_from_tags() /"
 		It "extracts single semver from single tag"
 			When call gitsv:extract_semvers_from_tags "v1.0.0"
 			The output should eq "1.0.0"
@@ -419,7 +419,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:get_last_version_tag()/"
+	Describe "gitsv:get_last_version_tag() /"
 		It "returns latest semver tag if exists"
 			When call gitsv:get_last_version_tag
 			The status should be success
@@ -433,7 +433,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:get_last_version_tag_commit()/"
+	Describe "gitsv:get_last_version_tag_commit() /"
 		It "returns commit hash for latest version tag"
 			When call gitsv:get_last_version_tag_commit
 			The status should be success
@@ -444,7 +444,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:get_branch_start_commit()/"
+	Describe "gitsv:get_branch_start_commit() /"
 		It "returns a valid commit hash"
 			When call gitsv:get_branch_start_commit
 			The status should be success
@@ -455,7 +455,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "gitsv:get_commit_from_n_versions_back()/"
+	Describe "gitsv:get_commit_from_n_versions_back() /"
 		It "returns commit hash when versions exist"
 			When call gitsv:get_commit_from_n_versions_back 1
 			The status should be success
@@ -501,7 +501,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "Command line argument parsing/"
+	Describe "Command line argument parsing /"
 		It "displays help with --help"
 			When run script bin/git.semantic-version.sh --help
 			The status should be success
@@ -547,7 +547,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "Regression: Tag diff format (commit 905698f)/"
+	Describe "Regression: Tag diff format (commit 905698f) /"
 		# Issue: Tag versions should show =version, not +diff
 		# Example: Tag v1.0.0 should show =1.0.0, not +0.9.0
 
@@ -575,7 +575,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "Regression: Bump type determines color (commit cd3c8b2)/"
+	Describe "Regression: Bump type determines color (commit cd3c8b2) /"
 		# Issue: After tag v1.0.1-alpha.1, ALL commits showed purple
 		# Root cause: Checked version_after for pre-release suffix instead of bump_type
 		# Fix: Color based ONLY on bump_type, not version state
@@ -629,7 +629,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "Regression: Tag priority over pre-release check (commit cd42269)/"
+	Describe "Regression: Tag priority over pre-release check (commit cd42269) /"
 		# Issue: Tags with pre-release suffix (v1.0.1-alpha.1) showed purple instead of tag color
 		# Root cause: Pre-release regex checked before tag bump_type
 		# Fix: Check bump_type=="tag" first, before pre-release suffix check
@@ -668,7 +668,7 @@ Describe "git.semantic-version.sh/"
 		End
 	End
 
-	Describe "Integration tests/"
+	Describe "Integration tests /"
 		It "processes commits from recent history"
 			When run script bin/git.semantic-version.sh --from-commit HEAD~5 --initial-version 1.0.0
 			The status should be success

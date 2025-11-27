@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -19,7 +19,7 @@ Describe '_logger.sh /'
 	# Cleanup mechanism
 	AfterAll 'logger:cleanup'
 
-	Context 'Basic logger registration/'
+	Context 'Basic logger registration /'
 		It 'returns empty output when registering pre-defined common logger'
 			BeforeCall 'export DEBUG="*"'
 			When call logger "common"
@@ -39,7 +39,7 @@ Describe '_logger.sh /'
 		End
 	End
 
-	Context 'Logger with custom prefixes/'
+	Context 'Logger with custom prefixes /'
 		It 'echo:Tag outputs with custom prefix'
 			BeforeCall 'export DEBUG="*" && logger common && logger token && TAGS_PREFIX[token]="[token] "'
 			When call echo:Token "test token echo command"
@@ -101,7 +101,7 @@ Describe '_logger.sh /'
 		End
 	End
 
-	Context 'DEBUG filtering logic/'
+	Context 'DEBUG filtering logic /'
 		It 'enables logger when tag explicitly listed'
 			setup() {
 				export DEBUG="test"
@@ -173,7 +173,7 @@ Describe '_logger.sh /'
 		End
 	End
 
-	Context 'Advanced features/'
+	Context 'Advanced features /'
 		It 'handles printf:Tag with special characters (\n \t)'
 			setup() {
 				export DEBUG="*"
@@ -247,7 +247,7 @@ Describe '_logger.sh /'
 		End
 	End
 
-	Context 'Edge cases/'
+	Context 'Edge cases /'
 		It 'printf:Tag with plain text (no format specifiers)'
 			setup() {
 				export DEBUG="*"

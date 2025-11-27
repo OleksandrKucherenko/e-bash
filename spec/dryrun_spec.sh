@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016,SC2288
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-27
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -77,11 +77,11 @@ BeforeAll "export DRY_RUN=false UNDO_RUN=false SILENT=false"
 
 Include ".scripts/_dryrun.sh"
 
-Describe "_dryrun.sh/"
+Describe "_dryrun.sh /"
 	# Clean environment before each test
 	BeforeEach "unset DRY_RUN_TEST UNDO_RUN_TEST SILENT_TEST"
 
-	Describe "Global Variables/"
+	Describe "Global Variables /"
 		It "Should set default values for global variables"
 			The variable DRY_RUN should eq "false"
 			The variable UNDO_RUN should eq "false"
@@ -89,7 +89,7 @@ Describe "_dryrun.sh/"
 		End
 	End
 
-	Describe "dryrun:exec function/"
+	Describe "dryrun:exec function /"
 		It "Should execute command successfully and return exit code"
 			When call dryrun:exec "Test" "false" "echo" "hello world"
 
@@ -155,7 +155,7 @@ Describe "_dryrun.sh/"
 		End
 	End
 
-	Describe "dry-run function generator/"
+	Describe "dry-run function generator /"
 		It "Should generate wrapper functions for a single command"
 			When call dry-run "testcmd"
 
@@ -202,10 +202,10 @@ Describe "_dryrun.sh/"
 		End
 	End
 
-	Describe "Generated functions behavior/"
+	Describe "Generated functions behavior /"
 		BeforeEach "dry-run 'echo' 'pwd'"
 
-		Describe "run: functions in normal mode/"
+		Describe "run: functions in normal mode /"
 			BeforeEach "export DRY_RUN=false UNDO_RUN=false SILENT=false"
 
 			It "Should execute command normally when run:echo is called"
@@ -227,7 +227,7 @@ Describe "_dryrun.sh/"
 			End
 		End
 
-		Describe "dry: functions in normal mode/"
+		Describe "dry: functions in normal mode /"
 			BeforeEach "export DRY_RUN=false UNDO_RUN=false SILENT=false"
 
 			It "Should execute command normally when dry:echo is called"
@@ -240,7 +240,7 @@ Describe "_dryrun.sh/"
 			End
 		End
 
-		Describe "run: functions in dry run mode/"
+		Describe "run: functions in dry run mode /"
 			BeforeEach "export DRY_RUN=true UNDO_RUN=false SILENT=false"
 
 			It "Should not execute command when DRY_RUN=true"
@@ -258,7 +258,7 @@ Describe "_dryrun.sh/"
 			End
 		End
 
-		Describe "rollback: functions in normal mode/"
+		Describe "rollback: functions in normal mode /"
 			BeforeEach "export DRY_RUN=false UNDO_RUN=false SILENT=false"
 
 			It "Should not execute command when UNDO_RUN=false (normal mode)"
@@ -269,7 +269,7 @@ Describe "_dryrun.sh/"
 			End
 		End
 
-		Describe "rollback: functions in undo mode/"
+		Describe "rollback: functions in undo mode /"
 			BeforeEach "export DRY_RUN=false UNDO_RUN=true SILENT=false"
 
 			It "Should execute command when UNDO_RUN=true"
@@ -282,7 +282,7 @@ Describe "_dryrun.sh/"
 			End
 		End
 
-		Describe "undo: functions/"
+		Describe "undo: functions /"
 			BeforeEach "export DRY_RUN=false UNDO_RUN=true SILENT=false"
 
 			It "Should delegate to rollback: function"
@@ -295,7 +295,7 @@ Describe "_dryrun.sh/"
 			End
 		End
 
-		Describe "Silent mode behavior/"
+		Describe "Silent mode behavior /"
 			BeforeEach "export DRY_RUN=false UNDO_RUN=false SILENT=true"
 
 			It "Should suppress output in run: function when SILENT=true"
@@ -317,7 +317,7 @@ Describe "_dryrun.sh/"
 		End
 	End
 
-	Describe "Per-command environment variable overrides/"
+	Describe "Per-command environment variable overrides /"
 		BeforeEach "dry-run 'echo'"
 
 		It "Should use DRY_RUN_ECHO override when set"
@@ -367,7 +367,7 @@ Describe "_dryrun.sh/"
 		End
 	End
 
-	Describe "rollback:func function/"
+	Describe "rollback:func function /"
 		It "Should not execute function when UNDO_RUN=false"
 			BeforeCall "export UNDO_RUN=false DRY_RUN=false"
 			When call rollback:func "test_function" "arg1" "arg2"
@@ -427,7 +427,7 @@ Describe "_dryrun.sh/"
 		End
 	End
 
-	Describe "Complex scenarios and edge cases/"
+	Describe "Complex scenarios and edge cases /"
 		It "Should handle mixed global and per-command settings"
 			BeforeCall "export DRY_RUN=true UNDO_RUN=false SILENT=false"
 			BeforeCall "dry-run 'echo' 'pwd'"
@@ -482,7 +482,7 @@ Describe "_dryrun.sh/"
 		End
 	End
 
-	Describe "Integration with logger system/"
+	Describe "Integration with logger system /"
 		It "Should use correct logger tags for different operations"
 			# The dryrun:exec function uses printf:Exec for command logging
 			# This tests that the logger integration works
