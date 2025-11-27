@@ -53,11 +53,11 @@ dry-run npm
 export SILENT_NPM
 
 # Initialize loggers with domain-specific names
-logger npmv "$@" && logger:prefix npmv "${cl_cyan}[npmv]${cl_reset} "
-logger npm "$@" && logger:prefix npm "" && logger:redirect npm ">&2"
-logger versions "$@" && logger:prefix versions "${cl_blue}[ver]${cl_reset} " && logger:redirect versions ">&2"
-logger registry "$@" && logger:prefix registry "${cl_green}[reg]${cl_reset} " && logger:redirect registry ">&2"
-logger dump "$@" && logger:prefix dump "${cl_gray}|${cl_reset} " && logger:redirect dump ">&2"
+logger:init npmv "${cl_cyan}[npmv]${cl_reset} " ">&1"
+logger:init npm "" ">&2"
+logger:init versions "${cl_blue}[ver]${cl_reset} " ">&2"
+logger:init registry "${cl_green}[reg]${cl_reset} " ">&2"
+logger:init dump "${cl_gray}|${cl_reset} " ">&2"
 
 # Determine terminal width for column layout
 TERM_WIDTH=$(tput cols)
