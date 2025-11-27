@@ -1,13 +1,24 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2034,SC2154
+# shell: sh altsh=shellspec
+# shellcheck shell=bash
+# shellcheck disable=SC2317,SC2016,SC2034,SC2154
 
-#shellcheck shell=sh
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-11-27
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
 
-Describe 'npm-versions.sh'
-  # Setup environment before including the script
-  BeforeAll 'setup_environment'
+eval "$(shellspec - -c) exit 1"
 
-  setup_environment() {
+Describe 'bin/npm-versions.sh /'
+  # Include the script using relative path from project root
+  Include bin/npm-versions.sh
+
+  BeforeEach 'setup_test_environment'
+  AfterEach 'cleanup_test_environment'
+
+  setup_test_environment() {
     # Ensure E_BASH is set to project root
     export E_BASH="${SHELLSPEC_PROJECT_ROOT}/.scripts"
 
@@ -20,228 +31,224 @@ Describe 'npm-versions.sh'
 
     # Create temp directory for test artifacts
     export TEST_TMP_DIR=$(mktemp -d)
+
+    # Reset global variables to known state
+    export DRY_RUN=false
+    export SILENT_NPM=false
+    export REGISTRY="https://registry.npmjs.org"
+    export PACKAGE_NAME="test-package"
   }
 
-  AfterAll 'cleanup_environment'
-
-  cleanup_environment() {
-    rm -rf "$TEST_TMP_DIR"
+  cleanup_test_environment() {
+    rm -rf "$TEST_TMP_DIR" 2>/dev/null || true
+    unset TEST_TMP_DIR DRY_RUN SILENT_NPM REGISTRY PACKAGE_NAME
   }
 
-  # Include the script (source guard prevents main execution)
-  # We need to mock main execution since npm-versions.sh calls main at the end
-  # Create a wrapper that sources only the functions
-  Include bin/npm-versions.sh
-
-  Describe 'parse_range()'
-    Context 'when parsing single version numbers'
-      Parameters
-        "1" 0
-        "5" 4
-        "10" 9
-      End
-
-      It "converts 1-based index '$1' to 0-based index '$2'"
-        # Setup test versions array
-        versions=("0.0.1" "0.0.2" "0.0.3" "1.0.0" "1.0.1" "1.1.0" "2.0.0" "2.1.0" "3.0.0" "3.1.0")
-
-        When call parse_range "$1" "${versions[@]}"
-        The output should eq "$2"
-        The status should be success
-      End
+  Context 'parse_range() - single version numbers /'
+    Parameters
+      "1" 0
+      "5" 4
+      "10" 9
     End
 
-    Context 'when parsing comma-separated indices'
-      It 'handles multiple single indices: 1,3,5'
-        versions=("v1" "v2" "v3" "v4" "v5" "v6")
+    It "converts 1-based index '$1' to 0-based index '$2'"
+      # Setup test versions array
+      versions=("0.0.1" "0.0.2" "0.0.3" "1.0.0" "1.0.1" "1.1.0" "2.0.0" "2.1.0" "3.0.0" "3.1.0")
 
-        When call parse_range "1,3,5" "${versions[@]}"
-        The line 1 of output should eq "0"
-        The line 2 of output should eq "2"
-        The line 3 of output should eq "4"
-        The status should be success
-      End
-
-      It 'handles indices with spaces: "1, 3, 5"'
-        versions=("v1" "v2" "v3" "v4" "v5" "v6")
-
-        When call parse_range "1, 3, 5" "${versions[@]}"
-        The line 1 of output should eq "0"
-        The line 2 of output should eq "2"
-        The line 3 of output should eq "4"
-        The status should be success
-      End
-    End
-
-    Context 'when parsing range notation'
-      It 'handles simple range: 1-3'
-        versions=("v1" "v2" "v3" "v4" "v5")
-
-        When call parse_range "1-3" "${versions[@]}"
-        The line 1 of output should eq "0"
-        The line 2 of output should eq "1"
-        The line 3 of output should eq "2"
-        The status should be success
-      End
-
-      It 'handles range at end of list: 3-5'
-        versions=("v1" "v2" "v3" "v4" "v5")
-
-        When call parse_range "3-5" "${versions[@]}"
-        The line 1 of output should eq "2"
-        The line 2 of output should eq "3"
-        The line 3 of output should eq "4"
-        The status should be success
-      End
-
-      It 'handles single element range: 2-2'
-        versions=("v1" "v2" "v3" "v4" "v5")
-
-        When call parse_range "2-2" "${versions[@]}"
-        The output should eq "1"
-        The status should be success
-      End
-    End
-
-    Context 'when parsing complex mixed notation'
-      It 'handles combination: 1,3-5,7'
-        versions=("v1" "v2" "v3" "v4" "v5" "v6" "v7" "v8")
-
-        When call parse_range "1,3-5,7" "${versions[@]}"
-        The line 1 of output should eq "0"
-        The line 2 of output should eq "2"
-        The line 3 of output should eq "3"
-        The line 4 of output should eq "4"
-        The line 5 of output should eq "6"
-        The status should be success
-      End
-    End
-
-    Context 'when handling invalid input'
-      It 'rejects non-numeric input'
-        versions=("v1" "v2" "v3")
-
-        When call parse_range "abc" "${versions[@]}"
-        The status should be failure
-        The error should include "Invalid index"
-      End
-
-      It 'rejects out-of-range index (too high)'
-        versions=("v1" "v2" "v3")
-
-        When call parse_range "10" "${versions[@]}"
-        The status should be failure
-        The error should include "Index out of range"
-      End
-
-      It 'rejects zero index'
-        versions=("v1" "v2" "v3")
-
-        When call parse_range "0" "${versions[@]}"
-        The status should be failure
-        The error should include "Index out of range"
-      End
-
-      It 'rejects invalid range with non-numeric boundaries'
-        versions=("v1" "v2" "v3")
-
-        When call parse_range "a-b" "${versions[@]}"
-        The status should be failure
-        The error should include "Invalid range"
-      End
-
-      It 'rejects range exceeding array bounds'
-        versions=("v1" "v2" "v3")
-
-        When call parse_range "1-10" "${versions[@]}"
-        The status should be failure
-        The error should include "Index out of range"
-      End
+      When call parse_range "$1" "${versions[@]}"
+      The output should eq "$2"
+      The status should be success
     End
   End
 
-  Describe 'exec:npm()'
-    Context 'when DRY_RUN is false'
-      BeforeEach 'setup_npm_mock'
+  Context 'parse_range() - comma-separated indices /'
+    It 'handles multiple single indices: 1,3,5'
+      versions=("v1" "v2" "v3" "v4" "v5" "v6")
 
-      setup_npm_mock() {
-        export DRY_RUN=false
-        export SILENT_NPM=false
-
-        # Mock npm command
-        npm() {
-          case "$1" in
-            "config")
-              echo "npm config $*" >&2
-              return 0
-              ;;
-            "view")
-              if [[ "$2" == "test-package" && "$3" == "versions" && "$4" == "--json" ]]; then
-                echo '["1.0.0","1.0.1","2.0.0"]'
-                return 0
-              fi
-              return 1
-              ;;
-            "unpublish")
-              echo "npm unpublish $*" >&2
-              return 0
-              ;;
-            *)
-              return 1
-              ;;
-          esac
-        }
-      }
-
-      It 'executes npm config command'
-        When call exec:npm config set registry "https://registry.npmjs.org"
-        The error should include "execute: npm config set registry"
-        The status should be success
-      End
-
-      It 'executes npm view and returns JSON output'
-        When call exec:npm view "test-package" versions --json
-        The output should include "1.0.0"
-        The output should include "2.0.0"
-        The status should be success
-      End
-
-      It 'executes npm unpublish command'
-        When call exec:npm unpublish "test-package@1.0.0"
-        The error should include "execute: npm unpublish"
-        The status should be success
-      End
+      When call parse_range "1,3,5" "${versions[@]}"
+      The line 1 of output should eq "0"
+      The line 2 of output should eq "2"
+      The line 3 of output should eq "4"
+      The status should be success
     End
 
-    Context 'when DRY_RUN is true'
-      BeforeEach 'enable_dry_run'
+    It 'handles indices with spaces: "1, 3, 5"'
+      versions=("v1" "v2" "v3" "v4" "v5" "v6")
 
-      enable_dry_run() {
-        export DRY_RUN=true
-        export SILENT_NPM=false
-      }
-
-      It 'simulates npm config without execution'
-        When call exec:npm config set registry "https://test.com"
-        The error should include "dry run: npm config set registry"
-        The status should be success
-      End
-
-      It 'simulates npm view with mock data'
-        When call exec:npm view "test-package" versions --json
-        The output should eq '["0.0.1","0.0.2","0.0.3","1.0.0","1.0.1","1.1.0"]'
-        The status should be success
-      End
-
-      It 'simulates npm unpublish without execution'
-        When call exec:npm unpublish "test-package@1.0.0"
-        The error should include "dry run: npm unpublish"
-        The status should be success
-      End
+      When call parse_range "1, 3, 5" "${versions[@]}"
+      The line 1 of output should eq "0"
+      The line 2 of output should eq "2"
+      The line 3 of output should eq "4"
+      The status should be success
     End
   End
 
-  Describe 'fetch_versions()'
+  Context 'parse_range() - range notation /'
+    It 'handles simple range: 1-3'
+      versions=("v1" "v2" "v3" "v4" "v5")
+
+      When call parse_range "1-3" "${versions[@]}"
+      The line 1 of output should eq "0"
+      The line 2 of output should eq "1"
+      The line 3 of output should eq "2"
+      The status should be success
+    End
+
+    It 'handles range at end of list: 3-5'
+      versions=("v1" "v2" "v3" "v4" "v5")
+
+      When call parse_range "3-5" "${versions[@]}"
+      The line 1 of output should eq "2"
+      The line 2 of output should eq "3"
+      The line 3 of output should eq "4"
+      The status should be success
+    End
+
+    It 'handles single element range: 2-2'
+      versions=("v1" "v2" "v3" "v4" "v5")
+
+      When call parse_range "2-2" "${versions[@]}"
+      The output should eq "1"
+      The status should be success
+    End
+  End
+
+  Context 'parse_range() - complex mixed notation /'
+    It 'handles combination: 1,3-5,7'
+      versions=("v1" "v2" "v3" "v4" "v5" "v6" "v7" "v8")
+
+      When call parse_range "1,3-5,7" "${versions[@]}"
+      The line 1 of output should eq "0"
+      The line 2 of output should eq "2"
+      The line 3 of output should eq "3"
+      The line 4 of output should eq "4"
+      The line 5 of output should eq "6"
+      The status should be success
+    End
+  End
+
+  Context 'parse_range() - invalid input handling /'
+    It 'rejects non-numeric input'
+      versions=("v1" "v2" "v3")
+
+      When call parse_range "abc" "${versions[@]}"
+      The status should be failure
+      The error should include "Invalid index"
+    End
+
+    It 'rejects out-of-range index (too high)'
+      versions=("v1" "v2" "v3")
+
+      When call parse_range "10" "${versions[@]}"
+      The status should be failure
+      The error should include "Index out of range"
+    End
+
+    It 'rejects zero index'
+      versions=("v1" "v2" "v3")
+
+      When call parse_range "0" "${versions[@]}"
+      The status should be failure
+      The error should include "Index out of range"
+    End
+
+    It 'rejects invalid range with non-numeric boundaries'
+      versions=("v1" "v2" "v3")
+
+      When call parse_range "a-b" "${versions[@]}"
+      The status should be failure
+      The error should include "Invalid range"
+    End
+
+    It 'rejects range exceeding array bounds'
+      versions=("v1" "v2" "v3")
+
+      When call parse_range "1-10" "${versions[@]}"
+      The status should be failure
+      The error should include "Index out of range"
+    End
+  End
+
+  Context 'exec:npm() - actual execution mode /'
+    BeforeEach 'setup_npm_mock'
+
+    setup_npm_mock() {
+      export DRY_RUN=false
+      export SILENT_NPM=false
+
+      # Mock npm command
+      npm() {
+        case "$1" in
+          "config")
+            echo "npm config $*" >&2
+            return 0
+            ;;
+          "view")
+            if [[ "$2" == "test-package" && "$3" == "versions" && "$4" == "--json" ]]; then
+              echo '["1.0.0","1.0.1","2.0.0"]'
+              return 0
+            fi
+            return 1
+            ;;
+          "unpublish")
+            echo "npm unpublish $*" >&2
+            return 0
+            ;;
+          *)
+            return 1
+            ;;
+        esac
+      }
+    }
+
+    It 'executes npm config command'
+      When call exec:npm config set registry "https://registry.npmjs.org"
+      The error should include "execute: npm config set registry"
+      The status should be success
+    End
+
+    It 'executes npm view and returns JSON output'
+      When call exec:npm view "test-package" versions --json
+      The output should include "1.0.0"
+      The output should include "2.0.0"
+      The status should be success
+    End
+
+    It 'executes npm unpublish command'
+      When call exec:npm unpublish "test-package@1.0.0"
+      The error should include "execute: npm unpublish"
+      The status should be success
+    End
+  End
+
+  Context 'exec:npm() - dry run mode /'
+    BeforeEach 'enable_dry_run'
+
+    enable_dry_run() {
+      export DRY_RUN=true
+      export SILENT_NPM=false
+    }
+
+    It 'simulates npm config without execution'
+      When call exec:npm config set registry "https://test.com"
+      The error should include "dry run: npm config set registry"
+      The status should be success
+    End
+
+    It 'simulates npm view with mock data'
+      When call exec:npm view "test-package" versions --json
+      The output should eq '["0.0.1","0.0.2","0.0.3","1.0.0","1.0.1","1.1.0"]'
+      The status should be success
+    End
+
+    It 'simulates npm unpublish without execution'
+      When call exec:npm unpublish "test-package@1.0.0"
+      The error should include "dry run: npm unpublish"
+      The status should be success
+    End
+  End
+
+  Context 'fetch_versions() /'
     BeforeEach 'setup_fetch_versions_test'
 
     setup_fetch_versions_test() {
@@ -279,23 +286,21 @@ Describe 'npm-versions.sh'
       The status should be success
     End
 
-    Context 'when package does not exist'
-      It 'returns error for non-existent package'
-        # Override npm mock to return error
-        npm() {
-          if [[ "$1" == "view" ]]; then
-            return 1
-          fi
-          return 0
-        }
+    It 'returns error for non-existent package'
+      # Override npm mock to return error
+      npm() {
+        if [[ "$1" == "view" ]]; then
+          return 1
+        fi
+        return 0
+      }
 
-        When call fetch_versions "non-existent-package"
-        The status should be failure
-      End
+      When call fetch_versions "non-existent-package"
+      The status should be failure
     End
   End
 
-  Describe 'display_versions()'
+  Context 'display_versions() /'
     BeforeEach 'setup_display_test'
 
     setup_display_test() {
@@ -340,46 +345,29 @@ Describe 'npm-versions.sh'
     End
   End
 
-  Describe 'parse_arguments()'
-    Context 'when parsing --help flag'
-      It 'displays help and exits with print_usage'
-        print_usage() { echo "Usage help"; exit 0; }
-
-        When call parse_arguments "--help"
-        The variable PACKAGE_NAME should be defined
-      End
+  Context 'parse_arguments() /'
+    It 'parses --registry option'
+      parse_arguments "--registry" "https://custom.registry.com"
+      The variable REGISTRY should eq "https://custom.registry.com"
     End
 
-    Context 'when parsing --registry option'
-      It 'sets custom registry'
-        parse_arguments "--registry" "https://custom.registry.com"
-        The variable REGISTRY should eq "https://custom.registry.com"
-      End
+    It 'parses --dry-run flag'
+      parse_arguments "--dry-run"
+      The variable DRY_RUN should eq "true"
     End
 
-    Context 'when parsing --dry-run flag'
-      It 'enables dry run mode'
-        parse_arguments "--dry-run"
-        The variable DRY_RUN should eq "true"
-      End
+    It 'parses --silent flag'
+      parse_arguments "--silent"
+      The variable SILENT_NPM should eq "true"
     End
 
-    Context 'when parsing --silent flag'
-      It 'enables silent npm mode'
-        parse_arguments "--silent"
-        The variable SILENT_NPM should eq "true"
-      End
-    End
-
-    Context 'when parsing package name'
-      It 'sets package name from positional argument'
-        parse_arguments "my-package"
-        The variable PACKAGE_NAME should eq "my-package"
-      End
+    It 'parses package name from positional argument'
+      parse_arguments "my-package"
+      The variable PACKAGE_NAME should eq "my-package"
     End
   End
 
-  Describe 'print_usage()'
+  Context 'print_usage() /'
     It 'displays usage information'
       When call print_usage
       The output should include "Usage:"
@@ -392,43 +380,7 @@ Describe 'npm-versions.sh'
     End
   End
 
-  Describe 'confirm_unpublish()'
-    Context 'when user confirms with "yes"'
-      It 'returns success for yes confirmation'
-        # Mock read to automatically respond with "yes"
-        confirm_unpublish() {
-          local package_name="$1"
-          shift
-          local to_unpublish=("$@")
-
-          # Simulate user typing "yes"
-          return 0
-        }
-
-        When call confirm_unpublish "test-package" "1.0.0" "1.0.1"
-        The status should be success
-      End
-    End
-
-    Context 'when user declines'
-      It 'returns failure for no confirmation'
-        # Mock read to automatically respond with "no"
-        confirm_unpublish() {
-          local package_name="$1"
-          shift
-          local to_unpublish=("$@")
-
-          # Simulate user typing "no"
-          return 1
-        }
-
-        When call confirm_unpublish "test-package" "1.0.0"
-        The status should be failure
-      End
-    End
-  End
-
-  Describe 'unpublish_version()'
+  Context 'unpublish_version() /'
     BeforeEach 'setup_unpublish_test'
 
     setup_unpublish_test() {
@@ -450,53 +402,47 @@ Describe 'npm-versions.sh'
       The error should include "Successfully unpublished"
     End
 
-    Context 'when npm unpublish fails'
-      It 'returns failure and error message'
-        npm() {
-          if [[ "$1" == "unpublish" ]]; then
-            return 1
-          fi
-          return 0
-        }
+    It 'returns failure when npm unpublish fails'
+      npm() {
+        if [[ "$1" == "unpublish" ]]; then
+          return 1
+        fi
+        return 0
+      }
 
-        When call unpublish_version "test-package" "1.0.0"
-        The status should be failure
-        The error should include "Failed to unpublish"
-      End
+      When call unpublish_version "test-package" "1.0.0"
+      The status should be failure
+      The error should include "Failed to unpublish"
     End
   End
 
-  Describe 'verify_unpublish()'
-    Context 'when version is successfully unpublished'
-      It 'verifies version no longer exists'
-        npm() {
-          if [[ "$1" == "view" ]]; then
-            return 1  # Version not found
-          fi
-          return 0
-        }
+  Context 'verify_unpublish() /'
+    It 'verifies version no longer exists'
+      npm() {
+        if [[ "$1" == "view" ]]; then
+          return 1  # Version not found
+        fi
+        return 0
+      }
 
-        When call verify_unpublish "test-package" "1.0.0"
-        The status should be success
-        The error should include "Verified"
-        The error should include "removed from registry"
-      End
+      When call verify_unpublish "test-package" "1.0.0"
+      The status should be success
+      The error should include "Verified"
+      The error should include "removed from registry"
     End
 
-    Context 'when version still exists after unpublish'
-      It 'returns failure if version still exists'
-        npm() {
-          if [[ "$1" == "view" ]]; then
-            return 0  # Version still found
-          fi
-          return 0
-        }
+    It 'returns failure if version still exists after unpublish'
+      npm() {
+        if [[ "$1" == "view" ]]; then
+          return 0  # Version still found
+        fi
+        return 0
+      }
 
-        When call verify_unpublish "test-package" "1.0.0"
-        The status should be failure
-        The error should include "Failed"
-        The error should include "still exists"
-      End
+      When call verify_unpublish "test-package" "1.0.0"
+      The status should be failure
+      The error should include "Failed"
+      The error should include "still exists"
     End
   End
 End
