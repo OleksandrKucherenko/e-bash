@@ -447,6 +447,10 @@ function main() {
   return 0
 }
 
-# Execute the main function and exit with its return code
-main "$@"
-exit $?
+# Source guard - only execute main when run directly, not when sourced
+# This allows the script to be tested by sourcing its functions
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # Execute the main function and exit with its return code
+  main "$@"
+  exit $?
+fi
