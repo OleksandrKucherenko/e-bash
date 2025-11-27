@@ -32,6 +32,29 @@ Describe 'bin/npm-versions.sh /'
     # Create temp directory for test artifacts
     export TEST_TMP_DIR=$(mktemp -d)
 
+    # Mock logger functions used by _arguments module
+    echo:Common() { : ; }  # Silent in tests
+    echo:Parser() { : ; }  # Silent in tests
+    echo:Loader() { : ; }  # Silent in tests
+    printf:Common() { : ; }  # Silent in tests
+    printf:Parser() { : ; }  # Silent in tests
+    printf:Loader() { : ; }  # Silent in tests
+    log:Common() { : ; }  # Silent in tests
+    log:Parser() { : ; }  # Silent in tests
+    log:Loader() { : ; }  # Silent in tests
+
+    # Mock logger functions used by npm-versions.sh
+    echo:Npmv() { echo "$*"; }
+    echo:Npm() { : ; }  # Silent in tests
+    echo:Versions() { : ; }  # Silent in tests
+    echo:Registry() { : ; }  # Silent in tests
+    echo:Dump() { : ; }  # Silent in tests
+    printf:Npmv() { printf "%s" "$*"; }
+    printf:Npm() { : ; }  # Silent in tests
+    printf:Versions() { : ; }  # Silent in tests
+    printf:Registry() { : ; }  # Silent in tests
+    printf:Dump() { : ; }  # Silent in tests
+
     # Reset global variables to known state
     export DRY_RUN=false
     export SILENT_NPM=false
@@ -377,6 +400,17 @@ Describe 'bin/npm-versions.sh /'
   End
 
   Context 'parse:arguments() - argument parsing /'
+    setup_args_definition() {
+      export ARGS_DEFINITION=""
+      ARGS_DEFINITION+=" \$1,<package-name>=PACKAGE_NAME:@oleksandrkucherenko/mcp-obsidian"
+      ARGS_DEFINITION+=" -h,--help=help"
+      ARGS_DEFINITION+=" -r,--registry=REGISTRY:https://registry.npmjs.org:1"
+      ARGS_DEFINITION+=" --dry-run=DRY_RUN:true"
+      ARGS_DEFINITION+=" --silent=SILENT_NPM:true"
+    }
+
+    BeforeEach 'setup_args_definition'
+
     It 'parses --registry option'
       When call parse:arguments "--registry" "https://custom.registry.com"
       The variable REGISTRY should eq "https://custom.registry.com"
