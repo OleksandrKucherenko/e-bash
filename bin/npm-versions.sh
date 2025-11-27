@@ -48,6 +48,10 @@ DRY_RUN=${DRY_RUN:-false}
 SILENT_NPM=${SILENT_NPM:-false}
 
 # Setup dry-run wrapper for npm command
+# This creates three wrapper functions:
+#   run:npm   - for readonly operations (view, config)
+#   dry:npm   - for destructive operations (unpublish)
+#   rollback:npm - for registering rollback commands
 dry-run npm
 # Map SILENT_NPM to control npm wrapper output
 export SILENT_NPM
@@ -287,9 +291,9 @@ function unpublish_version() {
   local version="$2"
   
   echo:Registry "${cl_cyan}Unpublishing ${cl_yellow}$package_name@$version${cl_reset}..."
-  
-  # Ensure we're using the configured registry
-  run:npm unpublish "$package_name@$version" --registry="$REGISTRY" || {
+
+  # Ensure we're using the configured registry (dry:npm for destructive operation)
+  dry:npm unpublish "$package_name@$version" --registry="$REGISTRY" || {
     echo:Registry "${cl_red}Failed to unpublish ${cl_yellow}$package_name@$version${cl_reset}"
     return 1
   }
