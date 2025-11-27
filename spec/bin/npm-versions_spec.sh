@@ -213,15 +213,52 @@ Describe 'bin/npm-versions.sh /'
       The output should include "2.0.0"
       The status should be success
     End
+  End
 
-    It 'executes npm unpublish command via run:npm'
-      When call run:npm unpublish "test-package@1.0.0"
+  Context 'dry:npm() - destructive operations /'
+    BeforeEach 'setup_npm_mock'
+
+    setup_npm_mock() {
+      export DRY_RUN=false
+      export SILENT_NPM=false
+
+      # Mock npm command
+      npm() {
+        case "$1" in
+          "unpublish")
+            echo "npm unpublish $*" >&2
+            return 0
+            ;;
+          *)
+            return 1
+            ;;
+        esac
+      }
+    }
+
+    It 'executes npm unpublish command via dry:npm'
+      When call dry:npm unpublish "test-package@1.0.0"
       The error should include "npm unpublish"
       The status should be success
     End
   End
 
-  Context 'run:npm() - dry run mode /'
+  Context 'dry:npm() - dry run mode /'
+    BeforeEach 'enable_dry_run'
+
+    enable_dry_run() {
+      export DRY_RUN=true
+      export SILENT_NPM=false
+    }
+
+    It 'simulates npm unpublish without execution'
+      When call dry:npm unpublish "test-package@1.0.0"
+      The error should include "npm unpublish"
+      The status should be success
+    End
+  End
+
+  Context 'run:npm() - dry run mode for readonly operations /'
     BeforeEach 'enable_dry_run'
 
     enable_dry_run() {
@@ -238,12 +275,6 @@ Describe 'bin/npm-versions.sh /'
     It 'simulates npm view without execution'
       When call run:npm view "test-package" versions --json
       The error should include "npm view"
-      The status should be success
-    End
-
-    It 'simulates npm unpublish without execution'
-      When call run:npm unpublish "test-package@1.0.0"
-      The error should include "npm unpublish"
       The status should be success
     End
   End
