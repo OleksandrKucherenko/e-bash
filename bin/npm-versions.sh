@@ -19,6 +19,20 @@ if [[ -z "$E_BASH" ]]; then
   echo "Warning: E_BASH not found, using fallback: $E_BASH" >&2
 fi
 
+# Skip automatic argument parsing - we'll call parse:arguments manually
+export SKIP_ARGS_PARSING=1
+
+# Pre-declare variables for shellcheck
+declare help REGISTRY PACKAGE_NAME DRY_RUN SILENT_NPM
+
+# Define command-line arguments
+ARGS_DEFINITION=""
+ARGS_DEFINITION+=" \$1,<package-name>=PACKAGE_NAME:@oleksandrkucherenko/mcp-obsidian"
+ARGS_DEFINITION+=" -h,--help=help"
+ARGS_DEFINITION+=" -r,--registry=REGISTRY:https://registry.npmjs.org:1"
+ARGS_DEFINITION+=" --dry-run=DRY_RUN:true"
+ARGS_DEFINITION+=" --silent=SILENT_NPM:true"
+
 # Set up debug variable before sourcing logger
 DEBUG=${DEBUG:-"npmv,-dump,versions,registry,-loader"}
 
@@ -36,15 +50,10 @@ source "$E_BASH/_arguments.sh"
 # shellcheck disable=SC1090 source="../.scripts/_dryrun.sh"
 source "$E_BASH/_dryrun.sh"
 
-# Default package name
-DEFAULT_PACKAGE="@oleksandrkucherenko/mcp-obsidian"
-PACKAGE_NAME="$DEFAULT_PACKAGE"
-REGISTRY="https://registry.npmjs.org"
-
-# Set to true to enable dry-run mode (no actual npm commands will be executed)
+# Apply defaults for variables if not set by arguments
+PACKAGE_NAME=${PACKAGE_NAME:-@oleksandrkucherenko/mcp-obsidian}
+REGISTRY=${REGISTRY:-https://registry.npmjs.org}
 DRY_RUN=${DRY_RUN:-false}
-
-# Set to true to silence npm command output
 SILENT_NPM=${SILENT_NPM:-false}
 
 # Setup dry-run wrapper for npm command
@@ -66,16 +75,18 @@ logger:init dump "${cl_gray}|${cl_reset} " ">&2"
 # Determine terminal width for column layout
 TERM_WIDTH=$(tput cols)
 
-# Function to print usage instructions
+# Set up help documentation for arguments
+args:d '<package-name>' 'NPM package name to manage' "arguments" 1
+args:d '-h' 'Display this help message and exit' "global" 0
+args:d '-r' 'Specify NPM registry URL (env: REGISTRY, default: https://registry.npmjs.org)' "options" 2
+args:d '--dry-run' 'Simulate commands without actual execution (env: DRY_RUN)' "options" 2
+args:d '--silent' 'Hide npm command output details (env: SILENT_NPM)' "options" 2
+
+# Function to print usage instructions (wraps print:help with examples)
 function print_usage() {
   echo:Npmv "${cl_yellow}Usage:${cl_reset} npm-versions.sh [options] [package-name]"
   echo:Npmv ""
-  echo:Npmv "${cl_yellow}Options:${cl_reset}"
-  echo:Npmv "  -h, --help        Display this help message"
-  echo:Npmv "  -r, --registry    Specify NPM registry URL (default: $REGISTRY)"
-  echo:Npmv "  --dry-run         Simulate commands without actual execution"
-  echo:Npmv "  --silent          Hide npm command output details"
-  echo:Npmv ""
+  print:help
   echo:Npmv "${cl_yellow}Examples:${cl_reset}"
   echo:Npmv "  npm-versions.sh                                # Use default package"
   echo:Npmv "  npm-versions.sh lodash                         # Display versions for lodash"
@@ -319,46 +330,16 @@ function verify_unpublish() {
   fi
 }
 
-# Parse command line arguments
-# REGISTRY is already defined with default value
-function parse_arguments() {
-  for arg in "$@"; do
-    case $arg in
-      -h|--help)
-        print_usage
-        exit 0
-        ;;
-      -r|--registry)
-        REGISTRY="$2"
-        shift 2
-        ;;
-      --dry-run)
-        DRY_RUN=true
-        shift
-        ;;
-      --silent)
-        SILENT_NPM=true
-        shift
-        ;;
-      -*)
-        echo:Npmv "${cl_red}Unknown option: ${cl_yellow}$arg${cl_reset}"
-        print_usage
-        exit 1
-        ;;
-      *)
-        # If not an option, assume it's a package name
-        if [[ -n "$arg" ]]; then
-          PACKAGE_NAME="$arg"
-        fi
-        ;;
-    esac
-  done
-}
-
 # Main function with program execution logic
 function main() {
-  # Parse command line arguments
-  parse_arguments "$@"
+  # Parse command line arguments using _arguments module
+  parse:arguments "$@"
+
+  # Check if help was requested
+  if [[ "${help:-}" == "true" ]] || [[ "${help:-}" == "1" ]]; then
+    print_usage
+    return 0
+  fi
   
   # Show program header
   echo:Npmv "NPM Package Version Manager"
