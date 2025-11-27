@@ -35,9 +35,9 @@ source "$E_BASH/_dependencies.sh"
 source "$E_BASH/_arguments.sh"
 
 # Default package name
-DEFAULT_PACKAGE="@klarna/personalization-data-platform-attributes"
+DEFAULT_PACKAGE="@oleksandrkucherenko/mcp-obsidian"
 PACKAGE_NAME="$DEFAULT_PACKAGE"
-REGISTRY="https://artifactory.klarna.net/artifactory/api/npm/v-npm-production"
+REGISTRY="https://registry.npmjs.org"
 
 # Set to true to enable dry-run mode (no actual npm commands will be executed)
 DRY_RUN=${DRY_RUN:-false}
