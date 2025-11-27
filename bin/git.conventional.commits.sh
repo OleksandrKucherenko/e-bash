@@ -8,6 +8,7 @@
 
 # set -x
 
+
 export __commit_msg=""
 export __commit_sha=""
 
@@ -59,7 +60,8 @@ function conventional:grep() {
   # 5: description
   # 6: body - optional (starts with double newline)
   # 7: footer - optional (starts with double newline)
-  local pattern="^(${types_pattern})(\\(([^)]+)\\))?(!)?:[[:space:]]+(.+)(\n\n(.*))?$"
+  # Simple pattern that just captures the header (type, scope, breaking, description)
+  local pattern="^(${types_pattern})(\\(([^)]+)\\))?(!)?:[[:space:]]+(.+)"
 
   echo "$pattern"
 }
@@ -89,28 +91,54 @@ function conventional:parse() {
     parsed["breaking"]="${BASH_REMATCH[4]}"
     parsed["description"]="${BASH_REMATCH[5]}"
 
-    # Handle optional body and footer (everything after first double newline)
-    if [[ -n "${BASH_REMATCH[7]}" ]]; then
-      local body_and_footer="${BASH_REMATCH[7]}"
-      # Check if there's a footer (lines starting with keywords like BREAKING CHANGE:)
-      if [[ "$body_and_footer" =~ (.*)(\n\n(BREAKING[[:space:]]+CHANGE:|[A-Za-z-]+:[[:space:]]+.+))$ ]]; then
-        parsed["body"]="${BASH_REMATCH[1]}"
-        parsed["footer"]="${BASH_REMATCH[3]}"
+    # Handle multi-line parsing by splitting description from body/footer
+    local full_message="${BASH_REMATCH[5]}"
+
+    # Check if description contains actual newline characters (body/footer)
+    if [[ "$full_message" == *$'\n'* ]]; then
+      # Split at first double newline to separate description from body
+      local description="${full_message%%$'\n\n'*}"
+      local body_footer="${full_message#*$'\n\n'}"
+
+      # Update parsed description to only include the first part
+      parsed["description"]="$description"
+
+      # Check if body_footer contains breaking change anywhere
+      if [[ "$body_footer" =~ (BREAKING[[:space:]]+CHANGE:) ]]; then
+        # Extract breaking change and move to footer
+        parsed["footer"]="BREAKING CHANGE: ${body_footer#*BREAKING CHANGE:}"
+        # Remove breaking change from body
+        parsed["body"]="${body_footer%%BREAKING CHANGE:*}"
+        # Mark as breaking change
+        parsed["breaking"]="!"
       else
-        parsed["body"]="$body_and_footer"
+        parsed["body"]="$body_footer"
       fi
     fi
 
-    # Also check for BREAKING CHANGE in footer if not already marked with !
-    if [[ -z "${parsed[breaking]}" && "${parsed[footer]}" =~ BREAKING[[:space:]]+CHANGE: ]]; then
+    # Also check for BREAKING CHANGE in body if not already marked with !
+    if [[ -z "${parsed[breaking]}" && "${parsed[body]}" =~ BREAKING[[:space:]]+CHANGE: ]]; then
       parsed["breaking"]="!"
+      # Move breaking change from body to footer
+      parsed["footer"]="BREAKING CHANGE: ${parsed[body]#*BREAKING CHANGE:}"
+      parsed["body"]="${parsed[body]%%BREAKING CHANGE:*}"
     fi
 
-    # Copy parsed results to global variable
-    eval "declare -g -A ${output_variable}"
-    for key in "${!parsed[@]}"; do
-      eval "${output_variable}[${key}]='${parsed[$key]}'"
-    done
+    # Copy parsed results to global variable using safe methods
+    if [[ "$output_variable" == "__conventional_parse_result" ]]; then
+      # Direct assignment for the global variable (most efficient)
+      for key in "${!parsed[@]}"; do
+        __conventional_parse_result[$key]="${parsed[$key]}"
+      done
+    else
+      # For custom variable names, use printf with proper escaping
+      eval "declare -g -A ${output_variable}"
+      for key in "${!parsed[@]}"; do
+        # Use printf to safely escape the value
+        printf -v escaped_value '%q' "${parsed[$key]}"
+        eval "${output_variable}[${key}]=${escaped_value}"
+      done
+    fi
 
     return 0
   else
@@ -170,8 +198,7 @@ function conventional:is_valid_commit() {
   # Determine if input is a commit hash or message
   if [[ "$input" =~ ^[a-f0-9]{7,40}$ ]]; then
     # Input looks like a commit hash, fetch the message
-    commit_message=$(git log -1 --pretty=%B "$input" 2>/dev/null)
-    if [[ $? -ne 0 ]]; then
+    if ! commit_message=$(git log -1 --pretty=%B "$input" 2>/dev/null); then
       return 1 # Failed to fetch commit message
     fi
     # Set global variables for commit hash
@@ -205,7 +232,10 @@ function conventional:is_version_commit() {
   local commit_msg
 
   # Get full commit message
-  commit_msg=$(git log -1 --pretty=%B "$commit_sha" 2>/dev/null | tr '\n' ' ')
+  if ! commit_msg=$(git log -1 --pretty=%B "$commit_sha" 2>/dev/null); then
+    return 1 # Failed to fetch commit message
+  fi
+  commit_msg=$(echo "$commit_msg" | tr '\n' ' ')
 
   # export commit message for debugging and other processing
   export __commit_msg="$commit_msg"
@@ -226,9 +256,8 @@ function conventional:is_version_commit() {
       '^feat(:|\!)'                             # feat: or feat!:
       '^fix(:|\!)'                              # fix: or fix!:
       '^perf(:|\!)'                             # perf: or perf!:
-      '^chore(:|\!)'                            # chore: or chore!:
       'BREAKING CHANGE:'                        # any breaking change indicator
-      '^(feat|fix|perf|chore)(\([^)]+\))?(!)?:' # any of feat, fix, perf, chore with optional scope and exclamation mark
+      '^(feat|fix|perf)(\([^)]+\))?(!)?:'     # any of feat, fix, perf with optional scope and exclamation mark
     )
   fi
 
@@ -246,6 +275,7 @@ function conventional:is_change_commit() {
   # if detected version commit - return false (not a change commit)
   conventional:is_version_commit "$1" && return 1
 
+  # If not a version commit, it's a change commit
   return 0
 }
 
@@ -294,6 +324,11 @@ function conventional:validate:package_json() {
   fi
 }
 
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+# DO NOT allow execution of code bellow those line in shellspec tests
+${__SOURCED__:+return}
+
 # detect are we executed directly or sourced
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
   conventional:is_valid_commit "$1" &&
@@ -308,8 +343,6 @@ if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
   # conventional:is_version_commit "$1" &&
   #   echo "Version commit (${__commit_sha}): ${__commit_msg}" >&2 ||
   #   echo "Changes commit (${__commit_sha}): ${__commit_msg}" >&2
-else
-  echo:Debug "Source mode"
 fi
 
 # References:

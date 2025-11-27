@@ -1,5 +1,0 @@
---require spec_helper
---shell bash
---format progress
---skip-message quiet
---pending-message quiet

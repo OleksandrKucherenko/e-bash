@@ -17,6 +17,8 @@
     - [UI: Ask for Password](#ui-ask-for-password)
     - [Dry-Run Wrapper System](#dry-run-wrapper-system)
   - [Semver - Semantic Versioning](#semver---semantic-versioning)
+  - [Git Semantic/Conventional commits](#git-semanticconventional-commits)
+  - [Git Verify Commits Messages - Conventional Commits](#git-verify-commits-messages---conventional-commits)
   - [Self-Update](#self-update)
     - [Troubleshooting](#troubleshooting)
   - [Profile BASH script execution](#profile-bash-script-execution)
@@ -359,6 +361,120 @@ semver:parse "2.0.0-rc.1+build.123" "V" \
 
 # test version code
 echo "1" | grep -E "${SEMVER_LINE}" --color=always --ignore-case || echo "OK!"
+```
+
+## Git Semantic/Conventional commits
+
+Set of git helpers are implemented.
+
+```bash
+# compute semantic version from git history
+bin/git.semantic-version.sh
+```
+
+Semantic Version History:
+
+| Commit  | Message                                                                      | Tag            | Version Change                | Diff           |
+| ------- | ---------------------------------------------------------------------------- | -------------- | ----------------------------- | -------------- |
+| cb10f67 | imported version-up.sh script                                                | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 8f1616f | preparing scripts for unit testing                                           | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 260646f | more unit tests added                                                        | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| ac06fea | github actions                                                               | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 9a948b6 | github actions, part 12                                                      | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 995e212 | github actions, part 13                                                      | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 4f4a462 | github actions, part 14                                                      | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| bc42765 | more tests added, dependencies                                               | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 0592c6f | improved functions names                                                     | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 16dc946 | improved workflow                                                            | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 0d657ba | updaed readme, roadmap added                                                 | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 89e479d | change code coverage step                                                    | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 9a997ef | Added copyright information                                                  | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| ab852e8 | cleanup                                                                      | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| e989705 | Merge pull request #1 from OleksandrKucherenko/updated-copyrights            | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 0dd014e | introduced password input TUI                                                | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| bc13d6c | first version of profiler (#3)                                               | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| c75cdab | added several demos (#4)                                                     | -              | 0.0.1 → 0.0.1                 | +0.0.0         |
+| 32b1951 | Update README.md                                                             | v1.0.0         | 0.0.1 → 1.0.0                 | =1.0.0         |
+| 3e6d934 | small patch (#5)                                                             | v1.0.1-alpha.1 | 1.0.0 → 1.0.1-alpha.1         | =1.0.1-alpha.1 |
+| d08724e | Self update functionality (#6)                                               | -              | 1.0.1-alpha.1 → 1.0.1-alpha.1 | +0.0.0         |
+| 7da0a83 | Continue development (#7)                                                    | -              | 1.0.1-alpha.1 → 1.0.1-alpha.1 | +0.0.0         |
+| 09d8e1f | Update COPYRIGHT, spell check in comments                                    | -              | 1.0.1-alpha.1 → 1.0.1-alpha.1 | +0.0.0         |
+| ace5f94 | added: unlim comments lines support (#8)                                     | -              | 1.0.1-alpha.1 → 1.0.1-alpha.1 | +0.0.0         |
+| dffc346 | fix: kcov docker image use (#9)                                              | -              | 1.0.1-alpha.1 → 1.0.2-alpha.1 | +0.0.1         |
+| b982126 | wip: log to file and stderr                                                  | -              | 1.0.2-alpha.1 → 1.0.2-alpha.1 | +0.0.0         |
+| 54e9e0e | wip: add gawk dependency                                                     | -              | 1.0.2-alpha.1 → 1.0.2-alpha.1 | +0.0.0         |
+| 8649d55 | Document args (#10)                                                          | v1.1.0         | 1.0.2-alpha.1 → 1.1.0         | =1.1.0         |
+| 21ba265 | Update README.md                                                             | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| 7ee535d | resolved merge conflicts                                                     | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| 67a62d3 | added Ipv6 utils (#11)                                                       | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| f880300 | Updated installation link                                                    | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| f9698cc | installation short link                                                      | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| 1c0a2fa | badge added                                                                  | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| 3554bdd | badges - one more                                                            | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| 86de415 | wip: V2 version up script (#12)                                              | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| cc2918b | Claude/emoji printer script 011 c uo ha65 l ht rbbr2q zdw gx (#15)           | -              | 1.1.0 → 1.1.0                 | +0.0.0         |
+| b00a1d0 | fix: installation script global and local installation scenarios (#16)       | -              | 1.1.0 → 1.1.1                 | +0.0.1         |
+| 82a5c35 | wip: updated dependencies                                                    | -              | 1.1.1 → 1.1.1                 | +0.0.0         |
+| 60fcd80 | wip: code review of another PR (#18)                                         | -              | 1.1.1 → 1.1.1                 | +0.0.0         |
+| b0901ab | test: add comprehensive test coverage for version-up v2 (TDD approach) (#19) | -              | 1.1.1 → 1.1.2                 | +0.0.1         |
+| 13f8feb | feat: add git semantic version calculator script (#20)                       | -              | 1.1.2 → 1.2.0                 | +0.1.0         |
+| 2b4b34f | Fix/coverage unknown status (#21)                                            | -              | 1.2.0 → 1.2.0                 | +0.0.0         |
+| bf2da24 | Fix and optimize Codecov configuration (#22)                                 | -              | 1.2.0 → 1.2.0                 | +0.0.0         |
+| 6d6b542 | wip: small updates in documentation                                          | -              | 1.2.0 → 1.2.0                 | +0.0.0         |
+| 7cc5870 | ci: Add CI cache for Homebrew installations (#25)                            | -              | 1.2.0 → 1.2.1                 | +0.0.1         |
+| fbdee5c | feat: add mise tool support to e-bash install script (#23)                   | -              | 1.2.1 → 1.3.0                 | +0.1.0         |
+| b64d60b | feat: add trap management module with multiple handler support               | -              | 1.3.0 → 1.4.0                 | +0.1.0         |
+| 1e2e98f | fix: resolve CI test failures for trap module                                | -              | 1.4.0 → 1.4.1                 | +0.0.1         |
+| e854d5d | fix: trap:push without arguments now correctly snapshots all signals         | -              | 1.4.1 → 1.4.2                 | +0.0.1         |
+| c031c50 | fix: resolve CI test failures for trap module                                | -              | 1.4.2 → 1.4.3                 | +0.0.1         |
+| cd3eb44 | fix: make logger mocks produce output for test assertions                    | -              | 1.4.3 → 1.4.4                 | +0.0.1         |
+| 6af95a2 | fix: redirect mock logger output to stderr matching e-bash convention        | -              | 1.4.4 → 1.4.5                 | +0.0.1         |
+| 63797bf | fix: resolve ShellSpec syntax errors in trap tests                           | -              | 1.4.5 → 1.4.6                 | +0.0.1         |
+| 244b15b | fix: redirect stderr to /dev/null for trap setup commands in tests           | -              | 1.4.6 → 1.4.7                 | +0.0.1         |
+
+```text
+Summary:
+  Total commits processed: 55
+  Version changes:
+    Major (breaking): 0
+    Minor (features): 3
+    Patch (fixes):    11
+    Tag   (assigned): 3
+    None  (ignored):  38
+
+Final Version: 1.4.7
+```
+
+## Git Verify Commits Messages - Conventional Commits
+
+```bash
+bin/git.verify.all.commits.sh
+```
+
+```text
+❯ bin/git.verify.all.commits.sh
+ 🔍 Gathering commit history...
+ 🔍 Checking 56 commits for Conventional Commit compliance...
+
+Progress: 0.........10.........20.........30.........40.........50.....
+
+ ❌ 34 commit(s) failed:
+
+ 🔴 Commit: bf2da247, Author: Oleksandr, Date: 2025-11-08
+    Message: "Fix and optimize Codecov configuration (#22)"
+
+ 🔴 Commit: 2b4b34f9, Author: Oleksandr, Date: 2025-11-08
+    Message: "Fix/coverage unknown status (#21)"
+
+  // ...TRIMMED...
+
+ 🔴 Commit: cb10f677, Author: Oleksandr Kucherenko, Date: 2023-10-03
+    Message: "imported version-up.sh script"
+
+ 💡 Conventional Commit format: type(scope): description
+    Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+    Use ! for breaking changes: feat!: breaking change
+    Reference: https://www.conventionalcommits.org/
 ```
 
 ## Self-Update

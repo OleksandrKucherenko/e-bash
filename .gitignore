@@ -17,7 +17,6 @@ report/
 
 # logs
 *.log
-*.txt
 
 # temp scripts
 *.tmp.sh

@@ -1611,3 +1611,5 @@ fi
 6. Development of comprehensive testing strategies for complex logger systems, git-dependent scripts, and dynamic function generation
 
 **Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns, advanced mocking strategies, and debugging techniques.
+
+Even more expereience can be found in the `docs/agents/ShellSpec_experience.md` file. 

@@ -1,0 +1,8 @@
+feat: add authentication
+
+This commit adds OAuth2 support with the following features:
+- Google provider integration
+- JWT token management
+- Secure password hashing
+
+BREAKING CHANGE: The authentication API endpoints have changed.

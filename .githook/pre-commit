@@ -2,6 +2,13 @@
 
 # Main pre-commit hook that orchestrates multiple pre-commit checks
 
+# Ensure GNU utilities bundled in bin/gnubin are available for every hook
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+GNUBIN_DIR="$REPO_ROOT/bin/gnubin"
+if [[ -d "$GNUBIN_DIR" && ":$PATH:" != *":$GNUBIN_DIR:"* ]]; then
+  export PATH="$GNUBIN_DIR:$PATH"
+fi
+
 # First, run copyright verification
 HOOK_DIR="$(dirname "$0")"
 "$HOOK_DIR/pre-commit-copyright"
