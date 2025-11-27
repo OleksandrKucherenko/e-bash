@@ -376,25 +376,29 @@ Describe 'bin/npm-versions.sh /'
     End
   End
 
-  Context 'parse_arguments() /'
+  Context 'parse:arguments() - argument parsing /'
     It 'parses --registry option'
-      parse_arguments "--registry" "https://custom.registry.com"
+      When call parse:arguments "--registry" "https://custom.registry.com"
       The variable REGISTRY should eq "https://custom.registry.com"
+      The status should be success
     End
 
     It 'parses --dry-run flag'
-      parse_arguments "--dry-run"
+      When call parse:arguments "--dry-run"
       The variable DRY_RUN should eq "true"
+      The status should be success
     End
 
     It 'parses --silent flag'
-      parse_arguments "--silent"
+      When call parse:arguments "--silent"
       The variable SILENT_NPM should eq "true"
+      The status should be success
     End
 
     It 'parses package name from positional argument'
-      parse_arguments "my-package"
+      When call parse:arguments "my-package"
       The variable PACKAGE_NAME should eq "my-package"
+      The status should be success
     End
   End
 
