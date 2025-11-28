@@ -53,7 +53,39 @@ jobs:
           shasum -a 256 .envrc | cut -c1-8
           echo "sha256=$(shasum -a 256 .envrc | cut -c1-8)" >> $GITHUB_OUTPUT
 
+      - name: Check Homebrew cache size
+        id: cache_check
+        shell: bash
+        run: |
+          # Check if Homebrew directories exist and their size
+          MAX_SIZE_MB=300
+          TOTAL_SIZE=0
+
+          if [ -d "${{ steps.brew_path.outputs.path }}" ]; then
+            BREW_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + BREW_SIZE))
+            echo "Homebrew path size: ${BREW_SIZE}MB"
+          fi
+
+          if [ -d "${{ steps.brew_path.outputs.cache_dir }}" ]; then
+            CACHE_SIZE=$(du -sm "${{ steps.brew_path.outputs.cache_dir }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + CACHE_SIZE))
+            echo "Homebrew cache size: ${CACHE_SIZE}MB"
+          fi
+
+          echo "Total Homebrew size: ${TOTAL_SIZE}MB"
+          echo "Maximum allowed size: ${MAX_SIZE_MB}MB"
+
+          if [ "$TOTAL_SIZE" -le "$MAX_SIZE_MB" ]; then
+            echo "✅ Homebrew size is within limits, caching enabled"
+            echo "should_cache=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Homebrew size exceeds ${MAX_SIZE_MB}MB, caching disabled to avoid inefficiency"
+            echo "should_cache=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Cache Homebrew packages
+        if: steps.cache_check.outputs.should_cache == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -190,7 +222,39 @@ jobs:
           shasum -a 256 .envrc | cut -c1-8
           echo "sha256=$(shasum -a 256 .envrc | cut -c1-8)" >> $GITHUB_OUTPUT
 
+      - name: Check Homebrew cache size
+        id: cache_check
+        shell: bash
+        run: |
+          # Check if Homebrew directories exist and their size
+          MAX_SIZE_MB=300
+          TOTAL_SIZE=0
+
+          if [ -d "${{ steps.brew_path.outputs.path }}" ]; then
+            BREW_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + BREW_SIZE))
+            echo "Homebrew path size: ${BREW_SIZE}MB"
+          fi
+
+          if [ -d "${{ steps.brew_path.outputs.cache_dir }}" ]; then
+            CACHE_SIZE=$(du -sm "${{ steps.brew_path.outputs.cache_dir }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + CACHE_SIZE))
+            echo "Homebrew cache size: ${CACHE_SIZE}MB"
+          fi
+
+          echo "Total Homebrew size: ${TOTAL_SIZE}MB"
+          echo "Maximum allowed size: ${MAX_SIZE_MB}MB"
+
+          if [ "$TOTAL_SIZE" -le "$MAX_SIZE_MB" ]; then
+            echo "✅ Homebrew size is within limits, caching enabled"
+            echo "should_cache=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Homebrew size exceeds ${MAX_SIZE_MB}MB, caching disabled to avoid inefficiency"
+            echo "should_cache=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Cache Homebrew packages
+        if: steps.cache_check.outputs.should_cache == 'true'
         uses: actions/cache@v4
         with:
           path: |
