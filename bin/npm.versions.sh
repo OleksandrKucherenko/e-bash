@@ -58,8 +58,8 @@ SILENT_NPM=${SILENT_NPM:-false}
 
 # Setup dry-run wrapper for npm command
 # This creates three wrapper functions:
-#   run:npm   - for readonly operations (view, config)
-#   dry:npm   - for destructive operations (unpublish)
+#   run:npm   - for readonly operations (view)
+#   dry:npm   - for destructive operations (config set, unpublish)
 #   rollback:npm - for registering rollback commands
 dry-run npm
 # Map SILENT_NPM to control npm wrapper output
@@ -97,12 +97,12 @@ function print_usage() {
 function fetch_versions() {
   local package_name="$1"
   local registry="${2:-$REGISTRY}"
-  
+
   echo:Registry "Fetching versions for ${cl_yellow}${package_name}${cl_reset}"
   echo:Registry "From registry ${cl_yellow}${registry}${cl_reset}"
-  
-  # Configure NPM registry temporarily
-  run:npm config set registry "$registry"
+
+  # Configure NPM registry temporarily (state-modifying operation)
+  dry:npm config set registry "$registry"
 
   # Fetch versions using npm view command
   local versions
