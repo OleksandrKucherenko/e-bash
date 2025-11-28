@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash

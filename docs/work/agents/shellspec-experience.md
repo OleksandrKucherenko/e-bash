@@ -1609,9 +1609,9 @@ fi
 4. Real-world troubleshooting of context-dependent script behavior and help message detection bugs
 5. Cross-platform compatibility debugging identifying GNU vs BSD tool differences
 6. Development of comprehensive testing strategies for complex logger systems, git-dependent scripts, and dynamic function generation
-7. Complete git.verify.all.commits.sh unit test implementation discovering critical source guard patterns, exit call interception challenges, and comprehensive git repository testing strategies
+7. Complete git.verify-all-commits.sh unit test implementation discovering critical source guard patterns, exit call interception challenges, and comprehensive git repository testing strategies
 8. **Trap handler testing with stderr output management**: Solving "Unexpected output to stderr" failures by redirecting diagnostic messages to log files (16/16 tests passing in spec/traps_nested_spec.sh)
-9. **Fixture file path resolution challenges**: Eliminating external fixture file dependencies by embedding test data inline with multi-line strings (42/42 tests passing in spec/bin/git.conventional.commits_spec.sh)
+9. **Fixture file path resolution challenges**: Eliminating external fixture file dependencies by embedding test data inline with multi-line strings (42/42 tests passing in spec/bin/git.conventional-commits_spec.sh)
 
 **Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns, advanced mocking strategies, and debugging techniques including:
 - The `${__SOURCED__:+return}` source guard pattern for making any shell script testable
@@ -1654,16 +1654,16 @@ When you see `F` indicators, follow this systematic debugging process:
 #### 1. Identify the Specific Failed Tests
 ```bash
 # Run with detailed output to see which tests failed
-shellspec spec/bin/git.conventional.commits_spec.sh --format documentation
+shellspec spec/bin/git.conventional-commits_spec.sh --format documentation
 
 # Run specific failing test by line number
-shellspec spec/bin/git.conventional.commits_spec.sh:142
+shellspec spec/bin/git.conventional-commits_spec.sh:142
 ```
 
 #### 2. Analyze the Failure Pattern
 ```
 Examples:
-  1) git.conventional.commits.sh conventional commit format parsing handles multi-line commit messages
+  1) git.conventional-commits.sh conventional commit format parsing handles multi-line commit messages
      1.1) The variable __conventional_parse_result[description] should eq add authentication
           expected: "add authentication"
                got: "add authentication
@@ -1688,7 +1688,7 @@ Examples:
 ```bash
 # Reproduce the test scenario manually
 cd /tmp/test_dir
-bash -c 'source /mnt/wsl/workspace/e-bash/bin/git.conventional.commits.sh && conventional:parse "feat: add authentication
+bash -c 'source /mnt/wsl/workspace/e-bash/bin/git.conventional-commits.sh && conventional:parse "feat: add authentication
 
 This commit adds OAuth2 support.
 
@@ -1797,7 +1797,7 @@ For each fixed test, document:
 **Original Failure:**
 ```
 Examples:
-  1) git.conventional.commits.sh conventional commit format parsing handles multi-line commit messages
+  1) git.conventional-commits.sh conventional commit format parsing handles multi-line commit messages
      When call conventional:parse "feat: add authentication
 
 This commit adds OAuth2 support.
@@ -1817,7 +1817,7 @@ The regex pattern `^(.+)(\n\n(.*))?$` captures everything up to the optional dou
 
 **Solution Implementation:**
 ```bash
-# In git.conventional.commits.sh, update the regex pattern:
+# In git.conventional-commits.sh, update the regex pattern:
 CONVENTIONAL_REGEX="^(${types_pattern})(\\(([^)]+)\\))?(!)?:[[:space:]]+([^\\n]+)(\\n\\n(.*))?$"
 
 # Key change: [^\\n]+ instead of .+
@@ -1967,7 +1967,7 @@ End
 
 **Problem**: Testing scripts that require realistic git environments - including commits, tags, branches, and working tree changes - without affecting the real repository.
 
-**Real Example**: The `git.verify.all.commits.sh` script needs:
+**Real Example**: The `git.verify-all-commits.sh` script needs:
 - Git repository with commit history
 - Conventional and non-conventional commits for validation testing
 - Working tree modifications for safety check testing
@@ -2463,7 +2463,7 @@ All 16 trap handler tests passing with proper stderr management.
 
 **Problem**: Tests using external fixture files fail when running full test suite but pass when run individually due to working directory path resolution differences.
 
-**Real Example**: The `git.conventional.commits_spec.sh` tests needed to load multi-line commit messages from fixture files:
+**Real Example**: The `git.conventional-commits_spec.sh` tests needed to load multi-line commit messages from fixture files:
 
 ```bash
 # Original failing code
@@ -2479,10 +2479,10 @@ End
 
 **Test Failures:**
 ```
-not ok 49 - git.conventional.commits.sh conventional commit format parsing handles multi-line commit messages # FAILED
+not ok 49 - git.conventional-commits.sh conventional commit format parsing handles multi-line commit messages # FAILED
 cat: spec/bin/fixture-feat.txt: No such file or directory
 
-not ok 50 - git.conventional.commits.sh conventional commit format parsing detects breaking change in footer # FAILED
+not ok 50 - git.conventional-commits.sh conventional commit format parsing detects breaking change in footer # FAILED
 cat: spec/bin/fixture-feat-oauth.txt: No such file or directory
 ```
 

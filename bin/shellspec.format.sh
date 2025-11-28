@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# format-shellspec.sh - Cross-platform wrapper for formatting ShellSpec test files
+# shellspec.format.sh - Cross-platform wrapper for formatting ShellSpec test files
 #
 # This script handles formatting of ShellSpec test files using altshfmt when available.
 # It gracefully handles different OS environments (Linux, macOS, Windows/WSL2).
 #
-# Usage: format-shellspec.sh <file-path>
+# Usage: shellspec.format.sh <file-path>
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash

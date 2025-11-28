@@ -3,13 +3,13 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-25
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 
-# Test helper functions for git.verify.all.commits.sh tests
+# Test helper functions for git.verify-all-commits.sh tests
 
 # Set up test environment
 set_test_env() {

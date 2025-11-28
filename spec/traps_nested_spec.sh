@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -52,8 +52,8 @@ Describe '_traps.sh nested loading /'
 
     It 'accumulates handlers when scripts sourced sequentially'
       # Source both scripts (redirect diagnostic stderr to file)
-      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_a.sh" 2>>"$TRAP_TEST_STDERR"
-      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_b.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/traps_script-a_default.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/traps_script-b_default.sh" 2>>"$TRAP_TEST_STDERR"
 
       # Both handlers should be registered
       When call trap:list EXIT
@@ -62,8 +62,8 @@ Describe '_traps.sh nested loading /'
     End
 
     It 'preserves handler registration order'
-      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_a.sh" 2>>"$TRAP_TEST_STDERR"
-      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_script_b.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/traps_script-a_default.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/traps_script-b_default.sh" 2>>"$TRAP_TEST_STDERR"
 
       # cleanup_a should appear before cleanup_b in the output
       When call trap:list EXIT
@@ -242,8 +242,8 @@ Describe '_traps.sh nested loading /'
 
     It 'prevents duplicate registration via guard pattern'
       # Source library twice (redirect diagnostic stderr to file)
-      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_lib_db.sh" 2>>"$TRAP_TEST_STDERR"
-      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/test_trap_lib_db.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/traps_lib-db_default.sh" 2>>"$TRAP_TEST_STDERR"
+      source "$SHELLSPEC_PROJECT_ROOT/spec/fixtures/traps_lib-db_default.sh" 2>>"$TRAP_TEST_STDERR"
 
       # Should only be registered once
       output=$(trap:list EXIT 2>>"$TRAP_TEST_STDERR")

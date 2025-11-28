@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-07-06
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # Verify all commits in repository for Conventional Commits compliance
-# This script replaces ci_verify_all_commits.js by using git.conventional.commits.sh
+# This script replaces ci_verify_all_commits.js by using git.conventional-commits.sh
 
 export ARGS_DEFINITION="-h,--help -v,--version=:0.1.0 --debug=DEBUG:* --branch --patch"
 
@@ -22,8 +22,8 @@ source "${E_BASH}/_arguments.sh" 2>/dev/null || true
 
 # Source the conventional commits validation script
 SCRIPT_DIR="$(dirname "${BASH_SOURCE[0]}")"
-# shellcheck source=./git.conventional.commits.sh
-source "$SCRIPT_DIR/git.conventional.commits.sh"
+# shellcheck source=./git.conventional-commits.sh
+source "$SCRIPT_DIR/git.conventional-commits.sh"
 
 #
 # Validate if a commit message follows conventional commit patterns
@@ -315,7 +315,7 @@ function main() {
 # Help function
 function show_help() {
     {
-        echo "${cl_cyan}git.verify.all.commits.sh${cl_reset} - Verify all commits for Conventional Commits compliance"
+        echo "${cl_cyan}git.verify-all-commits.sh${cl_reset} - Verify all commits for Conventional Commits compliance"
         echo ""
         echo "${cl_yellow}USAGE:${cl_reset}"
         echo "    $0 [OPTIONS]"
@@ -374,6 +374,7 @@ ${__SOURCED__:+return}
 # Setup loggers with color-coded prefixes (only if e-bash is available)
 logger:init verify " "
 logger:init success "${cl_green}[Success]${cl_reset} "
+logger:init info " "
 logger:init error " "
 logger:init warning "${cl_yellow}[Warning]${cl_reset} "
 logger:init debug "${cl_gray}[Debug]${cl_reset} "

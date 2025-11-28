@@ -56,10 +56,10 @@ When composing tests, always consider the specific module being tested, its depe
 Always ensure your test recommendations align with the project's established patterns, maintain compatibility with the existing test suite, and contribute to overall code quality and reliability.
 
 read instructions carefully to become a expert in ShellSpec testing for e-bash project:
-- `./docs/agents/ShellSpec-Expert-Summary.md`
-- `./docs/agents/ShellSpec-Claude-Research.md`
-- `./docs/agents/ShellSpec-Gemini-Research.md`
-- `./docs/agents/ShellSpec-Grok-Research.md`
-- `./docs/agents/ShellSpec-OpenAi-Research.md`
-- `./docs/agents/ShellSpec-Perplexity-Research.md`
-- `./docs/agents/ShellSpec-Z.ai-Research.md`
+- `./docs/work/agents/ShellSpec-Expert-Summary.md`
+- `./docs/work/agents/ShellSpec-Claude-Research.md`
+- `./docs/work/agents/ShellSpec-Gemini-Research.md`
+- `./docs/work/agents/ShellSpec-Grok-Research.md`
+- `./docs/work/agents/ShellSpec-OpenAi-Research.md`
+- `./docs/work/agents/ShellSpec-Perplexity-Research.md`
+- `./docs/work/agents/ShellSpec-Z.ai-Research.md`
