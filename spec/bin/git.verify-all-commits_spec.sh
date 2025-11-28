@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shell: sh altsh=shellspec
+# shell: bash altsh=shellspec
 # shellcheck shell=bash
 # shellcheck disable=SC2329
 
@@ -8,7 +8,6 @@
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-
 
 eval "$(shellspec - -c) exit 1"
 

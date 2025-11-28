@@ -311,30 +311,30 @@ Describe '_traps.sh nested loading /'
   End
 
   Describe 'Error handling in nested contexts /'
-  # Override Mock JUST for this block to always output errors
-  # logic: We are testing errors, so we WANT to see them in stderr
-  Mock echo:Trap
-    echo "$@" >&2
-  End
+    # Override Mock JUST for this block to always output errors
+    # logic: We are testing errors, so we WANT to see them in stderr
+    Mock echo:Trap
+      echo "$@" >&2
+    End
 
-  Mock printf:Trap
-    printf "$@" >&2
-  End
+    Mock printf:Trap
+      printf "$@" >&2
+    End
 
-  It 'handles missing function gracefully during registration'
-    When call trap:on nonexistent_nested_handler EXIT
-    The status should be failure
-    The error should include "does not exist"
-  End
+    It 'handles missing function gracefully during registration'
+      When call trap:on nonexistent_nested_handler EXIT
+      The status should be failure
+      The error should include "does not exist"
+    End
 
-  It 'recovers from stack corruption'
-    # Manually corrupt stack by unsetting variable
-    trap:push EXIT 2>>"$TRAP_TEST_STDERR"
-    unset "__TRAP_STACK_${__TRAP_STACK_LEVEL}"
+    It 'recovers from stack corruption'
+      # Manually corrupt stack by unsetting variable
+      trap:push EXIT 2>>"$TRAP_TEST_STDERR"
+      unset "__TRAP_STACK_${__TRAP_STACK_LEVEL}"
 
-    When call trap:pop EXIT
-    The status should be failure
-    The error should include "Stack corruption"
+      When call trap:pop EXIT
+      The status should be failure
+      The error should include "Stack corruption"
+    End
   End
-End
 End
