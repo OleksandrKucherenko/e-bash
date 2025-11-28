@@ -4,7 +4,7 @@ This directory contains ShellSpec unit tests for all executable scripts in the `
 
 ## Test Files
 
-- `npm-versions_spec.sh` - Comprehensive tests for `bin/npm-versions.sh` script
+- `npm.versions_spec.sh` - Comprehensive tests for `bin/npm.versions.sh` script
 
 ## Running Tests
 
@@ -36,14 +36,14 @@ shellspec spec/bin/
 ### Run Specific Test File
 
 ```bash
-# Run npm-versions tests
-shellspec spec/bin/npm-versions_spec.sh
+# Run npm.versions tests
+shellspec spec/bin/npm.versions_spec.sh
 
 # Run without coverage (faster)
-shellspec spec/bin/npm-versions_spec.sh --no-kcov
+shellspec spec/bin/npm.versions_spec.sh --no-kcov
 
 # Run specific test by line number
-shellspec spec/bin/npm-versions_spec.sh:42
+shellspec spec/bin/npm.versions_spec.sh:42
 ```
 
 ### Test Development Workflow
@@ -59,7 +59,7 @@ shellspec --focus
 watchman-make -p 'spec/**/*_spec.sh' 'bin/**/*.sh' --run "shellspec --quick"
 ```
 
-## Test Structure for npm-versions.sh
+## Test Structure for npm.versions.sh
 
 The test suite covers all major functions:
 
@@ -137,13 +137,13 @@ End
 
 ```bash
 # Show execution trace
-shellspec --xtrace spec/bin/npm-versions_spec.sh
+shellspec --xtrace spec/bin/npm.versions_spec.sh
 
 # Check syntax
-shellspec --syntax-check spec/bin/npm-versions_spec.sh
+shellspec --syntax-check spec/bin/npm.versions_spec.sh
 
 # See generated shell code
-shellspec --translate spec/bin/npm-versions_spec.sh
+shellspec --translate spec/bin/npm.versions_spec.sh
 
 # Use Dump in tests for debugging
 It 'debugs output'

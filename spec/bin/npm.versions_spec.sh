@@ -11,9 +11,9 @@
 
 eval "$(shellspec - -c) exit 1"
 
-Describe 'bin/npm-versions.sh /'
+Describe 'bin/npm.versions.sh /'
   # Include the script using relative path from project root
-  Include bin/npm-versions.sh
+  Include bin/npm.versions.sh
 
   BeforeEach 'setup_test_environment'
   AfterEach 'cleanup_test_environment'
@@ -43,7 +43,7 @@ Describe 'bin/npm-versions.sh /'
     log:Parser() { : ; }  # Silent in tests
     log:Loader() { : ; }  # Silent in tests
 
-    # Mock logger functions used by npm-versions.sh
+    # Mock logger functions used by npm.versions.sh
     echo:Npmv() { echo "$*"; }
     echo:Npm() { : ; }  # Silent in tests
     echo:Versions() { : ; }  # Silent in tests
@@ -440,7 +440,7 @@ Describe 'bin/npm-versions.sh /'
     It 'displays usage information'
       When call print_usage
       The output should include "Usage:"
-      The output should include "npm-versions.sh"
+      The output should include "npm.versions.sh"
       The output should include "Options:"
       The output should include "--help"
       The output should include "--registry"
