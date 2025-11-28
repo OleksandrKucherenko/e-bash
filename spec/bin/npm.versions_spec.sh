@@ -12,6 +12,10 @@
 eval "$(shellspec - -c) exit 1"
 
 Describe 'bin/npm.versions.sh /'
+  # Set DEBUG to enable all logger functions before sourcing
+  # This ensures printf:Parser, echo:Parser, etc. exist when _arguments.sh is sourced
+  BeforeRun 'export DEBUG="*"'
+
   # Include the script using relative path from project root
   Include bin/npm.versions.sh
 
