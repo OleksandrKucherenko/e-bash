@@ -1,6 +1,6 @@
 # Git Repository Synchronization
 
-This document explains how to use the `git.sync.by-patches.sh` script to synchronize code between repositories. The script applies patches from one source repository to a subdirectory in a target monorepo, preserving commit history.
+This document explains how to use the `git.sync-by-patches.sh` script to synchronize code between repositories. The script applies patches from one source repository to a subdirectory in a target monorepo, preserving commit history.
 
 ## Overview
 
@@ -30,11 +30,11 @@ There are two primary ways to generate patches:
 
 ### 1. Using the Integrated `--patches` Flag (Recommended)
 
-The `git.sync.by-patches.sh` script now includes a `--patches N` flag that automates patch generation and synchronization in one step:
+The `git.sync-by-patches.sh` script now includes a `--patches N` flag that automates patch generation and synchronization in one step:
 
 ```bash
 # From the monorepo root directory
-./bin/git.sync.by-patches.sh \
+./bin/git.sync-by-patches.sh \
   --patches 5 \
   "/path/to/source/repo" \
   "patches" \
@@ -77,7 +77,7 @@ This creates files like `patches/0001-....patch` through `patches/000N-....patch
 
 ##### Generate changes.log
 
-Use the same `N`. The `--reverse` flag ensures the commits in the changes.log are in the same order as the patches (oldest first), which is required by the `git.sync.by-patches.sh` script:
+Use the same `N`. The `--reverse` flag ensures the commits in the changes.log are in the same order as the patches (oldest first), which is required by the `git.sync-by-patches.sh` script:
 
 ```bash
 # Example: Get log for the last 5 commits (oldest first)
@@ -187,11 +187,11 @@ git log --pretty="format:%H %s" --reverse ${HASH}..HEAD > changes.log
 
 ### Standard Usage (With Pre-Generated Patches)
 
-If you've generated patches manually, you can use the `git.sync.by-patches.sh` script to apply them to your target monorepo:
+If you've generated patches manually, you can use the `git.sync-by-patches.sh` script to apply them to your target monorepo:
 
 ```bash
 # Run from the ROOT directory of your target monorepo
-./bin/git.sync.by-patches.sh \
+./bin/git.sync-by-patches.sh \
   "source-repo-name" \
   "/path/to/source/repo/patches" \
   "/path/to/source/repo/changes.log" \
@@ -204,7 +204,7 @@ To generate patches and apply them in a single command, use the `--patches` flag
 
 ```bash
 # Run from the ROOT directory of your target monorepo
-./bin/git.sync.by-patches.sh \
+./bin/git.sync-by-patches.sh \
   --patches 5 \
   "/path/to/source/repo" \
   "patches" \

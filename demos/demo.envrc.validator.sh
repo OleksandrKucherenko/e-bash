@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-02
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -20,6 +20,5 @@ trap
 # change the CWD to the demos directory, so we work with the demo .envrc file
 pushd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" &>/dev/null || exit 1
 
-# shellcheck disable=SC1090 source=../bin/qa_validate_envrc.sh
-source "../bin/qa_validate_envrc.sh"
-
+# shellcheck disable=SC1090 source=../bin/ci.validate-envrc.sh
+source "../bin/ci.validate-envrc.sh"

@@ -19,6 +19,8 @@
   - [Semver - Semantic Versioning](#semver---semantic-versioning)
   - [Git Semantic/Conventional commits](#git-semanticconventional-commits)
   - [Git Verify Commits Messages - Conventional Commits](#git-verify-commits-messages---conventional-commits)
+  - [Git Logs](#git-logs)
+  - [Git Files Changes](#git-files-changes)
   - [Self-Update](#self-update)
     - [Troubleshooting](#troubleshooting)
   - [Profile BASH script execution](#profile-bash-script-execution)
@@ -36,6 +38,8 @@
 - [ ] Globals module (declarative way of defining script dependencies to global environment variables)
 - [x] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
 - [x] Copyright headers composing/parsing (extract from the file, update, insert)
+
+Conventions and folder structure: [docs/public/conventions.md](docs/public/conventions.md)
 
 ## Local Dev Environment - Requirements
 
@@ -106,7 +110,7 @@ wget -qO- https://git.new/e-bash | bash -s -- install v1.0.0
 http -b https://git.new/e-bash | bash -s -- install v1.0.0
 ```
 
-[More details](./docs/installation.md)
+[More details](./docs/public/installation.md)
 
 ### Manual installation
 
@@ -145,7 +149,7 @@ echo -e "${cl_red}Hello World${cl_reset}"
 
 ### Script Dependencies
 
-![Bootstrap](docs/images/bootstrap.direnv.gif)
+![Bootstrap](docs/images/public/bootstrap.direnv.gif)
 
 ```bash
 source ".scripts/_dependencies.sh"
@@ -172,7 +176,7 @@ echo "$wHead" | grep 'Error' &>/dev/null && echo "$wStab" || echo "$wHead"
 
 ### Logger
 
-[Quick Start Guide](docs/logger.md)
+[Quick Start Guide](docs/public/logger.md)
 
 Requirements:
 - [x] zero dependencies, pure BASH (optional: _colors.sh)
@@ -243,7 +247,7 @@ echo "Is --debug: $DEBUG"
 parse:arguments "$@"
 ```
 
-More details: [Arguments Parsing](docs/arguments.md), [Demo script](demos/demo.args.sh).
+More details: [Arguments Parsing](docs/public/arguments.md), [Demo script](demos/demo.args.sh).
 
 ### Common(s) Functions And Inputs
 
@@ -261,7 +265,7 @@ echo "Extracted: ${new_value}"
 
 ### UI: Selector
 
-![Selector](docs/images/ui.selector.gif)
+![Selector](docs/images/public/ui.selector.gif)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -274,7 +278,7 @@ selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_rese
 
 ### UI: Ask for Password
 
-![Ask for Password](docs/images/ui.ask-for-password.gif)
+![Ask for Password](docs/images/public/ui.ask-for-password.gif)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -334,7 +338,7 @@ rollback:func rollback_fn
 - ✅ Function-based rollbacks (`rollback:func cleanup_fn`)
 - ✅ Variable precedence: command-specific → global → default
 
-More details: [Dry-Run Wrapper System](docs/dryrun-wrapper.md), [Demo script](demos/demo.dryrun.modes.sh).
+More details: [Dry-Run Wrapper System](docs/public/dryrun-wrapper.md), [Demo script](demos/demo.dryrun-modes.sh).
 
 ## Semver - Semantic Versioning
 
@@ -448,11 +452,11 @@ Final Version: 1.4.7
 ## Git Verify Commits Messages - Conventional Commits
 
 ```bash
-bin/git.verify.all.commits.sh
+bin/git.verify-all-commits.sh
 ```
 
 ```text
-❯ bin/git.verify.all.commits.sh
+❯ bin/git.verify-all-commits.sh
  🔍 Gathering commit history...
  🔍 Checking 56 commits for Conventional Commit compliance...
 
@@ -477,7 +481,33 @@ Progress: 0.........10.........20.........30.........40.........50.....
     Reference: https://www.conventionalcommits.org/
 ```
 
+## Git Logs
+
+```bash
+# show last 10 commits messages
+bin/git.log.sh 25
+```
+
+![Git Logs Preview](docs/images/public/git-logs-last-25-messages.jpg)
+
+## Git Files Changes
+
+Display all changed files from N last commits, in PLAIN or TREE view.
+
+Script also uses links integration into terminal, on click should be open vscode.
+
+
+```bash
+# show changed files in 1 last commit, and show it as a tree
+bin/git.files.sh 1 --tree
+```
+
+![Tree View](docs/images/public/git-changed-files-tree.jpg)
+
+
 ## Self-Update
+
+Default version script: `bin/version-up.v2.sh` (legacy v1 is kept at `legacy/bin/version-up.v1.sh`).
 
 Requirements:
 
@@ -559,20 +589,20 @@ source ".scripts/_self-update.sh" && self-update:rollback:version "v1.0.0" "${fu
 
 ## Profile BASH script execution
 
-![Profiler](docs/images/profiler.version-up.gif)
+![Profiler](docs/images/public/profiler.version-up.gif)
 
 ```bash
 # print timestamp for each line of executed script
-PS4='+ $(gdate "+%s.%N ($LINENO) ")' bash -x bin/version-up.sh
+PS4='+ $(gdate "+%s.%N ($LINENO) ")' bash -x bin/version-up.v2.sh
 
 # save trace to file
-PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.sh 2>trace.log
+PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.v2.sh 2>trace.log
 
 # process output to more user-friendly format: `execution_time | line_number | line_content`
-PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.sh 2>trace.log 1>/dev/null && cat trace.log | bin/profiler/tracing.sh
+PS4='+ $(echo -n "$EPOCHREALTIME [$LINENO]: ")' bash -x bin/version-up.v2.sh 2>trace.log 1>/dev/null && cat trace.log | bin/profiler/tracing.sh
 
 # profile script execution and print summary
-bin/profiler/profile.sh bin/version-up.sh
+bin/profiler/profile.sh bin/version-up.v2.sh
 ```
 
 - ref1: https://itecnote.com/tecnote/r-performance-profiling-tools-for-shell-scripts/
@@ -580,7 +610,7 @@ bin/profiler/profile.sh bin/version-up.sh
 
 ## Colors support in my terminal
 
-![Terminal Colors](docs/images/terminal.colors.gif)
+![Terminal Colors](docs/images/public/terminal.colors.gif)
 
 ```bash
 # print all colors for easier selection
@@ -590,8 +620,6 @@ demos/demo.colors.sh
 ## Emoji support in my terminal
 
 Run this command if you want to see how your terminal setup support emojis.
-
-![Terminal Emoji](docs/images/terminal.emojis.gif)
 
 ```bash
 demos/demo.emojis.sh

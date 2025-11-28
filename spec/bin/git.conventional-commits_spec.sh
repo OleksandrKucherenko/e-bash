@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
-# shell: sh altsh=shellspec
+# shell: bash altsh=shellspec
 # shellcheck shell=bash
 # shellcheck disable=SC2329,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-27
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-
 eval "$(shellspec - -c) exit 1"
 
-Describe 'bin/git.conventional.commits.sh /'
+Describe 'bin/git.conventional-commits.sh /'
   # Include the script using relative path from project root
-  Include bin/git.conventional.commits.sh
+  Include bin/git.conventional-commits.sh
 
   BeforeEach 'setup_test_environment'
   AfterEach 'cleanup_test_environment'
@@ -22,7 +21,7 @@ Describe 'bin/git.conventional.commits.sh /'
   setup_test_environment() {
     export TEST_DIR=$(mktemp -d)
     export ORIGINAL_DIR=$(pwd)
-    export CONVENTIONAL_SCRIPT="${ORIGINAL_DIR}/bin/git.conventional.commits.sh"
+    export CONVENTIONAL_SCRIPT="${ORIGINAL_DIR}/bin/git.conventional-commits.sh"
     cd "$TEST_DIR"
 
     # Mock logger functions for testing

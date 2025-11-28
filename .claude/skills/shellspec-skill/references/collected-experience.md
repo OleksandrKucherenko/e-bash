@@ -323,6 +323,7 @@ verify_command_execution() {
 2. **Regex vs Exact Match:** `[[ "$0" == "bash" ]]` - Never use `=~` for context detection
 3. **Manual Verification First:** Always reproduce issues outside ShellSpec before fixing tests
 4. **Debug Output Trick:** Add `echo "DEBUG: var='$value'" >&2` to failing functions temporarily
+5. **Formatter Parse Mode Matters:** For ShellSpec files that mock `echo:*`/`printf:*` functions, set the header to `# shell: bash altsh=shellspec` so altshfmt parses with Bash rules; `sh` mode rejects colon names as invalid.
 
 ## The Core Problems We Solved
 
@@ -338,6 +339,14 @@ expected ".mise.toml" to include "NODE_ENV"
 **Root Cause:** ShellSpec's `After` hooks run **before** file assertions are evaluated. The `cleanup_temp_repo` function was deleting the `.mise.toml` file before the assertion could check its content.
 
 **Evidence Code Was Correct:** Manual reproduction showed the uninstall logic worked perfectly - it preserved NODE_ENV while removing e-bash entries.
+
+### Issue 2: altshfmt Refuses Colon-Named Mocks in ShellSpec Specs
+
+**Symptom:** Running `mise format-specs` failed on ShellSpec files mocking logger functions (`echo:Success()`, etc.) with `invalid func name` errors.
+
+**Root Cause:** The files declared `# shell: sh altsh=shellspec`, so altshfmt parsed in POSIX `sh` mode where colon in function names is illegal.
+
+**Fix:** Switch the header to `# shell: bash altsh=shellspec` to force Bash parsing. After changing the header, altshfmt formats colon-named mocks without errors.
 
 ## Critical ShellSpec Concepts Discovered
 
@@ -1612,4 +1621,4 @@ fi
 
 **Total Experience:** Hundreds of hours of ShellSpec testing across multiple projects and platforms, compressed into actionable patterns, advanced mocking strategies, and debugging techniques.
 
-Even more expereience can be found in the `docs/agents/ShellSpec_experience.md` file. 
+Even more expereience can be found in the `docs/work/agents/ShellSpec_experience.md` file. 

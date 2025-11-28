@@ -536,7 +536,7 @@ UNDO_RUN=true ./script.sh
 Enable debug logging:
 
 ```bash
-DEBUG="exec,dry,rollback,output" ./demos/demo.dryrun.modes.sh
+DEBUG="exec,dry,rollback,output" ./demos/demo.dryrun-modes.sh
 ```
 
 ## Integration Patterns
@@ -621,7 +621,7 @@ Run the comprehensive test suite:
 
 ```bash
 export E_BASH=/path/to/e-bash/.scripts
-bash demos/demo.dryrun.modes.sh
+bash demos/demo.dryrun-modes.sh
 ```
 
 This demonstrates all three modes with various command types and override scenarios.
@@ -630,8 +630,8 @@ This demonstrates all three modes with various command types and override scenar
 
 - `_logger.sh` - E-bash logging system used by dry-run wrappers
 - `_colors.sh` - Color definitions for terminal output
-- `demos/demo.dryrun.v2.sh` - Basic dry-run examples
-- `demos/demo.dryrun.modes.sh` - Comprehensive three-mode tests
+- `demos/demo.dryrun-v2.sh` - Basic dry-run examples
+- `demos/demo.dryrun-modes.sh` - Comprehensive three-mode tests
 
 ## License
 

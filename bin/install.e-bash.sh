@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-24
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -1982,5 +1982,5 @@ preparse_args "$@"
 # Execute main function with all passed arguments
 main_ebash "${ARGS[@]}"
 
-# [TEST SCENARIOS](../docs/installation.md)
+# [TEST SCENARIOS](../docs/public/installation.md)
 # [UNIT TESTS](../spec/installation_spec.sh)

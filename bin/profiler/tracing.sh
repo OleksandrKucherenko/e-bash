@@ -1,9 +1,16 @@
 #!/bin/bash
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-11-28
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
+
 # ++++ 1700771567.209177 [103]: prefix_sub_folder
 # ++++ 1700771567.210601 [87]: local tmpFileName=temp.file
 # ++++++ 1700771567.213742 [88]: monorepo_root
-# ++++++++ 1700771567.217496 [60]: dirname bin/version-up.sh
+# ++++++++ 1700771567.217496 [60]: dirname bin/version-up.v2.sh
 
 gawk 'BEGIN {prev_time=0; first_line=1; line_num=0; depth=0; code=""} {
     # Skip lines that do not start with `+`

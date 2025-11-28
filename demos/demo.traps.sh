@@ -2,11 +2,11 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Demo: Multiple trap handlers using _traps.sh module
-## Last revisit: 2025-11-23
+## Last revisit: 2025-11-28
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+
 
 # Setup paths
 # Note: Set DEBUG=trap to see detailed debug output

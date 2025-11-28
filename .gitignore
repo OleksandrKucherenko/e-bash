@@ -44,6 +44,9 @@ bin/gnubin
 # patches
 patches/
 
+# legacy/ archived scripts or demos
+legacy/
+
 # Virtual Hard Drives
 *.vhd
 *.vhdx
