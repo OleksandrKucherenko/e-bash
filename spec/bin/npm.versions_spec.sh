@@ -282,13 +282,7 @@ Describe 'bin/npm.versions.sh /'
     End
   End
 
-  Context 'run:npm() - actual execution mode /'
-    It 'executes npm config command via run:npm'
-      When call run:npm config set registry "https://registry.npmjs.org"
-      The error should include "npm config set registry"
-      The status should be success
-    End
-
+  Context 'run:npm() - readonly operations /'
     It 'executes npm view and returns JSON output via run:npm'
       When call run:npm view "test-package" versions --json
       The output should include "1.0.0"
@@ -298,6 +292,12 @@ Describe 'bin/npm.versions.sh /'
   End
 
   Context 'dry:npm() - destructive operations /'
+    It 'executes npm config set command via dry:npm'
+      When call dry:npm config set registry "https://registry.npmjs.org"
+      The error should include "npm config set registry"
+      The status should be success
+    End
+
     It 'executes npm unpublish command via dry:npm'
       When call dry:npm unpublish "test-package@1.0.0"
       The error should include "npm unpublish"
@@ -327,12 +327,6 @@ Describe 'bin/npm.versions.sh /'
       export DRY_RUN=true
       export SILENT_NPM=false
     }
-
-    It 'simulates npm config without execution'
-      When call run:npm config set registry "https://test.com"
-      The error should include "npm config set registry"
-      The status should be success
-    End
 
     It 'simulates npm view without execution'
       When call run:npm view "test-package" versions --json
