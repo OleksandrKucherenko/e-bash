@@ -84,13 +84,13 @@ args:d '--silent' 'Hide npm command output details (env: SILENT_NPM)' "options" 
 
 # Function to print usage instructions (wraps print:help with examples)
 function print_usage() {
-  echo:Npmv "${cl_yellow}Usage:${cl_reset} npm-versions.sh [options] [package-name]"
+  echo:Npmv "${cl_yellow}Usage:${cl_reset} npm.versions.sh [options] [package-name]"
   echo:Npmv ""
   print:help
   echo:Npmv "${cl_yellow}Examples:${cl_reset}"
-  echo:Npmv "  npm-versions.sh                                # Use default package"
-  echo:Npmv "  npm-versions.sh lodash                         # Display versions for lodash"
-  echo:Npmv "  npm-versions.sh -r https://my-registry.com/    # Use custom registry"
+  echo:Npmv "  npm.versions.sh                                # Use default package"
+  echo:Npmv "  npm.versions.sh lodash                         # Display versions for lodash"
+  echo:Npmv "  npm.versions.sh -r https://my-registry.com/    # Use custom registry"
 }
 
 # Function to fetch package versions from NPM registry
