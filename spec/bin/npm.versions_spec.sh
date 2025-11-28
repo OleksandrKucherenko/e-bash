@@ -15,6 +15,87 @@ Describe 'bin/npm.versions.sh /'
   # Include the script using relative path from project root
   Include bin/npm.versions.sh
 
+  # Mock color variables to avoid ANSI codes in test output
+  BeforeAll "export cl_red='' cl_green='' cl_cyan='' cl_blue='' cl_yellow='' cl_purple='' cl_white='' cl_gray='' cl_grey='' cl_reset=''"
+
+  # Mock logger functions using ShellSpec Mock syntax
+  Mock echo:Common
+    :  # Silent in tests
+  End
+
+  Mock echo:Parser
+    :  # Silent in tests
+  End
+
+  Mock echo:Loader
+    :  # Silent in tests
+  End
+
+  Mock printf:Common
+    :  # Silent in tests
+  End
+
+  Mock printf:Parser
+    :  # Silent in tests
+  End
+
+  Mock printf:Loader
+    :  # Silent in tests
+  End
+
+  Mock log:Common
+    cat  # Pass through for logging
+  End
+
+  Mock log:Parser
+    cat
+  End
+
+  Mock log:Loader
+    cat
+  End
+
+  # npm.versions.sh specific logger mocks
+  Mock echo:Npmv
+    echo "$@"
+  End
+
+  Mock echo:Npm
+    :  # Silent in tests
+  End
+
+  Mock echo:Versions
+    :  # Silent in tests
+  End
+
+  Mock echo:Registry
+    :  # Silent in tests
+  End
+
+  Mock echo:Dump
+    :  # Silent for dump
+  End
+
+  Mock printf:Npmv
+    printf "%s" "$*"
+  End
+
+  Mock printf:Npm
+    :  # Silent in tests
+  End
+
+  Mock printf:Versions
+    :  # Silent in tests
+  End
+
+  Mock printf:Registry
+    :  # Silent in tests
+  End
+
+  Mock printf:Dump
+    :  # Silent for dump
+  End
+
   BeforeEach 'setup_test_environment'
   AfterEach 'cleanup_test_environment'
 
@@ -32,39 +113,48 @@ Describe 'bin/npm.versions.sh /'
     # Create temp directory for test artifacts
     export TEST_TMP_DIR=$(mktemp -d)
 
-    # Mock logger functions used by _arguments module
-    echo:Common() { : ; }  # Silent in tests
-    echo:Parser() { : ; }  # Silent in tests
-    echo:Loader() { : ; }  # Silent in tests
-    printf:Common() { : ; }  # Silent in tests
-    printf:Parser() { : ; }  # Silent in tests
-    printf:Loader() { : ; }  # Silent in tests
-    log:Common() { : ; }  # Silent in tests
-    log:Parser() { : ; }  # Silent in tests
-    log:Loader() { : ; }  # Silent in tests
-
-    # Mock logger functions used by npm.versions.sh
-    echo:Npmv() { echo "$*"; }
-    echo:Npm() { : ; }  # Silent in tests
-    echo:Versions() { : ; }  # Silent in tests
-    echo:Registry() { : ; }  # Silent in tests
-    echo:Dump() { : ; }  # Silent in tests
-    printf:Npmv() { printf "%s" "$*"; }
-    printf:Npm() { : ; }  # Silent in tests
-    printf:Versions() { : ; }  # Silent in tests
-    printf:Registry() { : ; }  # Silent in tests
-    printf:Dump() { : ; }  # Silent in tests
-
     # Reset global variables to known state
     export DRY_RUN=false
     export SILENT_NPM=false
     export REGISTRY="https://registry.npmjs.org"
     export PACKAGE_NAME="test-package"
+
+    # Reset npm mock control variables
+    unset NPM_VIEW_EXIT_CODE NPM_UNPUBLISH_EXIT_CODE
+
+    # Mock npm command (shared across all tests)
+    npm() {
+      case "$1" in
+        "config")
+          [[ "$SILENT_NPM" == "true" ]] && return 0
+          echo "npm config $*" >&2
+          return 0
+          ;;
+        "view")
+          if [[ "$2" =~ test-package && "$3" == "versions" ]]; then
+            [[ "$SILENT_NPM" == "true" ]] || \
+              echo '["1.0.0","1.0.1","2.0.0"]'
+            return "${NPM_VIEW_EXIT_CODE:-0}"
+          fi
+          return 1
+          ;;
+        "unpublish")
+          [[ "$SILENT_NPM" == "true" ]] || \
+            echo "npm unpublish $*" >&2
+          return "${NPM_UNPUBLISH_EXIT_CODE:-0}"
+          ;;
+        *)
+          return 1
+          ;;
+      esac
+    }
   }
 
   cleanup_test_environment() {
     rm -rf "$TEST_TMP_DIR" 2>/dev/null || true
     unset TEST_TMP_DIR DRY_RUN SILENT_NPM REGISTRY PACKAGE_NAME
+    unset NPM_VIEW_EXIT_CODE NPM_UNPUBLISH_EXIT_CODE
+    unset -f npm 2>/dev/null || true
   }
 
   Context 'parse_range() - single version numbers /'
@@ -193,37 +283,6 @@ Describe 'bin/npm.versions.sh /'
   End
 
   Context 'run:npm() - actual execution mode /'
-    BeforeEach 'setup_npm_mock'
-
-    setup_npm_mock() {
-      export DRY_RUN=false
-      export SILENT_NPM=false
-
-      # Mock npm command
-      npm() {
-        case "$1" in
-          "config")
-            echo "npm config $*" >&2
-            return 0
-            ;;
-          "view")
-            if [[ "$2" == "test-package" && "$3" == "versions" && "$4" == "--json" ]]; then
-              echo '["1.0.0","1.0.1","2.0.0"]'
-              return 0
-            fi
-            return 1
-            ;;
-          "unpublish")
-            echo "npm unpublish $*" >&2
-            return 0
-            ;;
-          *)
-            return 1
-            ;;
-        esac
-      }
-    }
-
     It 'executes npm config command via run:npm'
       When call run:npm config set registry "https://registry.npmjs.org"
       The error should include "npm config set registry"
@@ -239,26 +298,6 @@ Describe 'bin/npm.versions.sh /'
   End
 
   Context 'dry:npm() - destructive operations /'
-    BeforeEach 'setup_npm_mock'
-
-    setup_npm_mock() {
-      export DRY_RUN=false
-      export SILENT_NPM=false
-
-      # Mock npm command
-      npm() {
-        case "$1" in
-          "unpublish")
-            echo "npm unpublish $*" >&2
-            return 0
-            ;;
-          *)
-            return 1
-            ;;
-        esac
-      }
-    }
-
     It 'executes npm unpublish command via dry:npm'
       When call dry:npm unpublish "test-package@1.0.0"
       The error should include "npm unpublish"
@@ -412,26 +451,69 @@ Describe 'bin/npm.versions.sh /'
     BeforeEach 'setup_args_definition'
 
     It 'parses --registry option'
+      preserve() { %preserve REGISTRY; }
+      BeforeCall 'export REGISTRY="https://registry.npmjs.org"'
+      AfterCall preserve
+
       When call parse:arguments "--registry" "https://custom.registry.com"
       The variable REGISTRY should eq "https://custom.registry.com"
       The status should be success
     End
 
+    It 'parses -r short option'
+      preserve() { %preserve REGISTRY; }
+      AfterCall preserve
+
+      When call parse:arguments "-r" "https://short.registry.com"
+      The variable REGISTRY should eq "https://short.registry.com"
+      The status should be success
+    End
+
     It 'parses --dry-run flag'
+      preserve() { %preserve DRY_RUN; }
+      AfterCall preserve
+
       When call parse:arguments "--dry-run"
       The variable DRY_RUN should eq "true"
       The status should be success
     End
 
     It 'parses --silent flag'
+      preserve() { %preserve SILENT_NPM; }
+      AfterCall preserve
+
       When call parse:arguments "--silent"
       The variable SILENT_NPM should eq "true"
       The status should be success
     End
 
     It 'parses package name from positional argument'
+      preserve() { %preserve PACKAGE_NAME; }
+      AfterCall preserve
+
       When call parse:arguments "my-package"
       The variable PACKAGE_NAME should eq "my-package"
+      The status should be success
+    End
+
+    It 'parses multiple options together'
+      preserve() { %preserve REGISTRY DRY_RUN PACKAGE_NAME; }
+      AfterCall preserve
+
+      When call parse:arguments "--dry-run" "-r" "https://test.com" "test-pkg"
+      The variable REGISTRY should eq "https://test.com"
+      The variable DRY_RUN should eq "true"
+      The variable PACKAGE_NAME should eq "test-pkg"
+      The status should be success
+    End
+
+    It 'uses default values when no arguments provided'
+      preserve() { %preserve PACKAGE_NAME REGISTRY; }
+      AfterCall preserve
+
+      When call parse:arguments
+      The variable PACKAGE_NAME should eq "@oleksandrkucherenko/mcp-obsidian"
+      The variable REGISTRY should eq "https://registry.npmjs.org"
       The status should be success
     End
   End
