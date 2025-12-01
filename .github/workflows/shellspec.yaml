@@ -452,9 +452,9 @@ jobs:
           cd /tmp/base-branch
           ./shellmetrics-compare.sh collect /tmp/base-metrics.csv
 
-          # Clean up worktree
+          # Clean up worktree (force to ignore our copied script)
           cd -
-          git worktree remove /tmp/base-branch
+          git worktree remove --force /tmp/base-branch
 
       - name: Generate metrics comparison report
         if: github.event_name == 'pull_request'
