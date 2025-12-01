@@ -442,27 +442,32 @@ jobs:
       - name: Collect base branch metrics (PR only)
         if: github.event_name == 'pull_request'
         run: |
-          # Save the script from current branch (it might not exist in base branch)
-          cp ./bin/shellmetrics-compare.sh /tmp/shellmetrics-compare.sh
+          # Use git worktree to checkout base branch in separate directory
+          git worktree add --detach /tmp/base-branch origin/${{ github.base_ref }}
 
-          # Save current branch name
-          CURRENT_BRANCH="${GITHUB_HEAD_REF}"
-          echo "Current branch: $CURRENT_BRANCH"
+          # Copy the script to the worktree (it might not exist in base branch)
+          cp ./bin/shellmetrics-compare.sh /tmp/base-branch/
 
-          # Fetch and checkout base branch
-          git fetch origin "${{ github.base_ref }}"
-          git checkout "origin/${{ github.base_ref }}"
+          # Collect metrics from base branch
+          cd /tmp/base-branch
+          ./shellmetrics-compare.sh collect /tmp/base-metrics.csv
 
-          # Collect metrics for base branch using the saved script
-          /tmp/shellmetrics-compare.sh collect base-metrics.csv
-
-          # Return to current branch
-          git checkout "$CURRENT_BRANCH"
+          # Clean up worktree
+          cd -
+          git worktree remove /tmp/base-branch
 
       - name: Generate metrics comparison report
         if: github.event_name == 'pull_request'
         run: |
-          ./bin/shellmetrics-compare.sh compare base-metrics.csv current-metrics.csv metrics-report.md
+          ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+
+          # Add commit info to the report
+          BASE_SHA=$(git rev-parse origin/${{ github.base_ref }})
+          CURRENT_SHA="${{ github.sha }}"
+          echo "" >> metrics-report.md
+          echo "**Base:** \`${{ github.base_ref }}\` @ [\`${BASE_SHA:0:8}\`](https://github.com/${{ github.repository }}/commit/${BASE_SHA})" >> metrics-report.md
+          echo "**Current:** \`${{ github.head_ref }}\` @ [\`${CURRENT_SHA:0:8}\`](https://github.com/${{ github.repository }}/commit/${CURRENT_SHA})" >> metrics-report.md
+
           echo "### Metrics Report" >> $GITHUB_STEP_SUMMARY
           cat metrics-report.md >> $GITHUB_STEP_SUMMARY
 
@@ -516,13 +521,21 @@ jobs:
               console.log('Created new metrics comment');
             }
 
-      - name: Upload metrics artifacts
-        if: always()
+      - name: Upload metrics artifacts (push events)
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: shellmetrics-reports
+          path: current-metrics.csv
+          retention-days: 30
+
+      - name: Upload metrics artifacts (PR events)
+        if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: shellmetrics-reports
           path: |
             current-metrics.csv
-            base-metrics.csv
+            /tmp/base-metrics.csv
             metrics-report.md
           retention-days: 30
