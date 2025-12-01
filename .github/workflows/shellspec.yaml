@@ -442,6 +442,9 @@ jobs:
       - name: Collect base branch metrics (PR only)
         if: github.event_name == 'pull_request'
         run: |
+          # Save the script from current branch (it might not exist in base branch)
+          cp ./bin/shellmetrics-compare.sh /tmp/shellmetrics-compare.sh
+
           # Save current branch name
           CURRENT_BRANCH="${GITHUB_HEAD_REF}"
           echo "Current branch: $CURRENT_BRANCH"
@@ -450,8 +453,8 @@ jobs:
           git fetch origin "${{ github.base_ref }}"
           git checkout "origin/${{ github.base_ref }}"
 
-          # Collect metrics for base branch
-          ./bin/shellmetrics-compare.sh collect base-metrics.csv
+          # Collect metrics for base branch using the saved script
+          /tmp/shellmetrics-compare.sh collect base-metrics.csv
 
           # Return to current branch
           git checkout "$CURRENT_BRANCH"
