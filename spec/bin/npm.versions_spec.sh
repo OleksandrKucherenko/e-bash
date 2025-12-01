@@ -12,9 +12,22 @@
 eval "$(shellspec - -c) exit 1"
 
 Describe 'bin/npm.versions.sh /'
-  # Set DEBUG to enable all logger functions before sourcing
-  # This ensures printf:Parser, echo:Parser, etc. exist when _arguments.sh is sourced
-  BeforeRun 'export DEBUG="*"'
+  # CRITICAL FIX for "printf:Parser: command not found" error:
+  # When Include sources bin/npm.versions.sh, it sets __SOURCED__, causing:
+  # - _arguments.sh to return early at line 488 (before logger:init parser at line 491)
+  # - _commons.sh to return early at line 490 (before logger common at line 492)
+  # But npm.versions.sh calls args:d() at lines 79-83 during sourcing (top-level code),
+  # and args:d() immediately calls printf:Parser (line 250 of _arguments.sh).
+  # Solution: Pre-create logger functions in BeforeRun before Include executes.
+  BeforeRun '
+    export DEBUG="*"
+    export E_BASH="${SHELLSPEC_PROJECT_ROOT}/.scripts"
+    source "${E_BASH}/_logger.sh"
+    # Manually create logger functions that would normally be created by modules
+    # but are skipped due to __SOURCED__ guard
+    logger parser
+    logger common
+  '
 
   # Include the script using relative path from project root
   Include bin/npm.versions.sh
