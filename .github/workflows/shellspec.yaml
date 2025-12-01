@@ -410,3 +410,116 @@ jobs:
           name: test-results-ubuntu
           path: report/
           retention-days: 30
+
+  shellmetrics:
+    name: "Code Metrics"
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PATH for local binaries
+        run: |
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+          mkdir -p "${HOME}/.local/bin"
+
+      - name: Install ShellMetrics
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/shellspec/shellmetrics/master/shellmetrics > "${HOME}/.local/bin/shellmetrics"
+          chmod +x "${HOME}/.local/bin/shellmetrics"
+          shellmetrics --help || echo "ShellMetrics installed"
+
+      - name: Collect current branch metrics
+        run: |
+          ./bin/shellmetrics-compare.sh collect current-metrics.csv
+
+      - name: Collect base branch metrics (PR only)
+        if: github.event_name == 'pull_request'
+        run: |
+          # Save current branch name
+          CURRENT_BRANCH="${GITHUB_HEAD_REF}"
+          echo "Current branch: $CURRENT_BRANCH"
+
+          # Fetch and checkout base branch
+          git fetch origin "${{ github.base_ref }}"
+          git checkout "origin/${{ github.base_ref }}"
+
+          # Collect metrics for base branch
+          ./bin/shellmetrics-compare.sh collect base-metrics.csv
+
+          # Return to current branch
+          git checkout "$CURRENT_BRANCH"
+
+      - name: Generate metrics comparison report
+        if: github.event_name == 'pull_request'
+        run: |
+          ./bin/shellmetrics-compare.sh compare base-metrics.csv current-metrics.csv metrics-report.md
+          echo "### Metrics Report" >> $GITHUB_STEP_SUMMARY
+          cat metrics-report.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Post PR comment with metrics
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const reportPath = 'metrics-report.md';
+
+            if (!fs.existsSync(reportPath)) {
+              console.log('Metrics report not found, skipping PR comment');
+              return;
+            }
+
+            const report = fs.readFileSync(reportPath, 'utf8');
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('📊 ShellMetrics Code Complexity Report')
+            );
+
+            const commentBody = report;
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+              console.log('Updated existing metrics comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+              console.log('Created new metrics comment');
+            }
+
+      - name: Upload metrics artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shellmetrics-reports
+          path: |
+            current-metrics.csv
+            base-metrics.csv
+            metrics-report.md
+          retention-days: 30
