@@ -634,3 +634,4 @@ demos/demo.emojis.sh
 - [bash-bastion](https://github.com/bash-bastion) BASH helpers
 - https://github.com/dylanaraps/writing-a-tui-in-bash
 - [bash-toml](https://github.com/bash-bastion/bash-toml) TOML Support (also INI files support!)
+- [Pure Bash Bible](https://github.com/dylanaraps/pure-bash-bible)
