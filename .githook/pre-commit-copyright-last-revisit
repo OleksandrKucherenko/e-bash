@@ -16,6 +16,9 @@ readonly cl_grey=$(tput setaf 8)
 readonly cl_gray=$cl_grey # alias to the same color
 readonly cl_reset=$(tput sgr0)
 
+# Get the repository root directory
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
 # Prefer custom GNU tools from bin/gnubin if available, then fallback to Linux aliases
 if [[ -d "$REPO_ROOT/bin/gnubin" ]]; then
   export PATH="$REPO_ROOT/bin/gnubin:$PATH"

@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-26
+## Last revisit: 2025-12-03
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # --- e-bash Environment Setup ---
 DEBUG=${DEBUG:-"tui,exec,-internal"}
+
+# shellcheck disable=SC2155 # evaluate E_BASH from project structure if it's not set
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
 
 # shellcheck source=../.scripts/_colors.sh
 source "$E_BASH/_colors.sh"

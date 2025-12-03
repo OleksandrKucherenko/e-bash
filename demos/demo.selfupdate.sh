@@ -2,12 +2,15 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-02
+## Last revisit: 2025-12-03
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 export DEBUG=git,version,loader
+
+# shellcheck disable=SC2155 # evaluate E_BASH from project structure if it's not set
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 # shellcheck disable=SC1090 source=../.scripts/_self-update.sh

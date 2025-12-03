@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-27
+## Last revisit: 2025-12-03
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 export DEBUG=${DEBUG:-"-loader,-parser,-common"}
+
+# shellcheck disable=SC2155 # evaluate E_BASH from project structure if it's not set
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
 
 export SKIP_ARGS_PARSING=1 # skip initial parsing of arguments during script loading
 
