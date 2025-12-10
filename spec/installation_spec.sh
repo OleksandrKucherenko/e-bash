@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-10
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -1251,6 +1251,43 @@ Describe 'bin/install.e-bash.sh /'
 
       The status should be failure
       The result of function no_colors_error should include "Error: --directory requires a path argument"
+    End
+
+    It 'should install to nested directory that does not exist'
+      When run ./install.e-bash.sh install --directory libs/e-bash
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The result of function no_colors_error should include "Creating .ebashrc with custom directory: libs/e-bash"
+      The dir "libs/e-bash" should be present
+      The file "libs/e-bash/_colors.sh" should be present
+      The file ".ebashrc" should be present
+      The contents of file ".ebashrc" should include "E_BASH_INSTALL_DIR=\"libs/e-bash\""
+    End
+
+    It 'should handle deeply nested custom directory'
+      When run ./install.e-bash.sh install --directory vendor/libs/ebash/scripts
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The dir "vendor/libs/ebash/scripts" should be present
+      The file "vendor/libs/ebash/scripts/_colors.sh" should be present
+      The file ".ebashrc" should be present
+      The contents of file ".ebashrc" should include "E_BASH_INSTALL_DIR=\"vendor/libs/ebash/scripts\""
+    End
+
+    It 'should update .envrc with nested directory path'
+      touch .envrc
+      git add .envrc
+      git commit --no-gpg-sign -m "Add .envrc" -q 2>/dev/null || git commit -m "Add .envrc" -q
+
+      When run ./install.e-bash.sh install --directory lib/ebash
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The file ".envrc" should be present
+      The contents of file ".envrc" should include "lib/ebash"
+      The contents of file ".envrc" should include "E_BASH="
     End
 
     It 'should validate directory path does not start with --'
