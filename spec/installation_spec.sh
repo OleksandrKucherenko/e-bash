@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-10
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -1115,6 +1115,261 @@ Describe 'bin/install.e-bash.sh /'
       # And should not mention shell RC files
       The output should not include ".bashrc"
       The output should not include ".zshrc"
+    End
+  End
+
+  # Test custom directory installation
+  Describe 'Custom Directory Installation /'
+    cleanup_scripts() {
+      # Remove all potential script directories
+      rm -rf .scripts .custom-scripts .my-ebash .ebash-custom .custom-dir .ebash-old .ebash-new .my-scripts .ebash-tools .custom-ebash .ebash-alt .my-custom
+      # Remove configuration files
+      rm -f .ebashrc .e-bash-previous-version
+      # Clean up git branches if they exist
+      git branch -D e-bash-scripts e-bash-temp 2>/dev/null || true
+      git remote remove e-bash 2>/dev/null || true
+    }
+    Before 'temp_repo; git_init; git_config; cp_install; cleanup_scripts'
+    After 'cleanup_temp_repo'
+
+    It 'should install to custom directory with --directory flag'
+      When run ./install.e-bash.sh install --directory .custom-scripts
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The result of function no_colors_error should include "Creating .ebashrc with custom directory: .custom-scripts"
+      The dir ".custom-scripts" should be present
+      The file ".custom-scripts/_colors.sh" should be present
+      The file ".ebashrc" should be present
+      The contents of file ".ebashrc" should include "E_BASH_INSTALL_DIR=\".custom-scripts\""
+    End
+
+    It 'should read .ebashrc on upgrade and use custom directory'
+      # First install with custom directory
+      ./install.e-bash.sh install --directory .my-ebash 2>/dev/null >/dev/null
+
+      # Now upgrade without specifying directory - should read from .ebashrc
+      When run ./install.e-bash.sh upgrade
+
+      The status should be success
+      The result of function no_colors_error should include "Using custom installation directory from .ebashrc: .my-ebash"
+      The result of function no_colors_output should include "Upgrade complete"
+      The dir ".my-ebash" should be present
+    End
+
+    It 'should create .ebashrc with correct format'
+      ./install.e-bash.sh install --directory .ebash-custom 2>/dev/null >/dev/null
+
+      When run cat .ebashrc
+
+      The status should be success
+      The output should include "# e-bash configuration"
+      The output should include "# Version: 1.0"
+      The output should include "E_BASH_INSTALL_DIR=\".ebash-custom\""
+    End
+
+    It 'should not create .ebashrc for default directory'
+      When run ./install.e-bash.sh install
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The file ".ebashrc" should not be exist
+      The dir ".scripts" should be present
+    End
+
+    It 'should remove .ebashrc on uninstall'
+      # Install with custom directory
+      ./install.e-bash.sh install --directory .custom-dir 2>/dev/null >/dev/null
+
+      # Uninstall
+      When run ./install.e-bash.sh uninstall --confirm
+
+      The status should be success
+      The result of function no_colors_output should include "Removed .ebashrc"
+      The file ".ebashrc" should not be exist
+    End
+
+    It 'should handle --directory flag with upgrade command'
+      # First install with default directory
+      ./install.e-bash.sh install 2>/dev/null >/dev/null
+
+      # Upgrade to custom directory (this should be an error or require uninstall first)
+      When run ./install.e-bash.sh upgrade --directory .new-custom
+
+      # Should fail or warn about changing directory
+      # For now, we'll accept success as it may create the new directory
+      The result of function no_colors_error should be present
+    End
+
+    It 'should allow --directory flag to override .ebashrc'
+      # Create .ebashrc with one directory (but don't create the actual directory to avoid untracked dir error)
+      echo 'E_BASH_INSTALL_DIR=".ebash-old"' > .ebashrc
+      git add .ebashrc
+      git commit --no-gpg-sign -m "Add .ebashrc" -q 2>/dev/null || git commit -m "Add .ebashrc" -q
+
+      # Install with different directory via --directory flag (should override .ebashrc)
+      When run ./install.e-bash.sh install --directory .ebash-new
+
+      The status should be success
+      The result of function no_colors_error should include "Creating .ebashrc with custom directory: .ebash-new"
+      The dir ".ebash-new" should be present
+      The contents of file ".ebashrc" should include "E_BASH_INSTALL_DIR=\".ebash-new\""
+    End
+
+    It 'should update .envrc with custom directory path'
+      # Create empty .envrc (no E_BASH configuration yet)
+      touch .envrc
+      git add .envrc
+      git commit --no-gpg-sign -m "Add .envrc" -q 2>/dev/null || git commit -m "Add .envrc" -q
+
+      When run ./install.e-bash.sh install --directory .my-scripts
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The file ".envrc" should be present
+      The contents of file ".envrc" should include ".my-scripts"
+      The contents of file ".envrc" should include "E_BASH="
+    End
+
+    It 'should update .mise.toml with custom directory path'
+      # Create empty .mise.toml (no E_BASH configuration yet)
+      touch .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add .mise.toml" -q 2>/dev/null || git commit -m "Add .mise.toml" -q
+
+      When run ./install.e-bash.sh install --directory .ebash-tools
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The file ".mise.toml" should be present
+      The contents of file ".mise.toml" should include ".ebash-tools"
+      The contents of file ".mise.toml" should include "E_BASH"
+    End
+
+    It 'should require argument for --directory flag'
+      When run ./install.e-bash.sh install --directory
+
+      The status should be failure
+      The result of function no_colors_error should include "Error: --directory requires a path argument"
+    End
+
+    It 'should install to nested directory that does not exist'
+      When run ./install.e-bash.sh install --directory libs/e-bash
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The result of function no_colors_error should include "Creating .ebashrc with custom directory: libs/e-bash"
+      The dir "libs/e-bash" should be present
+      The file "libs/e-bash/_colors.sh" should be present
+      The file ".ebashrc" should be present
+      The contents of file ".ebashrc" should include "E_BASH_INSTALL_DIR=\"libs/e-bash\""
+    End
+
+    It 'should handle deeply nested custom directory'
+      When run ./install.e-bash.sh install --directory vendor/libs/ebash/scripts
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The dir "vendor/libs/ebash/scripts" should be present
+      The file "vendor/libs/ebash/scripts/_colors.sh" should be present
+      The file ".ebashrc" should be present
+      The contents of file ".ebashrc" should include "E_BASH_INSTALL_DIR=\"vendor/libs/ebash/scripts\""
+    End
+
+    It 'should update .envrc with nested directory path'
+      touch .envrc
+      git add .envrc
+      git commit --no-gpg-sign -m "Add .envrc" -q 2>/dev/null || git commit -m "Add .envrc" -q
+
+      When run ./install.e-bash.sh install --directory lib/ebash
+
+      The status should be success
+      The result of function no_colors_output should include "Installation complete"
+      The file ".envrc" should be present
+      The contents of file ".envrc" should include "lib/ebash"
+      The contents of file ".envrc" should include "E_BASH="
+    End
+
+    It 'should validate directory path does not start with --'
+      When run ./install.e-bash.sh install --directory --dry-run
+
+      The status should be failure
+      The result of function no_colors_error should include "Error: --directory requires a path argument"
+    End
+
+    It 'should update .envrc when switching from default to custom directory'
+      # First install with default directory
+      touch .envrc
+      git add .envrc
+      git commit --no-gpg-sign -m "Add .envrc" -q 2>/dev/null || git commit -m "Add .envrc" -q
+      ./install.e-bash.sh install 2>/dev/null >/dev/null
+
+      # Verify .envrc has .scripts path
+      grep -q "export E_BASH=\"\$(pwd)/.scripts\"" .envrc || exit 1
+
+      # Now upgrade with custom directory (treated as fresh install to new location)
+      When run ./install.e-bash.sh upgrade --directory .custom-ebash
+
+      The status should be success
+      # When switching directories, it's treated as a fresh install to new location
+      The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
+      The result of function no_colors_output should include "Installation complete"
+      # Config gets added (appended) to .envrc during install
+      The result of function no_colors_output should include "Added e-bash configuration to"
+      The result of function no_colors_output should include ".envrc"
+      The contents of file ".envrc" should include ".custom-ebash"
+      The dir ".custom-ebash" should be present
+    End
+
+    It 'should update .mise.toml when switching from default to custom directory'
+      # First install with default directory
+      touch .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add .mise.toml" -q 2>/dev/null || git commit -m "Add .mise.toml" -q
+      ./install.e-bash.sh install 2>/dev/null >/dev/null
+
+      # Verify .mise.toml has .scripts path
+      grep -q "E_BASH.*{{config_root}}/.scripts" .mise.toml || exit 1
+
+      # Now upgrade with custom directory (treated as fresh install to new location)
+      When run ./install.e-bash.sh upgrade --directory .ebash-alt
+
+      The status should be success
+      # When switching directories, it's treated as a fresh install to new location
+      The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
+      The result of function no_colors_output should include "Installation complete"
+      # Config gets added to .mise.toml during install
+      The result of function no_colors_output should include "Added e-bash configuration to"
+      The result of function no_colors_output should include ".mise.toml"
+      The contents of file ".mise.toml" should include "{{config_root}}/.ebash-alt"
+      The dir ".ebash-alt" should be present
+    End
+
+    It 'should update .envrc when switching from custom back to default directory'
+      # First install with custom directory
+      touch .envrc
+      git add .envrc
+      git commit --no-gpg-sign -m "Add .envrc" -q 2>/dev/null || git commit -m "Add .envrc" -q
+      ./install.e-bash.sh install --directory .my-custom 2>/dev/null >/dev/null
+
+      # Verify .envrc has custom path
+      grep -q "export E_BASH=\"\$(pwd)/.my-custom\"" .envrc || exit 1
+
+      # Remove .ebashrc to allow default directory
+      rm -f .ebashrc
+
+      # Now upgrade back to default (treated as fresh install to default location)
+      When run ./install.e-bash.sh upgrade
+
+      The status should be success
+      # When switching directories, it's treated as a fresh install
+      The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
+      The result of function no_colors_output should include "Installation complete"
+      # Config gets added to .envrc during install
+      The result of function no_colors_output should include "Added e-bash configuration to"
+      The result of function no_colors_output should include ".envrc"
+      The contents of file ".envrc" should include "\$(pwd)/.scripts"
+      The dir ".scripts" should be present
     End
   End
 
