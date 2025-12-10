@@ -1032,10 +1032,10 @@ function update_envrc_configuration() {
     sed -i.bak "s|export E_BASH=\"\$(pwd)/${current_path}\"|export E_BASH=\"\$(pwd)/${SCRIPTS_DIR}\"|g" ".envrc"
 
     # Update PATH_add for scripts directory
-    sed -i "s|PATH_add \"\$PWD/${current_path}\"|PATH_add \"\$PWD/${SCRIPTS_DIR}\"|g" ".envrc"
+    sed -i.bak "s|PATH_add \"\$PWD/${current_path}\"|PATH_add \"\$PWD/${SCRIPTS_DIR}\"|g" ".envrc"
 
     # Update source path for setup script
-    sed -i "s|source \"\$PWD/${current_path}/_setup_gnu_symbolic_links.sh\"|source \"\$PWD/${SCRIPTS_DIR}/_setup_gnu_symbolic_links.sh\"|g" ".envrc"
+    sed -i.bak "s|source \"\$PWD/${current_path}/_setup_gnu_symbolic_links.sh\"|source \"\$PWD/${SCRIPTS_DIR}/_setup_gnu_symbolic_links.sh\"|g" ".envrc"
 
     rm -f ".envrc.bak"
     echo -e "${GREEN}Updated e-bash configuration in ${YELLOW}${PWD}/.envrc${NC}"
@@ -1100,7 +1100,7 @@ function update_mise_configuration() {
     sed -i.bak "s|E_BASH = \"{{config_root}}/${old_path}\"|E_BASH = \"{{config_root}}/${new_path}\"|g" ".mise.toml"
 
     # Update _.path entries
-    sed -i "s|\"{{config_root}}/${old_path}\"|\"{{config_root}}/${new_path}\"|g" ".mise.toml"
+    sed -i.bak "s|\"{{config_root}}/${old_path}\"|\"{{config_root}}/${new_path}\"|g" ".mise.toml"
 
     rm -f ".mise.toml.bak"
     echo -e "${GREEN}Updated e-bash configuration in ${YELLOW}${PWD}/.mise.toml${NC}"
