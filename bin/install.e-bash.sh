@@ -705,8 +705,9 @@ function setup_remote() {
   # Split the scripts subtree
   echo -e "${BLUE}Extracting scripts...${NC}"
 
-  # we do not need any output from this command
-  SILENT_GIT=true exec:git subtree split -q -P "$SCRIPTS_DIR" -b "$SCRIPTS_BRANCH"
+  # Always split from the default directory name in the remote repository
+  # The custom directory name is only used locally when adding the subtree
+  SILENT_GIT=true exec:git subtree split -q -P "$DEFAULT_SCRIPTS_DIR" -b "$SCRIPTS_BRANCH"
 
   # Configure branches to remain local and not be pushed to remote
   configure_local_branches
