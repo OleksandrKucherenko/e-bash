@@ -1014,13 +1014,36 @@ function post_installation_steps_global() {
 
 ## Append e-bash configuration to .envrc file. Exit code.
 function update_envrc_configuration() {
-  # Check if our configuration is already in .envrc
+  # Check if E_BASH configuration exists in .envrc
   if grep -q "export E_BASH=" ".envrc"; then
-    echo -e "${GRAY}Skipping DIRENV integration. Configuration already exists in ${YELLOW}${PWD}/.envrc${NC}"
+    # Extract the current path from E_BASH
+    local current_path=$(grep "export E_BASH=" ".envrc" | head -1 | sed -E 's/.*\$\(pwd\)\///' | sed 's/".*$//')
+
+    # If the path matches current SCRIPTS_DIR, skip
+    if [ "$current_path" = "$SCRIPTS_DIR" ]; then
+      echo -e "${GRAY}Skipping DIRENV integration. Configuration already exists in ${YELLOW}${PWD}/.envrc${NC}"
+      return 0
+    fi
+
+    # Path differs - update it
+    echo -e "${BLUE}Updating DIRENV configuration from ${YELLOW}${current_path}${BLUE} to ${YELLOW}${SCRIPTS_DIR}${NC}"
+
+    # Update E_BASH export path
+    sed -i.bak "s|export E_BASH=\"\$(pwd)/${current_path}\"|export E_BASH=\"\$(pwd)/${SCRIPTS_DIR}\"|g" ".envrc"
+
+    # Update PATH_add for scripts directory
+    sed -i "s|PATH_add \"\$PWD/${current_path}\"|PATH_add \"\$PWD/${SCRIPTS_DIR}\"|g" ".envrc"
+
+    # Update source path for setup script
+    sed -i "s|source \"\$PWD/${current_path}/_setup_gnu_symbolic_links.sh\"|source \"\$PWD/${SCRIPTS_DIR}/_setup_gnu_symbolic_links.sh\"|g" ".envrc"
+
+    rm -f ".envrc.bak"
+    echo -e "${GREEN}Updated e-bash configuration in ${YELLOW}${PWD}/.envrc${NC}"
+    echo -e "${YELLOW}Run 'direnv allow' to apply the changes${NC}"
     return 0
   fi
 
-  # Append our configuration to .envrc
+  # No existing configuration - append our configuration to .envrc
   {
     echo ""
     echo "#"
@@ -1066,6 +1089,24 @@ function update_mise_configuration() {
     ' ".mise.toml"
   }
 
+  # Helper: Update existing E_BASH path in .mise.toml
+  update_mise_path() {
+    local old_path="$1"
+    local new_path="$2"
+
+    echo -e "${BLUE}Updating MISE configuration from ${YELLOW}${old_path}${BLUE} to ${YELLOW}${new_path}${NC}"
+
+    # Update E_BASH path
+    sed -i.bak "s|E_BASH = \"{{config_root}}/${old_path}\"|E_BASH = \"{{config_root}}/${new_path}\"|g" ".mise.toml"
+
+    # Update _.path entries
+    sed -i "s|\"{{config_root}}/${old_path}\"|\"{{config_root}}/${new_path}\"|g" ".mise.toml"
+
+    rm -f ".mise.toml.bak"
+    echo -e "${GREEN}Updated e-bash configuration in ${YELLOW}${PWD}/.mise.toml${NC}"
+    echo -e "${YELLOW}Run 'mise trust' to apply the changes${NC}"
+  }
+
   # Helper: Check if _.path already exists in env sections
   has_existing_path() {
     # Check both [env] and [[env]] sections using AWK (portable)
@@ -1108,7 +1149,18 @@ function update_mise_configuration() {
   if [ -f ".mise.toml" ]; then
     local existing_value=$(get_mise_env_value "E_BASH")
     if [ -n "$existing_value" ]; then
-      echo -e "${GRAY}Skipping MISE integration. E_BASH already configured in ${YELLOW}${PWD}/.mise.toml${NC}"
+      # Extract the directory path from the existing value
+      # Format: "{{config_root}}/.scripts" -> .scripts
+      local current_path=$(echo "$existing_value" | sed 's/.*{{config_root}}\///' | sed 's/"$//')
+
+      # If the path matches current SCRIPTS_DIR, skip
+      if [ "$current_path" = "$SCRIPTS_DIR" ]; then
+        echo -e "${GRAY}Skipping MISE integration. E_BASH already configured in ${YELLOW}${PWD}/.mise.toml${NC}"
+        return 0
+      fi
+
+      # Path differs - update it
+      update_mise_path "$current_path" "$SCRIPTS_DIR"
       return 0
     fi
   fi

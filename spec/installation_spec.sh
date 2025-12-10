@@ -1122,7 +1122,7 @@ Describe 'bin/install.e-bash.sh /'
   Describe 'Custom Directory Installation /'
     cleanup_scripts() {
       # Remove all potential script directories
-      rm -rf .scripts .custom-scripts .my-ebash .ebash-custom .custom-dir .ebash-old .ebash-new .my-scripts .ebash-tools
+      rm -rf .scripts .custom-scripts .my-ebash .ebash-custom .custom-dir .ebash-old .ebash-new .my-scripts .ebash-tools .custom-ebash .ebash-alt .my-custom
       # Remove configuration files
       rm -f .ebashrc .e-bash-previous-version
       # Clean up git branches if they exist
@@ -1258,6 +1258,68 @@ Describe 'bin/install.e-bash.sh /'
 
       The status should be failure
       The result of function no_colors_error should include "Error: --directory requires a path argument"
+    End
+
+    It 'should update .envrc when switching from default to custom directory'
+      # First install with default directory
+      touch .envrc
+      git add .envrc
+      git commit --no-gpg-sign -m "Add .envrc" -q 2>/dev/null || git commit -m "Add .envrc" -q
+      ./install.e-bash.sh install 2>/dev/null >/dev/null
+
+      # Verify .envrc has .scripts path
+      grep -q "export E_BASH=\"\$(pwd)/.scripts\"" .envrc || exit 1
+
+      # Now upgrade with custom directory
+      When run ./install.e-bash.sh upgrade --directory .custom-ebash
+
+      The status should be success
+      The result of function no_colors_output should include "Updating DIRENV configuration from .scripts to .custom-ebash"
+      The result of function no_colors_output should include "Upgrade complete"
+      The contents of file ".envrc" should include ".custom-ebash"
+      The contents of file ".envrc" should not include "\$(pwd)/.scripts"
+    End
+
+    It 'should update .mise.toml when switching from default to custom directory'
+      # First install with default directory
+      touch .mise.toml
+      git add .mise.toml
+      git commit --no-gpg-sign -m "Add .mise.toml" -q 2>/dev/null || git commit -m "Add .mise.toml" -q
+      ./install.e-bash.sh install 2>/dev/null >/dev/null
+
+      # Verify .mise.toml has .scripts path
+      grep -q "E_BASH.*{{config_root}}/.scripts" .mise.toml || exit 1
+
+      # Now upgrade with custom directory
+      When run ./install.e-bash.sh upgrade --directory .ebash-alt
+
+      The status should be success
+      The result of function no_colors_output should include "Updating MISE configuration from .scripts to .ebash-alt"
+      The result of function no_colors_output should include "Upgrade complete"
+      The contents of file ".mise.toml" should include "{{config_root}}/.ebash-alt"
+      The contents of file ".mise.toml" should not include "{{config_root}}/.scripts"
+    End
+
+    It 'should update .envrc when switching from custom back to default directory'
+      # First install with custom directory
+      touch .envrc
+      git add .envrc
+      git commit --no-gpg-sign -m "Add .envrc" -q 2>/dev/null || git commit -m "Add .envrc" -q
+      ./install.e-bash.sh install --directory .my-custom 2>/dev/null >/dev/null
+
+      # Verify .envrc has custom path
+      grep -q "export E_BASH=\"\$(pwd)/.my-custom\"" .envrc || exit 1
+
+      # Remove .ebashrc to allow default directory
+      rm -f .ebashrc
+
+      # Now upgrade back to default
+      When run ./install.e-bash.sh upgrade
+
+      The status should be success
+      The result of function no_colors_output should include "Updating DIRENV configuration from .my-custom to .scripts"
+      The contents of file ".envrc" should include "\$(pwd)/.scripts"
+      The contents of file ".envrc" should not include ".my-custom"
     End
   End
 
