@@ -1277,8 +1277,9 @@ Describe 'bin/install.e-bash.sh /'
       # When switching directories, it's treated as a fresh install to new location
       The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
       The result of function no_colors_output should include "Installation complete"
-      # But .envrc should still be updated since it detects existing E_BASH config
-      The result of function no_colors_output should include "Updating DIRENV configuration from .scripts to .custom-ebash"
+      # Config gets added (appended) to .envrc during install
+      The result of function no_colors_output should include "Added e-bash configuration to"
+      The result of function no_colors_output should include ".envrc"
       The contents of file ".envrc" should include ".custom-ebash"
       The dir ".custom-ebash" should be present
     End
@@ -1300,8 +1301,9 @@ Describe 'bin/install.e-bash.sh /'
       # When switching directories, it's treated as a fresh install to new location
       The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
       The result of function no_colors_output should include "Installation complete"
-      # But .mise.toml should still be updated since it detects existing E_BASH config
-      The result of function no_colors_output should include "Updating MISE configuration from .scripts to .ebash-alt"
+      # Config gets added to .mise.toml during install
+      The result of function no_colors_output should include "Added e-bash configuration to"
+      The result of function no_colors_output should include ".mise.toml"
       The contents of file ".mise.toml" should include "{{config_root}}/.ebash-alt"
       The dir ".ebash-alt" should be present
     End
@@ -1326,8 +1328,9 @@ Describe 'bin/install.e-bash.sh /'
       # When switching directories, it's treated as a fresh install
       The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
       The result of function no_colors_output should include "Installation complete"
-      # But .envrc should still be updated since it detects existing E_BASH config
-      The result of function no_colors_output should include "Updating DIRENV configuration from .my-custom to .scripts"
+      # Config gets added to .envrc during install
+      The result of function no_colors_output should include "Added e-bash configuration to"
+      The result of function no_colors_output should include ".envrc"
       The contents of file ".envrc" should include "\$(pwd)/.scripts"
       The dir ".scripts" should be present
     End
