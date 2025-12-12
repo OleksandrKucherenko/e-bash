@@ -3,7 +3,7 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-12
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -288,12 +288,13 @@ Describe 'bin/version-up.v2.sh /'
     The result of function no_colors_stderr should include "Selected versioning strategy: increment last version PART of hotfix-v1.1.0"
     The result of function no_colors_stderr should include "Selected versioning strategy: forced REVISION increment."
     The result of function no_colors_stderr should include "Proposed Next Version TAG: v1.1.0+11"
-    The result of function no_colors_stderr should include "Auto-detected prefix: v from tags: v1.1.0+10"
+    # Check that both tags are detected (order may vary by platform due to creatordate sorting)
+    The result of function no_colors_stderr should match pattern "*Auto-detected prefix: v from tags: v1.1.0+10, v1.2.0*|*Auto-detected prefix: v from tags: v1.2.0, v1.1.0+10*"
 
     # Exit code should be 0
     The result of function no_colors_stderr should include "exit code: 0"
 
-    # Dump
+    Dump
   End
 
   # test-005-1: Propose patch segment increase on branched version tag

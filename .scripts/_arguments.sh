@@ -269,7 +269,7 @@ function args:e() {
   echo:Parser "$flag -> env:$env"
 
   # echo flag only if we in pipeline mode
-  [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
+  if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
 # compose argument "defaults" mapping, function can be used in pipeline
@@ -289,7 +289,7 @@ function args:v() {
   echo:Parser "$flag -> defaults:$defaults"
 
   # echo flag only if we in pipeline mode
-  [[ ! -t 1 ]] && echo "$flag" # print flag for pipes
+  if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
 # Compose argument definition string by pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
