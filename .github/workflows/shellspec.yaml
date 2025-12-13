@@ -14,6 +14,11 @@ env:
   HOMEBREW_NO_ENV_HINTS: 1
   # Enable CI auto-install mode for dependencies
   CI_E_BASH_INSTALL_DEPENDENCIES: 1
+  # Test chunking granularity: file (default), example, or hybrid
+  # - file: distribute whole spec files (fastest, less balanced)
+  # - example: distribute individual tests (best balance, requires v2.0 timing data)
+  # - hybrid: auto-split large files into examples (good balance)
+  CHUNK_GRANULARITY: file
 
 jobs:
   shellspec-macos:
@@ -147,8 +152,8 @@ jobs:
 
       - name: Run shellspec Tests (chunk ${{ matrix.chunk }})
         run: |
-          # Get test files for this chunk
-          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }})
+          # Get test files for this chunk using configured granularity
+          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY }})
 
           if [ -z "$CHUNK_FILES" ]; then
             echo "No test files for chunk ${{ matrix.chunk }}"
@@ -363,8 +368,8 @@ jobs:
 
       - name: Run shellspec tests with coverage (chunk ${{ matrix.chunk }})
         run: |
-          # Get test files for this chunk
-          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }})
+          # Get test files for this chunk using configured granularity
+          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY }})
 
           if [ -z "$CHUNK_FILES" ]; then
             echo "No test files for chunk ${{ matrix.chunk }}"
