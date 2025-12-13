@@ -12,26 +12,7 @@
  *   bun parse-test-timings.ts .test-timings.json report/*.xml
  */
 
-import { parseStringPromise } from "xml2js";
-import { readFileSync, writeFileSync } from "fs";
-import { existsSync } from "fs";
-
-interface TestCase {
-  $?: {
-    classname?: string;
-    name?: string;
-    time?: string;
-  };
-}
-
-interface TestSuite {
-  testcase?: TestCase[];
-}
-
-interface JUnitRoot {
-  testsuite?: TestSuite;
-  testsuites?: { testsuite?: TestSuite[] };
-}
+import { readFileSync, writeFileSync, existsSync } from "fs";
 
 interface TimingData {
   [specFile: string]: number;
@@ -71,7 +52,7 @@ function normalizeSpecPath(specFile: string): string {
   return specFile;
 }
 
-async function parseJUnitXML(xmlFile: string): Promise<TimingData> {
+function parseJUnitXML(xmlFile: string): TimingData {
   const timings: TimingData = {};
 
   try {
@@ -81,28 +62,27 @@ async function parseJUnitXML(xmlFile: string): Promise<TimingData> {
     }
 
     const xmlContent = readFileSync(xmlFile, "utf-8");
-    const result: JUnitRoot = await parseStringPromise(xmlContent);
 
-    // Extract all testcase elements
-    const testcases: TestCase[] = [];
+    // Simple regex-based parsing - no dependencies needed
+    // Match testcase elements with time attribute
+    // Format: <testcase classname="..." name="..." time="..."/>
+    const testcaseRegex = /<testcase[^>]*>/g;
+    const matches = xmlContent.match(testcaseRegex);
 
-    if (result.testsuite?.testcase) {
-      testcases.push(...result.testsuite.testcase);
+    if (!matches) {
+      console.error(`Warning: No testcase elements found in ${xmlFile}`);
+      return timings;
     }
 
-    if (result.testsuites?.testsuite) {
-      for (const suite of result.testsuites.testsuite) {
-        if (suite.testcase) {
-          testcases.push(...suite.testcase);
-        }
-      }
-    }
+    for (const testcaseTag of matches) {
+      // Extract attributes
+      const classnameMatch = testcaseTag.match(/classname="([^"]*)"/);
+      const nameMatch = testcaseTag.match(/name="([^"]*)"/);
+      const timeMatch = testcaseTag.match(/time="([^"]*)"/);
 
-    // Process each test case
-    for (const testcase of testcases) {
-      const classname = testcase.$?.classname || "";
-      const name = testcase.$?.name || "";
-      const timeStr = testcase.$?.time || "0";
+      const classname = classnameMatch ? classnameMatch[1] : "";
+      const name = nameMatch ? nameMatch[1] : "";
+      const timeStr = timeMatch ? timeMatch[1] : "0";
 
       let timeVal = parseFloat(timeStr);
       if (isNaN(timeVal)) {
@@ -126,6 +106,32 @@ async function parseJUnitXML(xmlFile: string): Promise<TimingData> {
       if (specFile && specFile.endsWith(".sh")) {
         const normalized = normalizeSpecPath(specFile);
         timings[normalized] = (timings[normalized] || 0) + timeVal;
+      }
+    }
+
+    // Also try to extract from testsuite time attribute as fallback
+    // Format: <testsuite name="spec/file.sh" time="...">
+    const testsuiteRegex = /<testsuite[^>]*>/g;
+    const suiteMatches = xmlContent.match(testsuiteRegex);
+
+    if (suiteMatches) {
+      for (const suiteTag of suiteMatches) {
+        const nameMatch = suiteTag.match(/name="([^"]*)"/);
+        const timeMatch = suiteTag.match(/time="([^"]*)"/);
+
+        if (nameMatch && timeMatch) {
+          const specFile = nameMatch[1];
+          const timeStr = timeMatch[1];
+          const timeVal = parseFloat(timeStr);
+
+          if (!isNaN(timeVal) && timeVal > 0 && specFile.endsWith(".sh")) {
+            const normalized = normalizeSpecPath(specFile);
+            // Only use testsuite time if we don't have testcase times
+            if (!timings[normalized] || timings[normalized] === 0) {
+              timings[normalized] = timeVal;
+            }
+          }
+        }
       }
     }
   } catch (error) {
@@ -176,7 +182,7 @@ async function main() {
   // Parse all XML files
   const allTimings: TimingData[] = [];
   for (const xmlFile of xmlFiles) {
-    const timings = await parseJUnitXML(xmlFile);
+    const timings = parseJUnitXML(xmlFile);
     if (Object.keys(timings).length > 0) {
       allTimings.push(timings);
     }

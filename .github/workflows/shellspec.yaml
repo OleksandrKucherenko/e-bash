@@ -45,9 +45,6 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install dependencies for timing scripts
-        run: bun install
-
       - name: Detect Homebrew Path
         id: brew_path
         shell: bash
@@ -241,9 +238,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
-
-      - name: Install dependencies for timing scripts
-        run: bun install
 
       - name: Detect Homebrew Path
         id: brew_path
