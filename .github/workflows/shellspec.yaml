@@ -31,6 +31,15 @@ jobs:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
 
+      - name: Restore test timing cache
+        uses: actions/cache@v4
+        with:
+          path: .test-timings.json
+          key: test-timings-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            test-timings-${{ runner.os }}-
+            test-timings-
+
       - name: Detect Homebrew Path
         id: brew_path
         shell: bash
@@ -210,6 +219,15 @@ jobs:
           # Fetch the base branch to enable Codecov comparison
           git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
           echo "Base branch ${{ github.base_ref }} fetched for coverage comparison"
+
+      - name: Restore test timing cache
+        uses: actions/cache@v4
+        with:
+          path: .test-timings.json
+          key: test-timings-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            test-timings-${{ runner.os }}-
+            test-timings-
 
       - name: Detect Homebrew Path
         id: brew_path
@@ -443,6 +461,19 @@ jobs:
           name: test-results-ubuntu-chunk-${{ matrix.chunk }}
           path: report/
           retention-days: 30
+
+      - name: Update test timing cache
+        if: success()
+        run: |
+          # Parse JUnit XML reports and update timing data
+          if [ -d report ] && ls report/*.xml >/dev/null 2>&1; then
+            echo "📊 Parsing test timing data from JUnit XML..."
+            python3 bin/parse-test-timings.py .test-timings.json report/*.xml || {
+              echo "⚠️  Failed to parse timing data, keeping existing cache"
+            }
+          else
+            echo "⚠️  No JUnit XML reports found, skipping timing update"
+          fi
 
   shellmetrics:
     name: "Code Metrics"

@@ -5,6 +5,9 @@
 coverage/
 report/
 
+# test timing cache (generated from CI)
+.test-timings.json
+
 # IDE folders
 .vscode/
 .idea/

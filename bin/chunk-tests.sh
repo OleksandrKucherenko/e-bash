@@ -10,8 +10,12 @@
 #   chunk-tests.sh 4 0  # Returns test files for chunk 0 of 4
 #   chunk-tests.sh 4 1  # Returns test files for chunk 1 of 4
 #
-# This script distributes test files evenly across chunks, attempting to
-# balance the load by considering the size/complexity of each test file.
+# This script distributes test files across chunks using:
+# 1. Optimal bin-packing based on historical timing data (if available)
+# 2. Static weight-based distribution (fallback)
+# 3. Simple alphabetical distribution (legacy fallback)
+#
+# Timing data is cached in .test-timings.json and generated from JUnit XML reports.
 
 set -euo pipefail
 
@@ -32,6 +36,20 @@ fi
 if ! [[ "$CHUNK_INDEX" =~ ^[0-9]+$ ]] || [ "$CHUNK_INDEX" -ge "$TOTAL_CHUNKS" ]; then
   echo "Error: chunk_index must be between 0 and $((TOTAL_CHUNKS - 1))" >&2
   exit 1
+fi
+
+# Check for timing-based optimal distribution
+TIMING_FILE="$PROJECT_ROOT/.test-timings.json"
+
+if [ -f "$TIMING_FILE" ] && command -v python3 >/dev/null 2>&1; then
+  # Use optimal bin-packing algorithm with timing data
+  if python3 "$SCRIPT_DIR/calculate-optimal-chunks.py" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" 2>/dev/null; then
+    # Success - optimal distribution used
+    exit 0
+  else
+    # Fall through to fallback method
+    echo "⚠️  Failed to use timing-based distribution, falling back to simple method" >&2
+  fi
 fi
 
 # Find all test files
