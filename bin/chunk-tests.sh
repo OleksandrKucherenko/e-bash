@@ -57,12 +57,16 @@ fi
 TEST_FILES=()
 while IFS= read -r -d '' file; do
   TEST_FILES+=("$file")
-done < <(find "$PROJECT_ROOT/spec" -name "*_spec.sh" -type f -print0 | sort -z)
+done < <(find "$PROJECT_ROOT/spec" -name "*_spec.sh" -type f -print0)
 
 if [ ${#TEST_FILES[@]} -eq 0 ]; then
   echo "Error: No test files found in $PROJECT_ROOT/spec" >&2
   exit 1
 fi
+
+# Sort the array (portable - works on both macOS and Linux)
+# Using bash's built-in sorting via process substitution
+IFS=$'\n' TEST_FILES=($(sort <<<"${TEST_FILES[*]}"))
 
 # Calculate chunk size
 TOTAL_FILES=${#TEST_FILES[@]}
