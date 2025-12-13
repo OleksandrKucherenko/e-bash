@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="spec/installation_spec.sh" tests="4" failures="0" errors="0" time="5.234">
+    <testcase classname="spec/installation_spec.sh" name="install dependencies" time="2.100"/>
+    <testcase classname="spec/installation_spec.sh" name="verify brew packages" time="1.234"/>
+    <testcase classname="spec/installation_spec.sh" name="setup environment" time="1.100"/>
+    <testcase classname="spec/installation_spec.sh" name="cleanup temp files" time="0.800"/>
+  </testsuite>
+</testsuites>

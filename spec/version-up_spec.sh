@@ -3,7 +3,7 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-12
+## Last revisit: 2025-12-13
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -294,7 +294,7 @@ Describe 'bin/version-up.v2.sh /'
     # Exit code should be 0
     The result of function no_colors_stderr should include "exit code: 0"
 
-    Dump
+    # Dump
   End
 
   # test-005-1: Propose patch segment increase on branched version tag
