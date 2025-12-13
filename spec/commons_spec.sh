@@ -168,4 +168,204 @@ Describe "_commons.sh /"
       End
     End
   End
+
+  Describe "var:l0 /"
+    It "Returns variable value when variable is set and non-empty"
+      BeforeCall "export MY_VAR='hello world'"
+      When call var:l0 "MY_VAR" "default_value"
+
+      The status should be success
+      The output should eq "hello world"
+      The error should eq ''
+    End
+
+    It "Returns default when variable is unset"
+      BeforeCall "unset UNSET_VAR"
+      When call var:l0 "UNSET_VAR" "default_value"
+
+      The status should be success
+      The output should eq "default_value"
+      The error should eq ''
+    End
+
+    It "Returns default when variable is empty"
+      BeforeCall "export EMPTY_VAR=''"
+      When call var:l0 "EMPTY_VAR" "default_value"
+
+      The status should be success
+      The output should eq "default_value"
+      The error should eq ''
+    End
+
+    It "Handles special characters in variable value"
+      BeforeCall "export SPECIAL_VAR='hello@world#123'"
+      When call var:l0 "SPECIAL_VAR" "default"
+
+      The status should be success
+      The output should eq "hello@world#123"
+      The error should eq ''
+    End
+  End
+
+  Describe "var:l1 /"
+    It "Returns first variable value when first variable is set"
+      BeforeCall "export VAR1='first'"
+      BeforeCall "export VAR2='second'"
+      When call var:l1 "VAR1" "VAR2" "default_value"
+
+      The status should be success
+      The output should eq "first"
+      The error should eq ''
+    End
+
+    It "Returns second variable value when first is unset"
+      BeforeCall "unset VAR1"
+      BeforeCall "export VAR2='second'"
+      When call var:l1 "VAR1" "VAR2" "default_value"
+
+      The status should be success
+      The output should eq "second"
+      The error should eq ''
+    End
+
+    It "Returns second variable value when first is empty"
+      BeforeCall "export VAR1=''"
+      BeforeCall "export VAR2='second'"
+      When call var:l1 "VAR1" "VAR2" "default_value"
+
+      The status should be success
+      The output should eq "second"
+      The error should eq ''
+    End
+
+    It "Returns default when both variables are unset"
+      BeforeCall "unset VAR1"
+      BeforeCall "unset VAR2"
+      When call var:l1 "VAR1" "VAR2" "default_value"
+
+      The status should be success
+      The output should eq "default_value"
+      The error should eq ''
+    End
+
+    It "Returns default when both variables are empty"
+      BeforeCall "export VAR1=''"
+      BeforeCall "export VAR2=''"
+      When call var:l1 "VAR1" "VAR2" "default_value"
+
+      The status should be success
+      The output should eq "default_value"
+      The error should eq ''
+    End
+
+    It "Handles complex fallback chain correctly"
+      BeforeCall "unset PRIM_VAR"
+      BeforeCall "export SEC_VAR='secondary'"
+      When call var:l1 "PRIM_VAR" "SEC_VAR" "fallback"
+
+      The status should be success
+      The output should eq "secondary"
+      The error should eq ''
+    End
+  End
+
+  Describe "val:l0 /"
+    It "Returns value when value is non-empty"
+      When call val:l0 "hello world" "default_value"
+
+      The status should be success
+      The output should eq "hello world"
+      The error should eq ''
+    End
+
+    It "Returns default when value is empty"
+      When call val:l0 "" "default_value"
+
+      The status should be success
+      The output should eq "default_value"
+      The error should eq ''
+    End
+
+    It "Handles numeric values"
+      When call val:l0 "12345" "0"
+
+      The status should be success
+      The output should eq "12345"
+      The error should eq ''
+    End
+
+    It "Handles special characters in value"
+      When call val:l0 "test@value#123" "default"
+
+      The status should be success
+      The output should eq "test@value#123"
+      The error should eq ''
+    End
+
+    It "Handles spaces in value"
+      When call val:l0 "value with spaces" "default"
+
+      The status should be success
+      The output should eq "value with spaces"
+      The error should eq ''
+    End
+  End
+
+  Describe "val:l1 /"
+    It "Returns first value when first value is non-empty"
+      When call val:l1 "first" "second" "default_value"
+
+      The status should be success
+      The output should eq "first"
+      The error should eq ''
+    End
+
+    It "Returns second value when first is empty"
+      When call val:l1 "" "second" "default_value"
+
+      The status should be success
+      The output should eq "second"
+      The error should eq ''
+    End
+
+    It "Returns default when both values are empty"
+      When call val:l1 "" "" "default_value"
+
+      The status should be success
+      The output should eq "default_value"
+      The error should eq ''
+    End
+
+    It "Handles numeric values correctly"
+      When call val:l1 "0" "1" "2"
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Handles special characters in values"
+      When call val:l1 "value@1#test" "value2" "default"
+
+      The status should be success
+      The output should eq "value@1#test"
+      The error should eq ''
+    End
+
+    It "Handles spaces in values"
+      When call val:l1 "first value" "second value" "default value"
+
+      The status should be success
+      The output should eq "first value"
+      The error should eq ''
+    End
+
+    It "Falls through empty first to non-empty second"
+      When call val:l1 "" "second value" "default"
+
+      The status should be success
+      The output should eq "second value"
+      The error should eq ''
+    End
+  End
 End

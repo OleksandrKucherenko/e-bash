@@ -365,6 +365,118 @@ function confirm:by:input() {
   fi
 }
 
+function var:l0() {
+  # Use variable name value, otherwise fallback to default
+  #
+  # Arguments:
+  #   $1 - variable_name: Name of the variable to check
+  #   $2 - default: Default value to use if variable is empty or unset
+  #
+  # Returns:
+  #   The value of the variable if set and non-empty, otherwise the default value
+  #
+  # Example:
+  #   MY_VAR="hello"
+  #   result=$(var:l0 "MY_VAR" "default_value")  # Returns "hello"
+  #   result=$(var:l0 "UNSET_VAR" "default_value")  # Returns "default_value"
+
+  local variable_name=$1
+  local default=$2
+  local value="${!variable_name}"
+
+  if [ -n "$value" ]; then
+    echo "$value"
+  else
+    echo "$default"
+  fi
+}
+
+function var:l1() {
+  # Try var1 variable value, otherwise fallback to var2 value, otherwise fallback to default
+  #
+  # Arguments:
+  #   $1 - var1: Name of the first variable to check
+  #   $2 - var2: Name of the second variable to check
+  #   $3 - default: Default value to use if both variables are empty or unset
+  #
+  # Returns:
+  #   The value of var1 if set and non-empty, otherwise var2 if set and non-empty, otherwise default
+  #
+  # Example:
+  #   VAR1="first"
+  #   VAR2="second"
+  #   result=$(var:l1 "VAR1" "VAR2" "default")  # Returns "first"
+  #   result=$(var:l1 "UNSET" "VAR2" "default")  # Returns "second"
+  #   result=$(var:l1 "UNSET1" "UNSET2" "default")  # Returns "default"
+
+  local var1=$1
+  local var2=$2
+  local default=$3
+  local value1="${!var1}"
+  local value2="${!var2}"
+
+  if [ -n "$value1" ]; then
+    echo "$value1"
+  elif [ -n "$value2" ]; then
+    echo "$value2"
+  else
+    echo "$default"
+  fi
+}
+
+function val:l0() {
+  # Try value, fallback to default
+  #
+  # Arguments:
+  #   $1 - value: The value to check
+  #   $2 - default: Default value to use if value is empty
+  #
+  # Returns:
+  #   The value if non-empty, otherwise the default
+  #
+  # Example:
+  #   result=$(val:l0 "hello" "default")  # Returns "hello"
+  #   result=$(val:l0 "" "default")  # Returns "default"
+
+  local value=$1
+  local default=$2
+
+  if [ -n "$value" ]; then
+    echo "$value"
+  else
+    echo "$default"
+  fi
+}
+
+function val:l1() {
+  # Try value1, otherwise try value, fallback to default
+  #
+  # Arguments:
+  #   $1 - value1: The first value to check
+  #   $2 - value: The second value to check
+  #   $3 - default: Default value to use if both values are empty
+  #
+  # Returns:
+  #   value1 if non-empty, otherwise value if non-empty, otherwise default
+  #
+  # Example:
+  #   result=$(val:l1 "first" "second" "default")  # Returns "first"
+  #   result=$(val:l1 "" "second" "default")  # Returns "second"
+  #   result=$(val:l1 "" "" "default")  # Returns "default"
+
+  local value1=$1
+  local value=$2
+  local default=$3
+
+  if [ -n "$value1" ]; then
+    echo "$value1"
+  elif [ -n "$value" ]; then
+    echo "$value"
+  else
+    echo "$default"
+  fi
+}
+
 function args:isHelp() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--help" ]]; then echo true; else echo false; fi
