@@ -1,0 +1,17 @@
+{
+  "name": "e-bash",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Bash script enhancement framework with test optimization tools",
+  "scripts": {
+    "parse-timings": "bun bin/parse-test-timings.ts",
+    "calculate-chunks": "bun bin/calculate-optimal-chunks.ts"
+  },
+  "dependencies": {
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/xml2js": "^0.4.14",
+    "bun-types": "latest"
+  }
+}

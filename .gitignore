@@ -8,6 +8,10 @@ report/
 # test timing cache (generated from CI)
 .test-timings.json
 
+# Node/Bun dependencies
+node_modules/
+bun.lockb
+
 # IDE folders
 .vscode/
 .idea/

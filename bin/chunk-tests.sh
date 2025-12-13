@@ -41,9 +41,9 @@ fi
 # Check for timing-based optimal distribution
 TIMING_FILE="$PROJECT_ROOT/.test-timings.json"
 
-if [ -f "$TIMING_FILE" ] && command -v python3 >/dev/null 2>&1; then
+if [ -f "$TIMING_FILE" ] && command -v bun >/dev/null 2>&1; then
   # Use optimal bin-packing algorithm with timing data
-  if python3 "$SCRIPT_DIR/calculate-optimal-chunks.py" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" 2>/dev/null; then
+  if bun "$SCRIPT_DIR/calculate-optimal-chunks.ts" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" 2>/dev/null; then
     # Success - optimal distribution used
     exit 0
   else
