@@ -558,4 +558,257 @@ Describe "_commons.sh /"
       The error should eq ''
     End
   End
+
+  Describe "CI Configuration Hierarchy (4-level: Global->Pipeline->Step->Script) /"
+    # Real-world CI/CD configuration hierarchy demonstrating the requirement:
+    # Level 0 (Global): CI_GLOBAL_* - Affects all pipelines
+    # Level 1 (Pipeline): CI_PIPELINE_* - Context for entire flow (e.g., release, testing)
+    # Level 2 (Step): CI_STEP_* - Specific stage overrides (e.g., build, lint)
+    # Level 3 (Script): CI_SCRIPT_* - Individual script context (granular control)
+    # Level 3 > Level 2 > Level 1 > Level 0 > default
+
+    It "Level 0 (Global) - fallback to global when no other levels set"
+      BeforeCall "export CI_GLOBAL_DRY_RUN='true'"
+      BeforeCall "unset CI_PIPELINE_RELEASE_DRY_RUN"
+      BeforeCall "unset CI_STEP_BUILD_DRY_RUN"
+      BeforeCall "unset CI_SCRIPT_DEPLOY_DRY_RUN"
+
+      # Hierarchy: Script -> Step -> Pipeline -> Global -> default
+      When call var:l1 "CI_SCRIPT_DEPLOY_DRY_RUN" "CI_STEP_BUILD_DRY_RUN" \
+        "$(var:l1 'CI_PIPELINE_RELEASE_DRY_RUN' 'CI_GLOBAL_DRY_RUN' 'false')"
+
+      The status should be success
+      The output should eq "true"
+      The error should eq ''
+    End
+
+    It "Level 1 (Pipeline) - pipeline overrides global"
+      BeforeCall "export CI_GLOBAL_DRY_RUN='true'"
+      BeforeCall "export CI_PIPELINE_RELEASE_DRY_RUN='false'"
+      BeforeCall "unset CI_STEP_BUILD_DRY_RUN"
+      BeforeCall "unset CI_SCRIPT_DEPLOY_DRY_RUN"
+
+      When call var:l1 "CI_SCRIPT_DEPLOY_DRY_RUN" "CI_STEP_BUILD_DRY_RUN" \
+        "$(var:l1 'CI_PIPELINE_RELEASE_DRY_RUN' 'CI_GLOBAL_DRY_RUN' 'false')"
+
+      The status should be success
+      The output should eq "false"
+      The error should eq ''
+    End
+
+    It "Level 2 (Step) - step overrides pipeline and global"
+      BeforeCall "export CI_GLOBAL_DRY_RUN='true'"
+      BeforeCall "export CI_PIPELINE_RELEASE_DRY_RUN='true'"
+      BeforeCall "export CI_STEP_BUILD_DRY_RUN='false'"
+      BeforeCall "unset CI_SCRIPT_DEPLOY_DRY_RUN"
+
+      When call var:l1 "CI_SCRIPT_DEPLOY_DRY_RUN" "CI_STEP_BUILD_DRY_RUN" \
+        "$(var:l1 'CI_PIPELINE_RELEASE_DRY_RUN' 'CI_GLOBAL_DRY_RUN' 'false')"
+
+      The status should be success
+      The output should eq "false"
+      The error should eq ''
+    End
+
+    It "Level 3 (Script) - script overrides all other levels"
+      BeforeCall "export CI_GLOBAL_DRY_RUN='true'"
+      BeforeCall "export CI_PIPELINE_RELEASE_DRY_RUN='true'"
+      BeforeCall "export CI_STEP_BUILD_DRY_RUN='true'"
+      BeforeCall "export CI_SCRIPT_DEPLOY_DRY_RUN='false'"
+
+      When call var:l1 "CI_SCRIPT_DEPLOY_DRY_RUN" "CI_STEP_BUILD_DRY_RUN" \
+        "$(var:l1 'CI_PIPELINE_RELEASE_DRY_RUN' 'CI_GLOBAL_DRY_RUN' 'false')"
+
+      The status should be success
+      The output should eq "false"
+      The error should eq ''
+    End
+
+    It "Composable variable names from context - pipeline specific"
+      # Dynamic composition: CI_PIPELINE_{pipeline_name}_{config_key}
+      BeforeCall "export CI_GLOBAL_TIMEOUT='300'"
+      BeforeCall "export CI_PIPELINE_TESTING_TIMEOUT='60'"
+      BeforeCall "unset CI_STEP_LINT_TIMEOUT"
+      BeforeCall "unset CI_SCRIPT_SHELLCHECK_TIMEOUT"
+
+      pipeline="testing"
+      step="lint"
+      script="shellcheck"
+      config_key="TIMEOUT"
+
+      pipeline_var="CI_PIPELINE_${pipeline^^}_${config_key}"
+      step_var="CI_STEP_${step^^}_${config_key}"
+      script_var="CI_SCRIPT_${script^^}_${config_key}"
+
+      When call var:l1 "$script_var" "$step_var" \
+        "$(var:l1 "$pipeline_var" "CI_GLOBAL_${config_key}" '300')"
+
+      The status should be success
+      The output should eq "60"
+      The error should eq ''
+    End
+
+    It "Composable variable names - step specific override"
+      # Context: release pipeline, build step, docker script
+      BeforeCall "export CI_GLOBAL_VERBOSE='false'"
+      BeforeCall "export CI_PIPELINE_RELEASE_VERBOSE='false'"
+      BeforeCall "export CI_STEP_BUILD_VERBOSE='true'"
+      BeforeCall "unset CI_SCRIPT_DOCKER_VERBOSE"
+
+      pipeline="release"
+      step="build"
+      script="docker"
+      config_key="VERBOSE"
+
+      pipeline_var="CI_PIPELINE_${pipeline^^}_${config_key}"
+      step_var="CI_STEP_${step^^}_${config_key}"
+      script_var="CI_SCRIPT_${script^^}_${config_key}"
+
+      When call var:l1 "$script_var" "$step_var" \
+        "$(var:l1 "$pipeline_var" "CI_GLOBAL_${config_key}" 'false')"
+
+      The status should be success
+      The output should eq "true"
+      The error should eq ''
+    End
+
+    It "Multiple configuration keys - DRY_RUN, DEBUG, VERBOSE in same context"
+      # Demonstrates that different config keys can have different override levels
+      BeforeCall "export CI_GLOBAL_DRY_RUN='false'"
+      BeforeCall "export CI_GLOBAL_DEBUG='false'"
+      BeforeCall "export CI_GLOBAL_VERBOSE='false'"
+      BeforeCall "export CI_PIPELINE_TESTING_DRY_RUN='true'"
+      BeforeCall "export CI_STEP_UNIT_DEBUG='true'"
+      BeforeCall "export CI_SCRIPT_PYTEST_VERBOSE='true'"
+
+      pipeline="testing"
+      step="unit"
+      script="pytest"
+
+      # DRY_RUN: override at pipeline level
+      dry_run=$(var:l1 "CI_SCRIPT_${script^^}_DRY_RUN" "CI_STEP_${step^^}_DRY_RUN" \
+        "$(var:l1 "CI_PIPELINE_${pipeline^^}_DRY_RUN" 'CI_GLOBAL_DRY_RUN' 'false')")
+
+      # DEBUG: override at step level
+      debug=$(var:l1 "CI_SCRIPT_${script^^}_DEBUG" "CI_STEP_${step^^}_DEBUG" \
+        "$(var:l1 "CI_PIPELINE_${pipeline^^}_DEBUG" 'CI_GLOBAL_DEBUG' 'false')")
+
+      # VERBOSE: override at script level
+      verbose=$(var:l1 "CI_SCRIPT_${script^^}_VERBOSE" "CI_STEP_${step^^}_VERBOSE" \
+        "$(var:l1 "CI_PIPELINE_${pipeline^^}_VERBOSE" 'CI_GLOBAL_VERBOSE' 'false')")
+
+      When call echo "$dry_run,$debug,$verbose"
+
+      The status should be success
+      The output should eq "true,true,true"
+      The error should eq ''
+    End
+
+    It "Real-world scenario: exclude all steps except specific one"
+      # Use case: Run only 'deploy' step in 'release' pipeline
+      # Set global to skip everything, then enable only specific script
+      BeforeCall "export CI_GLOBAL_SKIP='true'"
+      BeforeCall "unset CI_PIPELINE_RELEASE_SKIP"
+      BeforeCall "unset CI_STEP_DEPLOY_SKIP"
+      BeforeCall "export CI_SCRIPT_K8S_DEPLOY_SKIP='false'"
+
+      pipeline="release"
+      step="deploy"
+      script="k8s_deploy"
+      config_key="SKIP"
+
+      pipeline_var="CI_PIPELINE_${pipeline^^}_${config_key}"
+      step_var="CI_STEP_${step^^}_${config_key}"
+      script_var="CI_SCRIPT_${script^^}_${config_key}"
+
+      When call var:l1 "$script_var" "$step_var" \
+        "$(var:l1 "$pipeline_var" "CI_GLOBAL_${config_key}" 'false')"
+
+      The status should be success
+      The output should eq "false"
+      The error should eq ''
+    End
+
+    It "Helper function pattern for CI config resolution"
+      # Demonstrates a reusable helper pattern for resolving CI config
+      BeforeCall "export CI_GLOBAL_RETRY_COUNT='3'"
+      BeforeCall "export CI_PIPELINE_RELEASE_RETRY_COUNT='5'"
+      BeforeCall "unset CI_STEP_DEPLOY_RETRY_COUNT"
+      BeforeCall "unset CI_SCRIPT_HELM_RETRY_COUNT"
+
+      # Helper function that takes context and config key
+      ci_config() {
+        local pipeline=$1
+        local step=$2
+        local script=$3
+        local config_key=$4
+        local default_value=${5:-""}
+
+        local pipeline_var="CI_PIPELINE_${pipeline^^}_${config_key}"
+        local step_var="CI_STEP_${step^^}_${config_key}"
+        local script_var="CI_SCRIPT_${script^^}_${config_key}"
+        local global_var="CI_GLOBAL_${config_key}"
+
+        var:l1 "$script_var" "$step_var" \
+          "$(var:l1 "$pipeline_var" "$global_var" "$default_value")"
+      }
+
+      When call ci_config "release" "deploy" "helm" "RETRY_COUNT" "1"
+
+      The status should be success
+      The output should eq "5"
+      The error should eq ''
+    End
+
+    It "Complex scenario: multiple pipelines with different configurations"
+      # Testing pipeline: fast, minimal retries
+      # Release pipeline: thorough, more retries
+      BeforeCall "export CI_GLOBAL_RETRY_COUNT='3'"
+      BeforeCall "export CI_PIPELINE_TESTING_RETRY_COUNT='1'"
+      BeforeCall "export CI_PIPELINE_RELEASE_RETRY_COUNT='5'"
+      BeforeCall "unset CI_STEP_TEST_RETRY_COUNT"
+      BeforeCall "unset CI_SCRIPT_PYTEST_RETRY_COUNT"
+
+      # Get retry count for testing pipeline
+      testing_retries=$(var:l1 "CI_SCRIPT_PYTEST_RETRY_COUNT" "CI_STEP_TEST_RETRY_COUNT" \
+        "$(var:l1 'CI_PIPELINE_TESTING_RETRY_COUNT' 'CI_GLOBAL_RETRY_COUNT' '3')")
+
+      # Get retry count for release pipeline
+      release_retries=$(var:l1 "CI_SCRIPT_PYTEST_RETRY_COUNT" "CI_STEP_TEST_RETRY_COUNT" \
+        "$(var:l1 'CI_PIPELINE_RELEASE_RETRY_COUNT' 'CI_GLOBAL_RETRY_COUNT' '3')")
+
+      When call echo "$testing_retries,$release_retries"
+
+      The status should be success
+      The output should eq "1,5"
+      The error should eq ''
+    End
+
+    It "Strict naming convention enforcement through variable composition"
+      # Ensures all variable names follow the strict pattern:
+      # CI_{LEVEL}_{CONTEXT}_{CONFIG_KEY}
+      BeforeCall "export CI_GLOBAL_MAX_PARALLEL='4'"
+      BeforeCall "export CI_PIPELINE_CI_CD_MAX_PARALLEL='8'"
+      BeforeCall "export CI_STEP_INTEGRATION_MAX_PARALLEL='2'"
+      BeforeCall "unset CI_SCRIPT_API_TESTS_MAX_PARALLEL"
+
+      # Context with underscore in name (ci_cd pipeline, api_tests script)
+      pipeline="ci_cd"
+      step="integration"
+      script="api_tests"
+      config_key="MAX_PARALLEL"
+
+      # Variable names preserve underscores and use uppercase
+      pipeline_var="CI_PIPELINE_${pipeline^^}_${config_key}"
+      step_var="CI_STEP_${step^^}_${config_key}"
+      script_var="CI_SCRIPT_${script^^}_${config_key}"
+
+      When call var:l1 "$script_var" "$step_var" \
+        "$(var:l1 "$pipeline_var" "CI_GLOBAL_${config_key}" '1')"
+
+      The status should be success
+      The output should eq "2"
+      The error should eq ''
+    End
+  End
 End
