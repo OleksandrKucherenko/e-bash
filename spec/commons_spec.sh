@@ -379,7 +379,10 @@ Describe "_commons.sh /"
       BeforeCall "export VAR3='level3'"
 
       # var:l3 pattern: var:l1 var1 var2 (var:l1 var3 default)
-      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      test_var_l3_first() {
+        var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      }
+      When call test_var_l3_first
 
       The status should be success
       The output should eq "level1"
@@ -391,7 +394,10 @@ Describe "_commons.sh /"
       BeforeCall "export VAR2='level2'"
       BeforeCall "export VAR3='level3'"
 
-      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      test_var_l3_second() {
+        var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      }
+      When call test_var_l3_second
 
       The status should be success
       The output should eq "level2"
@@ -403,7 +409,10 @@ Describe "_commons.sh /"
       BeforeCall "unset VAR2"
       BeforeCall "export VAR3='level3'"
 
-      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      test_var_l3_third() {
+        var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      }
+      When call test_var_l3_third
 
       The status should be success
       The output should eq "level3"
@@ -415,7 +424,10 @@ Describe "_commons.sh /"
       BeforeCall "unset VAR2"
       BeforeCall "unset VAR3"
 
-      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      test_var_l3_default() {
+        var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+      }
+      When call test_var_l3_default
 
       The status should be success
       The output should eq "default"
@@ -431,13 +443,16 @@ Describe "_commons.sh /"
       BeforeCall "export VAR3_COMMONS_SPEC='script_specific_value'"
 
       # Construct var4 name from var3 base + script name
-      var3_base="VAR3"
-      script_name="commons_spec"
-      script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-      var4="${var3_base}_${script_name_upper}"
+      test_var_l4_script_specific() {
+        local var3_base="VAR3"
+        local script_name="commons_spec"
+        local script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+        local var4="${var3_base}_${script_name_upper}"
 
-      # var:l4 pattern: var:l1 var1 var2 (var:l1 var3 var4 default)
-      When call var:l1 "VAR1" "VAR2" "$(var:l1 "$var3_base" "$var4" 'default')"
+        # var:l4 pattern: var:l1 var1 var2 (var:l1 var3 var4 default)
+        var:l1 "VAR1" "VAR2" "$(var:l1 "$var3_base" "$var4" 'default')"
+      }
+      When call test_var_l4_script_specific
 
       The status should be success
       The output should eq "script_specific_value"
@@ -450,12 +465,15 @@ Describe "_commons.sh /"
       BeforeCall "unset VAR3"
       BeforeCall "unset VAR3_COMMONS_SPEC"
 
-      var3_base="VAR3"
-      script_name="commons_spec"
-      script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-      var4="${var3_base}_${script_name_upper}"
+      test_var_l4_fallback() {
+        local var3_base="VAR3"
+        local script_name="commons_spec"
+        local script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+        local var4="${var3_base}_${script_name_upper}"
 
-      When call var:l1 "VAR1" "VAR2" "$(var:l1 "$var3_base" "$var4" 'fallback_value')"
+        var:l1 "VAR1" "VAR2" "$(var:l1 "$var3_base" "$var4" 'fallback_value')"
+      }
+      When call test_var_l4_fallback
 
       The status should be success
       The output should eq "fallback_value"
@@ -470,14 +488,17 @@ Describe "_commons.sh /"
       BeforeCall "unset PROJECT_CONFIG"
       BeforeCall "export PROJECT_CONFIG_TEST_RUNNER='test_runner_override'"
 
-      base_var="PROJECT_CONFIG"
-      script_context="test_runner"
-      script_context_upper=$(echo "$script_context" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-      script_specific_var="${base_var}_${script_context_upper}"
+      test_var_l4_multi_script() {
+        local base_var="PROJECT_CONFIG"
+        local script_context="test_runner"
+        local script_context_upper=$(echo "$script_context" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+        local script_specific_var="${base_var}_${script_context_upper}"
 
-      # 4-level nested pattern
-      When call var:l1 "GLOBAL_CONFIG" "USER_CONFIG" \
-        "$(var:l1 "$base_var" "$script_specific_var" 'default_config')"
+        # 4-level nested pattern
+        var:l1 "GLOBAL_CONFIG" "USER_CONFIG" \
+          "$(var:l1 "$base_var" "$script_specific_var" 'default_config')"
+      }
+      When call test_var_l4_multi_script
 
       The status should be success
       The output should eq "test_runner_override"
@@ -490,7 +511,10 @@ Describe "_commons.sh /"
 
       # Pattern: try hardcoded value, then env var1, then env var2, then default
       # val:l1 "hardcoded" (var:l1 ENV_VAR1 ENV_VAR2 "default")
-      When call val:l1 "" "$(var:l1 'ENV_VAR1' 'ENV_VAR2' 'final_default')" "should_not_reach"
+      test_mixed_val_var() {
+        val:l1 "" "$(var:l1 'ENV_VAR1' 'ENV_VAR2' 'final_default')" "should_not_reach"
+      }
+      When call test_mixed_val_var
 
       The status should be success
       The output should eq "env_value"
@@ -503,18 +527,21 @@ Describe "_commons.sh /"
       BeforeCall "unset CONFIG_PATH"
       BeforeCall "export CONFIG_PATH_INSTALLER='/opt/custom/path'"
 
-      cli_arg=""  # No CLI argument provided
-      config_base="CONFIG_PATH"
-      script_name="installer"
-      script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]')
-      config_script_specific="${config_base}_${script_name_upper}"
-
       # Multi-level composition:
       # val:l1 CLI_ARG (var:l1 ENV_VAR (var:l1 CONFIG_PATH CONFIG_PATH_INSTALLER default))
-      When call val:l1 "$cli_arg" \
-        "$(var:l1 'ENV_VAR' "$config_base" \
-          "$(var:l1 "$config_base" "$config_script_specific" '/usr/local/default')")" \
-        "unreachable"
+      test_complex_real_world() {
+        local cli_arg=""  # No CLI argument provided
+        local config_base="CONFIG_PATH"
+        local script_name="installer"
+        local script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]')
+        local config_script_specific="${config_base}_${script_name_upper}"
+
+        val:l1 "$cli_arg" \
+          "$(var:l1 'ENV_VAR' "$config_base" \
+            "$(var:l1 "$config_base" "$config_script_specific" '/usr/local/default')")" \
+          "unreachable"
+      }
+      When call test_complex_real_world
 
       The status should be success
       The output should eq "/opt/custom/path"
@@ -543,15 +570,18 @@ Describe "_commons.sh /"
       BeforeCall "unset APP_CONFIG_DEV_AUTH"
       BeforeCall "export APP_CONFIG_DEV_AUTH_OAUTH='oauth2_enabled'"
 
-      app="APP_CONFIG"
-      env="DEV"
-      module="AUTH"
-      feature="OAUTH"
-      composed_var="${app}_${env}_${module}_${feature}"
+      test_progressive_specificity() {
+        local app="APP_CONFIG"
+        local env="DEV"
+        local module="AUTH"
+        local feature="OAUTH"
+        local composed_var="${app}_${env}_${module}_${feature}"
 
-      # Try base configs with progressive specificity
-      When call var:l1 "$app" "${app}_${env}" \
-        "$(var:l1 "${app}_${env}_${module}" "$composed_var" 'disabled')"
+        # Try base configs with progressive specificity
+        var:l1 "$app" "${app}_${env}" \
+          "$(var:l1 "${app}_${env}_${module}" "$composed_var" 'disabled')"
+      }
+      When call test_progressive_specificity
 
       The status should be success
       The output should eq "oauth2_enabled"
@@ -574,8 +604,11 @@ Describe "_commons.sh /"
       BeforeCall "unset CI_SCRIPT_DEPLOY_DRY_RUN"
 
       # Hierarchy: Script -> Step -> Pipeline -> Global -> default
-      When call var:l1 "CI_SCRIPT_DEPLOY_DRY_RUN" "CI_STEP_BUILD_DRY_RUN" \
-        "$(var:l1 'CI_PIPELINE_RELEASE_DRY_RUN' 'CI_GLOBAL_DRY_RUN' 'false')"
+      test_ci_level0() {
+        var:l1 "CI_SCRIPT_DEPLOY_DRY_RUN" "CI_STEP_BUILD_DRY_RUN" \
+          "$(var:l1 'CI_PIPELINE_RELEASE_DRY_RUN' 'CI_GLOBAL_DRY_RUN' 'false')"
+      }
+      When call test_ci_level0
 
       The status should be success
       The output should eq "true"
@@ -631,17 +664,20 @@ Describe "_commons.sh /"
       BeforeCall "unset CI_STEP_LINT_TIMEOUT"
       BeforeCall "unset CI_SCRIPT_SHELLCHECK_TIMEOUT"
 
-      pipeline="testing"
-      step="lint"
-      script="shellcheck"
-      config_key="TIMEOUT"
+      test_ci_composable_pipeline() {
+        local pipeline="testing"
+        local step="lint"
+        local script="shellcheck"
+        local config_key="TIMEOUT"
 
-      pipeline_var="CI_PIPELINE_${pipeline^^}_${config_key}"
-      step_var="CI_STEP_${step^^}_${config_key}"
-      script_var="CI_SCRIPT_${script^^}_${config_key}"
+        local pipeline_var="CI_PIPELINE_${pipeline^^}_${config_key}"
+        local step_var="CI_STEP_${step^^}_${config_key}"
+        local script_var="CI_SCRIPT_${script^^}_${config_key}"
 
-      When call var:l1 "$script_var" "$step_var" \
-        "$(var:l1 "$pipeline_var" "CI_GLOBAL_${config_key}" '300')"
+        var:l1 "$script_var" "$step_var" \
+          "$(var:l1 "$pipeline_var" "CI_GLOBAL_${config_key}" '300')"
+      }
+      When call test_ci_composable_pipeline
 
       The status should be success
       The output should eq "60"
@@ -681,23 +717,26 @@ Describe "_commons.sh /"
       BeforeCall "export CI_STEP_UNIT_DEBUG='true'"
       BeforeCall "export CI_SCRIPT_PYTEST_VERBOSE='true'"
 
-      pipeline="testing"
-      step="unit"
-      script="pytest"
+      test_ci_multiple_keys() {
+        local pipeline="testing"
+        local step="unit"
+        local script="pytest"
 
-      # DRY_RUN: override at pipeline level
-      dry_run=$(var:l1 "CI_SCRIPT_${script^^}_DRY_RUN" "CI_STEP_${step^^}_DRY_RUN" \
-        "$(var:l1 "CI_PIPELINE_${pipeline^^}_DRY_RUN" 'CI_GLOBAL_DRY_RUN' 'false')")
+        # DRY_RUN: override at pipeline level
+        local dry_run=$(var:l1 "CI_SCRIPT_${script^^}_DRY_RUN" "CI_STEP_${step^^}_DRY_RUN" \
+          "$(var:l1 "CI_PIPELINE_${pipeline^^}_DRY_RUN" 'CI_GLOBAL_DRY_RUN' 'false')")
 
-      # DEBUG: override at step level
-      debug=$(var:l1 "CI_SCRIPT_${script^^}_DEBUG" "CI_STEP_${step^^}_DEBUG" \
-        "$(var:l1 "CI_PIPELINE_${pipeline^^}_DEBUG" 'CI_GLOBAL_DEBUG' 'false')")
+        # DEBUG: override at step level
+        local debug=$(var:l1 "CI_SCRIPT_${script^^}_DEBUG" "CI_STEP_${step^^}_DEBUG" \
+          "$(var:l1 "CI_PIPELINE_${pipeline^^}_DEBUG" 'CI_GLOBAL_DEBUG' 'false')")
 
-      # VERBOSE: override at script level
-      verbose=$(var:l1 "CI_SCRIPT_${script^^}_VERBOSE" "CI_STEP_${step^^}_VERBOSE" \
-        "$(var:l1 "CI_PIPELINE_${pipeline^^}_VERBOSE" 'CI_GLOBAL_VERBOSE' 'false')")
+        # VERBOSE: override at script level
+        local verbose=$(var:l1 "CI_SCRIPT_${script^^}_VERBOSE" "CI_STEP_${step^^}_VERBOSE" \
+          "$(var:l1 "CI_PIPELINE_${pipeline^^}_VERBOSE" 'CI_GLOBAL_VERBOSE' 'false')")
 
-      When call echo "$dry_run,$debug,$verbose"
+        echo "$dry_run,$debug,$verbose"
+      }
+      When call test_ci_multiple_keys
 
       The status should be success
       The output should eq "true,true,true"
@@ -769,15 +808,18 @@ Describe "_commons.sh /"
       BeforeCall "unset CI_STEP_TEST_RETRY_COUNT"
       BeforeCall "unset CI_SCRIPT_PYTEST_RETRY_COUNT"
 
-      # Get retry count for testing pipeline
-      testing_retries=$(var:l1 "CI_SCRIPT_PYTEST_RETRY_COUNT" "CI_STEP_TEST_RETRY_COUNT" \
-        "$(var:l1 'CI_PIPELINE_TESTING_RETRY_COUNT' 'CI_GLOBAL_RETRY_COUNT' '3')")
+      test_ci_multiple_pipelines() {
+        # Get retry count for testing pipeline
+        local testing_retries=$(var:l1 "CI_SCRIPT_PYTEST_RETRY_COUNT" "CI_STEP_TEST_RETRY_COUNT" \
+          "$(var:l1 'CI_PIPELINE_TESTING_RETRY_COUNT' 'CI_GLOBAL_RETRY_COUNT' '3')")
 
-      # Get retry count for release pipeline
-      release_retries=$(var:l1 "CI_SCRIPT_PYTEST_RETRY_COUNT" "CI_STEP_TEST_RETRY_COUNT" \
-        "$(var:l1 'CI_PIPELINE_RELEASE_RETRY_COUNT' 'CI_GLOBAL_RETRY_COUNT' '3')")
+        # Get retry count for release pipeline
+        local release_retries=$(var:l1 "CI_SCRIPT_PYTEST_RETRY_COUNT" "CI_STEP_TEST_RETRY_COUNT" \
+          "$(var:l1 'CI_PIPELINE_RELEASE_RETRY_COUNT' 'CI_GLOBAL_RETRY_COUNT' '3')")
 
-      When call echo "$testing_retries,$release_retries"
+        echo "$testing_retries,$release_retries"
+      }
+      When call test_ci_multiple_pipelines
 
       The status should be success
       The output should eq "1,5"
