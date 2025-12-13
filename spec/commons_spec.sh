@@ -368,4 +368,194 @@ Describe "_commons.sh /"
       The error should eq ''
     End
   End
+
+  Describe "Composable fallback patterns (4-level nesting) /"
+    # These tests demonstrate how var:l1 and val:l1 can be composed
+    # to create deeper fallback chains, simulating var:l3, var:l4, etc.
+
+    It "Simulates var:l3 with nested var:l1 calls - first level wins"
+      BeforeCall "export VAR1='level1'"
+      BeforeCall "export VAR2='level2'"
+      BeforeCall "export VAR3='level3'"
+
+      # var:l3 pattern: var:l1 var1 var2 (var:l1 var3 default)
+      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+
+      The status should be success
+      The output should eq "level1"
+      The error should eq ''
+    End
+
+    It "Simulates var:l3 with nested var:l1 calls - second level wins"
+      BeforeCall "unset VAR1"
+      BeforeCall "export VAR2='level2'"
+      BeforeCall "export VAR3='level3'"
+
+      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+
+      The status should be success
+      The output should eq "level2"
+      The error should eq ''
+    End
+
+    It "Simulates var:l3 with nested var:l1 calls - third level wins"
+      BeforeCall "unset VAR1"
+      BeforeCall "unset VAR2"
+      BeforeCall "export VAR3='level3'"
+
+      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+
+      The status should be success
+      The output should eq "level3"
+      The error should eq ''
+    End
+
+    It "Simulates var:l3 with nested var:l1 calls - default wins"
+      BeforeCall "unset VAR1"
+      BeforeCall "unset VAR2"
+      BeforeCall "unset VAR3"
+
+      When call var:l1 "VAR1" "VAR2" "$(var:l1 'VAR3' 'UNSET' 'default')"
+
+      The status should be success
+      The output should eq "default"
+      The error should eq ''
+    End
+
+    It "Simulates var:l4 with composable variable name - var4 pattern"
+      # Simulate a script-specific configuration pattern:
+      # Try VAR1 -> VAR2 -> VAR3 -> VAR3_COMMONS_SPEC -> default
+      BeforeCall "unset VAR1"
+      BeforeCall "unset VAR2"
+      BeforeCall "unset VAR3"
+      BeforeCall "export VAR3_COMMONS_SPEC='script_specific_value'"
+
+      # Construct var4 name from var3 base + script name
+      var3_base="VAR3"
+      script_name="commons_spec"
+      script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+      var4="${var3_base}_${script_name_upper}"
+
+      # var:l4 pattern: var:l1 var1 var2 (var:l1 var3 var4 default)
+      When call var:l1 "VAR1" "VAR2" "$(var:l1 "$var3_base" "$var4" 'default')"
+
+      The status should be success
+      The output should eq "script_specific_value"
+      The error should eq ''
+    End
+
+    It "Simulates var:l4 with composable variable name - fallback to default"
+      BeforeCall "unset VAR1"
+      BeforeCall "unset VAR2"
+      BeforeCall "unset VAR3"
+      BeforeCall "unset VAR3_COMMONS_SPEC"
+
+      var3_base="VAR3"
+      script_name="commons_spec"
+      script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+      var4="${var3_base}_${script_name_upper}"
+
+      When call var:l1 "VAR1" "VAR2" "$(var:l1 "$var3_base" "$var4" 'fallback_value')"
+
+      The status should be success
+      The output should eq "fallback_value"
+      The error should eq ''
+    End
+
+    It "Simulates var:l4 with composable variable name - multiple scripts pattern"
+      # Demonstrates a real-world pattern for script-specific overrides:
+      # Global -> User -> Project -> Script-specific -> Default
+      BeforeCall "unset GLOBAL_CONFIG"
+      BeforeCall "unset USER_CONFIG"
+      BeforeCall "unset PROJECT_CONFIG"
+      BeforeCall "export PROJECT_CONFIG_TEST_RUNNER='test_runner_override'"
+
+      base_var="PROJECT_CONFIG"
+      script_context="test_runner"
+      script_context_upper=$(echo "$script_context" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+      script_specific_var="${base_var}_${script_context_upper}"
+
+      # 4-level nested pattern
+      When call var:l1 "GLOBAL_CONFIG" "USER_CONFIG" \
+        "$(var:l1 "$base_var" "$script_specific_var" 'default_config')"
+
+      The status should be success
+      The output should eq "test_runner_override"
+      The error should eq ''
+    End
+
+    It "Combines val:l1 and var:l1 for mixed value/variable fallbacks"
+      BeforeCall "unset ENV_VAR1"
+      BeforeCall "export ENV_VAR2='env_value'"
+
+      # Pattern: try hardcoded value, then env var1, then env var2, then default
+      # val:l1 "hardcoded" (var:l1 ENV_VAR1 ENV_VAR2 "default")
+      When call val:l1 "" "$(var:l1 'ENV_VAR1' 'ENV_VAR2' 'final_default')" "should_not_reach"
+
+      The status should be success
+      The output should eq "env_value"
+      The error should eq ''
+    End
+
+    It "Complex real-world pattern: CLI arg -> ENV var -> Config file -> Script-specific -> Default"
+      # Simulates: CLI_ARG -> ENV_VAR -> CONFIG_PATH -> CONFIG_PATH_SCRIPTNAME -> hardcoded default
+      BeforeCall "unset ENV_VAR"
+      BeforeCall "unset CONFIG_PATH"
+      BeforeCall "export CONFIG_PATH_INSTALLER='/opt/custom/path'"
+
+      cli_arg=""  # No CLI argument provided
+      config_base="CONFIG_PATH"
+      script_name="installer"
+      script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]')
+      config_script_specific="${config_base}_${script_name_upper}"
+
+      # Multi-level composition:
+      # val:l1 CLI_ARG (var:l1 ENV_VAR (var:l1 CONFIG_PATH CONFIG_PATH_INSTALLER default))
+      When call val:l1 "$cli_arg" \
+        "$(var:l1 'ENV_VAR' "$config_base" \
+          "$(var:l1 "$config_base" "$config_script_specific" '/usr/local/default')")" \
+        "unreachable"
+
+      The status should be success
+      The output should eq "/opt/custom/path"
+      The error should eq ''
+    End
+
+    It "Deep nesting with all levels empty except final default"
+      BeforeCall "unset L1"
+      BeforeCall "unset L2"
+      BeforeCall "unset L3"
+      BeforeCall "unset L4"
+
+      # 4-level deep nesting, all empty
+      When call var:l1 "L1" "L2" \
+        "$(var:l1 'L3' 'L4' 'ultimate_fallback')"
+
+      The status should be success
+      The output should eq "ultimate_fallback"
+      The error should eq ''
+    End
+
+    It "Demonstrates variable name composition with multiple separators"
+      # Pattern: APP_ENV_MODULE_FEATURE
+      BeforeCall "unset APP_CONFIG"
+      BeforeCall "unset APP_CONFIG_DEV"
+      BeforeCall "unset APP_CONFIG_DEV_AUTH"
+      BeforeCall "export APP_CONFIG_DEV_AUTH_OAUTH='oauth2_enabled'"
+
+      app="APP_CONFIG"
+      env="DEV"
+      module="AUTH"
+      feature="OAUTH"
+      composed_var="${app}_${env}_${module}_${feature}"
+
+      # Try base configs with progressive specificity
+      When call var:l1 "$app" "${app}_${env}" \
+        "$(var:l1 "${app}_${env}_${module}" "$composed_var" 'disabled')"
+
+      The status should be success
+      The output should eq "oauth2_enabled"
+      The error should eq ''
+    End
+  End
 End
