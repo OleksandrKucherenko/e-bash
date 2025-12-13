@@ -1,1 +1,1 @@
-          shellspec --kcov --output junit:report/junit.xml $CHUNK_FILES 2>&1 | tee /tmp/test_output.txt || {
+          shellspec --kcov $CHUNK_FILES 2>&1 | tee /tmp/test_output.txt || {
