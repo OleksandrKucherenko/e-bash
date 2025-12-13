@@ -17,9 +17,13 @@ env:
 
 jobs:
   shellspec-macos:
-    name: "MacOS"
+    name: "MacOS (chunk ${{ matrix.chunk }})"
     runs-on: macos-latest
     if: "!contains(github.event.head_commit.message, 'ci skip')"
+    strategy:
+      fail-fast: false
+      matrix:
+        chunk: [0, 1, 2, 3]
     steps:
       - name: Checkout Code with full history
         uses: actions/checkout@v4
@@ -127,14 +131,26 @@ jobs:
           echo "Dependencies loaded via DIRENV with CI auto-install mode"
           brew cleanup
 
-      - name: Run shellspec Tests
+      - name: Run shellspec Tests (chunk ${{ matrix.chunk }})
         run: |
+          # Get test files for this chunk
+          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }})
+
+          if [ -z "$CHUNK_FILES" ]; then
+            echo "No test files for chunk ${{ matrix.chunk }}"
+            exit 0
+          fi
+
+          echo "Running tests for chunk ${{ matrix.chunk }}:"
+          echo "$CHUNK_FILES"
+          echo ""
+
           # Environment variables from .envrc are now available
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
           # even when all tests pass. We capture output and check for successful test completion.
           # Using tee to save output to log file while displaying it
           set -o pipefail  # Make pipe return first non-zero exit code
-          shellspec 2>&1 | tee /tmp/test_output.txt || {
+          shellspec $CHUNK_FILES 2>&1 | tee /tmp/test_output.txt || {
             exit_code=${PIPESTATUS[0]}  # Get shellspec exit code, not tee's
             echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
 
@@ -173,10 +189,14 @@ jobs:
           fi
   
   shellspec-ubuntu:
-    name: "Ubuntu"
+    name: "Ubuntu (chunk ${{ matrix.chunk }})"
     # kcov only works on ubuntu 22.04, on ubuntu-latest installation fails
     runs-on: ubuntu-22.04
     if: "!contains(github.event.head_commit.message, 'ci skip')"
+    strategy:
+      fail-fast: false
+      matrix:
+        chunk: [0, 1, 2, 3]
     steps:
       - name: Checkout Code with full history
         uses: actions/checkout@v4
@@ -313,15 +333,27 @@ jobs:
           echo "Dependencies loaded via DIRENV with CI auto-install mode"
           brew cleanup
 
-      - name: Run shellspec tests with coverage
+      - name: Run shellspec tests with coverage (chunk ${{ matrix.chunk }})
         run: |
+          # Get test files for this chunk
+          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }})
+
+          if [ -z "$CHUNK_FILES" ]; then
+            echo "No test files for chunk ${{ matrix.chunk }}"
+            exit 0
+          fi
+
+          echo "Running tests for chunk ${{ matrix.chunk }}:"
+          echo "$CHUNK_FILES"
+          echo ""
+
           # Environment variables from .envrc are now available (includes GNU tools setup)
           # Run with kcov to generate coverage reports
           # Note: shellspec 0.28.1 has a bug with pop_var_context that causes exit code 102
           # even when all tests pass. We capture output and check for successful test completion.
           # Using tee to save output to log file while displaying it
           set -o pipefail  # Make pipe return first non-zero exit code
-          shellspec --kcov 2>&1 | tee /tmp/test_output.txt || {
+          shellspec --kcov $CHUNK_FILES 2>&1 | tee /tmp/test_output.txt || {
             exit_code=${PIPESTATUS[0]}  # Get shellspec exit code, not tee's
             echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
 
@@ -365,13 +397,14 @@ jobs:
           # Extract coverage percentage from cobertura.xml
           if [ -f coverage/cobertura.xml ]; then
             coverage=$(grep -oP 'line-rate="\K[0-9.]+' coverage/cobertura.xml | head -1 | awk '{printf "%.1f%%", $1*100}')
-            echo "## 📊 Code Coverage Report" >> $GITHUB_STEP_SUMMARY
+            echo "## 📊 Code Coverage Report (chunk ${{ matrix.chunk }})" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Line Coverage:** $coverage" >> $GITHUB_STEP_SUMMARY
+            echo "**Line Coverage (partial):** $coverage" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "📁 Full HTML report available in workflow artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "ℹ️ Complete coverage shown in Codecov after all chunks complete" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ Coverage report not generated" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ Coverage report not generated for chunk ${{ matrix.chunk }}" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload coverage to Codecov
@@ -379,8 +412,8 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage/cobertura.xml
-          flags: shellspec-ubuntu
-          name: shellspec-ubuntu-22.04
+          flags: shellspec-ubuntu,chunk-${{ matrix.chunk }}
+          name: shellspec-ubuntu-22.04-chunk-${{ matrix.chunk }}
           fail_ci_if_error: false
           verbose: true
           # Override branch detection for master branch pushes
@@ -393,7 +426,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-ubuntu
+          name: coverage-report-ubuntu-chunk-${{ matrix.chunk }}
           path: coverage/
           retention-days: 30
 
@@ -407,7 +440,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-ubuntu
+          name: test-results-ubuntu-chunk-${{ matrix.chunk }}
           path: report/
           retention-days: 30
 
