@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="spec/arguments_spec.sh" tests="5" failures="0" errors="0" time="2.345">
+    <testcase classname="spec/arguments_spec.sh" name="On no ARGS_DEFINITION provided, expected fallback to predefined flags" time="0.234"/>
+    <testcase classname="spec/arguments_spec.sh" name="ARGS_DEFINITION set to '-h,--help' produce help env variable with value 1" time="0.156"/>
+    <testcase classname="spec/arguments_spec.sh" name="Extract argument after --id flag into args_pno variable" time="0.312"/>
+    <testcase classname="spec/arguments_spec.sh" name="Extract value into args_pno variable from key=value argument" time="0.289"/>
+    <testcase classname="spec/arguments_spec.sh" name="Force empty value into args_pno variable from key=value argument" time="0.354"/>
+  </testsuite>
+  <testsuite name="spec/commons_spec.sh" tests="3" failures="0" errors="0" time="1.567">
+    <testcase classname="spec/commons_spec.sh" name="commons:script_dir returns script directory" time="0.523"/>
+    <testcase classname="spec/commons_spec.sh" name="commons:is_function returns true for functions" time="0.489"/>
+    <testcase classname="spec/commons_spec.sh" name="commons:is_function returns false for non-functions" time="0.555"/>
+  </testsuite>
+  <testsuite name="spec/bin/git.conventional-commits_spec.sh" tests="2" failures="0" errors="0" time="0.876">
+    <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="parse conventional commit message" time="0.456"/>
+    <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="validate commit type" time="0.420"/>
+  </testsuite>
+</testsuites>

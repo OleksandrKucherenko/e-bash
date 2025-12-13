@@ -478,7 +478,7 @@ jobs:
           # Parse JUnit XML reports and update timing data
           if [ -d report ] && ls report/*.xml >/dev/null 2>&1; then
             echo "📊 Parsing test timing data from JUnit XML..."
-            bun bin/parse-test-timings.ts .test-timings.json report/*.xml || {
+            bun bin/junit/parse-test-timings.ts .test-timings.json report/*.xml || {
               echo "⚠️  Failed to parse timing data, keeping existing cache"
             }
           else

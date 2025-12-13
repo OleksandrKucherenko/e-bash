@@ -1,10 +1,5 @@
 {
-  "name": "e-bash",
-  "version": "1.1.0",
-  "private": true,
-  "description": "Bash script enhancement framework with test optimization tools",
-  "scripts": {
-    "parse-timings": "bun bin/parse-test-timings.ts",
-    "calculate-chunks": "bun bin/calculate-optimal-chunks.ts"
-  }
+  "_comment": "DEPRECATED: This file has been moved to bin/junit/package.json. Please delete this file.",
+  "name": "DEPRECATED",
+  "private": true
 }

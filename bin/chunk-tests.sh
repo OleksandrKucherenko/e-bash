@@ -4,11 +4,18 @@
 # chunk-tests.sh - Divide test files into chunks for parallel execution
 #
 # Usage:
-#   chunk-tests.sh <total_chunks> <chunk_index>
+#   chunk-tests.sh <total_chunks> <chunk_index> [--granularity=file|example|hybrid]
 #
 # Example:
-#   chunk-tests.sh 4 0  # Returns test files for chunk 0 of 4
-#   chunk-tests.sh 4 1  # Returns test files for chunk 1 of 4
+#   chunk-tests.sh 4 0                     # Returns test files for chunk 0 of 4 (file granularity)
+#   chunk-tests.sh 4 1 --granularity=file  # Explicit file granularity
+#   chunk-tests.sh 4 2 --granularity=example  # Per-example distribution
+#   chunk-tests.sh 4 3 --granularity=hybrid   # Auto-split large files
+#
+# Granularity options:
+#   file (default): Distribute whole spec files
+#   example:        Distribute individual examples (requires v2.0 timing data)
+#   hybrid:         Auto-split large files into examples when beneficial
 #
 # This script distributes test files across chunks using:
 # 1. Optimal bin-packing based on historical timing data (if available)
@@ -16,6 +23,13 @@
 # 3. Simple alphabetical distribution (legacy fallback)
 #
 # Timing data is cached in .test-timings.json and generated from JUnit XML reports.
+
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-12-13
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 
 set -euo pipefail
 
@@ -26,6 +40,22 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Parse arguments
 TOTAL_CHUNKS="${1:-4}"
 CHUNK_INDEX="${2:-0}"
+GRANULARITY=""
+
+# Parse optional arguments
+shift 2 2>/dev/null || true
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --granularity=*)
+      GRANULARITY="${1#*=}"
+      shift
+      ;;
+    *)
+      echo "Warning: Unknown argument: $1" >&2
+      shift
+      ;;
+  esac
+done
 
 # Validate arguments
 if ! [[ "$TOTAL_CHUNKS" =~ ^[0-9]+$ ]] || [ "$TOTAL_CHUNKS" -lt 1 ]; then
@@ -38,18 +68,36 @@ if ! [[ "$CHUNK_INDEX" =~ ^[0-9]+$ ]] || [ "$CHUNK_INDEX" -ge "$TOTAL_CHUNKS" ];
   exit 1
 fi
 
+# Validate granularity
+if [ -n "$GRANULARITY" ] && [[ ! "$GRANULARITY" =~ ^(file|example|hybrid)$ ]]; then
+  echo "Warning: Invalid granularity '$GRANULARITY', using 'file'" >&2
+  GRANULARITY="file"
+fi
+
+# Build granularity argument if specified
+GRANULARITY_ARG=""
+if [ -n "$GRANULARITY" ]; then
+  GRANULARITY_ARG="--granularity=$GRANULARITY"
+fi
+
 # Check for timing-based optimal distribution
 TIMING_FILE="$PROJECT_ROOT/.test-timings.json"
+JUNIT_SCRIPT_DIR="$SCRIPT_DIR/junit"
 
-if [ -f "$TIMING_FILE" ] && command -v bun >/dev/null 2>&1; then
+if [ -f "$TIMING_FILE" ] && command -v bun >/dev/null 2>&1 && [ -f "$JUNIT_SCRIPT_DIR/calculate-optimal-chunks.ts" ]; then
   # Use optimal bin-packing algorithm with timing data
-  if bun "$SCRIPT_DIR/calculate-optimal-chunks.ts" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" 2>/dev/null; then
+  if bun "$JUNIT_SCRIPT_DIR/calculate-optimal-chunks.ts" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" $GRANULARITY_ARG 2>/dev/null; then
     # Success - optimal distribution used
     exit 0
   else
     # Fall through to fallback method
     echo "⚠️  Failed to use timing-based distribution, falling back to simple method" >&2
   fi
+fi
+
+# Fallback: Simple alphabetical distribution (file-level only)
+if [ -n "$GRANULARITY" ] && [ "$GRANULARITY" != "file" ]; then
+  echo "⚠️  Fallback mode only supports file granularity, ignoring '$GRANULARITY'" >&2
 fi
 
 # Find all test files

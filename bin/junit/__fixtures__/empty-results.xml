@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Edge case: Empty test suite -->
+<testsuites>
+  <testsuite name="empty-suite" tests="0" failures="0" errors="0" time="0">
+  </testsuite>
+</testsuites>
