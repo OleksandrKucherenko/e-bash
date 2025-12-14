@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-23
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -475,6 +475,61 @@ function val:l1() {
   else
     echo "$default"
   fi
+}
+
+function to:slug() {
+  # Convert any string to a filesystem-safe slug
+  #
+  # Arguments:
+  #   $1 - string: The string to convert to slug
+  #   $2 - separator: The separator to use (default: "_")
+  #   $3 - trim: Maximum length of the slug (default: 20)
+  #
+  # Returns:
+  #   A filesystem-safe slug, trimmed to specified length with hash if needed
+  #
+  # Example:
+  #   result=$(to:slug "Hello World!" "_" 20)  # Returns "hello_world"
+  #   result=$(to:slug "Very Long String That Needs Trimming" "_" 20)  # Returns "very_long_st_a1b2c3d"
+  #   result=$(to:slug "Test__Multiple--Separators" "_" 50)  # Returns "test_multiple_separators"
+  #   result=$(to:slug "Special!@#Characters" "-" 30)  # Returns "special-characters"
+
+  local string=$1
+  local separator=${2:-"_"}
+  local trim=${3:-20}
+
+  # Convert to lowercase
+  local slug=$(echo "$string" | tr '[:upper:]' '[:lower:]')
+
+  # Replace all non-alphanumeric characters with the separator
+  # and squeeze repeated separators into one
+  slug=$(echo "$slug" | tr -cs '[:alnum:]' "$separator")
+
+  # Trim leading and trailing separators
+  slug="${slug#"${separator}"}"
+  slug="${slug%"${separator}"}"
+
+  # If slug exceeds trim length, add hash
+  if [ ${#slug} -gt "$trim" ]; then
+    # Generate 7-character hash (try sha256sum first, fallback to md5sum)
+    local hash=$(echo -n "$slug" | sha256sum 2>/dev/null | head -c 7)
+    [ -z "$hash" ] && hash=$(echo -n "$slug" | md5sum 2>/dev/null | head -c 7)
+
+    # Calculate prefix length (leave room for separator + 7-char hash)
+    local prefix_len=$((trim - 8))
+
+    if [ $prefix_len -gt 0 ]; then
+      local prefix="${slug:0:$prefix_len}"
+      # Remove trailing separator from prefix
+      prefix="${prefix%"${separator}"}"
+      slug="${prefix}${separator}${hash}"
+    else
+      # If trim is too small (< 8), just use hash
+      slug="${hash:0:$trim}"
+    fi
+  fi
+
+  echo "$slug"
 }
 
 function args:isHelp() {

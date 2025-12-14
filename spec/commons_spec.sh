@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016,SC2288
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -850,6 +850,314 @@ Describe "_commons.sh /"
 
       The status should be success
       The output should eq "2"
+      The error should eq ''
+    End
+  End
+
+  Describe "to:slug /"
+    It "Converts simple string to lowercase slug"
+      When call to:slug "Hello World"
+
+      The status should be success
+      The output should eq "hello_world"
+      The error should eq ''
+    End
+
+    It "Uses default separator underscore"
+      When call to:slug "Test String"
+
+      The status should be success
+      The output should eq "test_string"
+      The error should eq ''
+    End
+
+    It "Uses custom separator dash"
+      When call to:slug "Test String" "-"
+
+      The status should be success
+      The output should eq "test-string"
+      The error should eq ''
+    End
+
+    It "Uses custom separator dot"
+      When call to:slug "Test String" "."
+
+      The status should be success
+      The output should eq "test.string"
+      The error should eq ''
+    End
+
+    It "Removes special characters"
+      When call to:slug "Hello@World#Test!"
+
+      The status should be success
+      The output should eq "hello_world_test"
+      The error should eq ''
+    End
+
+    It "Cleans up repeated separators (underscores)"
+      When call to:slug "Test__Multiple___Underscores" "_" 50
+
+      The status should be success
+      The output should eq "test_multiple_underscores"
+      The error should eq ''
+    End
+
+    It "Cleans up repeated separators (dashes)"
+      When call to:slug "Test--Multiple---Dashes" "-" 50
+
+      The status should be success
+      The output should eq "test-multiple-dashes"
+      The error should eq ''
+    End
+
+    It "Cleans up mixed special characters creating repeated separators"
+      When call to:slug "Test  !!  Multiple  @@  Separators"
+
+      The status should be success
+      The output should eq "test_multiple_separators"
+      The error should eq ''
+    End
+
+    It "Trims leading separators"
+      When call to:slug "___Leading Underscores"
+
+      The status should be success
+      The output should eq "leading_underscores"
+      The error should eq ''
+    End
+
+    It "Trims trailing separators"
+      When call to:slug "Trailing Underscores___"
+
+      The status should be success
+      The output should eq "trailing_underscores"
+      The error should eq ''
+    End
+
+    It "Trims leading and trailing separators"
+      When call to:slug "___Both Sides___"
+
+      The status should be success
+      The output should eq "both_sides"
+      The error should eq ''
+    End
+
+    It "Handles short strings within default trim length"
+      When call to:slug "Short"
+
+      The status should be success
+      The output should eq "short"
+      The error should eq ''
+    End
+
+    It "Uses default trim length of 20"
+      When call to:slug "Exactly Twenty Chars"
+
+      The status should be success
+      The output should eq "exactly_twenty_chars"
+      The error should eq ''
+    End
+
+    It "Trims long string and adds hash when exceeds default trim (20)"
+      When call to:slug "This Is A Very Long String That Exceeds The Default Trim Length"
+
+      The status should be success
+      The output should match pattern "this_is_a_ve_*"
+      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
+      The error should eq ''
+    End
+
+    It "Trims long string with custom trim length of 30"
+      When call to:slug "This Is A Very Long String That Should Be Trimmed" "_" 30
+
+      The status should be success
+      The output should match pattern "this_is_a_very_long_st_*"
+      The output should satisfy "[ ${#STDOUT} -eq 30 ]"
+      The error should eq ''
+    End
+
+    It "Trims long string with custom trim length of 15"
+      When call to:slug "Very Long String Needs Trimming" "_" 15
+
+      The status should be success
+      The output should satisfy "[ ${#STDOUT} -eq 15 ]"
+      The error should eq ''
+    End
+
+    It "Handles very small trim length (8 - minimum for hash)"
+      When call to:slug "Long String" "_" 8
+
+      The status should be success
+      The output should satisfy "[ ${#STDOUT} -eq 8 ]"
+      The error should eq ''
+    End
+
+    It "Handles very small trim length (5 - less than hash size)"
+      When call to:slug "Long String" "_" 5
+
+      The status should be success
+      The output should satisfy "[ ${#STDOUT} -eq 5 ]"
+      The error should eq ''
+    End
+
+    It "Produces consistent hash for same input"
+      result1=$(to:slug "Very Long String That Needs Hashing" "_" 20)
+      result2=$(to:slug "Very Long String That Needs Hashing" "_" 20)
+      When call echo "$result1"
+
+      The status should be success
+      The output should eq "$result2"
+      The error should eq ''
+    End
+
+    It "Produces different hash for different inputs"
+      result1=$(to:slug "String One That Is Very Long" "_" 20)
+      result2=$(to:slug "String Two That Is Very Long" "_" 20)
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Handles empty string"
+      When call to:slug ""
+
+      The status should be success
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "Handles only special characters"
+      When call to:slug "!@#$%^&*()"
+
+      The status should be success
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "Handles only spaces"
+      When call to:slug "     "
+
+      The status should be success
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "Handles mixed alphanumeric"
+      When call to:slug "Test123String456"
+
+      The status should be success
+      The output should eq "test123string456"
+      The error should eq ''
+    End
+
+    It "Handles numbers only"
+      When call to:slug "1234567890"
+
+      The status should be success
+      The output should eq "1234567890"
+      The error should eq ''
+    End
+
+    It "Preserves alphanumeric and converts rest to separator"
+      When call to:slug "file-name_v1.2.3"
+
+      The status should be success
+      The output should eq "file_name_v1_2_3"
+      The error should eq ''
+    End
+
+    It "Creates filesystem-safe filename from path-like string"
+      When call to:slug "/path/to/some/file.txt"
+
+      The status should be success
+      The output should eq "path_to_some_file_txt"
+      The error should eq ''
+    End
+
+    It "Handles unicode/international characters (converts to separator)"
+      When call to:slug "Héllo Wörld"
+
+      The status should be success
+      # International characters are treated as special chars and converted to separator
+      The output should match pattern "*llo*rld"
+      The error should eq ''
+    End
+
+    It "Real-world example: branch name to filename"
+      When call to:slug "feature/add-new-api-endpoint" "_" 30
+
+      The status should be success
+      The output should eq "feature_add_new_api_endpoint"
+      The error should eq ''
+    End
+
+    It "Real-world example: commit message to filename"
+      When call to:slug "fix(core): resolve memory leak in parser" "-" 25
+
+      The status should be success
+      The output should satisfy "[ ${#STDOUT} -le 25 ]"
+      The error should eq ''
+    End
+
+    It "Real-world example: user input to safe filename"
+      When call to:slug "My Important Document (Draft).pdf" "_" 20
+
+      The status should be success
+      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
+      The error should eq ''
+    End
+
+    It "Hash is exactly 7 characters when used"
+      result=$(to:slug "This Is A Very Long String That Will Definitely Need Hashing" "_" 20)
+      hash_part=$(echo "$result" | rev | cut -d'_' -f1 | rev)
+      When call echo "${#hash_part}"
+
+      The status should be success
+      The output should eq "7"
+      The error should eq ''
+    End
+
+    It "Trimmed slug with hash has correct structure (prefix + separator + hash)"
+      result=$(to:slug "Very Long String Needs Trimming And Hashing" "_" 20)
+      # Should be: prefix (12 chars) + _ (1 char) + hash (7 chars) = 20 chars
+      When call echo "$result"
+
+      The status should be success
+      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
+      The output should match pattern "*_*"
+      The error should eq ''
+    End
+
+    It "Does not add hash when exactly at trim length"
+      # Create a string that when slugified is exactly 20 chars
+      When call to:slug "abcdefgh ijklmnopq" "_" 20
+
+      The status should be success
+      The output should eq "abcdefgh_ijklmnopq"
+      The output should satisfy "[ ${#STDOUT} -eq 18 ]"
+      The error should eq ''
+    End
+
+    It "Handles consecutive special characters between words"
+      When call to:slug "Test!!!@@@###String"
+
+      The status should be success
+      The output should eq "test_string"
+      The error should eq ''
+    End
+
+    It "Different separators produce different outputs"
+      result1=$(to:slug "Hello World" "_")
+      result2=$(to:slug "Hello World" "-")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
       The error should eq ''
     End
   End
