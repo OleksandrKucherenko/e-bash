@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-27
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -77,14 +77,13 @@ function dependency() {
 
     if $is_ci_auto_install && ! $is_optional; then
       # In CI mode: only auto-install required dependencies, skip optional ones
-      # shellcheck disable=SC2154
-      echo "${cl_blue}auto-installing${cl_reset} missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
+      echo:Install "auto-installing missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
 
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
         if command -v "$tool_name" >/dev/null 2>&1; then
-          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+          echo:Install "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet
           # This can happen if PATH needs to be reloaded or in test environments
@@ -92,7 +91,7 @@ function dependency() {
         fi
         return 0
       else
-        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        echo:Install "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
         return 1
       fi
     elif $is_optional; then
@@ -116,14 +115,13 @@ function dependency() {
   if [ "$version_cleaned" == "" ]; then
     if $is_ci_auto_install && ! $is_optional; then
       # In CI mode: only auto-install required dependencies, skip optional ones
-      # shellcheck disable=SC2154
-      echo "${cl_blue}auto-installing${cl_reset} dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
+      echo:Install "auto-installing dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
 
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
         if command -v "$tool_name" >/dev/null 2>&1; then
-          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+          echo:Install "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet
           # This can happen if PATH needs to be reloaded or in test environments
@@ -131,7 +129,7 @@ function dependency() {
         fi
         return 0
       else
-        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        echo:Install "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
         return 1
       fi
     elif $is_optional; then
@@ -183,6 +181,10 @@ ${__SOURCED__:+return}
 
 logger dependencies "$@" # register own debug tag & logger functions
 logger:redirect dependencies ">&2"
+
+logger install "$@" # register logger for CI auto-install operations
+logger:prefix install "${cl_blue}[install]${cl_reset} "
+logger:redirect install ">&2"
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
