@@ -477,6 +477,26 @@ function val:l1() {
   fi
 }
 
+# Helper function for cross-platform hash generation (used by to:slug)
+function to:slug:hash() {
+  local input=$1
+  local length=$2
+  local hash=""
+
+  # Try sha256sum (Linux), shasum -a 256 (macOS), then md5sum/md5
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | sha256sum 2>/dev/null | cut -d' ' -f1 | head -c "$length")
+  elif command -v shasum >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | shasum -a 256 2>/dev/null | cut -d' ' -f1 | head -c "$length")
+  elif command -v md5sum >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | md5sum 2>/dev/null | cut -d' ' -f1 | head -c "$length")
+  elif command -v md5 >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | md5 2>/dev/null | head -c "$length")
+  fi
+
+  echo "$hash"
+}
+
 function to:slug() {
   # Convert any string to a filesystem-safe slug
   #
@@ -531,8 +551,7 @@ function to:slug() {
   # If slug is empty (input had only special characters), generate hash-based name
   if [ -z "$slug" ]; then
     # Generate 7-character hash from original input
-    local hash=$(echo -n "$string" | sha256sum 2>/dev/null | head -c 7)
-    [ -z "$hash" ] && hash=$(echo -n "$string" | md5sum 2>/dev/null | head -c 7)
+    local hash=$(to:slug:hash "$string" 7)
 
     # Return "__" prefix + hash (9 chars total, or trimmed to max length)
     local hash_slug="__${hash}"
@@ -546,17 +565,15 @@ function to:slug() {
 
   # Strategy: always add hash
   if [ "$strategy" = "always" ]; then
-    local hash=$(echo -n "$slug" | sha256sum 2>/dev/null | head -c 7)
-    [ -z "$hash" ] && hash=$(echo -n "$slug" | md5sum 2>/dev/null | head -c 7)
+    local hash=$(to:slug:hash "$slug" 7)
     echo "${slug}${separator}${hash}"
     return
   fi
 
   # Strategy: length-based trimming
   if [ ${#slug} -gt "$trim" ]; then
-    # Generate 7-character hash (try sha256sum first, fallback to md5sum)
-    local hash=$(echo -n "$slug" | sha256sum 2>/dev/null | head -c 7)
-    [ -z "$hash" ] && hash=$(echo -n "$slug" | md5sum 2>/dev/null | head -c 7)
+    # Generate 7-character hash
+    local hash=$(to:slug:hash "$slug" 7)
 
     # Calculate prefix length (leave room for separator + 7-char hash)
     local prefix_len=$((trim - 8))
@@ -568,8 +585,7 @@ function to:slug() {
       slug="${prefix}${separator}${hash}"
     else
       # If trim is too small (<= 8), use hash of exact trim length
-      local hash_only=$(echo -n "$slug" | sha256sum 2>/dev/null | head -c $trim)
-      [ -z "$hash_only" ] && hash_only=$(echo -n "$slug" | md5sum 2>/dev/null | head -c $trim)
+      local hash_only=$(to:slug:hash "$slug" "$trim")
       slug="$hash_only"
     fi
   fi
