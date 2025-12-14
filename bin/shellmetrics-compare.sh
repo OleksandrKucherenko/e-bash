@@ -63,12 +63,13 @@ collect_metrics() {
   if [ -d bin ]; then
     echo "Analyzing bin/*"
     # shellmetrics handles various shell script types
-    find bin -type f -executable | while read -r script; do
+    # Use portable find predicates (macOS/BSD `find` doesn't support `-executable`)
+    find bin -type f -perm -111 2>/dev/null | while read -r script; do
       # Check if it's a shell script (has shebang with shell)
       if head -n 1 "$script" 2>/dev/null | grep -qE '^#!.*/(bash|sh|zsh|ksh)'; then
         shellmetrics --csv "$script" >> "$temp_file" 2>/dev/null || true
       fi
-    done
+    done || true
   fi
 
   # Add header if temp file is not empty, otherwise just create an empty CSV with headers
@@ -132,7 +133,20 @@ get_file_metrics() {
       for (f in nloc) {
         printf "%s,%d,%d,%d\n", f, nloc[f], lloc[f], ccn[f]
       }
-    }' "$csv_file" | sort
+    }' "$csv_file" \
+    | awk -F',' '{
+        file=$1
+        key=file
+        sub(/^\./, "", key)  # ignore leading dot for ordering
+
+        # Deterministic ordering across platforms:
+        # 1) bin/* first (matches tests and is most relevant in this repo)
+        # 2) then by normalized key and full line
+        prefix = (key ~ /^bin\//) ? "0" : "1"
+        print prefix "\t" key "\t" $0
+      }' \
+    | LC_ALL=C sort -t "$(printf '\t')" -k1,1 -k2,2 -k3,3 \
+    | cut -f3-
 }
 
 # Compare two metric files and generate markdown report
