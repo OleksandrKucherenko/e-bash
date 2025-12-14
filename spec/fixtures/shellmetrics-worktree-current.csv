@@ -1,0 +1,7 @@
+file,func,lineno,lloc,ccn,lines,comment,blank
+".scripts/old.sh","<begin>",1,0,0,60,6,3
+".scripts/old.sh","old_func",10,15,2,20,0,0
+".scripts/old.sh","<end>",60,0,0,60,6,3
+".scripts/new.sh","<begin>",1,0,0,30,2,1
+".scripts/new.sh","new_func",5,8,1,10,0,0
+".scripts/new.sh","<end>",30,0,0,30,2,1

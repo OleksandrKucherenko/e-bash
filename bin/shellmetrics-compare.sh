@@ -10,6 +10,13 @@
 #   shellmetrics-compare.sh compare <base-file> <current-file> <output-md>
 #
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-12-14
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
+
 set -euo pipefail
 
 # Ensure shellmetrics is installed
@@ -120,14 +127,25 @@ compare_metrics() {
   local current_file="$2"
   local output_md="${3:-metrics-comparison.md}"
 
+  # Check for missing files and handle gracefully
   if [ ! -f "$base_file" ]; then
-    echo "Error: Base metrics file not found: $base_file"
-    exit 1
+    echo "⚠️  Warning: Base metrics file not found: $base_file"
+    echo "   Creating empty baseline for comparison"
+    # Create temp file if parent directory doesn't exist
+    if [ ! -d "$(dirname "$base_file")" ]; then
+      base_file=$(mktemp --suffix=-base-metrics.csv 2>/dev/null || echo "/tmp/base-metrics-$$.csv")
+    fi
+    echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$base_file" 2>/dev/null || true
   fi
 
   if [ ! -f "$current_file" ]; then
-    echo "Error: Current metrics file not found: $current_file"
-    exit 1
+    echo "⚠️  Warning: Current metrics file not found: $current_file"
+    echo "   Creating empty metrics file"
+    # Create temp file if parent directory doesn't exist
+    if [ ! -d "$(dirname "$current_file")" ]; then
+      current_file=$(mktemp --suffix=-current-metrics.csv 2>/dev/null || echo "/tmp/current-metrics-$$.csv")
+    fi
+    echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$current_file" 2>/dev/null || true
   fi
 
   # Calculate totals
@@ -293,4 +311,12 @@ HELP
   esac
 }
 
-main "$@"
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+# DO NOT allow execution of code below this line in shellspec tests
+${__SOURCED__:+return}
+
+# Only execute main if script is run directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

@@ -1,0 +1,4 @@
+file,func,lineno,lloc,ccn,lines,comment,blank
+"test.sh","<begin>",1,0,0,50,5,2
+"test.sh","main",10,10,1,15,0,0
+"test.sh","<end>",50,0,0,50,5,2
