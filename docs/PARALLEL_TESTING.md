@@ -10,7 +10,7 @@ To reduce CI execution time, the test suite is divided into chunks that run in p
 
 ### Chunking Strategy
 
-Tests are divided into 4 equal chunks using the `bin/chunk-tests.sh` script:
+Tests are divided into 4 equal chunks using the `.github/scripts/chunk-tests.sh` script:
 
 - **Chunk 0**: 4 test files
 - **Chunk 1**: 4 test files
@@ -40,10 +40,10 @@ You can run individual test chunks locally for faster iteration:
 
 ```bash
 # Run chunk 0
-shellspec $(./bin/chunk-tests.sh 4 0)
+shellspec $(./.github/scripts/chunk-tests.sh 4 0)
 
 # Run chunk 1
-shellspec $(./bin/chunk-tests.sh 4 1)
+shellspec $(./.github/scripts/chunk-tests.sh 4 1)
 
 # Run all tests (traditional way)
 shellspec
@@ -51,10 +51,10 @@ shellspec
 
 ### Chunk Script Usage
 
-The `bin/chunk-tests.sh` script divides test files evenly:
+The `.github/scripts/chunk-tests.sh` script divides test files evenly:
 
 ```bash
-./bin/chunk-tests.sh <total_chunks> <chunk_index>
+./.github/scripts/chunk-tests.sh <total_chunks> <chunk_index>
 ```
 
 **Arguments:**
@@ -64,7 +64,7 @@ The `bin/chunk-tests.sh` script divides test files evenly:
 **Example:**
 ```bash
 # Get files for chunk 2 of 4
-./bin/chunk-tests.sh 4 2
+./.github/scripts/chunk-tests.sh 4 2
 ```
 
 **Output:**
@@ -145,7 +145,7 @@ To change the number of chunks:
 
 2. Update the chunk count in test execution steps:
    ```bash
-   CHUNK_FILES=$(./bin/chunk-tests.sh 5 ${{ matrix.chunk }})  # Change 4 to 5
+   CHUNK_FILES=$(./.github/scripts/chunk-tests.sh 5 ${{ matrix.chunk }})  # Change 4 to 5
    ```
 
 3. Consider GitHub Actions concurrent job limits for your account
@@ -167,7 +167,7 @@ If Codecov shows coverage gaps:
 
 To debug a failing chunk:
 1. Download the chunk's test results artifact
-2. Run the same chunk locally: `shellspec $(./bin/chunk-tests.sh 4 X)`
+2. Run the same chunk locally: `shellspec $(./.github/scripts/chunk-tests.sh 4 X)`
 3. Review the specific test files in that chunk
 
 ## Future Improvements

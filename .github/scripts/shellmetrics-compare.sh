@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# (CI/CD tooling script; invoked by GitHub Actions and tests.)
 #
 # shellmetrics-compare.sh - Collect and compare shell script metrics
 #

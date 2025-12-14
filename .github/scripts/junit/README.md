@@ -12,7 +12,7 @@ This package provides:
 ## Installation
 
 ```bash
-cd bin/junit
+	cd .github/scripts/junit
 bun install
 ```
 
@@ -70,7 +70,7 @@ bun run typecheck
 ## Project Structure
 
 ```
-bin/junit/
+.github/scripts/junit/
 ├── package.json              # Package configuration
 ├── tsconfig.json             # TypeScript configuration
 ├── parse-test-timings.ts     # Main timing parser script

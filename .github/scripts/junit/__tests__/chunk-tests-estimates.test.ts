@@ -29,9 +29,9 @@ function listSpecFiles(projectRoot: string): string[] {
     return results.sort();
 }
 
-describe("bin/chunk-tests.sh (timing visualization)", () => {
+describe(".github/scripts/chunk-tests.sh (timing visualization)", () => {
     test("prints per-chunk estimate and full distribution table to stderr", () => {
-        const projectRoot = join(import.meta.dir, "../../..");
+        const projectRoot = join(import.meta.dir, "../../../..");
         const timingFile = join(projectRoot, ".test-timings.json");
 
         const hadExistingTimingFile = existsSync(timingFile);
@@ -64,7 +64,7 @@ describe("bin/chunk-tests.sh (timing visualization)", () => {
 
             const result = spawnSync(
                 "bash",
-                ["bin/chunk-tests.sh", "4", "0", "--granularity=file"],
+                [".github/scripts/chunk-tests.sh", "4", "0", "--granularity=file"],
                 { cwd: projectRoot, encoding: "utf-8" }
             );
 
@@ -80,4 +80,3 @@ describe("bin/chunk-tests.sh (timing visualization)", () => {
         }
     });
 });
-

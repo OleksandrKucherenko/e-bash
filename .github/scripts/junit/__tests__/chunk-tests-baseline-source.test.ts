@@ -29,9 +29,9 @@ function listSpecFiles(projectRoot: string): string[] {
     return results.sort();
 }
 
-describe("bin/chunk-tests.sh (baseline timing file selection)", () => {
+describe(".github/scripts/chunk-tests.sh (baseline timing file selection)", () => {
     test("uses ci/test-timings/linux/test-timings.json when RUNNER_OS=Linux and file exists", () => {
-        const projectRoot = join(import.meta.dir, "../../..");
+        const projectRoot = join(import.meta.dir, "../../../..");
         const specFiles = listSpecFiles(projectRoot);
         expect(specFiles.length).toBeGreaterThan(0);
 
@@ -63,7 +63,7 @@ describe("bin/chunk-tests.sh (baseline timing file selection)", () => {
                 )
             );
 
-            const result = spawnSync("bash", ["bin/chunk-tests.sh", "4", "0"], {
+            const result = spawnSync("bash", [".github/scripts/chunk-tests.sh", "4", "0"], {
                 cwd: projectRoot,
                 encoding: "utf-8",
                 env: { ...process.env, RUNNER_OS: "Linux" },
@@ -81,4 +81,3 @@ describe("bin/chunk-tests.sh (baseline timing file selection)", () => {
         }
     });
 });
-

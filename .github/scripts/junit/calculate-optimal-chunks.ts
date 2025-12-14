@@ -218,9 +218,9 @@ function main() {
 
     const { timingFile, numChunks, chunkIndex, granularity } = parsed;
 
-    // Get project root (parent of bin/junit directory)
+    // Get project root (repo root; this script lives in .github/scripts/junit)
     const scriptDir = import.meta.dir;
-    const projectRoot = join(scriptDir, "../..");
+    const projectRoot = join(scriptDir, "../../..");
 
     // Load timing data
     const timingData = loadTimings(timingFile);

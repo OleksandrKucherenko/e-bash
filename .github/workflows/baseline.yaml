@@ -93,13 +93,8 @@ jobs:
             echo "No JUnit XML files found in report/; cannot generate baseline."
             exit 1
           fi
-
-          for f in "${XML_FILES[@]}"; do
-            cp "$f" "ci/test-timings/linux/report/$(basename "$f")"
-          done
-
-          mapfile -t BASELINE_XML < <(find ci/test-timings/linux/report -type f -name '*.xml' -print | sort)
-          bun bin/junit/parse-test-timings.ts ci/test-timings/linux/test-timings.json "${BASELINE_XML[@]}" --granularity=example
+          bun .github/scripts/junit/sanitize-junit-xml.ts ci/test-timings/linux/report/baseline.xml "${XML_FILES[@]}"
+          bun .github/scripts/junit/parse-test-timings.ts ci/test-timings/linux/test-timings.json ci/test-timings/linux/report/baseline.xml --granularity=example
 
       - name: Upload baseline artifact (Linux)
         uses: actions/upload-artifact@v4
@@ -167,13 +162,8 @@ jobs:
             echo "No JUnit XML files found in report/; cannot generate baseline."
             exit 1
           fi
-
-          for f in "${XML_FILES[@]}"; do
-            cp "$f" "ci/test-timings/macos/report/$(basename "$f")"
-          done
-
-          mapfile -t BASELINE_XML < <(find ci/test-timings/macos/report -type f -name '*.xml' -print | sort)
-          bun bin/junit/parse-test-timings.ts ci/test-timings/macos/test-timings.json "${BASELINE_XML[@]}" --granularity=example
+          bun .github/scripts/junit/sanitize-junit-xml.ts ci/test-timings/macos/report/baseline.xml "${XML_FILES[@]}"
+          bun .github/scripts/junit/parse-test-timings.ts ci/test-timings/macos/test-timings.json ci/test-timings/macos/report/baseline.xml --granularity=example
 
       - name: Upload baseline artifact (macOS)
         uses: actions/upload-artifact@v4

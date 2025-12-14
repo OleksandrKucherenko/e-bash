@@ -147,16 +147,16 @@ For examples without timing data:
 
 ```bash
 # Per-file (current behavior, default)
-bun bin/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=file
+bun .github/scripts/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=file
 
 # Per-example (new)
-bun bin/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=example
+bun .github/scripts/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=example
 
 # Hybrid (auto-select best approach)
-bun bin/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=hybrid
+bun .github/scripts/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=hybrid
 
 # Threshold for hybrid mode (split files larger than threshold)
-bun bin/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=hybrid --split-threshold=30s
+bun .github/scripts/junit/calculate-optimal-chunks.ts .test-timings.json 4 0 --granularity=hybrid --split-threshold=30s
 ```
 
 ### Algorithm: Hybrid Chunking
@@ -194,7 +194,7 @@ spec/arguments_spec.sh spec/installation_spec.sh:@1-5 spec/installation_spec.sh:
 ```yaml
 - name: Run shellspec tests with profiling
   run: |
-    CHUNK_ARGS=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=example)
+    CHUNK_ARGS=$(./.github/scripts/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=example)
     shellspec --profile $CHUNK_ARGS
 ```
 
@@ -203,7 +203,7 @@ spec/arguments_spec.sh spec/installation_spec.sh:@1-5 spec/installation_spec.sh:
 ```yaml
 - name: Update timing cache
   run: |
-    bun bin/junit/parse-test-timings.ts .test-timings.json report/*.xml --granularity=example
+    bun .github/scripts/junit/parse-test-timings.ts .test-timings.json report/*.xml --granularity=example
 ```
 
 ### Step 3: Enable Profiling in ShellSpec
@@ -220,7 +220,7 @@ shellspec --profile --kcov $CHUNK_FILES
 
 ## File Structure
 
-All optimization scripts are located in `bin/junit/`:
+All optimization scripts are located in `.github/scripts/junit/`:
 
 ```
 bin/
@@ -233,9 +233,9 @@ bin/
 
 ### File Descriptions
 
-1. **`bin/junit/calculate-optimal-chunks.ts`** - Bin-packing algorithm for distributing tests
-2. **`bin/junit/parse-test-timings.ts`** - JUnit XML parser for timing extraction
-3. **`bin/chunk-tests.sh`** - Shell wrapper that calls the TypeScript scripts
+1. **`.github/scripts/junit/calculate-optimal-chunks.ts`** - Bin-packing algorithm for distributing tests
+2. **`.github/scripts/junit/parse-test-timings.ts`** - JUnit XML parser for timing extraction
+3. **`.github/scripts/chunk-tests.sh`** - Shell wrapper that calls the TypeScript scripts
 4. **`.github/workflows/shellspec.yaml`** - CI workflow using the chunk scripts
 
 ## Migration Strategy

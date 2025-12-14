@@ -7,7 +7,7 @@
 #   - ci/test-timings/<os>/test-timings.json
 #
 # This is intended for local/dev use; CI updates baselines via PR using
-# .github/workflows/test-timing-baseline.yaml.
+# .github/workflows/baseline.yaml.
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-14
@@ -19,7 +19,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 detect_os_slug() {
   case "$(uname -s 2>/dev/null || true)" in
@@ -69,17 +69,14 @@ if [ "${#XML_FILES[@]}" -eq 0 ]; then
   exit 1
 fi
 
-for f in "${XML_FILES[@]}"; do
-  cp "$f" "$OUT_DIR/report/$(basename "$f")"
-done
-
-mapfile -t BASELINE_XML < <(find "$OUT_DIR/report" -type f -name '*.xml' -print | sort)
 if ! command -v bun >/dev/null 2>&1; then
   echo "bun is required to generate timing JSON. Install bun and re-run."
   exit 1
 fi
 
-bun bin/junit/parse-test-timings.ts "$OUT_DIR/test-timings.json" "${BASELINE_XML[@]}" --granularity=example
+bun "$SCRIPT_DIR/junit/sanitize-junit-xml.ts" "$OUT_DIR/report/baseline.xml" "${XML_FILES[@]}"
+
+bun "$SCRIPT_DIR/junit/parse-test-timings.ts" "$OUT_DIR/test-timings.json" "$OUT_DIR/report/baseline.xml" --granularity=example
 
 echo ""
 echo "Baseline updated:"
@@ -90,4 +87,3 @@ echo "Next:"
 echo "  git status"
 echo "  git add ci/test-timings/${OS_SLUG}"
 echo "  git commit -m \"new unit tests optimization baseline\""
-

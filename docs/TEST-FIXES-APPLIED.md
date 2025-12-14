@@ -68,7 +68,7 @@ The output should include "Base metrics file not found"
 ### 5. ✅ Missing Source Guard
 **Problem**: Script executed when sourced, printing help text.
 
-**Fix**: Added source guard to `bin/shellmetrics-compare.sh`:
+**Fix**: Added source guard to `.github/scripts/shellmetrics-compare.sh`:
 ```bash
 # Only execute main if script is run directly (not sourced)
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
@@ -132,7 +132,7 @@ WARNING: There was output to stdout but not found expectation
 
 ## Files Modified
 
-### 1. `bin/shellmetrics-compare.sh`
+### 1. `.github/scripts/shellmetrics-compare.sh`
 - Added source guard (lines 296-298)
 
 ### 2. `spec/bin/shellmetrics-compare_spec.sh`
