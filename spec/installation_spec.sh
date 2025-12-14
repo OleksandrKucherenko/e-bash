@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-10
+## Last revisit: 2025-12-12
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -654,6 +654,55 @@ Describe 'bin/install.e-bash.sh /'
       The status should be success
       The result of function no_colors_output should include "Usage:"
       The result of function no_colors_error should include "detected: we are in a regular folder."
+    End
+  End
+
+  # Test script_name() function for correct command output
+  Describe 'Script Name Detection /'
+    Before 'temp_repo; cp_install'
+    After 'cleanup_temp_repo'
+
+    It 'should show script path when run directly'
+      When run ./install.e-bash.sh help
+
+      The status should be success
+      The result of function no_colors_output should include "Usage: ./install.e-bash.sh [options] [command] [version]"
+      # Examples should use the script path
+      The result of function no_colors_output should include "./install.e-bash.sh rollback"
+    End
+
+    It 'should show curl command when piped through bash'
+      When run bash -c 'cat ./install.e-bash.sh | bash -s -- help'
+
+      The status should be success
+      # Usage line should show curl command
+      The result of function no_colors_output should include "Usage: curl -sSL https://git.new/e-bash | bash -s -- [options] [command] [version]"
+      # Examples should use the curl command
+      The result of function no_colors_output should include "curl -sSL https://git.new/e-bash | bash -s -- rollback"
+    End
+
+    It 'should show curl command for uninstall when piped through bash'
+      # Create a git repo for the uninstall command to work
+      git_init
+      git_config
+
+      When run bash -c 'cat ./install.e-bash.sh | bash -s -- uninstall'
+
+      The status should be failure  # Should fail because --confirm is required
+      # The example command should show curl format
+      The result of function no_colors_output should include "curl -sSL https://git.new/e-bash | bash -s -- uninstall --confirm"
+    End
+
+    It 'should show script path for uninstall when run directly'
+      # Create a git repo for the uninstall command to work
+      git_init
+      git_config
+
+      When run ./install.e-bash.sh uninstall
+
+      The status should be failure  # Should fail because --confirm is required
+      # The example command should show script path
+      The result of function no_colors_output should include "./install.e-bash.sh uninstall --confirm"
     End
   End
 

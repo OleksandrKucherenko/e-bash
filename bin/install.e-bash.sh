@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-10
+## Last revisit: 2025-12-12
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -151,18 +151,25 @@ EOF
 }
 
 ## Usage information, print to STDOUT
+## Get the correct script name for display (handles curl pipe execution)
+function script_name() {
+  if [[ "$0" == "bash" ]]; then
+    echo "curl -sSL ${REMOTE_SHORT} | bash -s --"
+  else
+    echo "$0"
+  fi
+}
+
+## Usage information, print to STDOUT
 function print_usage() {
   local exit_code=${1:-0}
 
-  local script_name="$0"
-  # Show curl help only when script is executed via bash (not when run as script)
-  if [[ "$0" == "bash" ]]; then
-    script_name="curl -sSL ${REMOTE_SHORT} | bash -s --"
-  fi
+  local cmd
+  cmd=$(script_name)
 
   echo -e "${BLUE}e-Bash Scripts Installer${NC}"
   echo ""
-  echo -e "Usage: ${script_name} [options] [command] [version]"
+  echo -e "Usage: ${cmd} [options] [command] [version]"
   echo ""
   echo -e "Options:"
   echo -e "  ${YELLOW}--dry-run${NC}             - Run in dry run mode (no changes)"
@@ -184,15 +191,15 @@ function print_usage() {
   echo -e "  ${PURPLE}v1.2.3${NC}   - Specific tagged version"
   echo ""
   echo -e "Examples:"
-  echo -e "  ${script_name}                      ${GRAY}# Install latest version${NC}"
-  echo -e "  ${script_name} install v1.0.0       ${GRAY}# Install specific version${NC}"
-  echo -e "  ${script_name} upgrade              ${GRAY}# Upgrade to latest version${NC}"
-  echo -e "  ${script_name} upgrade v2.0.0       ${GRAY}# Upgrade to specific version${NC}"
-  echo -e "  ${script_name} rollback             ${GRAY}# Rollback to previous version${NC}"
-  echo -e "  ${script_name} versions             ${GRAY}# List available versions${NC}"
-  echo -e "  ${script_name} help                 ${GRAY}# Show this help message${NC}"
-  echo -e "  ${script_name} --global install     ${GRAY}# Install to user's HOME directory${NC}"
-  echo -e "  ${script_name} --directory .ebash   ${GRAY}# Install to custom directory${NC}"
+  echo -e "  ${cmd}                      ${GRAY}# Install latest version${NC}"
+  echo -e "  ${cmd} install v1.0.0       ${GRAY}# Install specific version${NC}"
+  echo -e "  ${cmd} upgrade              ${GRAY}# Upgrade to latest version${NC}"
+  echo -e "  ${cmd} upgrade v2.0.0       ${GRAY}# Upgrade to specific version${NC}"
+  echo -e "  ${cmd} rollback             ${GRAY}# Rollback to previous version${NC}"
+  echo -e "  ${cmd} versions             ${GRAY}# List available versions${NC}"
+  echo -e "  ${cmd} help                 ${GRAY}# Show this help message${NC}"
+  echo -e "  ${cmd} --global install     ${GRAY}# Install to user's HOME directory${NC}"
+  echo -e "  ${cmd} --directory .ebash   ${GRAY}# Install to custom directory${NC}"
 
   exit "${exit_code}"
 }
@@ -210,7 +217,7 @@ function repo_uninstall() {
     echo -e "${YELLOW}Use --confirm to proceed with uninstall${NC}"
     echo ""
     echo -e "${GRAY}Example:${NC}"
-    echo -e "  $0 uninstall --confirm"
+    echo -e "  $(script_name) uninstall --confirm"
     echo ""
     return 1
   fi
@@ -1477,7 +1484,7 @@ function upgrade_scripts() {
     # Ensure global directory exists and is initialized
     if [ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
       echo -e "${RED}Error: Global e-bash installation not found at ${GLOBAL_INSTALL_DIR}${NC}"
-      echo -e "${YELLOW}Run: $0 install ${version} --global${NC}"
+      echo -e "${YELLOW}Run: $(script_name) install ${version} --global${NC}"
       exit $EXIT_NO
     fi
 
@@ -1519,7 +1526,7 @@ function upgrade_scripts() {
     if [ "$merge_result" -eq 0 ]; then
       display_upgrade_success
       echo -e "${YELLOW}If you need to rollback to the previous version, run:${NC}"
-      echo -e "  $0 rollback"
+      echo -e "  $(script_name) rollback"
     else
       echo -e "${YELLOW}Upgrade encountered issues. You may want to try again or rollback.${NC}"
       return 1
@@ -1754,7 +1761,7 @@ function repo_install() {
 
   if is_ebash_installed; then
     echo -e "${YELLOW}e-bash scripts already installed. Use 'upgrade' to update.${NC}"
-    echo -e "Run: $0 upgrade [$version]"
+    echo -e "Run: $(script_name) upgrade [$version]"
     exit 0
   fi
 
@@ -1796,7 +1803,7 @@ function repo_rollback() {
     # Check if global installation exists
     if [ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
       echo -e "${RED}Error: Global e-bash installation not found at ${GLOBAL_INSTALL_DIR}${NC}"
-      echo -e "${YELLOW}Run: $0 install --global${NC}"
+      echo -e "${YELLOW}Run: $(script_name) install --global${NC}"
       return 1
     fi
 
@@ -1820,7 +1827,7 @@ function repo_rollback() {
         if ! git rev-parse --verify "${target_version}" >/dev/null 2>&1; then
           popd &>/dev/null
           echo -e "${RED}Error: Version ${target_version} not found in global installation${NC}"
-          echo -e "${YELLOW}Run: $0 versions --global to see available versions${NC}"
+          echo -e "${YELLOW}Run: $(script_name) versions --global to see available versions${NC}"
           return 1
         fi
 
