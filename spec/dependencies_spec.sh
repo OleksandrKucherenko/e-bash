@@ -15,6 +15,10 @@ Mock logger
   echo "$@"
 End
 
+Mock logger:init
+  echo "$@"
+End
+
 Mock config:logger:Dependencies
   echo "$@"
 End
@@ -27,11 +31,15 @@ Mock echo:Dependencies
   echo "$@"
 End
 
+Mock echo:Install
+  echo "$@"
+End
+
 Include ".scripts/_dependencies.sh"
 
 Describe "_dependencies.sh /"
   # Remove colors in output before each function call
-  BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset"
+  BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset cl_grey YEP BAD"
 
   # Ensure CI variables are clean at the START of each test (before test setup)
   # This runs before any test code, allowing tests to explicitly set CI if needed
