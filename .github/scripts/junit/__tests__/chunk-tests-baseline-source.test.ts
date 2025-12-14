@@ -30,12 +30,12 @@ function listSpecFiles(projectRoot: string): string[] {
 }
 
 describe(".github/scripts/chunk-tests.sh (baseline timing file selection)", () => {
-    test("uses ci/test-timings/linux/test-timings.json when RUNNER_OS=Linux and file exists", () => {
+    test("uses .github/data/linux/test-timings.json when RUNNER_OS=Linux and file exists", () => {
         const projectRoot = join(import.meta.dir, "../../../..");
         const specFiles = listSpecFiles(projectRoot);
         expect(specFiles.length).toBeGreaterThan(0);
 
-        const baselineDir = join(projectRoot, "ci/test-timings/linux");
+        const baselineDir = join(projectRoot, ".github/data/linux");
         const baselineTimingFile = join(baselineDir, "test-timings.json");
 
         const hadExistingBaseline = existsSync(baselineTimingFile);
@@ -71,7 +71,7 @@ describe(".github/scripts/chunk-tests.sh (baseline timing file selection)", () =
 
             expect(result.status).toBe(0);
             expect(result.stderr).toContain("📈 Timing source:");
-            expect(result.stderr).toContain("ci/test-timings/linux/test-timings.json");
+            expect(result.stderr).toContain(".github/data/linux/test-timings.json");
         } finally {
             if (hadExistingBaseline && baselineBackup !== null) {
                 writeFileSync(baselineTimingFile, baselineBackup);

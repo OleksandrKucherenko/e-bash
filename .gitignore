@@ -1,9 +1,9 @@
 # OS temporary files
 .DS_Store
 
-# utility folders
-coverage/
-report/
+# utility folders (top-level only)
+/coverage/
+/report/
 
 # test timing cache (generated from CI)
 .test-timings.json
