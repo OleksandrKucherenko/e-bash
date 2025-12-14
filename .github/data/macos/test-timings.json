@@ -1,0 +1,139 @@
+{
+  "version": "2.0",
+  "granularity": "example",
+  "description": "Per-example timing data extracted from JUnit XML reports",
+  "timings": {
+    "spec/arguments_spec.sh": {
+      "total": 0.16185185185185183,
+      "examples": {
+        "@05741b60": {
+          "time": 0.16185185185185183,
+          "name": "spec/arguments_spec.sh"
+        }
+      }
+    },
+    "spec/bin/git.conventional-commits_spec.sh": {
+      "total": 0.05588823529411764,
+      "examples": {
+        "@bb22d9ff": {
+          "time": 0.05588823529411764,
+          "name": "spec/bin/git.conventional-commits_spec.sh"
+        }
+      }
+    },
+    "spec/bin/git.verify-all-commits_spec.sh": {
+      "total": 0.6785333333333335,
+      "examples": {
+        "@d435e34a": {
+          "time": 0.6785333333333335,
+          "name": "spec/bin/git.verify-all-commits_spec.sh"
+        }
+      }
+    },
+    "spec/bin/npm.versions_spec.sh": {
+      "total": 0.1915777777777778,
+      "examples": {
+        "@0679e7be": {
+          "time": 0.1915777777777778,
+          "name": "spec/bin/npm.versions_spec.sh"
+        }
+      }
+    },
+    "spec/bin/shellmetrics-compare_spec.sh": {
+      "total": 0.07359285714285715,
+      "examples": {
+        "@142613e9": {
+          "time": 0.07359285714285715,
+          "name": "spec/bin/shellmetrics-compare_spec.sh"
+        }
+      }
+    },
+    "spec/commons_spec.sh": {
+      "total": 0.025975247524752474,
+      "examples": {
+        "@b8d67e3e": {
+          "time": 0.025975247524752474,
+          "name": "spec/commons_spec.sh"
+        }
+      }
+    },
+    "spec/dependencies_spec.sh": {
+      "total": 0.04716571428571428,
+      "examples": {
+        "@b94fa2c9": {
+          "time": 0.04716571428571428,
+          "name": "spec/dependencies_spec.sh"
+        }
+      }
+    },
+    "spec/dryrun_spec.sh": {
+      "total": 0.043565000000000006,
+      "examples": {
+        "@f08885a6": {
+          "time": 0.043565000000000006,
+          "name": "spec/dryrun_spec.sh"
+        }
+      }
+    },
+    "spec/git_semantic_version_spec.sh": {
+      "total": 0.4439156249999998,
+      "examples": {
+        "@bf00cc6a": {
+          "time": 0.4439156249999998,
+          "name": "spec/git_semantic_version_spec.sh"
+        }
+      }
+    },
+    "spec/installation_spec.sh": {
+      "total": 2.422275280898876,
+      "examples": {
+        "@5eb21bbc": {
+          "time": 2.422275280898876,
+          "name": "spec/installation_spec.sh"
+        }
+      }
+    },
+    "spec/logger_spec.sh": {
+      "total": 0.023509523809523807,
+      "examples": {
+        "@00414c34": {
+          "time": 0.023509523809523807,
+          "name": "spec/logger_spec.sh"
+        }
+      }
+    },
+    "spec/traps_nested_spec.sh": {
+      "total": 0.12780624999999998,
+      "examples": {
+        "@11eadd16": {
+          "time": 0.12780624999999998,
+          "name": "spec/traps_nested_spec.sh"
+        }
+      }
+    },
+    "spec/traps_spec.sh": {
+      "total": 0.08617272727272728,
+      "examples": {
+        "@6037e324": {
+          "time": 0.08617272727272728,
+          "name": "spec/traps_spec.sh"
+        }
+      }
+    },
+    "spec/version-up_spec.sh": {
+      "total": 1.4694960784313724,
+      "examples": {
+        "@333d8632": {
+          "time": 1.4694960784313724,
+          "name": "spec/version-up_spec.sh"
+        }
+      }
+    }
+  },
+  "total_time": 5.851325502622904,
+  "file_count": 14,
+  "example_count": 14,
+  "source_files": [
+    "baseline.xml"
+  ]
+}
