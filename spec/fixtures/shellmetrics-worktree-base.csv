@@ -1,0 +1,4 @@
+file,func,lineno,lloc,ccn,lines,comment,blank
+".scripts/old.sh","<begin>",1,0,0,50,5,2
+".scripts/old.sh","old_func",10,10,1,15,0,0
+".scripts/old.sh","<end>",50,0,0,50,5,2

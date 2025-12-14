@@ -1,0 +1,4 @@
+file,func,lineno,lloc,ccn,lines,comment,blank
+".scripts/neg.sh","<begin>",1,0,0,20,5,5
+".scripts/neg.sh","f",2,10,3,0,0,0
+".scripts/neg.sh","<end>",20,0,0,20,5,5

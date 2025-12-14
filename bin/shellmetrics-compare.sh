@@ -10,11 +10,31 @@
 #   shellmetrics-compare.sh compare <base-file> <current-file> <output-md>
 #
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-12-14
+## Version: 1.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
+
 set -euo pipefail
+
+actions_step_debug_enabled() {
+  case "${ACTIONS_STEP_DEBUG:-}" in
+    true|TRUE|True|1|yes|YES|Yes) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+log_debug() {
+  actions_step_debug_enabled || return 0
+  printf '%s\n' "::debug::$*"
+}
 
 # Ensure shellmetrics is installed
 ensure_shellmetrics() {
   if ! command -v shellmetrics &> /dev/null; then
+    log_debug "shellmetrics not found; installing to ${HOME}/.local/bin/shellmetrics"
     echo "Installing shellmetrics..."
     curl -fsSL https://raw.githubusercontent.com/shellspec/shellmetrics/master/shellmetrics > "${HOME}/.local/bin/shellmetrics"
     chmod +x "${HOME}/.local/bin/shellmetrics"
@@ -26,11 +46,12 @@ ensure_shellmetrics() {
 collect_metrics() {
   local output_file="${1:-metrics.csv}"
 
+  log_debug "collect: output_file=${output_file}"
   echo "Collecting metrics for e-bash shell scripts..."
 
   # Create temporary file for combined output
   local temp_file
-  temp_file=$(mktemp)
+  temp_file=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-metrics.XXXXXX")
 
   # Collect metrics for .scripts/*.sh
   if [ -d .scripts ]; then
@@ -42,12 +63,13 @@ collect_metrics() {
   if [ -d bin ]; then
     echo "Analyzing bin/*"
     # shellmetrics handles various shell script types
-    find bin -type f -executable | while read -r script; do
+    # Use portable find predicates (macOS/BSD `find` doesn't support `-executable`)
+    find bin -type f -perm -111 2>/dev/null | while read -r script; do
       # Check if it's a shell script (has shebang with shell)
       if head -n 1 "$script" 2>/dev/null | grep -qE '^#!.*/(bash|sh|zsh|ksh)'; then
         shellmetrics --csv "$script" >> "$temp_file" 2>/dev/null || true
       fi
-    done
+    done || true
   fi
 
   # Add header if temp file is not empty, otherwise just create an empty CSV with headers
@@ -111,7 +133,20 @@ get_file_metrics() {
       for (f in nloc) {
         printf "%s,%d,%d,%d\n", f, nloc[f], lloc[f], ccn[f]
       }
-    }' "$csv_file" | sort
+    }' "$csv_file" \
+    | awk -F',' '{
+        file=$1
+        key=file
+        sub(/^\./, "", key)  # ignore leading dot for ordering
+
+        # Deterministic ordering across platforms:
+        # 1) bin/* first (matches tests and is most relevant in this repo)
+        # 2) then by normalized key and full line
+        prefix = (key ~ /^bin\//) ? "0" : "1"
+        print prefix "\t" key "\t" $0
+      }' \
+    | LC_ALL=C sort -t "$(printf '\t')" -k1,1 -k2,2 -k3,3 \
+    | cut -f3-
 }
 
 # Compare two metric files and generate markdown report
@@ -120,14 +155,28 @@ compare_metrics() {
   local current_file="$2"
   local output_md="${3:-metrics-comparison.md}"
 
+  log_debug "compare: base_file=${base_file} current_file=${current_file} output_md=${output_md}"
+  # Check for missing files and handle gracefully
   if [ ! -f "$base_file" ]; then
-    echo "Error: Base metrics file not found: $base_file"
-    exit 1
+    log_debug "compare: base metrics file missing; creating empty baseline"
+    echo "⚠️  Warning: Base metrics file not found: $base_file"
+    echo "   Creating empty baseline for comparison"
+    # Create temp file if parent directory doesn't exist
+    if [ ! -d "$(dirname "$base_file")" ]; then
+      base_file=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-base-metrics.XXXXXX" 2>/dev/null || echo "/tmp/base-metrics-$$.csv")
+    fi
+    echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$base_file" 2>/dev/null || true
   fi
 
   if [ ! -f "$current_file" ]; then
-    echo "Error: Current metrics file not found: $current_file"
-    exit 1
+    log_debug "compare: current metrics file missing; creating empty metrics file"
+    echo "⚠️  Warning: Current metrics file not found: $current_file"
+    echo "   Creating empty metrics file"
+    # Create temp file if parent directory doesn't exist
+    if [ ! -d "$(dirname "$current_file")" ]; then
+      current_file=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-current-metrics.XXXXXX" 2>/dev/null || echo "/tmp/current-metrics-$$.csv")
+    fi
+    echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$current_file" 2>/dev/null || true
   fi
 
   # Calculate totals
@@ -194,8 +243,8 @@ EOF
   # Get file metrics for both versions
   local base_files_csv
   local curr_files_csv
-  base_files_csv=$(mktemp)
-  curr_files_csv=$(mktemp)
+  base_files_csv=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-base-files.XXXXXX")
+  curr_files_csv=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-current-files.XXXXXX")
 
   get_file_metrics "$base_file" > "$base_files_csv"
   get_file_metrics "$current_file" > "$curr_files_csv"
@@ -203,7 +252,7 @@ EOF
   # Find files with changes
   local has_changes=false
   local temp_changes
-  temp_changes=$(mktemp)
+  temp_changes=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-changes.XXXXXX")
 
   # Process all unique files
   while read -r file; do
@@ -225,13 +274,33 @@ EOF
       local d_ccn=$((c_ccn - b_ccn))
 
       # Format changes
-      local nloc_change=""
-      local lloc_change=""
-      local ccn_change=""
+	      local nloc_change=""
+	      local lloc_change=""
+	      local ccn_change=""
 
-      [ "$d_nloc" -ne 0 ] && nloc_change=" ($([[ $d_nloc -gt 0 ]] && echo "+")$d_nloc)"
-      [ "$d_lloc" -ne 0 ] && lloc_change=" ($([[ $d_lloc -gt 0 ]] && echo "+")$d_lloc)"
-      [ "$d_ccn" -ne 0 ] && ccn_change=" ($([[ $d_ccn -gt 0 ]] && echo "+")$d_ccn)"
+	      if [ "$d_nloc" -ne 0 ]; then
+	        if [ "$d_nloc" -gt 0 ]; then
+	          nloc_change=" (+$d_nloc)"
+	        else
+	          nloc_change=" ($d_nloc)"
+	        fi
+	      fi
+
+	      if [ "$d_lloc" -ne 0 ]; then
+	        if [ "$d_lloc" -gt 0 ]; then
+	          lloc_change=" (+$d_lloc)"
+	        else
+	          lloc_change=" ($d_lloc)"
+	        fi
+	      fi
+
+	      if [ "$d_ccn" -ne 0 ]; then
+	        if [ "$d_ccn" -gt 0 ]; then
+	          ccn_change=" (+$d_ccn)"
+	        else
+	          ccn_change=" ($d_ccn)"
+	        fi
+	      fi
 
       echo "| \`$file\` | $c_nloc$nloc_change | $c_lloc$lloc_change | $c_ccn$ccn_change |" >> "$temp_changes"
     fi
@@ -260,6 +329,8 @@ EOF
 main() {
   local command="${1:-help}"
 
+  log_debug "command=${command}"
+  log_debug "args=${*:-}"
   case "$command" in
     collect)
       ensure_shellmetrics
@@ -293,4 +364,12 @@ HELP
   esac
 }
 
-main "$@"
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+# DO NOT allow execution of code below this line in shellspec tests
+${__SOURCED__:+return}
+
+# Only execute main if script is run directly (not sourced)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main "$@"
+fi

@@ -1,0 +1,11 @@
+file,func,lineno,lloc,ccn,lines,comment,blank
+".scripts/test1.sh","<begin>",1,0,0,120,12,6
+".scripts/test1.sh","function1",10,25,4,35,2,1
+".scripts/test1.sh","function2",40,15,2,25,1,0
+".scripts/test1.sh","<end>",120,0,0,120,12,6
+"bin/test2.sh","<begin>",1,0,0,50,5,2
+"bin/test2.sh","main",10,10,1,15,0,0
+"bin/test2.sh","<end>",50,0,0,50,5,2
+"bin/test3.sh","<begin>",1,0,0,30,3,1
+"bin/test3.sh","helper",5,8,1,10,0,0
+"bin/test3.sh","<end>",30,0,0,30,3,1

@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-27
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -63,6 +63,10 @@ function dependency() {
   local is_optional=$(isOptional "$@")
   local is_ci_auto_install=$(isCIAutoInstallEnabled)
 
+  # Local constants for success/failure symbols
+  local YEP="${cl_green}✓${cl_reset}"
+  local BAD="${cl_red}✗${cl_reset}"
+
   config:logger:Dependencies "$@" # refresh debug flags
 
   # escape symbols: & / . { }, remove end of line, replace * by expectation from 1 to 4 digits
@@ -75,20 +79,15 @@ function dependency() {
     printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
       "${which_tool:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
 
-    if $is_ci_auto_install; then
-      if $is_optional; then
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} missing optional dependency \`${cl_yellow}$tool_name${cl_reset}\`"
-      else
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
-      fi
+    if $is_ci_auto_install && ! $is_optional; then
+      # In CI mode: only auto-install required dependencies, skip optional ones
+      echo:Install "auto-installing missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
 
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
         if command -v "$tool_name" >/dev/null 2>&1; then
-          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+          echo:Install "$YEP Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet
           # This can happen if PATH needs to be reloaded or in test environments
@@ -96,7 +95,7 @@ function dependency() {
         fi
         return 0
       else
-        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        echo:Install "$BAD Failed to install \`$tool_name\`"
         return 1
       fi
     elif $is_optional; then
@@ -118,20 +117,15 @@ function dependency() {
     "$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
   if [ "$version_cleaned" == "" ]; then
-    if $is_ci_auto_install; then
-      if $is_optional; then
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} optional dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
-      else
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
-      fi
+    if $is_ci_auto_install && ! $is_optional; then
+      # In CI mode: only auto-install required dependencies, skip optional ones
+      echo:Install "auto-installing dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
 
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
         if command -v "$tool_name" >/dev/null 2>&1; then
-          echo "${cl_green}✓${cl_reset} Successfully installed \`$tool_name\`"
+          echo:Install "$YEP Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet
           # This can happen if PATH needs to be reloaded or in test environments
@@ -139,7 +133,7 @@ function dependency() {
         fi
         return 0
       else
-        echo "${cl_red}✗${cl_reset} Failed to install \`$tool_name\`"
+        echo:Install "$BAD Failed to install \`$tool_name\`"
         return 1
       fi
     elif $is_optional; then
@@ -172,14 +166,14 @@ function dependency() {
 
 function optional() {
   local args=("$@")
-  
+
   # Ensure we have minimum required parameters before adding --optional flag
   # This prevents --optional from being treated as a positional parameter
   case ${#args[@]} in
     2) args+=("No details. Please google it." "--version") ;;
     3) args+=("--version") ;;
   esac
-  
+
   # Add --optional flag and forward to dependency()
   dependency "${args[@]}" --optional
 }
@@ -192,7 +186,9 @@ ${__SOURCED__:+return}
 logger dependencies "$@" # register own debug tag & logger functions
 logger:redirect dependencies ">&2"
 
-logger loader "$@" # initialize logger
+logger:init install "${cl_blue}[install]${cl_reset} " ">&2" # register logger for CI auto-install operations
+
+logger loader "$@" # initialize loader logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 # ref:

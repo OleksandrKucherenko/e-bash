@@ -19,6 +19,8 @@ env:
   # - example: distribute individual tests (best balance, requires v2.0 timing data)
   # - hybrid: auto-split large files into examples (good balance)
   CHUNK_GRANULARITY: file
+  # Override for macOS to use hybrid mode for better performance
+  CHUNK_GRANULARITY_MACOS: hybrid
 
 jobs:
   shellspec-macos:
@@ -153,7 +155,7 @@ jobs:
       - name: Run shellspec Tests (chunk ${{ matrix.chunk }})
         run: |
           # Get test files for this chunk using configured granularity
-          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY }})
+          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY_MACOS }})
 
           if [ -z "$CHUNK_FILES" ]; then
             echo "No test files for chunk ${{ matrix.chunk }}"
@@ -321,6 +323,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
+      
       - name: Install Homebrew (Linux only)
         run: |
           # Check if Homebrew is already installed (from cache)
@@ -538,7 +541,22 @@ jobs:
       - name: Generate metrics comparison report
         if: github.event_name == 'pull_request'
         run: |
-          ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+          set -euo pipefail
+
+          echo "::group::Metrics inputs"
+          ls -la /tmp/base-metrics.csv current-metrics.csv || true
+          echo "::endgroup::"
+
+          echo "::group::Compare metrics"
+          if ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md; then
+            :
+          else
+            status=$?
+            echo "::error::shellmetrics-compare.sh compare failed (exit ${status}); rerunning with bash -x for diagnostics"
+            bash -x ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+            exit "$status"
+          fi
+          echo "::endgroup::"
 
           # Add commit info to the report
           BASE_SHA=$(git rev-parse origin/${{ github.base_ref }})

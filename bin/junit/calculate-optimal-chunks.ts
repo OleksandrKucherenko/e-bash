@@ -306,6 +306,30 @@ function main() {
     // Debug output
     const totalWeight = binWeights.reduce((a, b) => a + b, 0);
     const avgWeight = totalWeight / numChunks;
+    const maxWeight = binWeights.length > 0 ? Math.max(...binWeights) : 0;
+    const minWeight = binWeights.length > 0 ? Math.min(...binWeights) : 0;
+
+    function formatDurationSeconds(seconds: number): string {
+        if (!Number.isFinite(seconds)) return `${seconds}`;
+        const total = Math.max(0, seconds);
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const secs = total % 60;
+
+        if (hours > 0) return `${hours}h${minutes}m${secs.toFixed(0)}s`;
+        if (minutes > 0) return `${minutes}m${secs.toFixed(0)}s`;
+        return `${total.toFixed(1)}s`;
+    }
+
+    const requestedWeight = binWeights[chunkIndex] ?? 0;
+    const requestedDeviation = avgWeight > 0 ? ((requestedWeight - avgWeight) / avgWeight) * 100 : 0;
+    console.error(
+        `⏱️  Estimated time for chunk ${chunkIndex}/${numChunks - 1}: ${formatDurationSeconds(requestedWeight)} (${requestedWeight.toFixed(
+            1
+        )}s, ${requestedDeviation >= 0 ? "+" : ""}${requestedDeviation.toFixed(0)}% vs avg ${avgWeight.toFixed(
+            1
+        )}s; min ${formatDurationSeconds(minWeight)}, max ${formatDurationSeconds(maxWeight)})`
+    );
 
     console.error(`📊 Chunk distribution (bin-packing algorithm):`);
     for (let i = 0; i < bins.length; i++) {

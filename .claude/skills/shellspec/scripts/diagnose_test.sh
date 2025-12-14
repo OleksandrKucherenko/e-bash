@@ -2,7 +2,7 @@
 # diagnose_test.sh - Quick diagnostic tool for ShellSpec test failures
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-24
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash

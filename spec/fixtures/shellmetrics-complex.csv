@@ -1,0 +1,4 @@
+file,func,lineno,lloc,ccn,lines,comment,blank
+"complex.sh","<begin>",1,0,0,1000,100,50
+"complex.sh","monster",10,500,150,900,50,30
+"complex.sh","<end>",1000,0,0,1000,100,50

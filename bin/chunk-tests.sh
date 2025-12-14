@@ -25,7 +25,7 @@
 # Timing data is cached in .test-timings.json and generated from JUnit XML reports.
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-13
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -86,7 +86,7 @@ JUNIT_SCRIPT_DIR="$SCRIPT_DIR/junit"
 
 if [ -f "$TIMING_FILE" ] && command -v bun >/dev/null 2>&1 && [ -f "$JUNIT_SCRIPT_DIR/calculate-optimal-chunks.ts" ]; then
   # Use optimal bin-packing algorithm with timing data
-  if bun "$JUNIT_SCRIPT_DIR/calculate-optimal-chunks.ts" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" $GRANULARITY_ARG 2>/dev/null; then
+  if bun "$JUNIT_SCRIPT_DIR/calculate-optimal-chunks.ts" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" $GRANULARITY_ARG; then
     # Success - optimal distribution used
     exit 0
   else

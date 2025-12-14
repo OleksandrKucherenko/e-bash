@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -12,6 +12,10 @@
 eval "$(shellspec - -c) exit 1"
 
 Mock logger
+  echo "$@"
+End
+
+Mock logger:init
   echo "$@"
 End
 
@@ -27,11 +31,15 @@ Mock echo:Dependencies
   echo "$@"
 End
 
+Mock echo:Install
+  echo "$@"
+End
+
 Include ".scripts/_dependencies.sh"
 
 Describe "_dependencies.sh /"
-  # Remove colors in output before each function call
-  BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset"
+  # Remove colors in output before each function call (skip readonly YEP and BAD)
+  BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset cl_grey"
 
   # Ensure CI variables are clean at the START of each test (before test setup)
   # This runs before any test code, allowing tests to explicitly set CI if needed
@@ -381,14 +389,40 @@ Describe "_dependencies.sh /"
       # Dump
     End
 
-    It "CI mode should work with optional dependencies"
+    It "CI mode should skip optional dependencies (not auto-install)"
       export CI=1
       export CI_E_BASH_INSTALL_DEPENDENCIES=1
-      When call optional not_exist_tool "1.*.*" "echo 'auto-installed optional tool' >&2"
+      When call optional not_exist_tool "1.*.*" "echo 'should not auto-install optional' >&2"
 
       The status should be success
-      The output should include "auto-installing missing optional dependency"
-      The error should include "auto-installed optional tool"
+      The output should include "Optional   [NO]: \`not_exist_tool\` - not found!"
+      The error should not include "should not auto-install optional"
+
+      unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+      # Dump
+    End
+
+    It "CI mode should skip optional dependencies with wrong version"
+      export CI=1
+      export CI_E_BASH_INSTALL_DEPENDENCIES=1
+      When call optional bash "99.*.*" "echo 'should not auto-install optional' >&2"
+
+      The status should be success
+      The output should include "Optional   [NO]: \`bash\` - wrong version!"
+      The error should not include "should not auto-install optional"
+
+      unset CI CI_E_BASH_INSTALL_DEPENDENCIES
+      # Dump
+    End
+
+    It "CI mode should still auto-install required dependencies"
+      export CI=1
+      export CI_E_BASH_INSTALL_DEPENDENCIES=1
+      When call dependency not_exist_required "1.*.*" "echo 'auto-installed required' >&2"
+
+      The status should be success
+      The output should include "auto-installing missing dependency"
+      The error should include "auto-installed required"
 
       unset CI CI_E_BASH_INSTALL_DEPENDENCIES
       # Dump
