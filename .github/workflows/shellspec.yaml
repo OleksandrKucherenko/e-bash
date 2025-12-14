@@ -38,15 +38,6 @@ jobs:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
 
-      - name: Restore test timing cache
-        uses: actions/cache@v4
-        with:
-          path: .test-timings.json
-          key: test-timings-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            test-timings-${{ runner.os }}-
-            test-timings-
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -208,6 +199,15 @@ jobs:
               echo "✅ All tests passed!"
             fi
           fi
+
+      - name: Upload test results as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-macos-chunk-${{ matrix.chunk }}
+          path: report/
+          if-no-files-found: ignore
+          retention-days: 30
   
   shellspec-ubuntu:
     name: "Ubuntu (chunk ${{ matrix.chunk }})"
@@ -231,15 +231,6 @@ jobs:
           # Fetch the base branch to enable Codecov comparison
           git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
           echo "Base branch ${{ github.base_ref }} fetched for coverage comparison"
-
-      - name: Restore test timing cache
-        uses: actions/cache@v4
-        with:
-          path: .test-timings.json
-          key: test-timings-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            test-timings-${{ runner.os }}-
-            test-timings-
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -478,20 +469,8 @@ jobs:
         with:
           name: test-results-ubuntu-chunk-${{ matrix.chunk }}
           path: report/
+          if-no-files-found: ignore
           retention-days: 30
-
-      - name: Update test timing cache
-        if: success()
-        run: |
-          # Parse JUnit XML reports and update timing data
-          if [ -d report ] && ls report/*.xml >/dev/null 2>&1; then
-            echo "📊 Parsing test timing data from JUnit XML..."
-            bun bin/junit/parse-test-timings.ts .test-timings.json report/*.xml || {
-              echo "⚠️  Failed to parse timing data, keeping existing cache"
-            }
-          else
-            echo "⚠️  No JUnit XML reports found, skipping timing update"
-          fi
 
   shellmetrics:
     name: "Code Metrics"

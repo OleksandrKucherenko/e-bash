@@ -1,0 +1,221 @@
+name: "Update Test Timing Baseline"
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly (Monday 04:00 UTC)
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: test-timing-baseline
+  cancel-in-progress: false
+
+jobs:
+  baseline-linux:
+    name: "Generate baseline (Linux)"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
+
+      - name: Install Homebrew
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v brew >/dev/null 2>&1; then
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+      - name: Install direnv
+        shell: bash
+        run: |
+          curl -sfL https://direnv.net/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Setup project dependencies (direnv)
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+
+      - name: Run full ShellSpec suite (with coverage)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf report coverage || true
+
+          set -o pipefail
+          shellspec --kcov 2>&1 | tee /tmp/test_output.txt || {
+            exit_code=${PIPESTATUS[0]}
+            echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
+
+            passed_tests=$(grep -c "^ok " /tmp/test_output.txt || true)
+            failed_tests=$(grep -c "^not ok " /tmp/test_output.txt || true)
+            has_summary=$(grep -q "examples, .* failures" /tmp/test_output.txt && echo "yes" || echo "no")
+
+            if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
+              echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
+              exit 0
+            else
+              echo "❌ Tests actually failed or incomplete"
+              echo "   Passed: $passed_tests, Failed: $failed_tests, Has summary: $has_summary"
+              exit 1
+            fi
+          }
+
+      - name: Create baseline files (Linux)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ci/test-timings/linux
+          mkdir -p ci/test-timings/linux/report
+
+          mapfile -t XML_FILES < <(find report -type f -name '*.xml' -print | sort)
+          if [ "${#XML_FILES[@]}" -eq 0 ]; then
+            echo "No JUnit XML files found in report/; cannot generate baseline."
+            exit 1
+          fi
+
+          for f in "${XML_FILES[@]}"; do
+            cp "$f" "ci/test-timings/linux/report/$(basename "$f")"
+          done
+
+          mapfile -t BASELINE_XML < <(find ci/test-timings/linux/report -type f -name '*.xml' -print | sort)
+          bun bin/junit/parse-test-timings.ts ci/test-timings/linux/test-timings.json "${BASELINE_XML[@]}" --granularity=example
+
+      - name: Upload baseline artifact (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-linux
+          path: ci/test-timings/linux
+          if-no-files-found: error
+          retention-days: 30
+
+  baseline-macos:
+    name: "Generate baseline (macOS)"
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install direnv
+        run: |
+          brew install direnv
+
+      - name: Setup project dependencies (direnv)
+        run: |
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+
+      - name: Run full ShellSpec suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf report || true
+
+          set -o pipefail
+          shellspec 2>&1 | tee /tmp/test_output.txt || {
+            exit_code=${PIPESTATUS[0]}
+            echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
+
+            passed_tests=$(grep -c "^ok " /tmp/test_output.txt || true)
+            failed_tests=$(grep -c "^not ok " /tmp/test_output.txt || true)
+            has_summary=$(grep -q "examples, .* failures" /tmp/test_output.txt && echo "yes" || echo "no")
+
+            if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
+              echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
+              exit 0
+            else
+              echo "❌ Tests actually failed or incomplete"
+              echo "   Passed: $passed_tests, Failed: $failed_tests, Has summary: $has_summary"
+              exit 1
+            fi
+          }
+
+      - name: Create baseline files (macOS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ci/test-timings/macos
+          mkdir -p ci/test-timings/macos/report
+
+          mapfile -t XML_FILES < <(find report -type f -name '*.xml' -print | sort)
+          if [ "${#XML_FILES[@]}" -eq 0 ]; then
+            echo "No JUnit XML files found in report/; cannot generate baseline."
+            exit 1
+          fi
+
+          for f in "${XML_FILES[@]}"; do
+            cp "$f" "ci/test-timings/macos/report/$(basename "$f")"
+          done
+
+          mapfile -t BASELINE_XML < <(find ci/test-timings/macos/report -type f -name '*.xml' -print | sort)
+          bun bin/junit/parse-test-timings.ts ci/test-timings/macos/test-timings.json "${BASELINE_XML[@]}" --granularity=example
+
+      - name: Upload baseline artifact (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-macos
+          path: ci/test-timings/macos
+          if-no-files-found: error
+          retention-days: 30
+
+  open-baseline-pr:
+    name: "Open baseline update PR"
+    runs-on: ubuntu-latest
+    needs: [baseline-linux, baseline-macos]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download baseline artifact (Linux)
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-linux
+          path: ci/test-timings/linux
+
+      - name: Download baseline artifact (macOS)
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-macos
+          path: ci/test-timings/macos
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "new unit tests optimization baseline"
+          title: "new unit tests optimization baseline"
+          body: |
+            Updates the committed unit test optimization baseline used for CI chunking:
+
+            - Linux: `ci/test-timings/linux/`
+            - macOS: `ci/test-timings/macos/`
+
+            Generated by the `Update Test Timing Baseline` workflow.
+          branch: ci/update-unit-test-optimization-baseline
+          delete-branch: true
+          add-paths: |
+            ci/test-timings/**
