@@ -117,7 +117,7 @@ if [ -n "${E_BASH_TIMING_FILE:-}" ]; then
   fi
 else
   OS_SLUG="$(detect_ci_os_slug)"
-  BASELINE_TIMING_FILE="$PROJECT_ROOT/ci/test-timings/${OS_SLUG}/test-timings.json"
+  BASELINE_TIMING_FILE="$PROJECT_ROOT/.github/data/${OS_SLUG}/test-timings.json"
   if [ -n "$OS_SLUG" ] && [ -f "$BASELINE_TIMING_FILE" ]; then
     TIMING_FILE="$BASELINE_TIMING_FILE"
   fi
