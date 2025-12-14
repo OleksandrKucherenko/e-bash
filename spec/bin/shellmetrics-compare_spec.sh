@@ -271,13 +271,21 @@ CSV
       The output should include "bin/test3.sh"
     End
 
-    It 'detects no changes when files are identical'
-      When call compare_metrics "$FIXTURES_DIR/shellmetrics-base.csv" "$FIXTURES_DIR/shellmetrics-base.csv" "$TEST_DIR/report.md"
-      The output should include "Comparison report saved to:"
-      The status should be success
-      The contents of file "$TEST_DIR/report.md" should include "No changes detected"
-    End
-  End
+	    It 'detects no changes when files are identical'
+	      When call compare_metrics "$FIXTURES_DIR/shellmetrics-base.csv" "$FIXTURES_DIR/shellmetrics-base.csv" "$TEST_DIR/report.md"
+	      The output should include "Comparison report saved to:"
+	      The status should be success
+	      The contents of file "$TEST_DIR/report.md" should include "No changes detected"
+	    End
+
+	    It 'handles negative per-file deltas without exiting'
+	      When run script "$SHELLMETRICS_SCRIPT" compare "$FIXTURES_DIR/shellmetrics-negative-base.csv" "$FIXTURES_DIR/shellmetrics-negative-current.csv" negative-report.md
+	      The status should be success
+	      The output should include "Comparison report saved to:"
+	      The path negative-report.md should be file
+	      The contents of file negative-report.md should include "(-5)"
+	    End
+	  End
 
   Context 'main function - command dispatcher /'
     It 'handles help command'

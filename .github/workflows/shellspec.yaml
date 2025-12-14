@@ -547,7 +547,9 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::Compare metrics"
-          if ! ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md; then
+          if ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md; then
+            :
+          else
             status=$?
             echo "::error::shellmetrics-compare.sh compare failed (exit ${status}); rerunning with bash -x for diagnostics"
             bash -x ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md

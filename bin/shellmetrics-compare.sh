@@ -260,13 +260,33 @@ EOF
       local d_ccn=$((c_ccn - b_ccn))
 
       # Format changes
-      local nloc_change=""
-      local lloc_change=""
-      local ccn_change=""
+	      local nloc_change=""
+	      local lloc_change=""
+	      local ccn_change=""
 
-      [ "$d_nloc" -ne 0 ] && nloc_change=" ($([[ $d_nloc -gt 0 ]] && echo "+")$d_nloc)"
-      [ "$d_lloc" -ne 0 ] && lloc_change=" ($([[ $d_lloc -gt 0 ]] && echo "+")$d_lloc)"
-      [ "$d_ccn" -ne 0 ] && ccn_change=" ($([[ $d_ccn -gt 0 ]] && echo "+")$d_ccn)"
+	      if [ "$d_nloc" -ne 0 ]; then
+	        if [ "$d_nloc" -gt 0 ]; then
+	          nloc_change=" (+$d_nloc)"
+	        else
+	          nloc_change=" ($d_nloc)"
+	        fi
+	      fi
+
+	      if [ "$d_lloc" -ne 0 ]; then
+	        if [ "$d_lloc" -gt 0 ]; then
+	          lloc_change=" (+$d_lloc)"
+	        else
+	          lloc_change=" ($d_lloc)"
+	        fi
+	      fi
+
+	      if [ "$d_ccn" -ne 0 ]; then
+	        if [ "$d_ccn" -gt 0 ]; then
+	          ccn_change=" (+$d_ccn)"
+	        else
+	          ccn_change=" ($d_ccn)"
+	        fi
+	      fi
 
       echo "| \`$file\` | $c_nloc$nloc_change | $c_lloc$lloc_change | $c_ccn$ccn_change |" >> "$temp_changes"
     fi
