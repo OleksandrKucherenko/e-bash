@@ -1022,27 +1022,60 @@ Describe "_commons.sh /"
       The error should eq ''
     End
 
-    It "Handles empty string"
+    It "Handles empty string - generates hash-based slug with __ prefix"
       When call to:slug ""
 
       The status should be success
-      The output should eq ""
+      The output should match pattern "__*"
+      The output should satisfy "[ ${#STDOUT} -eq 9 ]"
       The error should eq ''
     End
 
-    It "Handles only special characters"
+    It "Handles only special characters - generates hash-based slug with __ prefix"
       When call to:slug "!@#$%^&*()"
 
       The status should be success
-      The output should eq ""
+      The output should match pattern "__*"
+      The output should satisfy "[ ${#STDOUT} -eq 9 ]"
       The error should eq ''
     End
 
-    It "Handles only spaces"
+    It "Handles only spaces - generates hash-based slug with __ prefix"
       When call to:slug "     "
 
       The status should be success
-      The output should eq ""
+      The output should match pattern "__*"
+      The output should satisfy "[ ${#STDOUT} -eq 9 ]"
+      The error should eq ''
+    End
+
+    It "Hash-only slugs are unique for different inputs"
+      result1=$(to:slug "!@#$%")
+      result2=$(to:slug "^&*()")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Hash-only slugs are consistent for same input"
+      result1=$(to:slug "!@#$%^&*()")
+      result2=$(to:slug "!@#$%^&*()")
+      When call echo "$result1"
+
+      The status should be success
+      The output should eq "$result2"
+      The error should eq ''
+    End
+
+    It "Hash-only slug respects trim length"
+      When call to:slug "!@#$%^&*()" "_" 5
+
+      The status should be success
+      The output should satisfy "[ ${#STDOUT} -eq 5 ]"
+      The output should match pattern "__*"
       The error should eq ''
     End
 

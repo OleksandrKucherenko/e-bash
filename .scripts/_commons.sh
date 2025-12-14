@@ -487,12 +487,14 @@ function to:slug() {
   #
   # Returns:
   #   A filesystem-safe slug, trimmed to specified length with hash if needed
+  #   If input contains only special characters, returns "__" + hash (7 chars)
   #
   # Example:
   #   result=$(to:slug "Hello World!" "_" 20)  # Returns "hello_world"
   #   result=$(to:slug "Very Long String That Needs Trimming" "_" 20)  # Returns "very_long_st_a1b2c3d"
   #   result=$(to:slug "Test__Multiple--Separators" "_" 50)  # Returns "test_multiple_separators"
   #   result=$(to:slug "Special!@#Characters" "-" 30)  # Returns "special-characters"
+  #   result=$(to:slug '!@#$%^&*()' "_" 20)  # Returns "__a1b2c3d" (hash-only with __ prefix)
 
   local string=$1
   local separator=${2:-"_"}
@@ -508,6 +510,22 @@ function to:slug() {
   # Trim leading and trailing separators
   slug="${slug#"${separator}"}"
   slug="${slug%"${separator}"}"
+
+  # If slug is empty (input had only special characters), generate hash-based name
+  if [ -z "$slug" ]; then
+    # Generate 7-character hash from original input
+    local hash=$(echo -n "$string" | sha256sum 2>/dev/null | head -c 7)
+    [ -z "$hash" ] && hash=$(echo -n "$string" | md5sum 2>/dev/null | head -c 7)
+
+    # Return "__" prefix + hash (9 chars total, or trimmed to max length)
+    local hash_slug="__${hash}"
+    if [ ${#hash_slug} -gt "$trim" ]; then
+      echo "${hash_slug:0:$trim}"
+    else
+      echo "$hash_slug"
+    fi
+    return
+  fi
 
   # If slug exceeds trim length, add hash
   if [ ${#slug} -gt "$trim" ]; then
