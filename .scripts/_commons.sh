@@ -567,8 +567,10 @@ function to:slug() {
       prefix="${prefix%"${separator}"}"
       slug="${prefix}${separator}${hash}"
     else
-      # If trim is too small (< 8), just use hash
-      slug="${hash:0:$trim}"
+      # If trim is too small (<= 8), use hash of exact trim length
+      local hash_only=$(echo -n "$slug" | sha256sum 2>/dev/null | head -c $trim)
+      [ -z "$hash_only" ] && hash_only=$(echo -n "$slug" | md5sum 2>/dev/null | head -c $trim)
+      slug="$hash_only"
     fi
   fi
 
