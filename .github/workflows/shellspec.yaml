@@ -19,6 +19,8 @@ env:
   # - example: distribute individual tests (best balance, requires v2.0 timing data)
   # - hybrid: auto-split large files into examples (good balance)
   CHUNK_GRANULARITY: file
+  # Override for macOS to use hybrid mode for better performance
+  CHUNK_GRANULARITY_MACOS: hybrid
 
 jobs:
   shellspec-macos:
@@ -153,7 +155,7 @@ jobs:
       - name: Run shellspec Tests (chunk ${{ matrix.chunk }})
         run: |
           # Get test files for this chunk using configured granularity
-          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY }})
+          CHUNK_FILES=$(./bin/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY_MACOS }})
 
           if [ -z "$CHUNK_FILES" ]; then
             echo "No test files for chunk ${{ matrix.chunk }}"

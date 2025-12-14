@@ -75,14 +75,10 @@ function dependency() {
     printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
       "${which_tool:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
 
-    if $is_ci_auto_install; then
-      if $is_optional; then
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} missing optional dependency \`${cl_yellow}$tool_name${cl_reset}\`"
-      else
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
-      fi
+    if $is_ci_auto_install && ! $is_optional; then
+      # In CI mode: only auto-install required dependencies, skip optional ones
+      # shellcheck disable=SC2154
+      echo "${cl_blue}auto-installing${cl_reset} missing dependency \`${cl_yellow}$tool_name${cl_reset}\`"
 
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
@@ -118,14 +114,10 @@ function dependency() {
     "$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
   if [ "$version_cleaned" == "" ]; then
-    if $is_ci_auto_install; then
-      if $is_optional; then
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} optional dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
-      else
-        # shellcheck disable=SC2154
-        echo "${cl_blue}auto-installing${cl_reset} dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
-      fi
+    if $is_ci_auto_install && ! $is_optional; then
+      # In CI mode: only auto-install required dependencies, skip optional ones
+      # shellcheck disable=SC2154
+      echo "${cl_blue}auto-installing${cl_reset} dependency with wrong version \`${cl_yellow}$tool_name${cl_reset}\`"
 
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
