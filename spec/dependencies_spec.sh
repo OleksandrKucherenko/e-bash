@@ -38,8 +38,8 @@ End
 Include ".scripts/_dependencies.sh"
 
 Describe "_dependencies.sh /"
-  # Remove colors in output before each function call
-  BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset cl_grey YEP BAD"
+  # Remove colors in output before each function call (skip readonly YEP and BAD)
+  BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset cl_grey"
 
   # Ensure CI variables are clean at the START of each test (before test setup)
   # This runs before any test code, allowing tests to explicitly set CI if needed
