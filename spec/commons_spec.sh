@@ -1287,7 +1287,7 @@ Describe "_commons.sh /"
     End
 
     It "Invalid trim parameter defaults to 20"
-      result=$(to:slug "Hello World Test String" "_" "invalid")
+      result=$(to:slug "abcdefghij klmnop qrstuvwxyz" "_" "invalid")
       When call echo "${#result}"
 
       The status should be success
