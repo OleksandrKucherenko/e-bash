@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016,SC2288
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -850,6 +850,448 @@ Describe "_commons.sh /"
 
       The status should be success
       The output should eq "2"
+      The error should eq ''
+    End
+  End
+
+  Describe "to:slug /"
+    It "Converts simple string to lowercase slug"
+      When call to:slug "Hello World"
+
+      The status should be success
+      The output should eq "hello_world"
+      The error should eq ''
+    End
+
+    It "Uses default separator underscore"
+      When call to:slug "Test String"
+
+      The status should be success
+      The output should eq "test_string"
+      The error should eq ''
+    End
+
+    It "Uses custom separator dash"
+      When call to:slug "Test String" "-"
+
+      The status should be success
+      The output should eq "test-string"
+      The error should eq ''
+    End
+
+    It "Uses custom separator dot"
+      When call to:slug "Test String" "."
+
+      The status should be success
+      The output should eq "test.string"
+      The error should eq ''
+    End
+
+    It "Removes special characters"
+      When call to:slug "Hello@World#Test!"
+
+      The status should be success
+      The output should eq "hello_world_test"
+      The error should eq ''
+    End
+
+    It "Cleans up repeated separators (underscores)"
+      When call to:slug "Test__Multiple___Underscores" "_" 50
+
+      The status should be success
+      The output should eq "test_multiple_underscores"
+      The error should eq ''
+    End
+
+    It "Cleans up repeated separators (dashes)"
+      When call to:slug "Test--Multiple---Dashes" "-" 50
+
+      The status should be success
+      The output should eq "test-multiple-dashes"
+      The error should eq ''
+    End
+
+    It "Cleans up mixed special characters creating repeated separators"
+      When call to:slug "Test  !!  Multiple  @@  Separators" "_" 50
+
+      The status should be success
+      The output should eq "test_multiple_separators"
+      The error should eq ''
+    End
+
+    It "Trims leading separators"
+      When call to:slug "___Leading Underscores"
+
+      The status should be success
+      The output should eq "leading_underscores"
+      The error should eq ''
+    End
+
+    It "Trims trailing separators"
+      When call to:slug "Trailing Underscores___"
+
+      The status should be success
+      The output should eq "trailing_underscores"
+      The error should eq ''
+    End
+
+    It "Trims leading and trailing separators"
+      When call to:slug "___Both Sides___"
+
+      The status should be success
+      The output should eq "both_sides"
+      The error should eq ''
+    End
+
+    It "Handles short strings within default trim length"
+      When call to:slug "Short"
+
+      The status should be success
+      The output should eq "short"
+      The error should eq ''
+    End
+
+    It "Uses default trim length of 20"
+      When call to:slug "Exactly Twenty Chars"
+
+      The status should be success
+      The output should eq "exactly_twenty_chars"
+      The error should eq ''
+    End
+
+    It "Trims long string and adds hash when exceeds default trim (20)"
+      result=$(to:slug "This Is A Very Long String That Exceeds The Default Trim Length")
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "20"
+      The error should eq ''
+    End
+
+    It "Trims long string with custom trim length of 30"
+      result=$(to:slug "This Is A Very Long String That Should Be Trimmed" "_" 30)
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "30"
+      The error should eq ''
+    End
+
+    It "Trims long string with custom trim length of 15"
+      result=$(to:slug "Very Long String Needs Trimming" "_" 15)
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "15"
+      The error should eq ''
+    End
+
+    It "Handles very small trim length (8 - minimum for hash)"
+      result=$(to:slug "Long String" "_" 8)
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "8"
+      The error should eq ''
+    End
+
+    It "Handles very small trim length (5 - less than hash size)"
+      result=$(to:slug "Long String" "_" 5)
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "5"
+      The error should eq ''
+    End
+
+    It "Produces consistent hash for same input"
+      result1=$(to:slug "Very Long String That Needs Hashing" "_" 20)
+      result2=$(to:slug "Very Long String That Needs Hashing" "_" 20)
+      When call echo "$result1"
+
+      The status should be success
+      The output should eq "$result2"
+      The error should eq ''
+    End
+
+    It "Produces different hash for different inputs"
+      result1=$(to:slug "String One That Is Very Long" "_" 20)
+      result2=$(to:slug "String Two That Is Very Long" "_" 20)
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Handles empty string - generates hash-based slug with __ prefix"
+      result=$(to:slug "")
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "9"
+      The error should eq ''
+    End
+
+    It "Handles only special characters - generates hash-based slug with __ prefix"
+      result=$(to:slug "!@#$%^&*()")
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "9"
+      The error should eq ''
+    End
+
+    It "Handles only spaces - generates hash-based slug with __ prefix"
+      result=$(to:slug "     ")
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "9"
+      The error should eq ''
+    End
+
+    It "Hash-only slugs are unique for different inputs"
+      result1=$(to:slug "!@#$%")
+      result2=$(to:slug "^&*()")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Hash-only slugs are consistent for same input"
+      result1=$(to:slug "!@#$%^&*()")
+      result2=$(to:slug "!@#$%^&*()")
+      When call echo "$result1"
+
+      The status should be success
+      The output should eq "$result2"
+      The error should eq ''
+    End
+
+    It "Hash-only slug respects trim length"
+      result=$(to:slug "!@#$%^&*()" "_" 5)
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "5"
+      The error should eq ''
+    End
+
+    It "Handles mixed alphanumeric"
+      When call to:slug "Test123String456"
+
+      The status should be success
+      The output should eq "test123string456"
+      The error should eq ''
+    End
+
+    It "Handles numbers only"
+      When call to:slug "1234567890"
+
+      The status should be success
+      The output should eq "1234567890"
+      The error should eq ''
+    End
+
+    It "Preserves alphanumeric and converts rest to separator"
+      When call to:slug "file-name_v1.2.3"
+
+      The status should be success
+      The output should eq "file_name_v1_2_3"
+      The error should eq ''
+    End
+
+    It "Creates filesystem-safe filename from path-like string"
+      When call to:slug "/path/to/some/file.txt" "_" 50
+
+      The status should be success
+      The output should eq "path_to_some_file_txt"
+      The error should eq ''
+    End
+
+    It "Handles unicode/international characters (converts to separator)"
+      When call to:slug "Héllo Wörld"
+
+      The status should be success
+      # International characters are treated as special chars and converted to separator
+      The output should match pattern "*llo*rld"
+      The error should eq ''
+    End
+
+    It "Real-world example: branch name to filename"
+      When call to:slug "feature/add-new-api-endpoint" "_" 30
+
+      The status should be success
+      The output should eq "feature_add_new_api_endpoint"
+      The error should eq ''
+    End
+
+    It "Real-world example: commit message to filename"
+      result=$(to:slug "fix(core): resolve memory leak in parser" "-" 25)
+      length=${#result}
+      test $length -le 25
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Real-world example: user input to safe filename"
+      result=$(to:slug "My Important Document (Draft).pdf" "_" 20)
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "20"
+      The error should eq ''
+    End
+
+    It "Hash is exactly 7 characters when used"
+      result=$(to:slug "This Is A Very Long String That Will Definitely Need Hashing" "_" 20)
+      hash_part=$(echo "$result" | rev | cut -d'_' -f1 | rev)
+      When call echo "${#hash_part}"
+
+      The status should be success
+      The output should eq "7"
+      The error should eq ''
+    End
+
+    It "Trimmed slug with hash has correct structure (prefix + separator + hash)"
+      result=$(to:slug "Very Long String Needs Trimming And Hashing" "_" 20)
+      # Should be: prefix (12 chars) + _ (1 char) + hash (7 chars) = 20 chars
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "20"
+      The error should eq ''
+    End
+
+    It "Does not add hash when exactly at trim length"
+      # Create a string that when slugified is exactly 18 chars (less than 20)
+      result=$(to:slug "abcdefgh ijklmnopq" "_" 20)
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "18"
+      The error should eq ''
+    End
+
+    It "Handles consecutive special characters between words"
+      When call to:slug "Test!!!@@@###String"
+
+      The status should be success
+      The output should eq "test_string"
+      The error should eq ''
+    End
+
+    It "Different separators produce different outputs"
+      result1=$(to:slug "Hello World" "_")
+      result2=$(to:slug "Hello World" "-")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - forces hash on short string"
+      result=$(to:slug "hello" "_" "always")
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "13"  # hello (5) + _ (1) + hash (7)
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - forces hash on normal string"
+      result=$(to:slug "Hello World" "_" "always")
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "19"  # hello_world (11) + _ (1) + hash (7) = 19
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - produces consistent hash"
+      result1=$(to:slug "test string" "_" "always")
+      result2=$(to:slug "test string" "_" "always")
+      When call echo "$result1"
+
+      The status should be success
+      The output should eq "$result2"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - produces different hashes for different inputs"
+      result1=$(to:slug "string one" "_" "always")
+      result2=$(to:slug "string two" "_" "always")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - works with custom separator"
+      When call to:slug "hello world" "-" "always"
+
+      The status should be success
+      The output should match pattern "hello-world-*"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - hash appended to slug (not trimmed)"
+      result=$(to:slug "very long string that would normally be trimmed" "_" "always")
+      # Should be full slug + _ + hash, not trimmed
+      When call echo "$result"
+
+      The status should be success
+      The output should match pattern "very_long_string_that_would_normally_be_trimmed_*"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - useful for URLs (deterministic cache keys)"
+      url="https://api.example.com/v1/users"
+      result=$(to:slug "$url" "_" "always")
+      When call echo "$result"
+
+      The status should be success
+      The output should match pattern "https_api_example_com_v1_users_*"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - different URLs produce different hashes"
+      result1=$(to:slug "https://api.com/v1/users" "_" "always")
+      result2=$(to:slug "https://api.com/v2/users" "_" "always")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Backwards compatibility - numeric trim still works"
+      When call to:slug "Hello World" "_" 20
+
+      The status should be success
+      The output should eq "hello_world"
+      The error should eq ''
+    End
+
+    It "Invalid trim parameter defaults to 20"
+      result=$(to:slug "abcdefghij klmnop qrstuvwxyz" "_" "invalid")
+      When call echo "${#result}"
+
+      The status should be success
+      The output should eq "20"
       The error should eq ''
     End
   End

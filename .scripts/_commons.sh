@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-23
+## Last revisit: 2025-12-14
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -475,6 +475,122 @@ function val:l1() {
   else
     echo "$default"
   fi
+}
+
+# Helper function for cross-platform hash generation (used by to:slug)
+function to:slug:hash() {
+  local input=$1
+  local length=$2
+  local hash=""
+
+  # Try sha256sum (Linux), shasum -a 256 (macOS), then md5sum/md5
+  if command -v sha256sum >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | sha256sum 2>/dev/null | cut -d' ' -f1 | head -c "$length")
+  elif command -v shasum >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | shasum -a 256 2>/dev/null | cut -d' ' -f1 | head -c "$length")
+  elif command -v md5sum >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | md5sum 2>/dev/null | cut -d' ' -f1 | head -c "$length")
+  elif command -v md5 >/dev/null 2>&1; then
+    hash=$(echo -n "$input" | md5 2>/dev/null | head -c "$length")
+  fi
+
+  echo "$hash"
+}
+
+function to:slug() {
+  # Convert any string to a filesystem-safe slug
+  #
+  # Arguments:
+  #   $1 - string: The string to convert to slug
+  #   $2 - separator: The separator to use (default: "_")
+  #   $3 - trim: Maximum length OR strategy (default: 20)
+  #       - number: Maximum length, add hash if exceeded
+  #       - "always": Always append hash (for deterministic IDs)
+  #
+  # Returns:
+  #   A filesystem-safe slug, trimmed to specified length with hash if needed
+  #   If input contains only special characters, returns "__" + hash (7 chars)
+  #
+  # Example:
+  #   result=$(to:slug "Hello World!" "_" 20)       # Returns "hello_world"
+  #   result=$(to:slug "Hello World!" "_" "always") # Returns "hello_world_fc3ff98"
+  #   result=$(to:slug "Very Long String" "_" 20)   # Returns "very_long_st_a1b2c3d"
+  #   result=$(to:slug "Test__Multiple" "_" 50)     # Returns "test_multiple"
+  #   result=$(to:slug '!@#$%^&*()' "_" 20)         # Returns "__a1b2c3d" (hash-only)
+
+  local string=$1
+  local separator=${2:-"_"}
+  local trim_param=${3:-20}
+  local strategy="length"
+  local trim=20
+
+  # Determine strategy: number (length limit) or "always" (force hash)
+  if [[ "$trim_param" == "always" ]]; then
+    strategy="always"
+    trim=0  # No length limit when strategy is "always"
+  elif [[ "$trim_param" =~ ^[0-9]+$ ]]; then
+    strategy="length"
+    trim=$trim_param
+  else
+    # Invalid parameter, default to 20
+    strategy="length"
+    trim=20
+  fi
+
+  # Convert to lowercase
+  local slug=$(echo "$string" | tr '[:upper:]' '[:lower:]')
+
+  # Replace all non-alphanumeric characters with the separator
+  # and squeeze repeated separators into one
+  slug=$(echo "$slug" | tr -cs '[:alnum:]' "$separator")
+
+  # Trim leading and trailing separators
+  slug="${slug#"${separator}"}"
+  slug="${slug%"${separator}"}"
+
+  # If slug is empty (input had only special characters), generate hash-based name
+  if [ -z "$slug" ]; then
+    # Generate 7-character hash from original input
+    local hash=$(to:slug:hash "$string" 7)
+
+    # Return "__" prefix + hash (9 chars total, or trimmed to max length)
+    local hash_slug="__${hash}"
+    if [ "$strategy" = "length" ] && [ ${#hash_slug} -gt "$trim" ]; then
+      echo "${hash_slug:0:$trim}"
+    else
+      echo "$hash_slug"
+    fi
+    return
+  fi
+
+  # Strategy: always add hash
+  if [ "$strategy" = "always" ]; then
+    local hash=$(to:slug:hash "$slug" 7)
+    echo "${slug}${separator}${hash}"
+    return
+  fi
+
+  # Strategy: length-based trimming
+  if [ ${#slug} -gt "$trim" ]; then
+    # Generate 7-character hash
+    local hash=$(to:slug:hash "$slug" 7)
+
+    # Calculate prefix length (leave room for separator + 7-char hash)
+    local prefix_len=$((trim - 8))
+
+    if [ $prefix_len -gt 0 ]; then
+      local prefix="${slug:0:$prefix_len}"
+      # Remove trailing separator from prefix
+      prefix="${prefix%"${separator}"}"
+      slug="${prefix}${separator}${hash}"
+    else
+      # If trim is too small (<= 8), use hash of exact trim length
+      local hash_only=$(to:slug:hash "$slug" "$trim")
+      slug="$hash_only"
+    fi
+  fi
+
+  echo "$slug"
 }
 
 function args:isHelp() {
