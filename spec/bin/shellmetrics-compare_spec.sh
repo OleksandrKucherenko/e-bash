@@ -532,6 +532,67 @@ SHELL
     End
   End
 
+  Context 'portability /'
+    It 'works with BSD-style mktemp (template required)'
+      # Simulate BSD/macOS mktemp which fails when no template is provided.
+      mkdir -p "$TEST_DIR/bsd-mktemp-bin"
+      cat > "$TEST_DIR/bsd-mktemp-bin/mktemp" <<'MOCK_MKTEMP'
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -eq 0 ]; then
+  echo "mktemp: missing template" >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == --* ]]; then
+  echo "mktemp: illegal option -- ${1#--}" >&2
+  exit 1
+fi
+
+template="$1"
+if [[ "$template" != *XXXXXX* ]]; then
+  echo "mktemp: template must contain XXXXXX" >&2
+  exit 1
+fi
+
+replacement=$(printf '%06d' "$RANDOM")
+path="${template/XXXXXX/$replacement}"
+mkdir -p "$(dirname "$path")" 2>/dev/null || true
+: > "$path"
+echo "$path"
+MOCK_MKTEMP
+      chmod +x "$TEST_DIR/bsd-mktemp-bin/mktemp"
+      export PATH="$TEST_DIR/bsd-mktemp-bin:$PATH"
+
+      cp "$FIXTURES_DIR/shellmetrics-base.csv" base.csv
+      cp "$FIXTURES_DIR/shellmetrics-current.csv" current.csv
+
+      When run script "$SHELLMETRICS_SCRIPT" compare base.csv current.csv report.md
+      The status should be success
+      The output should include "Comparison report saved to:"
+      The path report.md should be file
+    End
+  End
+
+  Context 'github actions debug logging /'
+    It 'does not emit ::debug:: logs by default'
+      When run script "$SHELLMETRICS_SCRIPT" help
+      The output should include "Usage:"
+      The output should not include "::debug::"
+      The status should be success
+    End
+
+    It 'emits ::debug:: logs when ACTIONS_STEP_DEBUG is enabled'
+      export ACTIONS_STEP_DEBUG=true
+      When run script "$SHELLMETRICS_SCRIPT" help
+      The output should include "Usage:"
+      The output should include "::debug::"
+      The status should be success
+      unset ACTIONS_STEP_DEBUG
+    End
+  End
+
   Context 'debugging CI failure /'
     It 'validates CSV format from collect command'
       # Create actual shell scripts

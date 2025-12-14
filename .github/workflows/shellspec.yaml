@@ -540,7 +540,20 @@ jobs:
       - name: Generate metrics comparison report
         if: github.event_name == 'pull_request'
         run: |
-          ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+          set -euo pipefail
+
+          echo "::group::Metrics inputs"
+          ls -la /tmp/base-metrics.csv current-metrics.csv || true
+          echo "::endgroup::"
+
+          echo "::group::Compare metrics"
+          if ! ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md; then
+            status=$?
+            echo "::error::shellmetrics-compare.sh compare failed (exit ${status}); rerunning with bash -x for diagnostics"
+            bash -x ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+            exit "$status"
+          fi
+          echo "::endgroup::"
 
           # Add commit info to the report
           BASE_SHA=$(git rev-parse origin/${{ github.base_ref }})

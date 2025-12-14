@@ -19,9 +19,22 @@
 
 set -euo pipefail
 
+actions_step_debug_enabled() {
+  case "${ACTIONS_STEP_DEBUG:-}" in
+    true|TRUE|True|1|yes|YES|Yes) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+log_debug() {
+  actions_step_debug_enabled || return 0
+  printf '%s\n' "::debug::$*"
+}
+
 # Ensure shellmetrics is installed
 ensure_shellmetrics() {
   if ! command -v shellmetrics &> /dev/null; then
+    log_debug "shellmetrics not found; installing to ${HOME}/.local/bin/shellmetrics"
     echo "Installing shellmetrics..."
     curl -fsSL https://raw.githubusercontent.com/shellspec/shellmetrics/master/shellmetrics > "${HOME}/.local/bin/shellmetrics"
     chmod +x "${HOME}/.local/bin/shellmetrics"
@@ -33,11 +46,12 @@ ensure_shellmetrics() {
 collect_metrics() {
   local output_file="${1:-metrics.csv}"
 
+  log_debug "collect: output_file=${output_file}"
   echo "Collecting metrics for e-bash shell scripts..."
 
   # Create temporary file for combined output
   local temp_file
-  temp_file=$(mktemp)
+  temp_file=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-metrics.XXXXXX")
 
   # Collect metrics for .scripts/*.sh
   if [ -d .scripts ]; then
@@ -127,23 +141,26 @@ compare_metrics() {
   local current_file="$2"
   local output_md="${3:-metrics-comparison.md}"
 
+  log_debug "compare: base_file=${base_file} current_file=${current_file} output_md=${output_md}"
   # Check for missing files and handle gracefully
   if [ ! -f "$base_file" ]; then
+    log_debug "compare: base metrics file missing; creating empty baseline"
     echo "⚠️  Warning: Base metrics file not found: $base_file"
     echo "   Creating empty baseline for comparison"
     # Create temp file if parent directory doesn't exist
     if [ ! -d "$(dirname "$base_file")" ]; then
-      base_file=$(mktemp --suffix=-base-metrics.csv 2>/dev/null || echo "/tmp/base-metrics-$$.csv")
+      base_file=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-base-metrics.XXXXXX" 2>/dev/null || echo "/tmp/base-metrics-$$.csv")
     fi
     echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$base_file" 2>/dev/null || true
   fi
 
   if [ ! -f "$current_file" ]; then
+    log_debug "compare: current metrics file missing; creating empty metrics file"
     echo "⚠️  Warning: Current metrics file not found: $current_file"
     echo "   Creating empty metrics file"
     # Create temp file if parent directory doesn't exist
     if [ ! -d "$(dirname "$current_file")" ]; then
-      current_file=$(mktemp --suffix=-current-metrics.csv 2>/dev/null || echo "/tmp/current-metrics-$$.csv")
+      current_file=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-current-metrics.XXXXXX" 2>/dev/null || echo "/tmp/current-metrics-$$.csv")
     fi
     echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$current_file" 2>/dev/null || true
   fi
@@ -212,8 +229,8 @@ EOF
   # Get file metrics for both versions
   local base_files_csv
   local curr_files_csv
-  base_files_csv=$(mktemp)
-  curr_files_csv=$(mktemp)
+  base_files_csv=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-base-files.XXXXXX")
+  curr_files_csv=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-current-files.XXXXXX")
 
   get_file_metrics "$base_file" > "$base_files_csv"
   get_file_metrics "$current_file" > "$curr_files_csv"
@@ -221,7 +238,7 @@ EOF
   # Find files with changes
   local has_changes=false
   local temp_changes
-  temp_changes=$(mktemp)
+  temp_changes=$(mktemp "${TMPDIR:-/tmp}/shellmetrics-changes.XXXXXX")
 
   # Process all unique files
   while read -r file; do
@@ -278,6 +295,8 @@ EOF
 main() {
   local command="${1:-help}"
 
+  log_debug "command=${command}"
+  log_debug "args=${*:-}"
   case "$command" in
     collect)
       ensure_shellmetrics
