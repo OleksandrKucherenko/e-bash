@@ -2,6 +2,8 @@ name: "Update Test Timing Baseline"
 
 on:
   workflow_dispatch:
+  push:
+    branches: [junit-baseline-pipeline]
   schedule:
     # Weekly (Monday 04:00 UTC)
     - cron: "0 4 * * 1"
