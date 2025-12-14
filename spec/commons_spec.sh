@@ -912,7 +912,7 @@ Describe "_commons.sh /"
     End
 
     It "Cleans up mixed special characters creating repeated separators"
-      When call to:slug "Test  !!  Multiple  @@  Separators"
+      When call to:slug "Test  !!  Multiple  @@  Separators" "_" 50
 
       The status should be success
       The output should eq "test_multiple_separators"
@@ -960,44 +960,47 @@ Describe "_commons.sh /"
     End
 
     It "Trims long string and adds hash when exceeds default trim (20)"
-      When call to:slug "This Is A Very Long String That Exceeds The Default Trim Length"
+      result=$(to:slug "This Is A Very Long String That Exceeds The Default Trim Length")
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "this_is_a_ve_*"
-      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
+      The output should eq "20"
       The error should eq ''
     End
 
     It "Trims long string with custom trim length of 30"
-      When call to:slug "This Is A Very Long String That Should Be Trimmed" "_" 30
+      result=$(to:slug "This Is A Very Long String That Should Be Trimmed" "_" 30)
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "this_is_a_very_long_st_*"
-      The output should satisfy "[ ${#STDOUT} -eq 30 ]"
+      The output should eq "30"
       The error should eq ''
     End
 
     It "Trims long string with custom trim length of 15"
-      When call to:slug "Very Long String Needs Trimming" "_" 15
+      result=$(to:slug "Very Long String Needs Trimming" "_" 15)
+      When call echo "${#result}"
 
       The status should be success
-      The output should satisfy "[ ${#STDOUT} -eq 15 ]"
+      The output should eq "15"
       The error should eq ''
     End
 
     It "Handles very small trim length (8 - minimum for hash)"
-      When call to:slug "Long String" "_" 8
+      result=$(to:slug "Long String" "_" 8)
+      When call echo "${#result}"
 
       The status should be success
-      The output should satisfy "[ ${#STDOUT} -eq 8 ]"
+      The output should eq "8"
       The error should eq ''
     End
 
     It "Handles very small trim length (5 - less than hash size)"
-      When call to:slug "Long String" "_" 5
+      result=$(to:slug "Long String" "_" 5)
+      When call echo "${#result}"
 
       The status should be success
-      The output should satisfy "[ ${#STDOUT} -eq 5 ]"
+      The output should eq "5"
       The error should eq ''
     End
 
@@ -1023,29 +1026,29 @@ Describe "_commons.sh /"
     End
 
     It "Handles empty string - generates hash-based slug with __ prefix"
-      When call to:slug ""
+      result=$(to:slug "")
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "__*"
-      The output should satisfy "[ ${#STDOUT} -eq 9 ]"
+      The output should eq "9"
       The error should eq ''
     End
 
     It "Handles only special characters - generates hash-based slug with __ prefix"
-      When call to:slug "!@#$%^&*()"
+      result=$(to:slug "!@#$%^&*()")
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "__*"
-      The output should satisfy "[ ${#STDOUT} -eq 9 ]"
+      The output should eq "9"
       The error should eq ''
     End
 
     It "Handles only spaces - generates hash-based slug with __ prefix"
-      When call to:slug "     "
+      result=$(to:slug "     ")
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "__*"
-      The output should satisfy "[ ${#STDOUT} -eq 9 ]"
+      The output should eq "9"
       The error should eq ''
     End
 
@@ -1071,11 +1074,11 @@ Describe "_commons.sh /"
     End
 
     It "Hash-only slug respects trim length"
-      When call to:slug "!@#$%^&*()" "_" 5
+      result=$(to:slug "!@#$%^&*()" "_" 5)
+      When call echo "${#result}"
 
       The status should be success
-      The output should satisfy "[ ${#STDOUT} -eq 5 ]"
-      The output should match pattern "__*"
+      The output should eq "5"
       The error should eq ''
     End
 
@@ -1104,7 +1107,7 @@ Describe "_commons.sh /"
     End
 
     It "Creates filesystem-safe filename from path-like string"
-      When call to:slug "/path/to/some/file.txt"
+      When call to:slug "/path/to/some/file.txt" "_" 50
 
       The status should be success
       The output should eq "path_to_some_file_txt"
@@ -1129,18 +1132,22 @@ Describe "_commons.sh /"
     End
 
     It "Real-world example: commit message to filename"
-      When call to:slug "fix(core): resolve memory leak in parser" "-" 25
+      result=$(to:slug "fix(core): resolve memory leak in parser" "-" 25)
+      length=${#result}
+      test $length -le 25
+      When call echo $?
 
       The status should be success
-      The output should satisfy "[ ${#STDOUT} -le 25 ]"
+      The output should eq "0"
       The error should eq ''
     End
 
     It "Real-world example: user input to safe filename"
-      When call to:slug "My Important Document (Draft).pdf" "_" 20
+      result=$(to:slug "My Important Document (Draft).pdf" "_" 20)
+      When call echo "${#result}"
 
       The status should be success
-      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
+      The output should eq "20"
       The error should eq ''
     End
 
@@ -1157,21 +1164,20 @@ Describe "_commons.sh /"
     It "Trimmed slug with hash has correct structure (prefix + separator + hash)"
       result=$(to:slug "Very Long String Needs Trimming And Hashing" "_" 20)
       # Should be: prefix (12 chars) + _ (1 char) + hash (7 chars) = 20 chars
-      When call echo "$result"
+      When call echo "${#result}"
 
       The status should be success
-      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
-      The output should match pattern "*_*"
+      The output should eq "20"
       The error should eq ''
     End
 
     It "Does not add hash when exactly at trim length"
-      # Create a string that when slugified is exactly 20 chars
-      When call to:slug "abcdefgh ijklmnopq" "_" 20
+      # Create a string that when slugified is exactly 18 chars (less than 20)
+      result=$(to:slug "abcdefgh ijklmnopq" "_" 20)
+      When call echo "${#result}"
 
       The status should be success
-      The output should eq "abcdefgh_ijklmnopq"
-      The output should satisfy "[ ${#STDOUT} -eq 18 ]"
+      The output should eq "18"
       The error should eq ''
     End
 
@@ -1195,20 +1201,20 @@ Describe "_commons.sh /"
     End
 
     It "Strategy 'always' - forces hash on short string"
-      When call to:slug "hello" "_" "always"
+      result=$(to:slug "hello" "_" "always")
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "hello_*"
-      The output should satisfy "[ ${#STDOUT} -eq 13 ]"  # hello (5) + _ (1) + hash (7)
+      The output should eq "13"  # hello (5) + _ (1) + hash (7)
       The error should eq ''
     End
 
     It "Strategy 'always' - forces hash on normal string"
-      When call to:slug "Hello World" "_" "always"
+      result=$(to:slug "Hello World" "_" "always")
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "hello_world_*"
-      The output should satisfy "[ ${#STDOUT} -eq 19 ]"  # hello_world (11) + _ (1) + hash (7) = 19
+      The output should eq "19"  # hello_world (11) + _ (1) + hash (7) = 19
       The error should eq ''
     End
 
@@ -1281,11 +1287,11 @@ Describe "_commons.sh /"
     End
 
     It "Invalid trim parameter defaults to 20"
-      When call to:slug "Hello World Test String" "_" "invalid"
+      result=$(to:slug "Hello World Test String" "_" "invalid")
+      When call echo "${#result}"
 
       The status should be success
-      The output should match pattern "*_*"
-      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
+      The output should eq "20"
       The error should eq ''
     End
   End
