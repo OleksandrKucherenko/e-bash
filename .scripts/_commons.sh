@@ -483,22 +483,39 @@ function to:slug() {
   # Arguments:
   #   $1 - string: The string to convert to slug
   #   $2 - separator: The separator to use (default: "_")
-  #   $3 - trim: Maximum length of the slug (default: 20)
+  #   $3 - trim: Maximum length OR strategy (default: 20)
+  #       - number: Maximum length, add hash if exceeded
+  #       - "always": Always append hash (for deterministic IDs)
   #
   # Returns:
   #   A filesystem-safe slug, trimmed to specified length with hash if needed
   #   If input contains only special characters, returns "__" + hash (7 chars)
   #
   # Example:
-  #   result=$(to:slug "Hello World!" "_" 20)  # Returns "hello_world"
-  #   result=$(to:slug "Very Long String That Needs Trimming" "_" 20)  # Returns "very_long_st_a1b2c3d"
-  #   result=$(to:slug "Test__Multiple--Separators" "_" 50)  # Returns "test_multiple_separators"
-  #   result=$(to:slug "Special!@#Characters" "-" 30)  # Returns "special-characters"
-  #   result=$(to:slug '!@#$%^&*()' "_" 20)  # Returns "__a1b2c3d" (hash-only with __ prefix)
+  #   result=$(to:slug "Hello World!" "_" 20)       # Returns "hello_world"
+  #   result=$(to:slug "Hello World!" "_" "always") # Returns "hello_world_fc3ff98"
+  #   result=$(to:slug "Very Long String" "_" 20)   # Returns "very_long_st_a1b2c3d"
+  #   result=$(to:slug "Test__Multiple" "_" 50)     # Returns "test_multiple"
+  #   result=$(to:slug '!@#$%^&*()' "_" 20)         # Returns "__a1b2c3d" (hash-only)
 
   local string=$1
   local separator=${2:-"_"}
-  local trim=${3:-20}
+  local trim_param=${3:-20}
+  local strategy="length"
+  local trim=20
+
+  # Determine strategy: number (length limit) or "always" (force hash)
+  if [[ "$trim_param" == "always" ]]; then
+    strategy="always"
+    trim=0  # No length limit when strategy is "always"
+  elif [[ "$trim_param" =~ ^[0-9]+$ ]]; then
+    strategy="length"
+    trim=$trim_param
+  else
+    # Invalid parameter, default to 20
+    strategy="length"
+    trim=20
+  fi
 
   # Convert to lowercase
   local slug=$(echo "$string" | tr '[:upper:]' '[:lower:]')
@@ -519,7 +536,7 @@ function to:slug() {
 
     # Return "__" prefix + hash (9 chars total, or trimmed to max length)
     local hash_slug="__${hash}"
-    if [ ${#hash_slug} -gt "$trim" ]; then
+    if [ "$strategy" = "length" ] && [ ${#hash_slug} -gt "$trim" ]; then
       echo "${hash_slug:0:$trim}"
     else
       echo "$hash_slug"
@@ -527,7 +544,15 @@ function to:slug() {
     return
   fi
 
-  # If slug exceeds trim length, add hash
+  # Strategy: always add hash
+  if [ "$strategy" = "always" ]; then
+    local hash=$(echo -n "$slug" | sha256sum 2>/dev/null | head -c 7)
+    [ -z "$hash" ] && hash=$(echo -n "$slug" | md5sum 2>/dev/null | head -c 7)
+    echo "${slug}${separator}${hash}"
+    return
+  fi
+
+  # Strategy: length-based trimming
   if [ ${#slug} -gt "$trim" ]; then
     # Generate 7-character hash (try sha256sum first, fallback to md5sum)
     local hash=$(echo -n "$slug" | sha256sum 2>/dev/null | head -c 7)

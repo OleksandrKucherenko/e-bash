@@ -1193,5 +1193,100 @@ Describe "_commons.sh /"
       The output should eq "0"
       The error should eq ''
     End
+
+    It "Strategy 'always' - forces hash on short string"
+      When call to:slug "hello" "_" "always"
+
+      The status should be success
+      The output should match pattern "hello_*"
+      The output should satisfy "[ ${#STDOUT} -eq 13 ]"  # hello (5) + _ (1) + hash (7)
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - forces hash on normal string"
+      When call to:slug "Hello World" "_" "always"
+
+      The status should be success
+      The output should match pattern "hello_world_*"
+      The output should satisfy "[ ${#STDOUT} -eq 19 ]"  # hello_world (11) + _ (1) + hash (7) = 19
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - produces consistent hash"
+      result1=$(to:slug "test string" "_" "always")
+      result2=$(to:slug "test string" "_" "always")
+      When call echo "$result1"
+
+      The status should be success
+      The output should eq "$result2"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - produces different hashes for different inputs"
+      result1=$(to:slug "string one" "_" "always")
+      result2=$(to:slug "string two" "_" "always")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - works with custom separator"
+      When call to:slug "hello world" "-" "always"
+
+      The status should be success
+      The output should match pattern "hello-world-*"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - hash appended to slug (not trimmed)"
+      result=$(to:slug "very long string that would normally be trimmed" "_" "always")
+      # Should be full slug + _ + hash, not trimmed
+      When call echo "$result"
+
+      The status should be success
+      The output should match pattern "very_long_string_that_would_normally_be_trimmed_*"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - useful for URLs (deterministic cache keys)"
+      url="https://api.example.com/v1/users"
+      result=$(to:slug "$url" "_" "always")
+      When call echo "$result"
+
+      The status should be success
+      The output should match pattern "https_api_example_com_v1_users_*"
+      The error should eq ''
+    End
+
+    It "Strategy 'always' - different URLs produce different hashes"
+      result1=$(to:slug "https://api.com/v1/users" "_" "always")
+      result2=$(to:slug "https://api.com/v2/users" "_" "always")
+      test "$result1" != "$result2"
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+      The error should eq ''
+    End
+
+    It "Backwards compatibility - numeric trim still works"
+      When call to:slug "Hello World" "_" 20
+
+      The status should be success
+      The output should eq "hello_world"
+      The error should eq ''
+    End
+
+    It "Invalid trim parameter defaults to 20"
+      When call to:slug "Hello World Test String" "_" "invalid"
+
+      The status should be success
+      The output should match pattern "*_*"
+      The output should satisfy "[ ${#STDOUT} -eq 20 ]"
+      The error should eq ''
+    End
   End
 End
