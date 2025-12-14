@@ -162,17 +162,23 @@ function dependency() {
 
 function optional() {
   local args=("$@")
-  
+
   # Ensure we have minimum required parameters before adding --optional flag
   # This prevents --optional from being treated as a positional parameter
   case ${#args[@]} in
     2) args+=("No details. Please google it." "--version") ;;
     3) args+=("--version") ;;
   esac
-  
+
   # Add --optional flag and forward to dependency()
   dependency "${args[@]}" --optional
 }
+
+# Readonly constants for success/failure symbols (only declare if not already defined)
+if [ -z "${YEP:-}" ]; then
+  readonly YEP="${cl_green}✓${cl_reset}"
+  readonly BAD="${cl_red}✗${cl_reset}"
+fi
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
@@ -183,10 +189,6 @@ logger dependencies "$@" # register own debug tag & logger functions
 logger:redirect dependencies ">&2"
 
 logger:init install "${cl_blue}[install]${cl_reset} " ">&2" # register logger for CI auto-install operations
-
-# Readonly constants for success/failure symbols
-readonly YEP="${cl_green}✓${cl_reset}"
-readonly BAD="${cl_red}✗${cl_reset}"
 
 logger loader "$@" # initialize loader logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
