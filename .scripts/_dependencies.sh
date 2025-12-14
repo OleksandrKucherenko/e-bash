@@ -63,9 +63,9 @@ function dependency() {
   local is_optional=$(isOptional "$@")
   local is_ci_auto_install=$(isCIAutoInstallEnabled)
 
-  # Local constants for success/failure symbols
-  local YEP="${cl_green}✓${cl_reset}"
-  local BAD="${cl_red}✗${cl_reset}"
+  # Local constants for success/failure symbols (with fallbacks for undefined colors)
+  local YEP="${cl_green:-}✓${cl_reset:-}"
+  local BAD="${cl_red:-}✗${cl_reset:-}"
 
   config:logger:Dependencies "$@" # refresh debug flags
 
