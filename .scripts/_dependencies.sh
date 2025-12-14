@@ -63,6 +63,10 @@ function dependency() {
   local is_optional=$(isOptional "$@")
   local is_ci_auto_install=$(isCIAutoInstallEnabled)
 
+  # Local constants for success/failure symbols
+  local YEP="${cl_green}✓${cl_reset}"
+  local BAD="${cl_red}✗${cl_reset}"
+
   config:logger:Dependencies "$@" # refresh debug flags
 
   # escape symbols: & / . { }, remove end of line, replace * by expectation from 1 to 4 digits
@@ -173,12 +177,6 @@ function optional() {
   # Add --optional flag and forward to dependency()
   dependency "${args[@]}" --optional
 }
-
-# Readonly constants for success/failure symbols (only declare if not already defined)
-if [ -z "${YEP:-}" ]; then
-  readonly YEP="${cl_green}✓${cl_reset}"
-  readonly BAD="${cl_red}✗${cl_reset}"
-fi
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
