@@ -30,8 +30,11 @@ jobs:
     name: "Generate baseline (Linux)"
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout Code
+      - name: Checkout Code with full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for git-dependent tests
+          fetch-tags: true # Required for tests that check git tags
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -119,8 +122,11 @@ jobs:
     name: "Generate baseline (macOS)"
     runs-on: macos-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Code with full history
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for git-dependent tests
+          fetch-tags: true # Required for tests that check git tags
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
