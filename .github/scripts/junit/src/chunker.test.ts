@@ -175,20 +175,93 @@ describe("buildExampleItemsFromTimings", () => {
         expect(items[1]).toEqual({ name: "spec/b_spec.sh", weight: 100 });
         expect(usingStatic).toContain("spec/b_spec.sh");
     });
+
+    test("uses line numbers instead of hash IDs when available", () => {
+        // When lineno is present, it should be used instead of the hash ID
+        const specFiles = ["spec/a_spec.sh"];
+        const v2Timings: { [file: string]: FileTimingV2 } = {
+            "spec/a_spec.sh": {
+                total: 3.0,
+                examples: {
+                    "@433d8d86": { time: 0.824, name: "test 1", lineno: 35 },
+                    "@279acda4": { time: 0.409, name: "test 2", lineno: 56 },
+                },
+            },
+        };
+
+        const { items } = buildExampleItemsFromTimings(specFiles, v2Timings);
+
+        expect(items).toHaveLength(2);
+        // Should use line numbers, not hash IDs
+        expect(items[0].name).toBe("spec/a_spec.sh:35");
+        expect(items[1].name).toBe("spec/a_spec.sh:56");
+    });
+
+    test("falls back to hash ID when lineno is not available", () => {
+        const specFiles = ["spec/a_spec.sh"];
+        const v2Timings: { [file: string]: FileTimingV2 } = {
+            "spec/a_spec.sh": {
+                total: 2.0,
+                examples: {
+                    "@433d8d86": { time: 1.0, name: "test with lineno", lineno: 35 },
+                    "@279acda4": { time: 1.0, name: "test without lineno" }, // no lineno
+                },
+            },
+        };
+
+        const { items } = buildExampleItemsFromTimings(specFiles, v2Timings);
+
+        expect(items).toHaveLength(2);
+        expect(items[0].name).toBe("spec/a_spec.sh:35"); // has lineno
+        expect(items[1].name).toBe("spec/a_spec.sh:@279acda4"); // falls back to hash
+    });
+
+    test("handles real-world timing data with line numbers", () => {
+        const specFiles = ["spec/arguments_spec.sh", "spec/installation_spec.sh"];
+        const v2Timings: { [file: string]: FileTimingV2 } = {
+            "spec/arguments_spec.sh": {
+                total: 7.639,
+                examples: {
+                    "@433d8d86": { time: 0.824, name: "_arguments.sh / test 1", lineno: 35 },
+                    "@279acda4": { time: 0.409, name: "_arguments.sh / test 2", lineno: 56 },
+                    "@03fadae8": { time: 0.737, name: "_arguments.sh / test 3", lineno: 74 },
+                },
+            },
+            "spec/installation_spec.sh": {
+                total: 204.0,
+                examples: {
+                    "@eddc5530": { time: 7.724, name: "install / test 1", lineno: 350 },
+                    "@0685edc9": { time: 7.719, name: "install / test 2", lineno: 1253 },
+                },
+            },
+        };
+
+        const { items } = buildExampleItemsFromTimings(specFiles, v2Timings);
+
+        expect(items).toHaveLength(5);
+
+        // All should use line numbers
+        const names = items.map(i => i.name);
+        expect(names).toContain("spec/arguments_spec.sh:35");
+        expect(names).toContain("spec/arguments_spec.sh:56");
+        expect(names).toContain("spec/arguments_spec.sh:74");
+        expect(names).toContain("spec/installation_spec.sh:350");
+        expect(names).toContain("spec/installation_spec.sh:1253");
+    });
 });
 
 describe("collapseExampleOutput", () => {
     test("collapses examples from same file", () => {
         const items: TestItem[] = [
-            { name: "spec/a_spec.sh:@1", weight: 1, isExample: true },
-            { name: "spec/a_spec.sh:@2", weight: 2, isExample: true },
-            { name: "spec/a_spec.sh:@3", weight: 3, isExample: true },
+            { name: "spec/a_spec.sh:@1-1", weight: 1, isExample: true },
+            { name: "spec/a_spec.sh:@1-2", weight: 2, isExample: true },
+            { name: "spec/a_spec.sh:@1-3", weight: 3, isExample: true },
         ];
 
         const output = collapseExampleOutput(items);
 
         expect(output).toHaveLength(1);
-        expect(output[0]).toBe("spec/a_spec.sh:@1:@2:@3");
+        expect(output[0]).toBe("spec/a_spec.sh:@1-1:@1-2:@1-3");
     });
 
     test("keeps whole files as-is", () => {
@@ -205,8 +278,8 @@ describe("collapseExampleOutput", () => {
     test("handles mixed files and examples", () => {
         const items: TestItem[] = [
             { name: "spec/a_spec.sh", weight: 10 },
-            { name: "spec/b_spec.sh:@1", weight: 1, isExample: true },
-            { name: "spec/b_spec.sh:@2", weight: 2, isExample: true },
+            { name: "spec/b_spec.sh:@1-1", weight: 1, isExample: true },
+            { name: "spec/b_spec.sh:@1-2", weight: 2, isExample: true },
             { name: "spec/c_spec.sh", weight: 30 },
         ];
 
@@ -214,19 +287,119 @@ describe("collapseExampleOutput", () => {
 
         expect(output).toHaveLength(3);
         expect(output).toContain("spec/a_spec.sh");
-        expect(output).toContain("spec/b_spec.sh:@1:@2");
+        expect(output).toContain("spec/b_spec.sh:@1-1:@1-2");
         expect(output).toContain("spec/c_spec.sh");
     });
 
     test("handles examples with nested paths", () => {
         const items: TestItem[] = [
-            { name: "spec/bin/git_spec.sh:@1", weight: 1, isExample: true },
-            { name: "spec/bin/git_spec.sh:@2", weight: 2, isExample: true },
+            { name: "spec/bin/git_spec.sh:@1-1", weight: 1, isExample: true },
+            { name: "spec/bin/git_spec.sh:@1-2", weight: 2, isExample: true },
         ];
 
         const output = collapseExampleOutput(items);
 
-        expect(output).toEqual(["spec/bin/git_spec.sh:@1:@2"]);
+        expect(output).toEqual(["spec/bin/git_spec.sh:@1-1:@1-2"]);
+    });
+
+    test("filters out hash-based IDs (our internal format) - outputs file only", () => {
+        // Hash-based IDs like @5eb21bbc are not valid ShellSpec selectors
+        // They should be stripped, leaving just the file name
+        const items: TestItem[] = [
+            { name: "spec/a_spec.sh:@5eb21bbc", weight: 1, isExample: true },
+            { name: "spec/a_spec.sh:@1a2b3c4d", weight: 2, isExample: true },
+        ];
+
+        const output = collapseExampleOutput(items);
+
+        expect(output).toHaveLength(1);
+        expect(output[0]).toBe("spec/a_spec.sh"); // Just the file, no IDs
+    });
+
+    test("preserves ShellSpec position-based IDs (@1-2 format)", () => {
+        // ShellSpec IDs like @1-2 ARE valid selectors and should be preserved
+        const items: TestItem[] = [
+            { name: "spec/a_spec.sh:@1-1", weight: 1, isExample: true },
+            { name: "spec/a_spec.sh:@1-2", weight: 2, isExample: true },
+            { name: "spec/a_spec.sh:@2-1-3", weight: 3, isExample: true },
+        ];
+
+        const output = collapseExampleOutput(items);
+
+        expect(output).toHaveLength(1);
+        expect(output[0]).toBe("spec/a_spec.sh:@1-1:@1-2:@2-1-3");
+    });
+
+    test("mixed hash and ShellSpec IDs - only preserves ShellSpec IDs", () => {
+        const items: TestItem[] = [
+            { name: "spec/a_spec.sh:@abcd1234", weight: 1, isExample: true }, // hash - filtered
+            { name: "spec/a_spec.sh:@1-5", weight: 2, isExample: true },      // ShellSpec - kept
+        ];
+
+        const output = collapseExampleOutput(items);
+
+        expect(output).toHaveLength(1);
+        expect(output[0]).toBe("spec/a_spec.sh:@1-5"); // Only ShellSpec ID
+    });
+
+    test("preserves line numbers (e.g., 35, 56) as valid selectors", () => {
+        // Line numbers are valid ShellSpec selectors (file.sh:35)
+        const items: TestItem[] = [
+            { name: "spec/a_spec.sh:35", weight: 1, isExample: true },
+            { name: "spec/a_spec.sh:56", weight: 2, isExample: true },
+            { name: "spec/a_spec.sh:74", weight: 3, isExample: true },
+        ];
+
+        const output = collapseExampleOutput(items);
+
+        expect(output).toHaveLength(1);
+        expect(output[0]).toBe("spec/a_spec.sh:35:56:74");
+    });
+
+    test("mixed line numbers and hash IDs - only preserves line numbers", () => {
+        const items: TestItem[] = [
+            { name: "spec/a_spec.sh:@5eb21bbc", weight: 1, isExample: true }, // hash - filtered
+            { name: "spec/a_spec.sh:35", weight: 2, isExample: true },         // line number - kept
+            { name: "spec/a_spec.sh:@1a2b3c4d", weight: 3, isExample: true }, // hash - filtered
+            { name: "spec/a_spec.sh:56", weight: 4, isExample: true },         // line number - kept
+        ];
+
+        const output = collapseExampleOutput(items);
+
+        expect(output).toHaveLength(1);
+        expect(output[0]).toBe("spec/a_spec.sh:35:56"); // Only line numbers
+    });
+
+    test("mixed files with line numbers from different files", () => {
+        const items: TestItem[] = [
+            { name: "spec/a_spec.sh:35", weight: 1, isExample: true },
+            { name: "spec/b_spec.sh:100", weight: 2, isExample: true },
+            { name: "spec/a_spec.sh:56", weight: 3, isExample: true },
+            { name: "spec/b_spec.sh:200", weight: 4, isExample: true },
+        ];
+
+        const output = collapseExampleOutput(items);
+
+        expect(output).toHaveLength(2);
+        expect(output).toContain("spec/a_spec.sh:35:56");
+        expect(output).toContain("spec/b_spec.sh:100:200");
+    });
+
+    test("real-world scenario: multiple examples with line numbers", () => {
+        // Simulates actual chunk output with line numbers from timing data
+        const items: TestItem[] = [
+            { name: "spec/arguments_spec.sh:35", weight: 0.824, isExample: true },
+            { name: "spec/arguments_spec.sh:56", weight: 0.409, isExample: true },
+            { name: "spec/arguments_spec.sh:74", weight: 0.737, isExample: true },
+            { name: "spec/installation_spec.sh:350", weight: 7.724, isExample: true },
+            { name: "spec/installation_spec.sh:1253", weight: 6.920, isExample: true },
+        ];
+
+        const output = collapseExampleOutput(items);
+
+        expect(output).toHaveLength(2);
+        expect(output).toContain("spec/arguments_spec.sh:35:56:74");
+        expect(output).toContain("spec/installation_spec.sh:350:1253");
     });
 });
 

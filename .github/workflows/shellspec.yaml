@@ -16,11 +16,13 @@ env:
   CI_E_BASH_INSTALL_DEPENDENCIES: 1
   # Test chunking granularity: file (default), example, or hybrid
   # - file: distribute whole spec files (fastest, less balanced)
-  # - example: distribute individual tests (best balance, requires v2.0 timing data)
+  # - example: distribute individual tests (best balance, requires v2.0 timing data with line numbers)
   # - hybrid: auto-split large files into examples (good balance)
+  # 
+  # Hash-based IDs in timing data are stable across code changes.
+  # Line numbers are resolved at baseline generation time for ShellSpec compatibility.
   CHUNK_GRANULARITY: file
-  # Override for macOS to use hybrid mode for better performance
-  CHUNK_GRANULARITY_MACOS: hybrid
+  CHUNK_GRANULARITY_MACOS: example
 
 jobs:
   shellspec-macos:

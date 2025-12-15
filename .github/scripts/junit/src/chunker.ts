@@ -89,6 +89,7 @@ export function buildFileItemsFromTimings(
 
 /**
  * Build items list at example granularity from V2 timing data
+ * Uses line numbers when available for ShellSpec compatibility
  */
 export function buildExampleItemsFromTimings(
     specFiles: string[],
@@ -104,8 +105,10 @@ export function buildExampleItemsFromTimings(
         if (fileData && fileData.examples && Object.keys(fileData.examples).length > 0) {
             // Add individual examples
             for (const [exampleId, example] of Object.entries(fileData.examples)) {
+                // Prefer line number over hash ID - line numbers work with ShellSpec
+                const selector = example.lineno ? String(example.lineno) : exampleId;
                 items.push({
-                    name: `${specFile}:${exampleId}`,
+                    name: `${specFile}:${selector}`,
                     weight: example.time,
                     isExample: true,
                 });
@@ -125,8 +128,38 @@ export function buildExampleItemsFromTimings(
 }
 
 /**
+ * Check if a selector is valid for ShellSpec:
+ * - Line numbers: 35, 56, 194 (just digits)
+ * - Position IDs: @1-2, @1-13-2 (@ followed by numbers and dashes)
+ * 
+ * NOT valid: hash IDs like @5eb21bbc (8 hex chars)
+ */
+function isValidShellSpecSelector(selector: string): boolean {
+    // Line numbers: just digits
+    if (/^\d+$/.test(selector)) return true;
+
+    // Position IDs start with @
+    if (!selector.startsWith("@")) return false;
+
+    const rest = selector.substring(1);
+
+    // Check for our hash format: exactly 8 hex characters (including all digits)
+    // This must come before the ShellSpec check because hashes like @46514225 could match [\d-]+
+    if (/^[0-9a-f]{8}$/i.test(rest)) return false;
+
+    // ShellSpec position format: numbers and dashes, must contain at least one dash
+    // e.g., @1-2, @1-13-2, @2-1-3-4
+    if (/^\d+(-\d+)+$/.test(rest)) return true;
+
+    return false; // Unknown format, treat as invalid
+}
+
+/**
  * Collapse consecutive example IDs from same file for cleaner output
- * e.g., "spec/a.sh:@1 spec/a.sh:@2" -> "spec/a.sh:@1:@2"
+ * e.g., "spec/a.sh:@1-1 spec/a.sh:@1-2" -> "spec/a.sh:@1-1:@1-2"
+ * 
+ * NOTE: Hash-based IDs (our internal format like @5eb21bbc) are NOT valid
+ * ShellSpec selectors. They must be collapsed to just the file name.
  */
 export function collapseExampleOutput(chunkItems: TestItem[]): string[] {
     const fileGroups: { [file: string]: string[] } = {};
@@ -142,7 +175,12 @@ export function collapseExampleOutput(chunkItems: TestItem[]): string[] {
                 fileGroups[file] = [];
                 fileOrder.push(file);
             }
-            fileGroups[file].push(exampleId);
+
+            // Only keep ShellSpec-compatible IDs
+            if (isValidShellSpecSelector(exampleId)) {
+                fileGroups[file].push(exampleId);
+            }
+            // Hash IDs are not added - file will be output without specific examples
         } else {
             // Whole file - add directly
             if (!fileGroups[item.name]) {
