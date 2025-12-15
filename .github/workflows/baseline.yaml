@@ -2,11 +2,13 @@ name: "Update Test Timing Baseline"
 
 on:
   workflow_dispatch:
-  push:
-    branches: [junit-baseline-pipeline]
   schedule:
     # Weekly (Monday 04:00 UTC)
     - cron: "0 4 * * 1"
+  # Uncomment if you want to be able to run baseline generation via specially named branch.
+  # That can be used for testing of new pipeline code changes, without merging them into main.
+  #push:
+  #  branches: [junit-baseline-pipeline]
 
 permissions:
   contents: write
