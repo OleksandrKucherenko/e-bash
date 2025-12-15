@@ -34,7 +34,7 @@ import {
     type FileTimingV2,
     type TimingData,
     type Granularity,
-} from "./lib/chunker";
+} from "./chunker";
 
 // Re-export types for V1/V2 timing data
 interface TimingDataV1 {
@@ -218,9 +218,9 @@ function main() {
 
     const { timingFile, numChunks, chunkIndex, granularity } = parsed;
 
-    // Get project root (parent of bin/junit directory)
+    // Get project root (repo root; this script lives in .github/scripts/junit/src)
     const scriptDir = import.meta.dir;
-    const projectRoot = join(scriptDir, "../..");
+    const projectRoot = join(scriptDir, "../../../..");
 
     // Load timing data
     const timingData = loadTimings(timingFile);

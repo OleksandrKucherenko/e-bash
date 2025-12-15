@@ -19,7 +19,7 @@ export {
     type FileTimingV2,
     type ParsedExample,
     type Granularity as ParserGranularity,
-} from "./lib/parser";
+} from "./parser";
 
 // Chunker exports
 export {
@@ -34,4 +34,4 @@ export {
     type TimingDataV1 as ChunkerTimingDataV1,
     type TimingDataV2 as ChunkerTimingDataV2,
     type Granularity as ChunkerGranularity,
-} from "./lib/chunker";
+} from "./chunker";

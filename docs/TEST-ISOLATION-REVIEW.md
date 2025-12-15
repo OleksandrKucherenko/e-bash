@@ -7,7 +7,7 @@
 Following the same pattern as `git.verify-all-commits_spec.sh`:
 
 ```bash
-Describe 'bin/shellmetrics-compare.sh /'
+Describe '.github/scripts/shellmetrics-compare.sh /'
   BeforeEach 'setup_test_environment'
   AfterEach 'cleanup_test_environment'
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "DEPRECATED: This file has been moved to bin/junit/package.json. Please delete this file.",
+  "_comment": "DEPRECATED: This file has been moved to .github/scripts/junit/package.json. Please delete this file.",
   "name": "DEPRECATED",
   "private": true
 }

@@ -403,7 +403,7 @@ After optimization (assuming even ~3.6 min per chunk):
    - Confirm imbalance matches predictions
 
 2. **Implement static optimization:**
-   - Update `bin/chunk-tests.sh` with optimal distribution
+   - Update `.github/scripts/chunk-tests.sh` with optimal distribution
    - Test locally with all 4 chunks
    - Measure improvement in CI
 
@@ -411,4 +411,3 @@ After optimization (assuming even ~3.6 min per chunk):
    - Track chunk timings over multiple runs
    - Adjust if test execution patterns change
    - Consider automated approach when ROI justifies it
-

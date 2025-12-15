@@ -11,9 +11,9 @@
 
 eval "$(shellspec - -c) exit 1"
 
-Describe 'bin/shellmetrics-compare.sh /'
+Describe '.github/scripts/shellmetrics-compare.sh /'
   # Include the script using relative path from project root
-  Include bin/shellmetrics-compare.sh
+  Include .github/scripts/shellmetrics-compare.sh
 
   BeforeEach 'setup_test_environment'
   AfterEach 'cleanup_test_environment'
@@ -23,7 +23,7 @@ Describe 'bin/shellmetrics-compare.sh /'
     export ORIGINAL_DIR=$(pwd)
     # Use an executable copy of the script under TEST_DIR so specs don't
     # depend on checkout filemode support (e.g., core.filemode=false).
-    export SHELLMETRICS_SCRIPT="${ORIGINAL_DIR}/bin/shellmetrics-compare.sh"
+    export SHELLMETRICS_SCRIPT="${ORIGINAL_DIR}/.github/scripts/shellmetrics-compare.sh"
     export FIXTURES_DIR="${ORIGINAL_DIR}/spec/fixtures"
     cd "$TEST_DIR"
 

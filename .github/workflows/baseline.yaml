@@ -1,0 +1,230 @@
+name: "Update Test Timing Baseline"
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly (Monday 04:00 UTC)
+    - cron: "0 4 * * 1"
+  # Uncomment if you want to be able to run baseline generation via specially named branch.
+  # That can be used for testing of new pipeline code changes, without merging them into main.
+  #push:
+  #  branches: [junit-baseline-pipeline]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: test-timing-baseline
+  cancel-in-progress: false
+
+env:
+  SHELLSPEC_VERSION: 0.28.1
+  TERM: xterm-256color
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  HOMEBREW_NO_ENV_HINTS: 1
+  # Enable CI auto-install mode for dependencies
+  CI_E_BASH_INSTALL_DEPENDENCIES: 1
+
+jobs:
+  baseline-linux:
+    name: "Generate baseline (Linux)"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Code with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for git-dependent tests
+          fetch-tags: true # Required for tests that check git tags
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
+
+      - name: Install Homebrew
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v brew >/dev/null 2>&1; then
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+      - name: Install direnv
+        shell: bash
+        run: |
+          curl -sfL https://direnv.net/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Setup project dependencies (direnv)
+        shell: bash
+        run: |
+          set -euo pipefail
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+
+      - name: Run full ShellSpec suite (with coverage)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf report coverage || true
+
+          set -o pipefail
+          shellspec --kcov 2>&1 | tee /tmp/test_output.txt || {
+            exit_code=${PIPESTATUS[0]}
+            echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
+
+            passed_tests=$(grep -c "^ok " /tmp/test_output.txt || true)
+            failed_tests=$(grep -c "^not ok " /tmp/test_output.txt || true)
+            has_summary=$(grep -q "examples, .* failures" /tmp/test_output.txt && echo "yes" || echo "no")
+
+            if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
+              echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
+              exit 0
+            else
+              echo "❌ Tests actually failed or incomplete"
+              echo "   Passed: $passed_tests, Failed: $failed_tests, Has summary: $has_summary"
+              exit 1
+            fi
+          }
+
+      - name: Create baseline files (Linux)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .github/data/linux
+          mkdir -p .github/data/linux/report
+
+          mapfile -t XML_FILES < <(find report -type f -name '*.xml' -print | sort)
+          if [ "${#XML_FILES[@]}" -eq 0 ]; then
+            echo "No JUnit XML files found in report/; cannot generate baseline."
+            exit 1
+          fi
+          bun .github/scripts/junit/src/sanitize-junit-xml.ts .github/data/linux/report/baseline.xml "${XML_FILES[@]}"
+          bun .github/scripts/junit/src/parse-test-timings.ts .github/data/linux/test-timings.json .github/data/linux/report/baseline.xml --granularity=example
+
+      - name: Upload baseline artifact (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-linux
+          path: .github/data/linux
+          if-no-files-found: error
+          retention-days: 30
+
+  baseline-macos:
+    name: "Generate baseline (macOS)"
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Full history needed for git-dependent tests
+          fetch-tags: true # Required for tests that check git tags
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install direnv
+        run: |
+          brew install direnv
+
+      - name: Setup project dependencies (direnv)
+        run: |
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+
+      - name: Run full ShellSpec suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf report || true
+
+          set -o pipefail
+          shellspec 2>&1 | tee /tmp/test_output.txt || {
+            exit_code=${PIPESTATUS[0]}
+            echo "Shellspec exited with code $exit_code, checking if tests actually passed..."
+
+            passed_tests=$(grep -c "^ok " /tmp/test_output.txt || true)
+            failed_tests=$(grep -c "^not ok " /tmp/test_output.txt || true)
+            has_summary=$(grep -q "examples, .* failures" /tmp/test_output.txt && echo "yes" || echo "no")
+
+            if [ "$passed_tests" -gt 0 ] && [ "$failed_tests" -eq 0 ] && [ "$has_summary" = "yes" ]; then
+              echo "✅ All $passed_tests tests passed (0 failures) - ignoring shellspec exit code bug"
+              exit 0
+            else
+              echo "❌ Tests actually failed or incomplete"
+              echo "   Passed: $passed_tests, Failed: $failed_tests, Has summary: $has_summary"
+              exit 1
+            fi
+          }
+
+      - name: Create baseline files (macOS)
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .github/data/macos
+          mkdir -p .github/data/macos/report
+
+          mapfile -t XML_FILES < <(find report -type f -name '*.xml' -print | sort)
+          if [ "${#XML_FILES[@]}" -eq 0 ]; then
+            echo "No JUnit XML files found in report/; cannot generate baseline."
+            exit 1
+          fi
+          bun .github/scripts/junit/src/sanitize-junit-xml.ts .github/data/macos/report/baseline.xml "${XML_FILES[@]}"
+          bun .github/scripts/junit/src/parse-test-timings.ts .github/data/macos/test-timings.json .github/data/macos/report/baseline.xml --granularity=example
+
+      - name: Upload baseline artifact (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-macos
+          path: .github/data/macos
+          if-no-files-found: error
+          retention-days: 30
+
+  open-baseline-pr:
+    name: "Open baseline update PR"
+    runs-on: ubuntu-latest
+    needs: [baseline-linux, baseline-macos]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download baseline artifact (Linux)
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-linux
+          path: .github/data/linux
+
+      - name: Download baseline artifact (macOS)
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-macos
+          path: .github/data/macos
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "new unit tests optimization baseline"
+          title: "new unit tests optimization baseline"
+          body: |
+            Updates the committed unit test optimization baseline used for CI chunking:
+
+            - Linux: `.github/data/linux/`
+            - macOS: `.github/data/macos/`
+
+            Generated by the `Update Test Timing Baseline` workflow.
+          branch: ci/update-unit-test-optimization-baseline
+          delete-branch: true
+          add-paths: |
+            .github/data/**

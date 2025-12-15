@@ -14,6 +14,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
 echo "=================================="
 echo "ShellMetrics CI Failure Diagnostics"
 echo "=================================="
@@ -50,7 +53,7 @@ echo ""
 
 # 2. Check if shellmetrics-compare.sh exists
 echo "2. Checking shellmetrics-compare.sh script..."
-SCRIPT_PATH="./bin/shellmetrics-compare.sh"
+SCRIPT_PATH="${SCRIPT_DIR}/shellmetrics-compare.sh"
 if [ -f "$SCRIPT_PATH" ]; then
   check_pass "Script exists: $SCRIPT_PATH"
   if [ -x "$SCRIPT_PATH" ]; then

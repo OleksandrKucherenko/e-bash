@@ -68,10 +68,25 @@ export function normalizeSpecPath(specFile: string): string {
 }
 
 /**
- * Extract example ID from test name using shellspec conventions.
+ * Generate a stable hash from a string (simple djb2 hash)
  */
-export function extractExampleId(testName: string, index: number): string {
-    return `@${index + 1}`;
+function hashString(str: string): string {
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+    }
+    // Convert to unsigned 32-bit and then to hex string
+    return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * Extract example ID from test name using a stable hash.
+ * This ensures IDs remain consistent even when tests are added/removed/reordered.
+ * The ID format is: @{hash} where hash is derived from the test name.
+ */
+export function extractExampleId(testName: string, _index: number): string {
+    // Use the full test name to generate a stable hash
+    return `@${hashString(testName)}`;
 }
 
 /**
@@ -87,9 +102,9 @@ export function parseJUnitXMLContent(xmlContent: string): TimingDataV1 {
 
     if (matches) {
         for (const testcaseTag of matches) {
-            // Extract attributes
+            // Extract attributes (use \s to ensure we match the attribute, not part of another attribute like 'classname')
             const classnameMatch = testcaseTag.match(/classname="([^"]*)"/);
-            const nameMatch = testcaseTag.match(/name="([^"]*)"/);
+            const nameMatch = testcaseTag.match(/\sname="([^"]*)"/);
             const timeMatch = testcaseTag.match(/time="([^"]*)"/);
 
             const classname = classnameMatch ? classnameMatch[1] : "";
@@ -165,8 +180,9 @@ export function parseJUnitXMLContentExamples(xmlContent: string): ParsedExample[
     }
 
     for (const testcaseTag of matches) {
+        // Extract attributes (use \s to ensure we match the attribute, not part of another attribute like 'classname')
         const classnameMatch = testcaseTag.match(/classname="([^"]*)"/);
-        const nameMatch = testcaseTag.match(/name="([^"]*)"/);
+        const nameMatch = testcaseTag.match(/\sname="([^"]*)"/);
         const timeMatch = testcaseTag.match(/time="([^"]*)"/);
 
         const classname = classnameMatch ? classnameMatch[1] : "";

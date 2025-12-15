@@ -1,0 +1,3461 @@
+{
+  "version": "2.0",
+  "granularity": "example",
+  "description": "Per-example timing data extracted from JUnit XML reports",
+  "timings": {
+    "spec/arguments_spec.sh": {
+      "total": 7.639000000000001,
+      "examples": {
+        "@433d8d86": {
+          "time": 0.824,
+          "name": "_arguments.sh / On no ARGS_DEFINITION provided, expected fallback to predefined flags",
+          "lineno": 35
+        },
+        "@279acda4": {
+          "time": 0.4088,
+          "name": "_arguments.sh / ARGS_DEFINITION set to &quot;-h,--help&quot; produce help env variable with value 1",
+          "lineno": 56
+        },
+        "@03fadae8": {
+          "time": 0.7365,
+          "name": "_arguments.sh / Extract argument after --id flag into args_pno variable",
+          "lineno": 74
+        },
+        "@b08baeb1": {
+          "time": 0.7342,
+          "name": "_arguments.sh / Extract value into args_pno variable from key=value argument",
+          "lineno": 91
+        },
+        "@9678991f": {
+          "time": 0.7605,
+          "name": "_arguments.sh / Force &lt;empty&gt; value into args_pno variable from key=value argument",
+          "lineno": 108
+        },
+        "@98ba7a4e": {
+          "time": 0.7452,
+          "name": "_arguments.sh / Force overwrite of default &quot;dummy&quot; value by &lt;empty&gt; from key=value argument",
+          "lineno": 125
+        },
+        "@6712bb5e": {
+          "time": 0.7539,
+          "name": "_arguments.sh / Extract multiple arguments into args_pno variable, space separated array",
+          "lineno": 141
+        },
+        "@b45edef3": {
+          "time": 0.0042,
+          "name": "_arguments.sh / Missed argument for --id flag raise error message",
+          "lineno": 158
+        },
+        "@5b5df208": {
+          "time": 0.7499,
+          "name": "_arguments.sh / Ignore undefined flag arguments and print warning message to stderr",
+          "lineno": 175
+        },
+        "@9972eeb8": {
+          "time": 0.3373,
+          "name": "_arguments.sh / Override default value of the definition by key=value argument",
+          "lineno": 194
+        },
+        "@efdcd37b": {
+          "time": 0.8175,
+          "name": "_arguments.sh / Print warning on multiple arguments definition for indexed arguments",
+          "lineno": 214
+        },
+        "@ecbe40db": {
+          "time": 0.0042,
+          "name": "_arguments.sh / Expect default &quot;dummy&quot; value for ID for --id flag",
+          "lineno": 236
+        },
+        "@aa85b5d7": {
+          "time": 0.0565,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #00",
+          "lineno": 272
+        },
+        "@aa85b5d6": {
+          "time": 0.0483,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #01",
+          "lineno": 282
+        },
+        "@aa85b5d5": {
+          "time": 0.0498,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #02"
+        },
+        "@aa85b5d4": {
+          "time": 0.0509,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #03"
+        },
+        "@aa85b5d3": {
+          "time": 0.0497,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #04"
+        },
+        "@aa85b5d2": {
+          "time": 0.0574,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #05"
+        },
+        "@aa85b5d1": {
+          "time": 0.0411,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #06"
+        },
+        "@aa85b5d0": {
+          "time": 0.0522,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #07"
+        },
+        "@aa85b5df": {
+          "time": 0.049,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #08"
+        },
+        "@aa85b5de": {
+          "time": 0.0513,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #09"
+        },
+        "@aa85b5f6": {
+          "time": 0.0489,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #10"
+        },
+        "@aa85b5f7": {
+          "time": 0.0508,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #11"
+        },
+        "@aa85b5f4": {
+          "time": 0.0572,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #12"
+        },
+        "@aa85b5f5": {
+          "time": 0.0509,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #13"
+        },
+        "@297d3727": {
+          "time": 0.0488,
+          "name": "_arguments.sh / function parse:extract_output_definition() / Expected Waring when Indexed parameters has reservation for more than one argument"
+        }
+      }
+    },
+    "spec/bin/git.conventional-commits_spec.sh": {
+      "total": 2.6341,
+      "examples": {
+        "@bf55c3cf": {
+          "time": 0.0465,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes feat as valid commit type",
+          "lineno": 84
+        },
+        "@9802794e": {
+          "time": 0.0454,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes fix as valid commit type",
+          "lineno": 99
+        },
+        "@da858362": {
+          "time": 0.0492,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes docs as valid commit type",
+          "lineno": 106
+        },
+        "@93b96cae": {
+          "time": 0.0493,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes style as valid commit type",
+          "lineno": 117
+        },
+        "@af9ab123": {
+          "time": 0.0475,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes refactor as valid commit type",
+          "lineno": 126
+        },
+        "@1690e6d8": {
+          "time": 0.0468,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes perf as valid commit type",
+          "lineno": 135
+        },
+        "@2e2087cf": {
+          "time": 0.044,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes test as valid commit type",
+          "lineno": 145
+        },
+        "@7ee98caf": {
+          "time": 0.0521,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes build as valid commit type",
+          "lineno": 164
+        },
+        "@8652f813": {
+          "time": 0.0498,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes ci as valid commit type",
+          "lineno": 181
+        },
+        "@5083736a": {
+          "time": 0.049,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes chore as valid commit type",
+          "lineno": 186
+        },
+        "@bd1592fb": {
+          "time": 0.0504,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes revert as valid commit type",
+          "lineno": 191
+        },
+        "@dfe43a77": {
+          "time": 0.0458,
+          "name": "bin/git.conventional-commits.sh / conventional commit type validation / recognizes wip as valid commit type",
+          "lineno": 196
+        },
+        "@9201f14d": {
+          "time": 0.0476,
+          "name": "bin/git.conventional-commits.sh / invalid commit type validation / rejects bad as invalid commit type",
+          "lineno": 201
+        },
+        "@b91caabb": {
+          "time": 0.055,
+          "name": "bin/git.conventional-commits.sh / invalid commit type validation / rejects invalid as invalid commit type",
+          "lineno": 206
+        },
+        "@a90ad1f1": {
+          "time": 0.0468,
+          "name": "bin/git.conventional-commits.sh / invalid commit type validation / rejects random as invalid commit type",
+          "lineno": 214
+        },
+        "@b35e3eb9": {
+          "time": 0.0502,
+          "name": "bin/git.conventional-commits.sh / invalid commit type validation / rejects custom as invalid commit type",
+          "lineno": 238
+        },
+        "@23b874bb": {
+          "time": 0.0463,
+          "name": "bin/git.conventional-commits.sh / invalid commit type validation / rejects update as invalid commit type",
+          "lineno": 245
+        },
+        "@11024136": {
+          "time": 0.0552,
+          "name": "bin/git.conventional-commits.sh / conventional commit format parsing / parses simple format: type: description",
+          "lineno": 259
+        },
+        "@9c61d1fb": {
+          "time": 0.0498,
+          "name": "bin/git.conventional-commits.sh / conventional commit format parsing / parses format with scope: type(scope): description",
+          "lineno": 271
+        },
+        "@15d0049d": {
+          "time": 0.0528,
+          "name": "bin/git.conventional-commits.sh / conventional commit format parsing / parses breaking change indicator",
+          "lineno": 283
+        },
+        "@27652934": {
+          "time": 0.0567,
+          "name": "bin/git.conventional-commits.sh / conventional commit format parsing / parses scope with breaking change",
+          "lineno": 299
+        },
+        "@cfc351f9": {
+          "time": 0.0525,
+          "name": "bin/git.conventional-commits.sh / conventional commit format parsing / handles multi-line commit messages",
+          "lineno": 308
+        },
+        "@b596ee8c": {
+          "time": 0.0521,
+          "name": "bin/git.conventional-commits.sh / conventional commit format parsing / detects breaking change in footer",
+          "lineno": 319
+        },
+        "@b5731c83": {
+          "time": 0.045,
+          "name": "bin/git.conventional-commits.sh / edge cases and malformed input / rejects empty message",
+          "lineno": 326
+        },
+        "@6a280542": {
+          "time": 0.0457,
+          "name": "bin/git.conventional-commits.sh / edge cases and malformed input / rejects message without type",
+          "lineno": 339
+        },
+        "@8f84477c": {
+          "time": 0.0478,
+          "name": "bin/git.conventional-commits.sh / edge cases and malformed input / rejects message without description"
+        },
+        "@2fe7712c": {
+          "time": 0.043,
+          "name": "bin/git.conventional-commits.sh / edge cases and malformed input / rejects message with invalid scope format"
+        },
+        "@a8936e89": {
+          "time": 0.0489,
+          "name": "bin/git.conventional-commits.sh / edge cases and malformed input / handles messages with special characters"
+        },
+        "@3052443f": {
+          "time": 0.053,
+          "name": "bin/git.conventional-commits.sh / edge cases and malformed input / handles very long descriptions"
+        },
+        "@7ce437b2": {
+          "time": 0.0461,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / generates valid regex pattern"
+        },
+        "@ebcc225c": {
+          "time": 0.0456,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes feat type"
+        },
+        "@e14da59d": {
+          "time": 0.046,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes fix type"
+        },
+        "@4d57d6b1": {
+          "time": 0.0457,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes docs type"
+        },
+        "@eff7f0fd": {
+          "time": 0.046,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes style type"
+        },
+        "@4e3a9330": {
+          "time": 0.048,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes refactor type"
+        },
+        "@00b1858b": {
+          "time": 0.0423,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes perf type"
+        },
+        "@a1c2d65c": {
+          "time": 0.0447,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes test type"
+        },
+        "@8b13cfbc": {
+          "time": 0.0377,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes build type"
+        },
+        "@10478100": {
+          "time": 0.0409,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes ci type"
+        },
+        "@110214b9": {
+          "time": 0.0373,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes chore type"
+        },
+        "@6a5da4e8": {
+          "time": 0.0461,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes revert type"
+        },
+        "@bd0309e4": {
+          "time": 0.0419,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes wip type"
+        },
+        "@28d96947": {
+          "time": 0.0688,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes simple commit correctly"
+        },
+        "@a2ed846a": {
+          "time": 0.0645,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes commit with scope"
+        },
+        "@e4dc7e6a": {
+          "time": 0.0666,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes breaking change"
+        },
+        "@3ccfbdc8": {
+          "time": 0.0749,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes multi-line commit"
+        },
+        "@8955d983": {
+          "time": 0.0934,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / version commit detection / identifies version commits correctly"
+        },
+        "@4d04a50f": {
+          "time": 0.1273,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / version commit detection / handles change commits"
+        },
+        "@7b058124": {
+          "time": 0.0537,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / script execution modes / works when sourced"
+        },
+        "@e7aca12d": {
+          "time": 0.0477,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / error handling / handles git log failures gracefully"
+        },
+        "@b07e06bc": {
+          "time": 0.0447,
+          "name": "bin/git.conventional-commits.sh / conventional:grep function / error handling / handles invalid commit hashes"
+        }
+      }
+    },
+    "spec/bin/git.verify-all-commits_spec.sh": {
+      "total": 24.607300000000002,
+      "examples": {
+        "@49019491": {
+          "time": 0.057,
+          "name": "bin/git.verify-all-commits.sh / when checking git repository status detects valid git repository",
+          "lineno": 80
+        },
+        "@c2ff9964": {
+          "time": 0.0493,
+          "name": "bin/git.verify-all-commits.sh / when checking git repository status fails when not in git repository",
+          "lineno": 86
+        },
+        "@dc7589d8": {
+          "time": 0.1445,
+          "name": "bin/git.verify-all-commits.sh / when validating commit messages detects conventional commits correctly",
+          "lineno": 105
+        },
+        "@542443d9": {
+          "time": 0.1462,
+          "name": "bin/git.verify-all-commits.sh / when validating commit messages rejects non-conventional commits",
+          "lineno": 112
+        },
+        "@ec1b9b71": {
+          "time": 0.1648,
+          "name": "bin/git.verify-all-commits.sh / when validating commit messages handles multi-line commit messages",
+          "lineno": 119
+        },
+        "@5eb43995": {
+          "time": 0.1662,
+          "name": "bin/git.verify-all-commits.sh / when validating commit messages validates commit with scope and breaking change",
+          "lineno": 130
+        },
+        "@86189482": {
+          "time": 0.122,
+          "name": "bin/git.verify-all-commits.sh / when processing multiple commits counts failed commits correctly",
+          "lineno": 139
+        },
+        "@ee3469b0": {
+          "time": 0.1653,
+          "name": "bin/git.verify-all-commits.sh / when processing multiple commits skips merge commits",
+          "lineno": 151
+        },
+        "@1ee6becc": {
+          "time": 0.096,
+          "name": "bin/git.verify-all-commits.sh / when using patch mode creates backup branch before modifying history",
+          "lineno": 175
+        },
+        "@4c61cbc6": {
+          "time": 0.0836,
+          "name": "bin/git.verify-all-commits.sh / when using patch mode checks for clean working tree",
+          "lineno": 187
+        },
+        "@e2056d11": {
+          "time": 0.0896,
+          "name": "bin/git.verify-all-commits.sh / when using patch mode prevents patching with uncommitted changes",
+          "lineno": 193
+        },
+        "@4b7c6219": {
+          "time": 0.1066,
+          "name": "bin/git.verify-all-commits.sh / when rewording commits shows current commit message",
+          "lineno": 221
+        },
+        "@ae7873cf": {
+          "time": 14.815,
+          "name": "bin/git.verify-all-commits.sh / when rewording commits provides format guidance",
+          "lineno": 232
+        },
+        "@46b1af5c": {
+          "time": 3.7663,
+          "name": "bin/git.verify-all-commits.sh / argument parsing recognizes help flag",
+          "lineno": 245
+        },
+        "@0cef5317": {
+          "time": 4.0404,
+          "name": "bin/git.verify-all-commits.sh / argument parsing recognizes version flag",
+          "lineno": 253
+        },
+        "@658cc123": {
+          "time": 0.0584,
+          "name": "bin/git.verify-all-commits.sh / argument parsing recognizes patch flag",
+          "lineno": 259
+        },
+        "@26bec279": {
+          "time": 0.0605,
+          "name": "bin/git.verify-all-commits.sh / argument parsing recognizes branch flag",
+          "lineno": 269
+        },
+        "@1d93762d": {
+          "time": 0.0743,
+          "name": "bin/git.verify-all-commits.sh / conventional commit parsing parses simple conventional commit",
+          "lineno": 280
+        },
+        "@30b400e5": {
+          "time": 0.0703,
+          "name": "bin/git.verify-all-commits.sh / conventional commit parsing parses commit with scope",
+          "lineno": 292
+        },
+        "@a4bf94e5": {
+          "time": 0.0782,
+          "name": "bin/git.verify-all-commits.sh / conventional commit parsing parses breaking change",
+          "lineno": 300
+        },
+        "@51efbf54": {
+          "time": 0.0679,
+          "name": "bin/git.verify-all-commits.sh / conventional commit parsing rejects invalid format",
+          "lineno": 308
+        },
+        "@45f85867": {
+          "time": 0.0666,
+          "name": "bin/git.verify-all-commits.sh / conventional commit parsing handles edge cases",
+          "lineno": 314
+        },
+        "@60a0c05d": {
+          "time": 0.0652,
+          "name": "bin/git.verify-all-commits.sh / error handling handles missing git gracefully",
+          "lineno": 322
+        },
+        "@53ebdc96": {
+          "time": 0.0531,
+          "name": "bin/git.verify-all-commits.sh / error handling handles git log failures",
+          "lineno": 331
+        }
+      }
+    },
+    "spec/bin/npm.versions_spec.sh": {
+      "total": 16.3789,
+      "examples": {
+        "@c772bde7": {
+          "time": 0.0052,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define print_usage function",
+          "lineno": 135
+        },
+        "@232b5226": {
+          "time": 0.009,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define fetch_versions function",
+          "lineno": 139
+        },
+        "@feaafe20": {
+          "time": 0.0091,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define display_versions function",
+          "lineno": 143
+        },
+        "@87f2bcf9": {
+          "time": 0.0086,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define parse_range function",
+          "lineno": 147
+        },
+        "@4c596243": {
+          "time": 0.0099,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define confirm_unpublish function",
+          "lineno": 151
+        },
+        "@16b6d90b": {
+          "time": 0.0085,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define unpublish_version function",
+          "lineno": 155
+        },
+        "@6bf61026": {
+          "time": 0.0091,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define verify_unpublish function",
+          "lineno": 159
+        },
+        "@4e93e087": {
+          "time": 0.0084,
+          "name": "bin/npm.versions.sh / Script sourcing and initialization / should define main function",
+          "lineno": 163
+        },
+        "@3e695ba1": {
+          "time": 0.026,
+          "name": "bin/npm.versions.sh / parse_range function / should parse single index",
+          "lineno": 176
+        },
+        "@6778f8dc": {
+          "time": 0.0393,
+          "name": "bin/npm.versions.sh / parse_range function / should parse multiple comma-separated indexes",
+          "lineno": 182
+        },
+        "@e56f3066": {
+          "time": 0.0366,
+          "name": "bin/npm.versions.sh / parse_range function / should parse range with dash",
+          "lineno": 190
+        },
+        "@56b32f77": {
+          "time": 0.0442,
+          "name": "bin/npm.versions.sh / parse_range function / should parse mixed ranges and indexes",
+          "lineno": 198
+        },
+        "@e55fd3b9": {
+          "time": 0.039,
+          "name": "bin/npm.versions.sh / parse_range function / should handle input with spaces",
+          "lineno": 208
+        },
+        "@73d41413": {
+          "time": 0.0505,
+          "name": "bin/npm.versions.sh / parse_range function / should reject invalid index format",
+          "lineno": 218
+        },
+        "@393df982": {
+          "time": 0.0635,
+          "name": "bin/npm.versions.sh / parse_range function / should reject out of range index (too high)",
+          "lineno": 224
+        },
+        "@2d09d6d2": {
+          "time": 0.0594,
+          "name": "bin/npm.versions.sh / parse_range function / should reject invalid range format",
+          "lineno": 230
+        },
+        "@4fec750d": {
+          "time": 0.0699,
+          "name": "bin/npm.versions.sh / parse_range function / should reject out of range in range expression",
+          "lineno": 236
+        },
+        "@f5c35a64": {
+          "time": 0.1427,
+          "name": "bin/npm.versions.sh / fetch_versions function / should configure npm registry before fetching",
+          "lineno": 258
+        },
+        "@7c5418a4": {
+          "time": 0.1519,
+          "name": "bin/npm.versions.sh / fetch_versions function / should return sorted newline separated versions",
+          "lineno": 265
+        },
+        "@74bcf1fe": {
+          "time": 0.1334,
+          "name": "bin/npm.versions.sh / fetch_versions function / should return failure when npm view fails",
+          "lineno": 278
+        },
+        "@293566c4": {
+          "time": 0.0229,
+          "name": "bin/npm.versions.sh / display_versions function / should display versions when versions array is not empty",
+          "lineno": 293
+        },
+        "@04f571e0": {
+          "time": 0.0427,
+          "name": "bin/npm.versions.sh / display_versions function / should fail when no versions provided",
+          "lineno": 303
+        },
+        "@9ab4b12a": {
+          "time": 0.0167,
+          "name": "bin/npm.versions.sh / display_versions function / should display version count",
+          "lineno": 309
+        },
+        "@fa5ec895": {
+          "time": 0.0184,
+          "name": "bin/npm.versions.sh / display_versions function / should include index numbers for each version",
+          "lineno": 315
+        },
+        "@fd29f1a3": {
+          "time": 0.0212,
+          "name": "bin/npm.versions.sh / display_versions function / should handle single version",
+          "lineno": 322
+        },
+        "@fb68849d": {
+          "time": 0.9055,
+          "name": "bin/npm.versions.sh / print_usage function / should display usage information",
+          "lineno": 333
+        },
+        "@ad9ed545": {
+          "time": 0.9612,
+          "name": "bin/npm.versions.sh / print_usage function / should display arguments help",
+          "lineno": 340
+        },
+        "@aa9c78af": {
+          "time": 0.8976,
+          "name": "bin/npm.versions.sh / print_usage function / should display examples",
+          "lineno": 347
+        },
+        "@b12ece62": {
+          "time": 0.2368,
+          "name": "bin/npm.versions.sh / confirm_unpublish function / should return success when user types yes",
+          "lineno": 354
+        },
+        "@24f4452f": {
+          "time": 0.1602,
+          "name": "bin/npm.versions.sh / confirm_unpublish function / should return failure when user types no",
+          "lineno": 367
+        },
+        "@03513a5b": {
+          "time": 0.1616,
+          "name": "bin/npm.versions.sh / confirm_unpublish function / should return failure when user types anything else",
+          "lineno": 376
+        },
+        "@ef26b995": {
+          "time": 0.1964,
+          "name": "bin/npm.versions.sh / confirm_unpublish function / should display warning about irreversible action",
+          "lineno": 385
+        },
+        "@de3a19bf": {
+          "time": 0.2447,
+          "name": "bin/npm.versions.sh / confirm_unpublish function / should list all versions to be unpublished",
+          "lineno": 395
+        },
+        "@71226eed": {
+          "time": 0.0951,
+          "name": "bin/npm.versions.sh / unpublish_version function / should call npm unpublish with correct arguments",
+          "lineno": 426
+        },
+        "@232de19c": {
+          "time": 0.0866,
+          "name": "bin/npm.versions.sh / unpublish_version function / should return failure when npm unpublish fails",
+          "lineno": 434
+        },
+        "@6a59a2f8": {
+          "time": 0.073,
+          "name": "bin/npm.versions.sh / unpublish_version function / should use configured registry",
+          "lineno": 442
+        },
+        "@e10c8491": {
+          "time": 0.1083,
+          "name": "bin/npm.versions.sh / verify_unpublish function / should return success when version is not found",
+          "lineno": 464
+        },
+        "@3146f665": {
+          "time": 0.1064,
+          "name": "bin/npm.versions.sh / verify_unpublish function / should return failure when version still exists",
+          "lineno": 471
+        },
+        "@7e5ebcd7": {
+          "time": 0.0817,
+          "name": "bin/npm.versions.sh / verify_unpublish function / should use configured registry for verification",
+          "lineno": 480
+        },
+        "@248a8ab1": {
+          "time": 4.6546,
+          "name": "bin/npm.versions.sh / Script entrypoint / displays usage when called with --help",
+          "lineno": 491
+        },
+        "@b681b1ad": {
+          "time": 1.1583,
+          "name": "bin/npm.versions.sh / main function / returns failure when no versions are available",
+          "lineno": 501
+        },
+        "@31bdddb6": {
+          "time": 1.1947,
+          "name": "bin/npm.versions.sh / main function / exits with success when user selects nothing",
+          "lineno": 512
+        },
+        "@f08daabf": {
+          "time": 1.215,
+          "name": "bin/npm.versions.sh / main function / fails when selection input is invalid",
+          "lineno": 523
+        },
+        "@6d3292b4": {
+          "time": 1.4338,
+          "name": "bin/npm.versions.sh / main function / unpublishes selected versions when confirmed",
+          "lineno": 534
+        },
+        "@a6f50f81": {
+          "time": 1.3613,
+          "name": "bin/npm.versions.sh / main function / cancels operation when confirmation is denied",
+          "lineno": 546
+        }
+      }
+    },
+    "spec/bin/shellmetrics-compare_spec.sh": {
+      "total": 7.844900000000002,
+      "examples": {
+        "@c0f4792c": {
+          "time": 0.0597,
+          "name": ".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates totals from valid CSV",
+          "lineno": 84
+        },
+        "@7ef5dd0d": {
+          "time": 0.0612,
+          "name": ".github/scripts/shellmetrics-compare.sh / calculate_totals function / handles CSV with single file",
+          "lineno": 90
+        },
+        "@22a5e80c": {
+          "time": 0.077,
+          "name": ".github/scripts/shellmetrics-compare.sh / calculate_totals function / handles empty CSV (header only)",
+          "lineno": 96
+        },
+        "@bb7a648e": {
+          "time": 0.0644,
+          "name": ".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates correct NLOC (lines - comment - blank)",
+          "lineno": 102
+        },
+        "@18ce1b09": {
+          "time": 0.0598,
+          "name": ".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates correct LLOC",
+          "lineno": 109
+        },
+        "@ca72de2b": {
+          "time": 0.0463,
+          "name": ".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates correct CCN",
+          "lineno": 116
+        },
+        "@166a3d35": {
+          "time": 0.0645,
+          "name": ".github/scripts/shellmetrics-compare.sh / get_file_metrics function / extracts file-level metrics",
+          "lineno": 125
+        },
+        "@d862fcd9": {
+          "time": 0.0637,
+          "name": ".github/scripts/shellmetrics-compare.sh / get_file_metrics function / removes quotes from file names",
+          "lineno": 132
+        },
+        "@d97330d2": {
+          "time": 0.0639,
+          "name": ".github/scripts/shellmetrics-compare.sh / get_file_metrics function / outputs sorted file list",
+          "lineno": 137
+        },
+        "@4cd9549d": {
+          "time": 0.0558,
+          "name": ".github/scripts/shellmetrics-compare.sh / get_file_metrics function / handles files with special characters in paths",
+          "lineno": 144
+        },
+        "@29fb39f3": {
+          "time": 0.2127,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / generates markdown report successfully",
+          "lineno": 154
+        },
+        "@8020f588": {
+          "time": 0.2053,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / creates report with proper markdown structure",
+          "lineno": 161
+        },
+        "@2ca3030e": {
+          "time": 0.2319,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes all key metrics in summary",
+          "lineno": 169
+        },
+        "@4ccd8be0": {
+          "time": 0.1973,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes metrics explanation",
+          "lineno": 179
+        },
+        "@ec9e2465": {
+          "time": 0.2148,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes file-level changes section",
+          "lineno": 187
+        },
+        "@996c77ea": {
+          "time": 0.1991,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes footer with ShellMetrics link",
+          "lineno": 193
+        },
+        "@9a1d4ec7": {
+          "time": 0.2292,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles missing base file gracefully",
+          "lineno": 202
+        },
+        "@82ce0b7b": {
+          "time": 0.2348,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles missing current file gracefully",
+          "lineno": 209
+        },
+        "@2bfe2480": {
+          "time": 0.2255,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles missing output file path gracefully",
+          "lineno": 216
+        },
+        "@a8c57cdf": {
+          "time": 0.2099,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles empty base metrics",
+          "lineno": 223
+        },
+        "@578699c3": {
+          "time": 0.2112,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles empty current metrics",
+          "lineno": 230
+        },
+        "@79835d7e": {
+          "time": 0.1537,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles both files being empty",
+          "lineno": 237
+        },
+        "@fc21917a": {
+          "time": 0.2052,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / detects file additions",
+          "lineno": 246
+        },
+        "@d58df382": {
+          "time": 0.2252,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / detects NLOC increases",
+          "lineno": 253
+        },
+        "@ed063e4f": {
+          "time": 0.2223,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / reports changes with delta indicators",
+          "lineno": 260
+        },
+        "@fd6fbae1": {
+          "time": 0.2025,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / shows file-specific changes",
+          "lineno": 267
+        },
+        "@2ca4cc8d": {
+          "time": 0.1867,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / detects no changes when files are identical",
+          "lineno": 274
+        },
+        "@9fe3f55e": {
+          "time": 0.1824,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / handles negative per-file deltas without exiting",
+          "lineno": 281
+        },
+        "@f16ef92f": {
+          "time": 0.0536,
+          "name": ".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles help command",
+          "lineno": 291
+        },
+        "@0d2f0e04": {
+          "time": 0.0527,
+          "name": ".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles --help flag",
+          "lineno": 300
+        },
+        "@740714d0": {
+          "time": 0.0543,
+          "name": ".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles -h flag",
+          "lineno": 306
+        },
+        "@f20de984": {
+          "time": 0.0529,
+          "name": ".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / shows help when no command provided",
+          "lineno": 312
+        },
+        "@7b776056": {
+          "time": 0.057,
+          "name": ".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles unknown command",
+          "lineno": 318
+        },
+        "@6ba7304e": {
+          "time": 0.0988,
+          "name": ".github/scripts/shellmetrics-compare.sh / collect command / creates output file with header",
+          "lineno": 327
+        },
+        "@48fdbf71": {
+          "time": 0.0821,
+          "name": ".github/scripts/shellmetrics-compare.sh / collect command / uses default filename when not provided",
+          "lineno": 344
+        },
+        "@7f3adf1b": {
+          "time": 0.0901,
+          "name": ".github/scripts/shellmetrics-compare.sh / collect command / creates CSV with proper header",
+          "lineno": 354
+        },
+        "@a10701ee": {
+          "time": 0.2115,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare command / executes compare with minimal arguments",
+          "lineno": 368
+        },
+        "@5848e64c": {
+          "time": 0.2057,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare command / executes compare with all arguments",
+          "lineno": 374
+        },
+        "@2c8ac51d": {
+          "time": 0.2233,
+          "name": ".github/scripts/shellmetrics-compare.sh / compare command / uses default filenames when arguments missing",
+          "lineno": 381
+        },
+        "@dbda2242": {
+          "time": 0.0589,
+          "name": ".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles very large CSV files",
+          "lineno": 393
+        },
+        "@13fe9a16": {
+          "time": 0.0627,
+          "name": ".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles files with zero metrics",
+          "lineno": 409
+        },
+        "@ff2ecd31": {
+          "time": 0.0573,
+          "name": ".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles files with very high complexity",
+          "lineno": 420
+        },
+        "@de447f97": {
+          "time": 0.1535,
+          "name": ".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles division by zero when no files exist",
+          "lineno": 426
+        },
+        "@c1f4209c": {
+          "time": 0.0494,
+          "name": ".github/scripts/shellmetrics-compare.sh / ensure_shellmetrics function / checks for shellmetrics availability",
+          "lineno": 435
+        },
+        "@71589677": {
+          "time": 0.2259,
+          "name": ".github/scripts/shellmetrics-compare.sh / integration tests / full workflow: collect and compare",
+          "lineno": 443
+        },
+        "@1686ba85": {
+          "time": 0.0506,
+          "name": ".github/scripts/shellmetrics-compare.sh / script execution modes / can be sourced without execution",
+          "lineno": 471
+        },
+        "@0cb1fb73": {
+          "time": 0.0686,
+          "name": ".github/scripts/shellmetrics-compare.sh / script execution modes / executes when run directly with help",
+          "lineno": 478
+        },
+        "@41d239f5": {
+          "time": 0.2623,
+          "name": ".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles CI workflow scenario with valid files",
+          "lineno": 487
+        },
+        "@b3f2805d": {
+          "time": 0.1654,
+          "name": ".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles missing base metrics gracefully",
+          "lineno": 510
+        },
+        "@a5f75c81": {
+          "time": 0.1688,
+          "name": ".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles missing current metrics gracefully",
+          "lineno": 522
+        },
+        "@032848d6": {
+          "time": 0.2135,
+          "name": ".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles worktree scenario from CI",
+          "lineno": 534
+        },
+        "@d8cb49b2": {
+          "time": 0.2743,
+          "name": ".github/scripts/shellmetrics-compare.sh / portability / works with BSD-style mktemp (template required)",
+          "lineno": 544
+        },
+        "@3205da95": {
+          "time": 0.0717,
+          "name": ".github/scripts/shellmetrics-compare.sh / github actions debug logging / does not emit ::debug:: logs by default",
+          "lineno": 587
+        },
+        "@6dafec7b": {
+          "time": 0.0762,
+          "name": ".github/scripts/shellmetrics-compare.sh / github actions debug logging / emits ::debug:: logs when ACTIONS_STEP_DEBUG is enabled",
+          "lineno": 594
+        },
+        "@bb618d47": {
+          "time": 0.0914,
+          "name": ".github/scripts/shellmetrics-compare.sh / debugging CI failure / validates CSV format from collect command",
+          "lineno": 605
+        },
+        "@e70ad17f": {
+          "time": 0.2464,
+          "name": ".github/scripts/shellmetrics-compare.sh / debugging CI failure / verifies compare works with collect output",
+          "lineno": 628
+        }
+      }
+    },
+    "spec/commons_spec.sh": {
+      "total": 3.7285000000000013,
+      "examples": {
+        "@c7412ba3": {
+          "time": 0.0084,
+          "name": "_commons.sh / args:isHelp returns true when --help flag is provided",
+          "lineno": 31
+        },
+        "@e13b4ca2": {
+          "time": 0.0403,
+          "name": "_commons.sh / env:variable:or:secret:file / No variable or secret file provided error",
+          "lineno": 41
+        },
+        "@94c242db": {
+          "time": 0.0208,
+          "name": "_commons.sh / env:variable:or:secret:file / Profided environment variable GITLAB_CI_INTEGRATION_TEST",
+          "lineno": 53
+        },
+        "@6d7d4de2": {
+          "time": 0.0513,
+          "name": "_commons.sh / env:variable:or:secret:file / With provided secret file / Extract value from profided secret file gitlab_ci_integration_test",
+          "lineno": 79
+        },
+        "@0a36e05e": {
+          "time": 0.0394,
+          "name": "_commons.sh / env:variable:or:secret:file / With provided secret file / If provided environment variable and secret file, value selected from env variable",
+          "lineno": 96
+        },
+        "@7bb04776": {
+          "time": 0.0146,
+          "name": "_commons.sh / env:variable:or:secret:file:optional / No variable or secret file provided error",
+          "lineno": 115
+        },
+        "@5737870f": {
+          "time": 0.025,
+          "name": "_commons.sh / env:variable:or:secret:file:optional / Profided environment variable GITLAB_CI_INTEGRATION_TEST",
+          "lineno": 127
+        },
+        "@27b019b6": {
+          "time": 0.0433,
+          "name": "_commons.sh / env:variable:or:secret:file:optional / With provided secret file / Extract value from profided secret file gitlab_ci_integration_test",
+          "lineno": 153
+        },
+        "@5e969ad0": {
+          "time": 0.0134,
+          "name": "_commons.sh / var:l0 / Returns variable value when variable is set and non-empty",
+          "lineno": 173
+        },
+        "@ef732d51": {
+          "time": 0.0131,
+          "name": "_commons.sh / var:l0 / Returns default when variable is unset",
+          "lineno": 182
+        },
+        "@ee4f8add": {
+          "time": 0.0139,
+          "name": "_commons.sh / var:l0 / Returns default when variable is empty",
+          "lineno": 191
+        },
+        "@532fd26a": {
+          "time": 0.0134,
+          "name": "_commons.sh / var:l0 / Handles special characters in variable value",
+          "lineno": 200
+        },
+        "@f38aa56d": {
+          "time": 0.0119,
+          "name": "_commons.sh / var:l1 / Returns first variable value when first variable is set",
+          "lineno": 211
+        },
+        "@3ecb6bfa": {
+          "time": 0.0138,
+          "name": "_commons.sh / var:l1 / Returns second variable value when first is unset",
+          "lineno": 221
+        },
+        "@3dad0a76": {
+          "time": 0.0162,
+          "name": "_commons.sh / var:l1 / Returns second variable value when first is empty",
+          "lineno": 231
+        },
+        "@37cd0c9e": {
+          "time": 0.0134,
+          "name": "_commons.sh / var:l1 / Returns default when both variables are unset",
+          "lineno": 241
+        },
+        "@36aa6a12": {
+          "time": 0.0142,
+          "name": "_commons.sh / var:l1 / Returns default when both variables are empty",
+          "lineno": 251
+        },
+        "@426c8560": {
+          "time": 0.0129,
+          "name": "_commons.sh / var:l1 / Handles complex fallback chain correctly",
+          "lineno": 261
+        },
+        "@c7a77e6c": {
+          "time": 0.013,
+          "name": "_commons.sh / val:l0 / Returns value when value is non-empty",
+          "lineno": 273
+        },
+        "@10b0b86e": {
+          "time": 0.0121,
+          "name": "_commons.sh / val:l0 / Returns default when value is empty",
+          "lineno": 281
+        },
+        "@cb25cb26": {
+          "time": 0.0136,
+          "name": "_commons.sh / val:l0 / Handles numeric values",
+          "lineno": 289
+        },
+        "@b4b570d2": {
+          "time": 0.0131,
+          "name": "_commons.sh / val:l0 / Handles special characters in value",
+          "lineno": 297
+        },
+        "@f76e8c6e": {
+          "time": 0.0131,
+          "name": "_commons.sh / val:l0 / Handles spaces in value",
+          "lineno": 305
+        },
+        "@40f1bc6d": {
+          "time": 0.0134,
+          "name": "_commons.sh / val:l1 / Returns first value when first value is non-empty",
+          "lineno": 315
+        },
+        "@761028ee": {
+          "time": 0.0127,
+          "name": "_commons.sh / val:l1 / Returns second value when first is empty",
+          "lineno": 323
+        },
+        "@8b6e6ce1": {
+          "time": 0.0127,
+          "name": "_commons.sh / val:l1 / Returns default when both values are empty",
+          "lineno": 331
+        },
+        "@c2d452cc": {
+          "time": 0.0127,
+          "name": "_commons.sh / val:l1 / Handles numeric values correctly",
+          "lineno": 339
+        },
+        "@44559740": {
+          "time": 0.0141,
+          "name": "_commons.sh / val:l1 / Handles special characters in values",
+          "lineno": 347
+        },
+        "@60837b7c": {
+          "time": 0.0133,
+          "name": "_commons.sh / val:l1 / Handles spaces in values",
+          "lineno": 355
+        },
+        "@650b3331": {
+          "time": 0.0135,
+          "name": "_commons.sh / val:l1 / Falls through empty first to non-empty second",
+          "lineno": 363
+        },
+        "@ab947110": {
+          "time": 0.0186,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - first level wins",
+          "lineno": 376
+        },
+        "@8b99c95a": {
+          "time": 0.0184,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - second level wins",
+          "lineno": 392
+        },
+        "@363c1ae9": {
+          "time": 0.0177,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - third level wins",
+          "lineno": 407
+        },
+        "@0b0d65b7": {
+          "time": 0.0177,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - default wins",
+          "lineno": 422
+        },
+        "@3be3c599": {
+          "time": 0.0342,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l4 with composable variable name - var4 pattern",
+          "lineno": 437
+        },
+        "@dc7a96bc": {
+          "time": 0.034,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l4 with composable variable name - fallback to default",
+          "lineno": 462
+        },
+        "@af77e6c4": {
+          "time": 0.0327,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l4 with composable variable name - multiple scripts pattern",
+          "lineno": 483
+        },
+        "@9a723bdf": {
+          "time": 0.0192,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Combines val:l1 and var:l1 for mixed value/variable fallbacks",
+          "lineno": 508
+        },
+        "@93a19feb": {
+          "time": 0.0337,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Complex real-world pattern: CLI arg -&gt; ENV var -&gt; Config file -&gt; Script-specific -&gt; Default",
+          "lineno": 524
+        },
+        "@fef87590": {
+          "time": 0.0188,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Deep nesting with all levels empty except final default",
+          "lineno": 551
+        },
+        "@1133ce9d": {
+          "time": 0.0212,
+          "name": "_commons.sh / Composable fallback patterns (4-level nesting) / Demonstrates variable name composition with multiple separators",
+          "lineno": 566
+        },
+        "@3297f954": {
+          "time": 0.0199,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 0 (Global) - fallback to global when no other levels set",
+          "lineno": 600
+        },
+        "@d083fef8": {
+          "time": 0.0166,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 1 (Pipeline) - pipeline overrides global",
+          "lineno": 618
+        },
+        "@ccb5b412": {
+          "time": 0.0187,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 2 (Step) - step overrides pipeline and global",
+          "lineno": 632
+        },
+        "@45758dd1": {
+          "time": 0.017,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 3 (Script) - script overrides all other levels",
+          "lineno": 646
+        },
+        "@03a4824c": {
+          "time": 0.0195,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Composable variable names from context - pipeline specific",
+          "lineno": 660
+        },
+        "@65f44ee1": {
+          "time": 0.0195,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Composable variable names - step specific override",
+          "lineno": 687
+        },
+        "@141d8666": {
+          "time": 0.0426,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Multiple configuration keys - DRY_RUN, DEBUG, VERBOSE in same context",
+          "lineno": 711
+        },
+        "@77693c23": {
+          "time": 0.0195,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Real-world scenario: exclude all steps except specific one",
+          "lineno": 746
+        },
+        "@4318dba6": {
+          "time": 0.02,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Helper function pattern for CI config resolution",
+          "lineno": 771
+        },
+        "@916e076e": {
+          "time": 0.0325,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Complex scenario: multiple pipelines with different configurations",
+          "lineno": 802
+        },
+        "@ba5204f4": {
+          "time": 0.0155,
+          "name": "_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Strict naming convention enforcement through variable composition",
+          "lineno": 829
+        },
+        "@50a22aa3": {
+          "time": 0.032,
+          "name": "_commons.sh / to:slug / Converts simple string to lowercase slug",
+          "lineno": 858
+        },
+        "@a1c2941b": {
+          "time": 0.0362,
+          "name": "_commons.sh / to:slug / Uses default separator underscore",
+          "lineno": 866
+        },
+        "@c27e5ddd": {
+          "time": 0.0387,
+          "name": "_commons.sh / to:slug / Uses custom separator dash",
+          "lineno": 874
+        },
+        "@ee9efbdc": {
+          "time": 0.0369,
+          "name": "_commons.sh / to:slug / Uses custom separator dot",
+          "lineno": 882
+        },
+        "@8fee2a43": {
+          "time": 0.043,
+          "name": "_commons.sh / to:slug / Removes special characters",
+          "lineno": 890
+        },
+        "@575e9e24": {
+          "time": 0.0411,
+          "name": "_commons.sh / to:slug / Cleans up repeated separators (underscores)",
+          "lineno": 898
+        },
+        "@e534c33f": {
+          "time": 0.0354,
+          "name": "_commons.sh / to:slug / Cleans up repeated separators (dashes)",
+          "lineno": 906
+        },
+        "@5267f121": {
+          "time": 0.0373,
+          "name": "_commons.sh / to:slug / Cleans up mixed special characters creating repeated separators",
+          "lineno": 914
+        },
+        "@9bbe1c0e": {
+          "time": 0.0358,
+          "name": "_commons.sh / to:slug / Trims leading separators",
+          "lineno": 922
+        },
+        "@c09af320": {
+          "time": 0.0378,
+          "name": "_commons.sh / to:slug / Trims trailing separators",
+          "lineno": 930
+        },
+        "@d0aa8207": {
+          "time": 0.0354,
+          "name": "_commons.sh / to:slug / Trims leading and trailing separators",
+          "lineno": 938
+        },
+        "@8ab90240": {
+          "time": 0.0352,
+          "name": "_commons.sh / to:slug / Handles short strings within default trim length",
+          "lineno": 946
+        },
+        "@7accbbb3": {
+          "time": 0.0343,
+          "name": "_commons.sh / to:slug / Uses default trim length of 20",
+          "lineno": 954
+        },
+        "@948dcb6f": {
+          "time": 0.0616,
+          "name": "_commons.sh / to:slug / Trims long string and adds hash when exceeds default trim (20)",
+          "lineno": 962
+        },
+        "@8c83c496": {
+          "time": 0.0546,
+          "name": "_commons.sh / to:slug / Trims long string with custom trim length of 30",
+          "lineno": 971
+        },
+        "@8c83c451": {
+          "time": 0.0567,
+          "name": "_commons.sh / to:slug / Trims long string with custom trim length of 15",
+          "lineno": 980
+        },
+        "@28983596": {
+          "time": 0.0737,
+          "name": "_commons.sh / to:slug / Handles very small trim length (8 - minimum for hash)",
+          "lineno": 989
+        },
+        "@d8fd31a9": {
+          "time": 0.0743,
+          "name": "_commons.sh / to:slug / Handles very small trim length (5 - less than hash size)",
+          "lineno": 998
+        },
+        "@1033b5d1": {
+          "time": 0.0845,
+          "name": "_commons.sh / to:slug / Produces consistent hash for same input",
+          "lineno": 1007
+        },
+        "@38edd718": {
+          "time": 0.109,
+          "name": "_commons.sh / to:slug / Produces different hash for different inputs",
+          "lineno": 1017
+        },
+        "@7aaa8e60": {
+          "time": 0.0699,
+          "name": "_commons.sh / to:slug / Handles empty string - generates hash-based slug with __ prefix",
+          "lineno": 1028
+        },
+        "@959d7ebf": {
+          "time": 0.0636,
+          "name": "_commons.sh / to:slug / Handles only special characters - generates hash-based slug with __ prefix",
+          "lineno": 1037
+        },
+        "@2d909383": {
+          "time": 0.047,
+          "name": "_commons.sh / to:slug / Handles only spaces - generates hash-based slug with __ prefix",
+          "lineno": 1046
+        },
+        "@84d16996": {
+          "time": 0.0919,
+          "name": "_commons.sh / to:slug / Hash-only slugs are unique for different inputs",
+          "lineno": 1055
+        },
+        "@3cc5d709": {
+          "time": 0.0969,
+          "name": "_commons.sh / to:slug / Hash-only slugs are consistent for same input",
+          "lineno": 1066
+        },
+        "@df523e10": {
+          "time": 0.056,
+          "name": "_commons.sh / to:slug / Hash-only slug respects trim length",
+          "lineno": 1076
+        },
+        "@103851a6": {
+          "time": 0.0368,
+          "name": "_commons.sh / to:slug / Handles mixed alphanumeric",
+          "lineno": 1085
+        },
+        "@f8c22b60": {
+          "time": 0.0388,
+          "name": "_commons.sh / to:slug / Handles numbers only",
+          "lineno": 1093
+        },
+        "@8bd0d698": {
+          "time": 0.0395,
+          "name": "_commons.sh / to:slug / Preserves alphanumeric and converts rest to separator",
+          "lineno": 1101
+        },
+        "@8a25083c": {
+          "time": 0.0349,
+          "name": "_commons.sh / to:slug / Creates filesystem-safe filename from path-like string",
+          "lineno": 1109
+        },
+        "@2f1482e7": {
+          "time": 0.0426,
+          "name": "_commons.sh / to:slug / Handles unicode/international characters (converts to separator)",
+          "lineno": 1117
+        },
+        "@41e23513": {
+          "time": 0.0348,
+          "name": "_commons.sh / to:slug / Real-world example: branch name to filename",
+          "lineno": 1126
+        },
+        "@34599e1a": {
+          "time": 0.053,
+          "name": "_commons.sh / to:slug / Real-world example: commit message to filename",
+          "lineno": 1134
+        },
+        "@bec2bf96": {
+          "time": 0.0543,
+          "name": "_commons.sh / to:slug / Real-world example: user input to safe filename",
+          "lineno": 1145
+        },
+        "@3d715d25": {
+          "time": 0.0774,
+          "name": "_commons.sh / to:slug / Hash is exactly 7 characters when used",
+          "lineno": 1154
+        },
+        "@d7e1ca21": {
+          "time": 0.0534,
+          "name": "_commons.sh / to:slug / Trimmed slug with hash has correct structure (prefix + separator + hash)",
+          "lineno": 1164
+        },
+        "@264c0067": {
+          "time": 0.0375,
+          "name": "_commons.sh / to:slug / Does not add hash when exactly at trim length",
+          "lineno": 1174
+        },
+        "@b45850d4": {
+          "time": 0.0359,
+          "name": "_commons.sh / to:slug / Handles consecutive special characters between words",
+          "lineno": 1184
+        },
+        "@7da18145": {
+          "time": 0.0621,
+          "name": "_commons.sh / to:slug / Different separators produce different outputs",
+          "lineno": 1192
+        },
+        "@1c5664e0": {
+          "time": 0.0531,
+          "name": "_commons.sh / to:slug / Strategy 'always' - forces hash on short string",
+          "lineno": 1203
+        },
+        "@af547e61": {
+          "time": 0.0571,
+          "name": "_commons.sh / to:slug / Strategy 'always' - forces hash on normal string",
+          "lineno": 1212
+        },
+        "@9ebf6361": {
+          "time": 0.0994,
+          "name": "_commons.sh / to:slug / Strategy 'always' - produces consistent hash",
+          "lineno": 1221
+        },
+        "@b4ddd589": {
+          "time": 0.0939,
+          "name": "_commons.sh / to:slug / Strategy 'always' - produces different hashes for different inputs",
+          "lineno": 1231
+        },
+        "@bf1eb3c4": {
+          "time": 0.0612,
+          "name": "_commons.sh / to:slug / Strategy 'always' - works with custom separator",
+          "lineno": 1242
+        },
+        "@adf4304b": {
+          "time": 0.0579,
+          "name": "_commons.sh / to:slug / Strategy 'always' - hash appended to slug (not trimmed)",
+          "lineno": 1250
+        },
+        "@d984d1a0": {
+          "time": 0.0579,
+          "name": "_commons.sh / to:slug / Strategy 'always' - useful for URLs (deterministic cache keys)",
+          "lineno": 1260
+        },
+        "@9b10ff9c": {
+          "time": 0.093,
+          "name": "_commons.sh / to:slug / Strategy 'always' - different URLs produce different hashes",
+          "lineno": 1270
+        },
+        "@32a6f713": {
+          "time": 0.0351,
+          "name": "_commons.sh / to:slug / Backwards compatibility - numeric trim still works",
+          "lineno": 1281
+        },
+        "@e72d1b86": {
+          "time": 0.056,
+          "name": "_commons.sh / to:slug / Invalid trim parameter defaults to 20",
+          "lineno": 1289
+        }
+      }
+    },
+    "spec/dependencies_spec.sh": {
+      "total": 6.2427,
+      "examples": {
+        "@9c042760": {
+          "time": 0.1048,
+          "name": "_dependencies.sh / Dependency / Dependency OK on `dependency bash &quot;5.*.*&quot; &quot;brew install bash&quot; --version`",
+          "lineno": 49
+        },
+        "@e02f279f": {
+          "time": 0.1042,
+          "name": "_dependencies.sh / Dependency / Custom version request flag on `dependency bash &quot;5.*.*&quot; &quot;brew install bash&quot; --version`",
+          "lineno": 59
+        },
+        "@4d7087b5": {
+          "time": 0.1014,
+          "name": "_dependencies.sh / Dependency / Range of version on `dependency bash &quot;[45].*.*&quot; &quot;brew install bash&quot; --version`",
+          "lineno": 70
+        },
+        "@936934b6": {
+          "time": 0.109,
+          "name": "_dependencies.sh / Dependency / Customized version pattern on `dependency bash &quot;[1-5].*.*(1)-release&quot; &quot;brew install bash&quot; --version`",
+          "lineno": 80
+        },
+        "@d187a81d": {
+          "time": 0.1154,
+          "name": "_dependencies.sh / Dependency / Wrong Version on `dependency bash &quot;99.*.*&quot; &quot;brew install bash&quot;`",
+          "lineno": 90
+        },
+        "@d0d1e8d8": {
+          "time": 0.1042,
+          "name": "_dependencies.sh / Dependency / Do Exec on wrong version on `dependency bash &quot;99.*.*&quot; &quot;echo 'executted'&quot; --version --exec`",
+          "lineno": 102
+        },
+        "@38dcfd8b": {
+          "time": 0.2629,
+          "name": "_dependencies.sh / Dependency / Not Found on `dependency not_exist_tool &quot;1.0.0&quot;`",
+          "lineno": 115
+        },
+        "@f0152230": {
+          "time": 0.1069,
+          "name": "_dependencies.sh / Optional / Optional OK on `optional bash &quot;5.*.*&quot; &quot;brew install bash&quot; --version --debug`",
+          "lineno": 128
+        },
+        "@e8e28d27": {
+          "time": 0.1076,
+          "name": "_dependencies.sh / Optional / Wrong Version on `optional bash &quot;99.*.*&quot; &quot;brew install bash&quot; --version`",
+          "lineno": 138
+        },
+        "@2d5c17eb": {
+          "time": 0.3552,
+          "name": "_dependencies.sh / Optional / Not Found on `optional not_exist_tool &quot;1.0.0&quot;`",
+          "lineno": 148
+        },
+        "@732e0e40": {
+          "time": 0.0125,
+          "name": "_dependencies.sh / Utilities / isDebug returns true when --debug flag is provided",
+          "lineno": 161
+        },
+        "@389eb9c0": {
+          "time": 0.0131,
+          "name": "_dependencies.sh / Utilities / isExec returns true when --exec flag is provided",
+          "lineno": 169
+        },
+        "@c75bc0a0": {
+          "time": 0.0124,
+          "name": "_dependencies.sh / Utilities / isOptional returns true when --optional flag is provided",
+          "lineno": 177
+        },
+        "@f23e5080": {
+          "time": 0.0135,
+          "name": "_dependencies.sh / Utilities / isSilent returns true when --silent flag is provided",
+          "lineno": 185
+        },
+        "@9a32d23e": {
+          "time": 0.0138,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true when CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1",
+          "lineno": 193
+        },
+        "@904b807e": {
+          "time": 0.014,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true when CI=true and CI_E_BASH_INSTALL_DEPENDENCIES=true",
+          "lineno": 204
+        },
+        "@dc3e0dfe": {
+          "time": 0.0113,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true when CI=yes and CI_E_BASH_INSTALL_DEPENDENCIES=yes",
+          "lineno": 215
+        },
+        "@867bbd92": {
+          "time": 0.0157,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with case-insensitive TRUE",
+          "lineno": 226
+        },
+        "@b68006cb": {
+          "time": 0.0158,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with case-insensitive YES",
+          "lineno": 237
+        },
+        "@2cd4d5c9": {
+          "time": 0.0157,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with mixed case True",
+          "lineno": 248
+        },
+        "@7d7ac170": {
+          "time": 0.0126,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with mixed case YeS",
+          "lineno": 259
+        },
+        "@648018b7": {
+          "time": 0.0077,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns false when CI_E_BASH_INSTALL_DEPENDENCIES is unset",
+          "lineno": 270
+        },
+        "@fefb829c": {
+          "time": 0.0108,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns false when CI is not set but CI_E_BASH_INSTALL_DEPENDENCIES=1",
+          "lineno": 279
+        },
+        "@0e9b7d31": {
+          "time": 0.015,
+          "name": "_dependencies.sh / Utilities / isCIAutoInstallEnabled returns false when CI=1 but CI_E_BASH_INSTALL_DEPENDENCIES has invalid value",
+          "lineno": 290
+        },
+        "@fc3327aa": {
+          "time": 0.578,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode enabled with CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1 should auto-install missing tool",
+          "lineno": 303
+        },
+        "@79e6736a": {
+          "time": 0.5416,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode enabled with CI=true and CI_E_BASH_INSTALL_DEPENDENCIES=true should auto-install missing tool",
+          "lineno": 316
+        },
+        "@2512f4ea": {
+          "time": 0.5768,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode enabled with CI=yes and CI_E_BASH_INSTALL_DEPENDENCIES=yes should auto-install missing tool",
+          "lineno": 329
+        },
+        "@b7ee1e49": {
+          "time": 0.1499,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode enabled should auto-install tool with wrong version",
+          "lineno": 342
+        },
+        "@d5b4410c": {
+          "time": 0.3077,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode disabled should not auto-install (default behavior)",
+          "lineno": 355
+        },
+        "@faa82a62": {
+          "time": 0.3417,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode with invalid value should not auto-install",
+          "lineno": 366
+        },
+        "@5251dfa6": {
+          "time": 0.3693,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI_E_BASH_INSTALL_DEPENDENCIES=1 without CI should not auto-install",
+          "lineno": 379
+        },
+        "@c2d2aabd": {
+          "time": 0.3363,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode should skip optional dependencies (not auto-install)",
+          "lineno": 392
+        },
+        "@49303df1": {
+          "time": 0.1086,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode should skip optional dependencies with wrong version",
+          "lineno": 405
+        },
+        "@a12551a1": {
+          "time": 0.6703,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode should still auto-install required dependencies",
+          "lineno": 418
+        },
+        "@3217fe80": {
+          "time": 0.607,
+          "name": "_dependencies.sh / CI Auto-Install Mode / CI mode should work with case-insensitive TRUE value",
+          "lineno": 431
+        }
+      }
+    },
+    "spec/dryrun_spec.sh": {
+      "total": 3.2542000000000004,
+      "examples": {
+        "@a7e35aea": {
+          "time": 0.0102,
+          "name": "_dryrun.sh / Global Variables / Should set default values for global variables",
+          "lineno": 85
+        },
+        "@228de338": {
+          "time": 0.0742,
+          "name": "_dryrun.sh / dryrun:exec function / Should execute command successfully and return exit code",
+          "lineno": 93
+        },
+        "@0f86ed5a": {
+          "time": 0.0441,
+          "name": "_dryrun.sh / dryrun:exec function / Should handle command failure and return correct exit code",
+          "lineno": 102
+        },
+        "@ecd3d7cc": {
+          "time": 0.0744,
+          "name": "_dryrun.sh / dryrun:exec function / Should display output when not in silent mode",
+          "lineno": 111
+        },
+        "@374d7ff2": {
+          "time": 0.0434,
+          "name": "_dryrun.sh / dryrun:exec function / Should suppress output when in silent mode",
+          "lineno": 120
+        },
+        "@17a32126": {
+          "time": 0.0784,
+          "name": "_dryrun.sh / dryrun:exec function / Should preserve errexit setting",
+          "lineno": 129
+        },
+        "@fc3f4fed": {
+          "time": 0.0766,
+          "name": "_dryrun.sh / dryrun:exec function / Should handle command with arguments containing spaces",
+          "lineno": 139
+        },
+        "@bd2bd5eb": {
+          "time": 0.0748,
+          "name": "_dryrun.sh / dryrun:exec function / Should handle command with no arguments",
+          "lineno": 148
+        },
+        "@1b53d0b4": {
+          "time": 0.0301,
+          "name": "_dryrun.sh / dry-run function generator / Should generate wrapper functions for a single command",
+          "lineno": 159
+        },
+        "@554ee1ec": {
+          "time": 0.0686,
+          "name": "_dryrun.sh / dry-run function generator / Should generate wrapper functions for multiple commands",
+          "lineno": 169
+        },
+        "@1db74b3e": {
+          "time": 0.0179,
+          "name": "_dryrun.sh / dry-run function generator / Should use custom suffix when provided",
+          "lineno": 187
+        },
+        "@833cfa27": {
+          "time": 0.0226,
+          "name": "_dryrun.sh / dry-run function generator / Should convert command name to uppercase for default suffix",
+          "lineno": 197
+        },
+        "@f39482c9": {
+          "time": 0.0945,
+          "name": "_dryrun.sh / Generated functions behavior / run: functions in normal mode / Should execute command normally when run:echo is called",
+          "lineno": 211
+        },
+        "@3f43fbf3": {
+          "time": 0.093,
+          "name": "_dryrun.sh / Generated functions behavior / run: functions in normal mode / Should pass all arguments correctly",
+          "lineno": 220
+        },
+        "@6ab57c89": {
+          "time": 0.1022,
+          "name": "_dryrun.sh / Generated functions behavior / dry: functions in normal mode / Should execute command normally when dry:echo is called",
+          "lineno": 233
+        },
+        "@d1429236": {
+          "time": 0.0618,
+          "name": "_dryrun.sh / Generated functions behavior / run: functions in dry run mode / Should not execute command when DRY_RUN=true",
+          "lineno": 246
+        },
+        "@2af94a12": {
+          "time": 0.0681,
+          "name": "_dryrun.sh / Generated functions behavior / run: functions in dry run mode / Should return success without executing the actual command",
+          "lineno": 253
+        },
+        "@d9523579": {
+          "time": 0.0605,
+          "name": "_dryrun.sh / Generated functions behavior / rollback: functions in normal mode / Should not execute command when UNDO_RUN=false (normal mode)",
+          "lineno": 264
+        },
+        "@ecfd51d5": {
+          "time": 0.0931,
+          "name": "_dryrun.sh / Generated functions behavior / rollback: functions in undo mode / Should execute command when UNDO_RUN=true",
+          "lineno": 275
+        },
+        "@f1b5ceac": {
+          "time": 0.0959,
+          "name": "_dryrun.sh / Generated functions behavior / undo: functions / Should delegate to rollback: function",
+          "lineno": 288
+        },
+        "@b0881135": {
+          "time": 0.0667,
+          "name": "_dryrun.sh / Generated functions behavior / Silent mode behavior / Should suppress output in run: function when SILENT=true",
+          "lineno": 301
+        },
+        "@d6dae509": {
+          "time": 0.0628,
+          "name": "_dryrun.sh / Generated functions behavior / Silent mode behavior / Should suppress output in rollback: function when SILENT=true but still show dry run message",
+          "lineno": 310
+        },
+        "@92fbffdf": {
+          "time": 0.0483,
+          "name": "_dryrun.sh / Per-command environment variable overrides / Should use DRY_RUN_ECHO override when set",
+          "lineno": 323
+        },
+        "@08aea780": {
+          "time": 0.09,
+          "name": "_dryrun.sh / Per-command environment variable overrides / Should use UNDO_RUN_ECHO override when set",
+          "lineno": 331
+        },
+        "@3d733e6f": {
+          "time": 0.0572,
+          "name": "_dryrun.sh / Per-command environment variable overrides / Should use SILENT_ECHO override when set",
+          "lineno": 341
+        },
+        "@474b0b18": {
+          "time": 0.0517,
+          "name": "_dryrun.sh / Per-command environment variable overrides / Should fall back to global variables when command-specific ones are not set",
+          "lineno": 351
+        },
+        "@8e7964e9": {
+          "time": 0.0877,
+          "name": "_dryrun.sh / Per-command environment variable overrides / Should prioritize command-specific variables over global ones",
+          "lineno": 359
+        },
+        "@ca8c346a": {
+          "time": 0.2666,
+          "name": "_dryrun.sh / rollback:func function / Should not execute function when UNDO_RUN=false",
+          "lineno": 371
+        },
+        "@e2a693de": {
+          "time": 0.2749,
+          "name": "_dryrun.sh / rollback:func function / Should not execute function when DRY_RUN=true",
+          "lineno": 379
+        },
+        "@1f147aa6": {
+          "time": 0.0784,
+          "name": "_dryrun.sh / rollback:func function / Should execute function when UNDO_RUN=true and DRY_RUN=false",
+          "lineno": 387
+        },
+        "@1b65174e": {
+          "time": 0.0514,
+          "name": "_dryrun.sh / rollback:func function / Should display function body when function exists and in dry mode",
+          "lineno": 397
+        },
+        "@2bb62e0e": {
+          "time": 0.2877,
+          "name": "_dryrun.sh / rollback:func function / Should handle non-existent function gracefully",
+          "lineno": 411
+        },
+        "@f172a349": {
+          "time": 0.0436,
+          "name": "_dryrun.sh / rollback:func function / Should respect SILENT setting",
+          "lineno": 419
+        },
+        "@3e638a8d": {
+          "time": 0.0634,
+          "name": "_dryrun.sh / Complex scenarios and edge cases / Should handle mixed global and per-command settings",
+          "lineno": 431
+        },
+        "@b0bc822d": {
+          "time": 0.0968,
+          "name": "_dryrun.sh / Complex scenarios and edge cases / Should respect per-command override over global settings",
+          "lineno": 441
+        },
+        "@26cc40c2": {
+          "time": 0.0495,
+          "name": "_dryrun.sh / Complex scenarios and edge cases / Should handle command names with special characters",
+          "lineno": 453
+        },
+        "@1f05f6ca": {
+          "time": 0.0516,
+          "name": "_dryrun.sh / Complex scenarios and edge cases / Should handle empty command arguments",
+          "lineno": 462
+        },
+        "@8d0e5707": {
+          "time": 0.0904,
+          "name": "_dryrun.sh / Complex scenarios and edge cases / Should preserve shell options correctly",
+          "lineno": 471
+        },
+        "@693fac3d": {
+          "time": 0.0737,
+          "name": "_dryrun.sh / Integration with logger system / Should use correct logger tags for different operations",
+          "lineno": 486
+        },
+        "@64b9d35f": {
+          "time": 0.0774,
+          "name": "_dryrun.sh / Integration with logger system / Should respect DEBUG environment for logger output",
+          "lineno": 497
+        }
+      }
+    },
+    "spec/git_semantic_version_spec.sh": {
+      "total": 76.00440000000002,
+      "examples": {
+        "@a04d3df8": {
+          "time": 0.004,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects feat commit",
+          "lineno": 50
+        },
+        "@d1c72d19": {
+          "time": 0.0086,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects fix commit",
+          "lineno": 55
+        },
+        "@58aefb7d": {
+          "time": 0.0096,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects chore commit",
+          "lineno": 60
+        },
+        "@d02ba655": {
+          "time": 0.0117,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects docs commit",
+          "lineno": 65
+        },
+        "@bfb72814": {
+          "time": 0.0094,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects refactor commit",
+          "lineno": 70
+        },
+        "@aec0f1f8": {
+          "time": 0.0112,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects test commit",
+          "lineno": 75
+        },
+        "@0da98f24": {
+          "time": 0.0095,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects ci commit",
+          "lineno": 80
+        },
+        "@ce9b08ef": {
+          "time": 0.0102,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects perf commit",
+          "lineno": 85
+        },
+        "@ac957ceb": {
+          "time": 0.0095,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / handles commit with scope",
+          "lineno": 90
+        },
+        "@48278995": {
+          "time": 0.0091,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / handles non-conventional commit as unknown",
+          "lineno": 95
+        },
+        "@a276e13b": {
+          "time": 0.01,
+          "name": "bin/git.semantic-version.sh / gitsv:parse_commit_type() / handles merge commit",
+          "lineno": 100
+        },
+        "@9f2b66fa": {
+          "time": 0.0097,
+          "name": "bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects breaking change with !",
+          "lineno": 107
+        },
+        "@6178f25b": {
+          "time": 0.0085,
+          "name": "bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects breaking change with ! and scope",
+          "lineno": 112
+        },
+        "@753e18ce": {
+          "time": 0.0141,
+          "name": "bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects BREAKING CHANGE in body",
+          "lineno": 117
+        },
+        "@fef79fc3": {
+          "time": 0.0169,
+          "name": "bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects BREAKING-CHANGE in body",
+          "lineno": 122
+        },
+        "@f193fdb0": {
+          "time": 0.01,
+          "name": "bin/git.semantic-version.sh / gitsv:has_breaking_change() / returns false for non-breaking change",
+          "lineno": 127
+        },
+        "@91dbd3ef": {
+          "time": 0.0116,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns major for breaking change",
+          "lineno": 134
+        },
+        "@e838b52c": {
+          "time": 0.0145,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns minor for feat",
+          "lineno": 139
+        },
+        "@8f887dd4": {
+          "time": 0.0207,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for fix",
+          "lineno": 144
+        },
+        "@936744f0": {
+          "time": 0.0156,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for chore",
+          "lineno": 149
+        },
+        "@809b4698": {
+          "time": 0.0142,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for docs",
+          "lineno": 154
+        },
+        "@d6861d79": {
+          "time": 0.0155,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for refactor",
+          "lineno": 159
+        },
+        "@016731df": {
+          "time": 0.0123,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns none for merge",
+          "lineno": 164
+        },
+        "@fab405a6": {
+          "time": 0.0206,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() / returns none for unknown commit type",
+          "lineno": 169
+        },
+        "@c357cf41": {
+          "time": 0.0099,
+          "name": "bin/git.semantic-version.sh / gitsv:add_keyword() / adds custom keyword successfully",
+          "lineno": 176
+        },
+        "@3ca0f237": {
+          "time": 0.0281,
+          "name": "bin/git.semantic-version.sh / gitsv:add_keyword() / validates bump type",
+          "lineno": 181
+        },
+        "@4110d293": {
+          "time": 0.0096,
+          "name": "bin/git.semantic-version.sh / gitsv:add_keyword() / allows major bump type",
+          "lineno": 187
+        },
+        "@b491f69f": {
+          "time": 0.0103,
+          "name": "bin/git.semantic-version.sh / gitsv:add_keyword() / allows minor bump type",
+          "lineno": 192
+        },
+        "@8395a846": {
+          "time": 0.0101,
+          "name": "bin/git.semantic-version.sh / gitsv:add_keyword() / allows patch bump type",
+          "lineno": 197
+        },
+        "@14b277e2": {
+          "time": 0.0112,
+          "name": "bin/git.semantic-version.sh / gitsv:add_keyword() / allows none bump type",
+          "lineno": 202
+        },
+        "@ce01d2d6": {
+          "time": 0.0165,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() with custom keywords / respects added wip keyword",
+          "lineno": 209
+        },
+        "@dcaea329": {
+          "time": 0.0164,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() with custom keywords / respects custom keyword with none bump",
+          "lineno": 215
+        },
+        "@2ae02c14": {
+          "time": 0.0161,
+          "name": "bin/git.semantic-version.sh / gitsv:determine_bump() with custom keywords / respects custom keyword with minor bump",
+          "lineno": 221
+        },
+        "@d2ed9e95": {
+          "time": 2.4967,
+          "name": "bin/git.semantic-version.sh / gitsv:bump_version() / bumps patch version",
+          "lineno": 229
+        },
+        "@cc2a876f": {
+          "time": 2.4671,
+          "name": "bin/git.semantic-version.sh / gitsv:bump_version() / bumps minor version and resets patch",
+          "lineno": 234
+        },
+        "@d4f7ceff": {
+          "time": 2.4642,
+          "name": "bin/git.semantic-version.sh / gitsv:bump_version() / bumps major version and resets minor and patch",
+          "lineno": 239
+        },
+        "@4862c9ba": {
+          "time": 0.01,
+          "name": "bin/git.semantic-version.sh / gitsv:bump_version() / returns same version for none bump",
+          "lineno": 244
+        },
+        "@0bed71c6": {
+          "time": 2.4804,
+          "name": "bin/git.semantic-version.sh / gitsv:bump_version() / handles 0.x.x versions correctly for patch",
+          "lineno": 249
+        },
+        "@0a73a2df": {
+          "time": 2.5038,
+          "name": "bin/git.semantic-version.sh / gitsv:bump_version() / handles 0.x.x versions correctly for minor",
+          "lineno": 254
+        },
+        "@afa0351b": {
+          "time": 2.506,
+          "name": "bin/git.semantic-version.sh / gitsv:bump_version() / handles 0.0.x versions correctly for major",
+          "lineno": 259
+        },
+        "@f278a62c": {
+          "time": 4.9305,
+          "name": "bin/git.semantic-version.sh / gitsv:version_diff() / shows patch diff",
+          "lineno": 266
+        },
+        "@f3d932d5": {
+          "time": 5.0084,
+          "name": "bin/git.semantic-version.sh / gitsv:version_diff() / shows minor diff",
+          "lineno": 271
+        },
+        "@fb35a159": {
+          "time": 4.9951,
+          "name": "bin/git.semantic-version.sh / gitsv:version_diff() / shows major diff",
+          "lineno": 276
+        },
+        "@d69e87b1": {
+          "time": 4.8539,
+          "name": "bin/git.semantic-version.sh / gitsv:version_diff() / shows only highest level change for complex diff",
+          "lineno": 281
+        },
+        "@f7757438": {
+          "time": 0.009,
+          "name": "bin/git.semantic-version.sh / gitsv:version_diff() / shows no diff for same version",
+          "lineno": 287
+        },
+        "@4f02a907": {
+          "time": 0.0161,
+          "name": "bin/git.semantic-version.sh / gitsv:format_output_line() / formats output line in markdown format",
+          "lineno": 294
+        },
+        "@1fd7ce74": {
+          "time": 0.0116,
+          "name": "bin/git.semantic-version.sh / gitsv:format_output_line() / handles missing tag parameter with default dash",
+          "lineno": 303
+        },
+        "@09756070": {
+          "time": 0.0098,
+          "name": "bin/git.semantic-version.sh / gitsv:format_output_line() / handles long commit messages without truncation",
+          "lineno": 308
+        },
+        "@aa5be4c2": {
+          "time": 0.0126,
+          "name": "bin/git.semantic-version.sh / gitsv:format_output_line() / handles long git tags without truncation",
+          "lineno": 314
+        },
+        "@04b8b656": {
+          "time": 0.0581,
+          "name": "bin/git.semantic-version.sh / gitsv:get_first_commit() / returns the first commit hash in repository",
+          "lineno": 322
+        },
+        "@7fffd4fc": {
+          "time": 0.0261,
+          "name": "bin/git.semantic-version.sh / gitsv:get_commit_tags() / returns empty string for commits without tags",
+          "lineno": 334
+        },
+        "@8db86922": {
+          "time": 0.022,
+          "name": "bin/git.semantic-version.sh / gitsv:get_commit_tags() / handles invalid commit hash gracefully",
+          "lineno": 341
+        },
+        "@2a8a26ff": {
+          "time": 0.049,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version from tag with v prefix",
+          "lineno": 349
+        },
+        "@e81ad647": {
+          "time": 0.053,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version from tag without prefix",
+          "lineno": 354
+        },
+        "@d7d6b8f9": {
+          "time": 0.0607,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version from tag with path and v prefix",
+          "lineno": 359
+        },
+        "@17adb109": {
+          "time": 0.051,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version with pre-release suffix",
+          "lineno": 364
+        },
+        "@5cde47a6": {
+          "time": 0.0527,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version with build metadata",
+          "lineno": 369
+        },
+        "@525b1b06": {
+          "time": 0.0529,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / returns empty for non-semver tag",
+          "lineno": 374
+        },
+        "@fa57be24": {
+          "time": 0.0557,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / returns empty for invalid version format",
+          "lineno": 379
+        },
+        "@c9745375": {
+          "time": 0.0575,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / handles tag with path prefix without v",
+          "lineno": 384
+        },
+        "@d45a848a": {
+          "time": 0.056,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts from complex tag with full semver",
+          "lineno": 389
+        },
+        "@3351171b": {
+          "time": 0.0549,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / extracts single semver from single tag",
+          "lineno": 396
+        },
+        "@4e7f753b": {
+          "time": 0.1136,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / extracts multiple semvers from multiple tags",
+          "lineno": 401
+        },
+        "@0fbcc67f": {
+          "time": 0.1428,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / filters out non-semver tags",
+          "lineno": 406
+        },
+        "@7f2383b4": {
+          "time": 0.1381,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / returns empty for all non-semver tags",
+          "lineno": 411
+        },
+        "@f4e897ff": {
+          "time": 0.1576,
+          "name": "bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / handles mixed prefix formats",
+          "lineno": 416
+        },
+        "@97dcf7b9": {
+          "time": 0.0551,
+          "name": "bin/git.semantic-version.sh / gitsv:get_last_version_tag() / returns latest semver tag if exists",
+          "lineno": 423
+        },
+        "@7a6341f2": {
+          "time": 0.0057,
+          "name": "bin/git.semantic-version.sh / gitsv:get_last_version_tag() / strips 'v' prefix from tags",
+          "lineno": 430
+        },
+        "@8f810ea0": {
+          "time": 0.0754,
+          "name": "bin/git.semantic-version.sh / gitsv:get_last_version_tag_commit() / returns commit hash for latest version tag",
+          "lineno": 437
+        },
+        "@fd557db6": {
+          "time": 0.0617,
+          "name": "bin/git.semantic-version.sh / gitsv:get_branch_start_commit() / returns a valid commit hash",
+          "lineno": 448
+        },
+        "@23f534c1": {
+          "time": 0.0867,
+          "name": "bin/git.semantic-version.sh / gitsv:get_commit_from_n_versions_back() / returns commit hash when versions exist",
+          "lineno": 459
+        },
+        "@488b97c9": {
+          "time": 0.0781,
+          "name": "bin/git.semantic-version.sh / gitsv:get_commit_from_n_versions_back() / handles when N is larger than version count",
+          "lineno": 468
+        },
+        "@53fda495": {
+          "time": 0.0721,
+          "name": "bin/git.semantic-version.sh / gitsv:get_commit_from_n_versions_back() / handles empty tag list (no semver tags exist) - regression test",
+          "lineno": 477
+        },
+        "@91b4e332": {
+          "time": 2.7077,
+          "name": "bin/git.semantic-version.sh / Command line argument parsing / displays help with --help",
+          "lineno": 505
+        },
+        "@1ceebeca": {
+          "time": 2.7056,
+          "name": "bin/git.semantic-version.sh / Command line argument parsing / accepts --initial-version parameter",
+          "lineno": 513
+        },
+        "@5eba2ebe": {
+          "time": 2.8068,
+          "name": "bin/git.semantic-version.sh / Command line argument parsing / rejects invalid --initial-version format",
+          "lineno": 519
+        },
+        "@dfba0396": {
+          "time": 2.6447,
+          "name": "bin/git.semantic-version.sh / Command line argument parsing / accepts --add-keyword parameter",
+          "lineno": 525
+        },
+        "@0238f3e2": {
+          "time": 2.6527,
+          "name": "bin/git.semantic-version.sh / Command line argument parsing / rejects invalid --add-keyword format",
+          "lineno": 531
+        },
+        "@cde80d95": {
+          "time": 2.766,
+          "name": "bin/git.semantic-version.sh / Command line argument parsing / accepts multiple --add-keyword parameters",
+          "lineno": 537
+        },
+        "@749cf11d": {
+          "time": 2.6578,
+          "name": "bin/git.semantic-version.sh / Command line argument parsing / rejects unknown options",
+          "lineno": 543
+        },
+        "@4f608563": {
+          "time": 4.9627,
+          "name": "bin/git.semantic-version.sh / Regression: Tag diff format (commit 905698f) / formats regular version diff with + prefix",
+          "lineno": 554
+        },
+        "@970dc9dd": {
+          "time": 0.0111,
+          "name": "bin/git.semantic-version.sh / Regression: Tag diff format (commit 905698f) / would format tag diff as ={version} in processing loop",
+          "lineno": 564
+        },
+        "@20e41ac9": {
+          "time": 0.0154,
+          "name": "bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns patch bump type for fix: commits",
+          "lineno": 583
+        },
+        "@87d729cc": {
+          "time": 0.0206,
+          "name": "bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns none bump type for non-conventional commits",
+          "lineno": 591
+        },
+        "@5374d351": {
+          "time": 0.0153,
+          "name": "bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns minor bump type for feat: commits",
+          "lineno": 599
+        },
+        "@f86bfe19": {
+          "time": 0.01,
+          "name": "bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns major bump type for breaking changes",
+          "lineno": 607
+        },
+        "@eae36e0b": {
+          "time": 0.0149,
+          "name": "bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / determines bump type independent of version suffix (fix: commit)",
+          "lineno": 615
+        },
+        "@397919bb": {
+          "time": 0.0169,
+          "name": "bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / determines bump type independent of version suffix (non-conventional)",
+          "lineno": 624
+        },
+        "@9391b0b3": {
+          "time": 0.0568,
+          "name": "bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / processes tag with pre-release suffix correctly",
+          "lineno": 640
+        },
+        "@aeaae583": {
+          "time": 0.0512,
+          "name": "bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / extracts semver from tag with alpha pre-release suffix",
+          "lineno": 650
+        },
+        "@9fe3dd45": {
+          "time": 0.0532,
+          "name": "bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / extracts semver from tag with beta pre-release suffix",
+          "lineno": 656
+        },
+        "@bcda4ce6": {
+          "time": 0.0522,
+          "name": "bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / extracts semver from tag with rc pre-release suffix",
+          "lineno": 663
+        },
+        "@e0451b08": {
+          "time": 3.4295,
+          "name": "bin/git.semantic-version.sh / Integration tests / processes commits from recent history",
+          "lineno": 672
+        },
+        "@6e4b05cd": {
+          "time": 7.8932,
+          "name": "bin/git.semantic-version.sh / Integration tests / works with --from-last-tag strategy",
+          "lineno": 679
+        },
+        "@a7697aa4": {
+          "time": 3.628,
+          "name": "bin/git.semantic-version.sh / Integration tests / shows tag column in output",
+          "lineno": 685
+        },
+        "@22de7a77": {
+          "time": 0.0052,
+          "name": "bin/git.semantic-version.sh / Integration tests / validates not in git repository",
+          "lineno": 692
+        }
+      }
+    },
+    "spec/installation_spec.sh": {
+      "total": 203.9916,
+      "examples": {
+        "@fc17a1b7": {
+          "time": 0.1511,
+          "name": "bin/install.e-bash.sh / Check Prerequisites / should detect when not in a git repository",
+          "lineno": 110
+        },
+        "@8857eba0": {
+          "time": 0.187,
+          "name": "bin/install.e-bash.sh / Check Unstaged Changes / should detect unstaged or uncommited changes for empty files",
+          "lineno": 140
+        },
+        "@b6440522": {
+          "time": 0.1658,
+          "name": "bin/install.e-bash.sh / Check Unstaged Changes / should detect unstaged or uncommited changes for non-empty files",
+          "lineno": 151
+        },
+        "@f9a094d9": {
+          "time": 0.175,
+          "name": "bin/install.e-bash.sh / Check Unstaged Changes / should detect untracked directories",
+          "lineno": 162
+        },
+        "@ba902bc9": {
+          "time": 4.9525,
+          "name": "bin/install.e-bash.sh / Install / should install e-bash scripts successfully",
+          "lineno": 185
+        },
+        "@8a5969b3": {
+          "time": 4.5602,
+          "name": "bin/install.e-bash.sh / Install / should integrate with mise.toml if file exists",
+          "lineno": 196
+        },
+        "@01d82012": {
+          "time": 5.1036,
+          "name": "bin/install.e-bash.sh / Install / should not modify mise.toml if it already has E_BASH configuration",
+          "lineno": 214
+        },
+        "@bbc86a00": {
+          "time": 5.2569,
+          "name": "bin/install.e-bash.sh / Install / should insert into existing [env] section before other sections",
+          "lineno": 229
+        },
+        "@f4e5f723": {
+          "time": 4.9255,
+          "name": "bin/install.e-bash.sh / Install / should handle mise.toml with [[env]] array of tables",
+          "lineno": 253
+        },
+        "@9545f45c": {
+          "time": 4.2301,
+          "name": "bin/install.e-bash.sh / Install / should not modify mise.toml with [[env]] if E_BASH exists",
+          "lineno": 272
+        },
+        "@5945d07e": {
+          "time": 4.0342,
+          "name": "bin/install.e-bash.sh / Install / should detect &quot;main&quot; branch correctly",
+          "lineno": 287
+        },
+        "@fec3af06": {
+          "time": 4.0844,
+          "name": "bin/install.e-bash.sh / Install / should detect &quot;custom&quot; branch correctly",
+          "lineno": 297
+        },
+        "@051c9865": {
+          "time": 4.3003,
+          "name": "bin/install.e-bash.sh / Install / should work on &quot;new_branch&quot; branch correctly",
+          "lineno": 309
+        },
+        "@e8bb214f": {
+          "time": 3.5016,
+          "name": "bin/install.e-bash.sh / Install / should install v1.0.1-alpha.1 version of e-bash",
+          "lineno": 323
+        },
+        "@996536fd": {
+          "time": 4.7206,
+          "name": "bin/install.e-bash.sh / Install / should create README.md with instructions",
+          "lineno": 335
+        },
+        "@77b801a6": {
+          "time": 5.9603,
+          "name": "bin/install.e-bash.sh / Upgrade / should upgrade to the latest version successfully",
+          "lineno": 350
+        },
+        "@2c0c7453": {
+          "time": 6.1193,
+          "name": "bin/install.e-bash.sh / Upgrade / should print uninstall instructions on merge conflict",
+          "lineno": 359
+        },
+        "@96343cf5": {
+          "time": 0.2809,
+          "name": "bin/install.e-bash.sh / Rollback / should rollback to previous version successfully",
+          "lineno": 382
+        },
+        "@b2613e26": {
+          "time": 0.1794,
+          "name": "bin/install.e-bash.sh / Rollback / should fail when no previous version exists",
+          "lineno": 394
+        },
+        "@7e508b82": {
+          "time": 0.1778,
+          "name": "bin/install.e-bash.sh / Rollback / should fail with empty previous version file",
+          "lineno": 402
+        },
+        "@6edc3deb": {
+          "time": 0.1818,
+          "name": "bin/install.e-bash.sh / Rollback / should fail with invalid commit hash format",
+          "lineno": 413
+        },
+        "@c63935d7": {
+          "time": 0.1959,
+          "name": "bin/install.e-bash.sh / Rollback / should fail with non-existent commit hash",
+          "lineno": 424
+        },
+        "@9bf6178f": {
+          "time": 0.2403,
+          "name": "bin/install.e-bash.sh / Rollback / should accept valid commit hash",
+          "lineno": 435
+        },
+        "@d4ceff9d": {
+          "time": 0.2515,
+          "name": "bin/install.e-bash.sh / Rollback / should accept valid short commit hash",
+          "lineno": 455
+        },
+        "@eed677e0": {
+          "time": 0.0039,
+          "name": "bin/install.e-bash.sh / Permission Errors / should detect read-only repository during install",
+          "lineno": 488
+        },
+        "@4a11a7bb": {
+          "time": 0.0046,
+          "name": "bin/install.e-bash.sh / Permission Errors / should detect read-only repository during uninstall",
+          "lineno": 504
+        },
+        "@f4d8d995": {
+          "time": 0.0039,
+          "name": "bin/install.e-bash.sh / Permission Errors / should provide helpful error message for permission denied",
+          "lineno": 521
+        },
+        "@6835e8fe": {
+          "time": 0.0521,
+          "name": "bin/install.e-bash.sh / Permission Errors / should have check_write_permissions function defined in script",
+          "lineno": 537
+        },
+        "@ef9ac076": {
+          "time": 0.6215,
+          "name": "bin/install.e-bash.sh / Versions / should list all available versions",
+          "lineno": 555
+        },
+        "@8a83ed20": {
+          "time": 3.6891,
+          "name": "bin/install.e-bash.sh / Versions / on top of existing repo / should mark current alpha installed version",
+          "lineno": 567
+        },
+        "@a96f69d9": {
+          "time": 4.2132,
+          "name": "bin/install.e-bash.sh / Versions / on top of existing repo / should mark current stable installed version",
+          "lineno": 578
+        },
+        "@dc90b68b": {
+          "time": 5.6174,
+          "name": "bin/install.e-bash.sh / Versions / on top of existing repo / should mark latest stable installed version",
+          "lineno": 589
+        },
+        "@06db7f57": {
+          "time": 3.0155,
+          "name": "bin/install.e-bash.sh / Install Version / should install the specified version",
+          "lineno": 608
+        },
+        "@ebb4322b": {
+          "time": 1.4768,
+          "name": "bin/install.e-bash.sh / Install Version / should not install not-existing version of e-bash",
+          "lineno": 617
+        },
+        "@31871a31": {
+          "time": 1.6448,
+          "name": "bin/install.e-bash.sh / Install Version / should fail with clear error for non-existent version during validation",
+          "lineno": 629
+        },
+        "@8715246f": {
+          "time": 0.1339,
+          "name": "bin/install.e-bash.sh / Help / should correctly show --help message",
+          "lineno": 643
+        },
+        "@f95f6f4f": {
+          "time": 0.1532,
+          "name": "bin/install.e-bash.sh / Help / should correctly show help message",
+          "lineno": 651
+        },
+        "@a541de0f": {
+          "time": 0.1506,
+          "name": "bin/install.e-bash.sh / Script Name Detection / should show script path when run directly",
+          "lineno": 665
+        },
+        "@d5b95278": {
+          "time": 0.1757,
+          "name": "bin/install.e-bash.sh / Script Name Detection / should show curl command when piped through bash",
+          "lineno": 674
+        },
+        "@0448e059": {
+          "time": 0.1837,
+          "name": "bin/install.e-bash.sh / Script Name Detection / should show curl command for uninstall when piped through bash",
+          "lineno": 684
+        },
+        "@087d746e": {
+          "time": 0.1554,
+          "name": "bin/install.e-bash.sh / Script Name Detection / should show script path for uninstall when run directly",
+          "lineno": 696
+        },
+        "@11cfa348": {
+          "time": 3.5221,
+          "name": "bin/install.e-bash.sh / Global Install / should install e-bash scripts globally to HOME directory",
+          "lineno": 734
+        },
+        "@718ec363": {
+          "time": 2.2819,
+          "name": "bin/install.e-bash.sh / Global Install / should install specific version globally",
+          "lineno": 749
+        },
+        "@93e1cd0c": {
+          "time": 1.3071,
+          "name": "bin/install.e-bash.sh / Global Install / should update shell configuration files",
+          "lineno": 762
+        },
+        "@19c6d1a6": {
+          "time": 1.5455,
+          "name": "bin/install.e-bash.sh / Global Install / should export correct E_BASH path for master version in shell rc",
+          "lineno": 777
+        },
+        "@6035682b": {
+          "time": 2.1983,
+          "name": "bin/install.e-bash.sh / Global Install / should export versioned E_BASH path for tagged version in shell rc",
+          "lineno": 796
+        },
+        "@46514225": {
+          "time": 1.6015,
+          "name": "bin/install.e-bash.sh / Global Install / should support NO symlink creation with --no-create-symlink option",
+          "lineno": 813
+        },
+        "@a1a4a82b": {
+          "time": 1.5861,
+          "name": "bin/install.e-bash.sh / Global Install / should detect broken .scripts symlink",
+          "lineno": 827
+        },
+        "@4ac5f109": {
+          "time": 1.6786,
+          "name": "bin/install.e-bash.sh / Global Install / should install globally and bind to current repo",
+          "lineno": 843
+        },
+        "@a74c0e7c": {
+          "time": 2.1587,
+          "name": "bin/install.e-bash.sh / Global Install / should upgrade repo binding to the latest version",
+          "lineno": 863
+        },
+        "@6935be83": {
+          "time": 2.2021,
+          "name": "bin/install.e-bash.sh / Global Install / should downgrade repo to another version",
+          "lineno": 884
+        },
+        "@002f87f8": {
+          "time": 2.8739,
+          "name": "bin/install.e-bash.sh / Global Install / Global Rollback / should rollback from master to previous version",
+          "lineno": 905
+        },
+        "@b3a7e788": {
+          "time": 2.59,
+          "name": "bin/install.e-bash.sh / Global Install / Global Rollback / should rollback from versioned to master",
+          "lineno": 927
+        },
+        "@0195500f": {
+          "time": 0.2072,
+          "name": "bin/install.e-bash.sh / Global Install / Global Rollback / should show error when global installation not found",
+          "lineno": 947
+        },
+        "@38f3f3cd": {
+          "time": 1.8108,
+          "name": "bin/install.e-bash.sh / Global Install / Global Rollback / should show error when version not available",
+          "lineno": 961
+        },
+        "@2d874bc2": {
+          "time": 0.221,
+          "name": "bin/install.e-bash.sh / Uninstall / should require --confirm flag for safety",
+          "lineno": 984
+        },
+        "@54204f1b": {
+          "time": 0.272,
+          "name": "bin/install.e-bash.sh / Uninstall / should remove .scripts directory with --confirm",
+          "lineno": 994
+        },
+        "@1070f343": {
+          "time": 0.2818,
+          "name": "bin/install.e-bash.sh / Uninstall / should remove .e-bash-previous-version file",
+          "lineno": 1005
+        },
+        "@1a568ba4": {
+          "time": 0.2237,
+          "name": "bin/install.e-bash.sh / Uninstall / should remove e-bash remote",
+          "lineno": 1017
+        },
+        "@c0794222": {
+          "time": 0.2324,
+          "name": "bin/install.e-bash.sh / Uninstall / should remove e-bash branches",
+          "lineno": 1026
+        },
+        "@475feda2": {
+          "time": 0.2803,
+          "name": "bin/install.e-bash.sh / Uninstall / should remove bin/install.e-bash.sh if it exists",
+          "lineno": 1036
+        },
+        "@322a6d83": {
+          "time": 0.2874,
+          "name": "bin/install.e-bash.sh / Uninstall / should clean .envrc E_BASH configuration",
+          "lineno": 1050
+        },
+        "@23d73730": {
+          "time": 0.2799,
+          "name": "bin/install.e-bash.sh / Uninstall / should clean .mise.toml E_BASH configuration with [env]",
+          "lineno": 1065
+        },
+        "@ae23e756": {
+          "time": 0.2665,
+          "name": "bin/install.e-bash.sh / Uninstall / should clean .mise.toml E_BASH configuration with [[env]]",
+          "lineno": 1082
+        },
+        "@e3303c7c": {
+          "time": 0.3058,
+          "name": "bin/install.e-bash.sh / Uninstall / should preserve other [[env]] entries when cleaning",
+          "lineno": 1099
+        },
+        "@f9c2773b": {
+          "time": 0.2722,
+          "name": "bin/install.e-bash.sh / Uninstall / should preserve user files during uninstall",
+          "lineno": 1119
+        },
+        "@5256fe71": {
+          "time": 0.2459,
+          "name": "bin/install.e-bash.sh / Uninstall / should support dry-run mode",
+          "lineno": 1134
+        },
+        "@6a6b668c": {
+          "time": 0.18,
+          "name": "bin/install.e-bash.sh / Uninstall / should show error when not installed",
+          "lineno": 1145
+        },
+        "@2a476dff": {
+          "time": 0.2545,
+          "name": "bin/install.e-bash.sh / Uninstall / should NOT remove shell RC files",
+          "lineno": 1156
+        },
+        "@895c14ed": {
+          "time": 4.5141,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should install to custom directory with --directory flag",
+          "lineno": 1184
+        },
+        "@b3871439": {
+          "time": 7.0763,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should read .ebashrc on upgrade and use custom directory",
+          "lineno": 1196
+        },
+        "@3714e993": {
+          "time": 4.7587,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should create .ebashrc with correct format",
+          "lineno": 1209
+        },
+        "@f7356300": {
+          "time": 4.6319,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should not create .ebashrc for default directory",
+          "lineno": 1220
+        },
+        "@a35fec75": {
+          "time": 5.2671,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should remove .ebashrc on uninstall",
+          "lineno": 1229
+        },
+        "@eddc5530": {
+          "time": 7.724,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should handle --directory flag with upgrade command",
+          "lineno": 1241
+        },
+        "@de3e247b": {
+          "time": 4.357,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should allow --directory flag to override .ebashrc",
+          "lineno": 1253
+        },
+        "@c6837cac": {
+          "time": 4.8491,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should update .envrc with custom directory path",
+          "lineno": 1268
+        },
+        "@cfa3c986": {
+          "time": 4.3747,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should update .mise.toml with custom directory path",
+          "lineno": 1283
+        },
+        "@87d04f0a": {
+          "time": 0.1746,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should require argument for --directory flag",
+          "lineno": 1298
+        },
+        "@2c0b51e6": {
+          "time": 4.2603,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should install to nested directory that does not exist",
+          "lineno": 1305
+        },
+        "@b67b9216": {
+          "time": 5.0184,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should handle deeply nested custom directory",
+          "lineno": 1317
+        },
+        "@a82d98d2": {
+          "time": 4.2326,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should update .envrc with nested directory path",
+          "lineno": 1328
+        },
+        "@758317e2": {
+          "time": 0.1668,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should validate directory path does not start with --",
+          "lineno": 1342
+        },
+        "@a9bf4463": {
+          "time": 7.6422,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should update .envrc when switching from default to custom directory",
+          "lineno": 1349
+        },
+        "@0685edc9": {
+          "time": 7.7194,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should update .mise.toml when switching from default to custom directory",
+          "lineno": 1373
+        },
+        "@45e31f08": {
+          "time": 7.5745,
+          "name": "bin/install.e-bash.sh / Custom Directory Installation / should update .envrc when switching from custom back to default directory",
+          "lineno": 1397
+        },
+        "@09bcae22": {
+          "time": 1.5806,
+          "name": "bin/install.e-bash.sh / Global Uninstall / should only remove symlink from current project",
+          "lineno": 1442
+        },
+        "@2f7fffd3": {
+          "time": 1.497,
+          "name": "bin/install.e-bash.sh / Global Uninstall / should preserve global installation directory",
+          "lineno": 1462
+        },
+        "@df6b7a74": {
+          "time": 0.1738,
+          "name": "bin/install.e-bash.sh / Global Uninstall / should show error when no symlink exists",
+          "lineno": 1483
+        }
+      }
+    },
+    "spec/logger_spec.sh": {
+      "total": 10.363500000000002,
+      "examples": {
+        "@6f1208f8": {
+          "time": 0.2286,
+          "name": "_logger.sh / Basic logger registration / returns empty output when registering pre-defined common logger",
+          "lineno": 23
+        },
+        "@51a98d2d": {
+          "time": 0.479,
+          "name": "_logger.sh / Basic logger registration / outputs TAGS dump when registering token after common loggers",
+          "lineno": 32
+        },
+        "@aab251dc": {
+          "time": 0.528,
+          "name": "_logger.sh / Logger with custom prefixes / echo:Tag outputs with custom prefix",
+          "lineno": 43
+        },
+        "@b6ed5160": {
+          "time": 0.4964,
+          "name": "_logger.sh / Logger with custom prefixes / printf:Tag outputs with custom prefix (macOS compatibility test)",
+          "lineno": 52
+        },
+        "@3004c3e9": {
+          "time": 0.4662,
+          "name": "_logger.sh / Logger with custom prefixes / printf:Tag with custom prefix and format specifiers",
+          "lineno": 61
+        },
+        "@7de2b30e": {
+          "time": 0.5176,
+          "name": "_logger.sh / Logger with custom prefixes / echo:Tag with custom prefix using logger:prefix helper",
+          "lineno": 75
+        },
+        "@971d1ee3": {
+          "time": 0.5036,
+          "name": "_logger.sh / Logger with custom prefixes / echo:Tag with multiple arguments",
+          "lineno": 89
+        },
+        "@37b1b564": {
+          "time": 0.4279,
+          "name": "_logger.sh / DEBUG filtering logic / enables logger when tag explicitly listed",
+          "lineno": 105
+        },
+        "@cbcba07e": {
+          "time": 0.4805,
+          "name": "_logger.sh / DEBUG filtering logic / enables logger via wildcard",
+          "lineno": 116
+        },
+        "@701372d0": {
+          "time": 0.4192,
+          "name": "_logger.sh / DEBUG filtering logic / disables logger via negation pattern",
+          "lineno": 127
+        },
+        "@d531f2cd": {
+          "time": 0.4976,
+          "name": "_logger.sh / DEBUG filtering logic / disables logger by default when DEBUG is empty",
+          "lineno": 139
+        },
+        "@78cc7d56": {
+          "time": 0.4186,
+          "name": "_logger.sh / DEBUG filtering logic / enables logger in complex DEBUG list",
+          "lineno": 151
+        },
+        "@8775b0fd": {
+          "time": 0.9261,
+          "name": "_logger.sh / DEBUG filtering logic / isolates multiple loggers (disabled logger fails)",
+          "lineno": 162
+        },
+        "@65ef66b6": {
+          "time": 0.4833,
+          "name": "_logger.sh / Advanced features / handles printf:Tag with special characters (\\n \\t)",
+          "lineno": 177
+        },
+        "@1de51064": {
+          "time": 0.5391,
+          "name": "_logger.sh / Advanced features / handles printf:Tag with % in arguments",
+          "lineno": 188
+        },
+        "@71a6259d": {
+          "time": 0.5296,
+          "name": "_logger.sh / Advanced features / initializes logger with logger:init helper",
+          "lineno": 199
+        },
+        "@df157fb7": {
+          "time": 0.4823,
+          "name": "_logger.sh / Advanced features / redirects logger output to /dev/null",
+          "lineno": 211
+        },
+        "@6a16fe94": {
+          "time": 0.5052,
+          "name": "_logger.sh / Advanced features / preserves and restores state with logger:push/pop",
+          "lineno": 222
+        },
+        "@b437a097": {
+          "time": 0.4868,
+          "name": "_logger.sh / Advanced features / handles empty message with prefix",
+          "lineno": 237
+        },
+        "@9ad249a1": {
+          "time": 0.4695,
+          "name": "_logger.sh / Edge cases / printf:Tag with plain text (no format specifiers)",
+          "lineno": 251
+        },
+        "@727b3ce4": {
+          "time": 0.4784,
+          "name": "_logger.sh / Edge cases / printf:Tag with multiple plain arguments demonstrates edge case",
+          "lineno": 266
+        }
+      }
+    },
+    "spec/traps_nested_spec.sh": {
+      "total": 3.085,
+      "examples": {
+        "@1cd358f4": {
+          "time": 0.195,
+          "name": "_traps.sh nested loading / Sequential sourcing / accumulates handlers when scripts sourced sequentially",
+          "lineno": 53
+        },
+        "@5389bdf5": {
+          "time": 0.1883,
+          "name": "_traps.sh nested loading / Sequential sourcing / preserves handler registration order",
+          "lineno": 64
+        },
+        "@9a9b5e28": {
+          "time": 0.1565,
+          "name": "_traps.sh nested loading / Multiple sourcing prevention / warns on duplicate handler registration",
+          "lineno": 77
+        },
+        "@bb1ec149": {
+          "time": 0.1814,
+          "name": "_traps.sh nested loading / Multiple sourcing prevention / does not duplicate handler without flag",
+          "lineno": 92
+        },
+        "@7e5d7bde": {
+          "time": 0.1951,
+          "name": "_traps.sh nested loading / Multiple sourcing prevention / allows duplicates with --allow-duplicates flag",
+          "lineno": 106
+        },
+        "@2ec2f306": {
+          "time": 0.2238,
+          "name": "_traps.sh nested loading / Scoped handlers with push/pop / restores handler state after pop",
+          "lineno": 125
+        },
+        "@21cd2b89": {
+          "time": 0.3098,
+          "name": "_traps.sh nested loading / Scoped handlers with push/pop / supports nested push/pop (depth 3)",
+          "lineno": 142
+        },
+        "@6f773ab8": {
+          "time": 0.2348,
+          "name": "_traps.sh nested loading / Scoped handlers with push/pop / maintains separate stacks for different signals",
+          "lineno": 171
+        },
+        "@696cc18c": {
+          "time": 0.2213,
+          "name": "_traps.sh nested loading / Scoped cleanup pattern / auto-cleans handlers with scope:begin/end",
+          "lineno": 199
+        },
+        "@0b67982e": {
+          "time": 0.3181,
+          "name": "_traps.sh nested loading / Scoped cleanup pattern / supports nested scopes",
+          "lineno": 214
+        },
+        "@2dd333bd": {
+          "time": 0.1632,
+          "name": "_traps.sh nested loading / Library pattern (reusable sourcing) / prevents duplicate registration via guard pattern",
+          "lineno": 243
+        },
+        "@afad1098": {
+          "time": 0.2097,
+          "name": "_traps.sh nested loading / Stack level tracking / tracks stack level correctly",
+          "lineno": 258
+        },
+        "@603533f0": {
+          "time": 0.0388,
+          "name": "_traps.sh nested loading / Stack level tracking / prevents pop when stack is empty",
+          "lineno": 269
+        },
+        "@a6c2cc20": {
+          "time": 0.3445,
+          "name": "_traps.sh nested loading / Multiple signals with scoping / pushes and pops multiple signals together",
+          "lineno": 291
+        },
+        "@f3796e24": {
+          "time": 0.0354,
+          "name": "_traps.sh nested loading / Error handling in nested contexts / handles missing function gracefully during registration",
+          "lineno": 324
+        },
+        "@489eaf15": {
+          "time": 0.0693,
+          "name": "_traps.sh nested loading / Error handling in nested contexts / recovers from stack corruption",
+          "lineno": 330
+        }
+      }
+    },
+    "spec/traps_spec.sh": {
+      "total": 4.042,
+      "examples": {
+        "@ea9d1ff3": {
+          "time": 0.0132,
+          "name": "_traps.sh / Module initialization / loads without errors",
+          "lineno": 57
+        },
+        "@a253b016": {
+          "time": 0.0096,
+          "name": "_traps.sh / Module initialization / creates trap:off function",
+          "lineno": 66
+        },
+        "@b6bda25b": {
+          "time": 0.0098,
+          "name": "_traps.sh / Module initialization / creates trap:list function",
+          "lineno": 71
+        },
+        "@237e50a4": {
+          "time": 0.1072,
+          "name": "_traps.sh / trap:on / basic functionality / registers single handler for EXIT signal",
+          "lineno": 82
+        },
+        "@97219a5d": {
+          "time": 0.0454,
+          "name": "_traps.sh / trap:on / basic functionality / fails when handler function does not exist",
+          "lineno": 88
+        },
+        "@92fed892": {
+          "time": 0.0557,
+          "name": "_traps.sh / trap:on / basic functionality / fails when no signals specified",
+          "lineno": 94
+        },
+        "@4f0016c9": {
+          "time": 0.089,
+          "name": "_traps.sh / trap:on / basic functionality / normalizes SIGINT to INT",
+          "lineno": 100
+        },
+        "@35b2bbfa": {
+          "time": 0.1002,
+          "name": "_traps.sh / trap:on / basic functionality / normalizes signal 0 to EXIT",
+          "lineno": 107
+        },
+        "@14f272ad": {
+          "time": 0.1562,
+          "name": "_traps.sh / trap:on / multiple handlers / registers multiple handlers for same signal",
+          "lineno": 120
+        },
+        "@06fb8157": {
+          "time": 0.2821,
+          "name": "_traps.sh / trap:on / multiple handlers / registers handler for multiple signals",
+          "lineno": 127
+        },
+        "@a43c2b8b": {
+          "time": 0.1399,
+          "name": "_traps.sh / trap:on / duplicate handling / warns when handler already registered",
+          "lineno": 139
+        },
+        "@3a44c1c0": {
+          "time": 0.1408,
+          "name": "_traps.sh / trap:on / duplicate handling / allows duplicates with --allow-duplicates flag",
+          "lineno": 146
+        },
+        "@fac6b2c8": {
+          "time": 0.1169,
+          "name": "_traps.sh / trap:off / functionality / removes handler from signal",
+          "lineno": 158
+        },
+        "@c902653a": {
+          "time": 0.0593,
+          "name": "_traps.sh / trap:off / functionality / handles non-existent handler gracefully",
+          "lineno": 165
+        },
+        "@bd6d1c26": {
+          "time": 0.0602,
+          "name": "_traps.sh / trap:off / functionality / fails when no signals specified",
+          "lineno": 171
+        },
+        "@75f876bf": {
+          "time": 0.1316,
+          "name": "_traps.sh / trap:list / functionality / lists handlers for specific signal",
+          "lineno": 182
+        },
+        "@c269cc48": {
+          "time": 0.0196,
+          "name": "_traps.sh / trap:list / functionality / shows empty output for uninitialized signal",
+          "lineno": 190
+        },
+        "@da12f36c": {
+          "time": 0.1011,
+          "name": "_traps.sh / trap:list / functionality / lists all signals when no argument provided",
+          "lineno": 195
+        },
+        "@0ff9305e": {
+          "time": 0.1747,
+          "name": "_traps.sh / trap:clear / functionality / clears all handlers for signal",
+          "lineno": 206
+        },
+        "@6bdc3390": {
+          "time": 0.0484,
+          "name": "_traps.sh / trap:clear / functionality / fails when no signals specified",
+          "lineno": 216
+        },
+        "@d01f5170": {
+          "time": 0.1444,
+          "name": "_traps.sh / trap:push and trap:pop / pushes current trap state",
+          "lineno": 227
+        },
+        "@18e3243d": {
+          "time": 0.188,
+          "name": "_traps.sh / trap:push and trap:pop / pops and restores trap state",
+          "lineno": 234
+        },
+        "@c6172130": {
+          "time": 0.0486,
+          "name": "_traps.sh / trap:push and trap:pop / fails when popping empty stack",
+          "lineno": 246
+        },
+        "@2b2d151e": {
+          "time": 0.314,
+          "name": "_traps.sh / trap:push and trap:pop / supports nested push/pop",
+          "lineno": 252
+        },
+        "@e3c3ecd5": {
+          "time": 0.5208,
+          "name": "_traps.sh / trap:push and trap:pop / snapshots all active signals when called without arguments",
+          "lineno": 276
+        },
+        "@01efccaf": {
+          "time": 0.2243,
+          "name": "_traps.sh / trap:scope:begin and trap:scope:end / creates scoped trap section",
+          "lineno": 322
+        },
+        "@2a49b7b8": {
+          "time": 0.0893,
+          "name": "_traps.sh / Signal normalization / normalizes SIGTERM to TERM",
+          "lineno": 337
+        },
+        "@2bb49364": {
+          "time": 0.1044,
+          "name": "_traps.sh / Signal normalization / normalizes lowercase to uppercase",
+          "lineno": 344
+        },
+        "@791628fd": {
+          "time": 0.0876,
+          "name": "_traps.sh / Signal normalization / normalizes numeric signals using kill -l",
+          "lineno": 351
+        },
+        "@5af937e3": {
+          "time": 0.163,
+          "name": "_traps.sh / Trap dispatcher execution / allows handler registration and listing",
+          "lineno": 364
+        },
+        "@085e36cf": {
+          "time": 0.1811,
+          "name": "_traps.sh / Trap dispatcher execution / can clear and re-register handlers",
+          "lineno": 383
+        },
+        "@61055bf5": {
+          "time": 0.0089,
+          "name": "_traps.sh / Trap dispatcher execution / dispatcher function exists and is callable",
+          "lineno": 405
+        },
+        "@a660ff25": {
+          "time": 0.1067,
+          "name": "_traps.sh / Legacy trap handling / captures existing trap configuration",
+          "lineno": 416
+        }
+      }
+    },
+    "spec/version-up_spec.sh": {
+      "total": 267.571,
+      "examples": {
+        "@3010d6c7": {
+          "time": 6.4066,
+          "name": "bin/version-up.v2.sh / test-000: displays usage help information and exits with 0",
+          "lineno": 54
+        },
+        "@ff6eb52b": {
+          "time": 5.6897,
+          "name": "bin/version-up.v2.sh / test-001: displays script version and exits with 0",
+          "lineno": 73
+        },
+        "@d8c58f3d": {
+          "time": 6.0752,
+          "name": "bin/version-up.v2.sh / test-002: should detect empty git repository",
+          "lineno": 87
+        },
+        "@c7a58b8f": {
+          "time": 6.8618,
+          "name": "bin/version-up.v2.sh / test-002: proposes version 0.0.1-alpha in a fresh git repository",
+          "lineno": 103
+        },
+        "@f26367b7": {
+          "time": 6.8211,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.3.0' from tag 'v1.2.3' after '' flag",
+          "lineno": 141
+        },
+        "@17a273b9": {
+          "time": 6.5351,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.4' from tag 'v1.2.3' after '--default' flag",
+          "lineno": 177
+        },
+        "@7059862c": {
+          "time": 6.89,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v2.0.0' from tag 'v1.2.3' after '--major' flag",
+          "lineno": 199
+        },
+        "@5ddd1e20": {
+          "time": 6.9201,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.3.0' from tag 'v1.2.3' after '--minor' flag",
+          "lineno": 226
+        },
+        "@f9dc357c": {
+          "time": 6.468,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.4' from tag 'v1.2.3' after '--patch' flag",
+          "lineno": 258
+        },
+        "@f49be8d8": {
+          "time": 6.5925,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3-alpha' from tag 'v1.2.3' after '--alpha' flag",
+          "lineno": 301
+        },
+        "@18992d18": {
+          "time": 6.4667,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3-beta' from tag 'v1.2.3' after '--beta' flag",
+          "lineno": 343
+        },
+        "@1a3b4638": {
+          "time": 6.2247,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3-rc' from tag 'v1.2.3' after '--rc' flag",
+          "lineno": 431
+        },
+        "@209eb63c": {
+          "time": 5.8984,
+          "name": "bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3+1' from tag 'v1.2.3' after '--revision' flag",
+          "lineno": 467
+        },
+        "@29c2f607": {
+          "time": 5.436,
+          "name": "bin/version-up.v2.sh / forced stay on the same version tag / test-003: should reuse version when on a MASTER branch",
+          "lineno": 513
+        },
+        "@b5d8c9e9": {
+          "time": 5.7157,
+          "name": "bin/version-up.v2.sh / forced stay on the same version tag / test-003: forced stay strategy on a MASTER branch",
+          "lineno": 545
+        },
+        "@2206f59a": {
+          "time": 5.4008,
+          "name": "bin/version-up.v2.sh / forced stay on the same version tag / test-004: should reuse version when on a branch named after that version tag",
+          "lineno": 580
+        },
+        "@3afe499f": {
+          "time": 5.8741,
+          "name": "bin/version-up.v2.sh / test-005: should propose REVISION segment increase when on a branch from a version tag",
+          "lineno": 625
+        },
+        "@4166fea2": {
+          "time": 5.9682,
+          "name": "bin/version-up.v2.sh / test-005: should propose PATCH segment increase when on a branch from a version tag",
+          "lineno": 653
+        },
+        "@eafe4c83": {
+          "time": 5.7966,
+          "name": "bin/version-up.v2.sh / test-005: should propose PATCH increase with stage keeping",
+          "lineno": 679
+        },
+        "@7f83140a": {
+          "time": 5.8455,
+          "name": "bin/version-up.v2.sh / monorepo version detection / test-020: should auto-detect prefix in monorepo structure",
+          "lineno": 716
+        },
+        "@9d403250": {
+          "time": 5.7195,
+          "name": "bin/version-up.v2.sh / monorepo version detection / test-021: should use root prefix strategy in monorepo structure",
+          "lineno": 731
+        },
+        "@3188064a": {
+          "time": 5.7607,
+          "name": "bin/version-up.v2.sh / monorepo version detection / test-022: should use sub-folder prefix strategy in monorepo structure",
+          "lineno": 745
+        },
+        "@3b113f29": {
+          "time": 5.6855,
+          "name": "bin/version-up.v2.sh / monorepo version detection / test-023: should use custom prefix string in monorepo structure",
+          "lineno": 760
+        },
+        "@308a0a58": {
+          "time": 0.0994,
+          "name": "bin/version-up.v2.sh / test-024: multiple version.properties files / should merge settings from multiple version.properties files (dotenv behavior)",
+          "lineno": 791
+        },
+        "@493f6f2b": {
+          "time": 0.095,
+          "name": "bin/version-up.v2.sh / test-025: multiple prefixes without clear winner / should detect ambiguous prefixes and suggest resolution",
+          "lineno": 808
+        },
+        "@86a76464": {
+          "time": 5.6375,
+          "name": "bin/version-up.v2.sh / corner cases / test-050: should not apply changes in dry-run mode",
+          "lineno": 841
+        },
+        "@0b7cb46b": {
+          "time": 6.0727,
+          "name": "bin/version-up.v2.sh / corner cases / test-051: should detect and report tag conflicts",
+          "lineno": 862
+        },
+        "@7acc22f0": {
+          "time": 0.0526,
+          "name": "bin/version-up.v2.sh / corner cases / test-052: should reject invalid prefix with colon",
+          "lineno": 887
+        },
+        "@dd681d31": {
+          "time": 0.0517,
+          "name": "bin/version-up.v2.sh / corner cases / test-052: should reject invalid prefix with asterisk",
+          "lineno": 908
+        },
+        "@cdf30f2a": {
+          "time": 0.0534,
+          "name": "bin/version-up.v2.sh / corner cases / test-052: should reject invalid prefix with brackets",
+          "lineno": 930
+        },
+        "@910569ff": {
+          "time": 5.7832,
+          "name": "bin/version-up.v2.sh / corner cases / test-053: should reuse version from existing version.properties with --stay",
+          "lineno": 955
+        },
+        "@35090bc6": {
+          "time": 0.0392,
+          "name": "bin/version-up.v2.sh / corner cases / test-054: should fail when not in a git repository",
+          "lineno": 976
+        },
+        "@0f008061": {
+          "time": 0.0883,
+          "name": "bin/version-up.v2.sh / corner cases / test-055: should handle corrupted version.properties gracefully",
+          "lineno": 997
+        },
+        "@555d1464": {
+          "time": 5.7291,
+          "name": "bin/version-up.v2.sh / new features in v2 / --build custom metadata / should accept custom build metadata with --build flag",
+          "lineno": 1018
+        },
+        "@0501e069": {
+          "time": 5.7649,
+          "name": "bin/version-up.v2.sh / new features in v2 / --build custom metadata / should use --build instead of --revision when both provided",
+          "lineno": 1039
+        },
+        "@dcd611d1": {
+          "time": 5.7726,
+          "name": "bin/version-up.v2.sh / new features in v2 / --pre-release custom stage / should accept custom pre-release stage with --pre-release flag",
+          "lineno": 1060
+        },
+        "@63483007": {
+          "time": 5.9184,
+          "name": "bin/version-up.v2.sh / new features in v2 / --pre-release custom stage / should use --pre-release instead of --alpha when both provided",
+          "lineno": 1084
+        },
+        "@34a7c429": {
+          "time": 6.1375,
+          "name": "bin/version-up.v2.sh / new features in v2 / --pre-release custom stage / should combine custom pre-release and build metadata",
+          "lineno": 1105
+        },
+        "@cb82b4db": {
+          "time": 5.9751,
+          "name": "bin/version-up.v2.sh / new features in v2 / override values / should accept --major=5 to set specific major version",
+          "lineno": 1126
+        },
+        "@62dde84f": {
+          "time": 5.9539,
+          "name": "bin/version-up.v2.sh / new features in v2 / override values / should accept --minor=10 to set specific minor version",
+          "lineno": 1153
+        },
+        "@b4d7cbee": {
+          "time": 6.0412,
+          "name": "bin/version-up.v2.sh / new features in v2 / override values / should accept --patch=99 to set specific patch version",
+          "lineno": 1176
+        },
+        "@cd2228c3": {
+          "time": 6.2143,
+          "name": "bin/version-up.v2.sh / new features in v2 / override values / should accept --revision=1000 to set specific revision build",
+          "lineno": 1198
+        },
+        "@59ec234d": {
+          "time": 6.1166,
+          "name": "bin/version-up.v2.sh / new features in v2 / override values / should combine multiple override values",
+          "lineno": 1223
+        },
+        "@9b6c2683": {
+          "time": 6.1927,
+          "name": "bin/version-up.v2.sh / new features in v2 / override values / should combine overrides with custom stage"
+        },
+        "@f4706256": {
+          "time": 6.1044,
+          "name": "bin/version-up.v2.sh / new features in v2 / multiple flags combination / should handle --major --alpha combination"
+        },
+        "@1c9e296f": {
+          "time": 6.0247,
+          "name": "bin/version-up.v2.sh / new features in v2 / multiple flags combination / should handle --minor --beta --revision combination"
+        },
+        "@348178d3": {
+          "time": 5.9824,
+          "name": "bin/version-up.v2.sh / new features in v2 / multiple flags combination / should handle --patch --git-revision combination"
+        },
+        "@fd5aff64": {
+          "time": 6.0747,
+          "name": "bin/version-up.v2.sh / new features in v2 / conflicting flags / should handle --alpha --beta --rc (last one wins)"
+        },
+        "@125bf8d5": {
+          "time": 5.9967,
+          "name": "bin/version-up.v2.sh / new features in v2 / conflicting flags / should handle --major --minor --patch (all applied, only last takes effect)"
+        },
+        "@36465383": {
+          "time": 6.2079,
+          "name": "bin/version-up.v2.sh / new features in v2 / conflicting flags / should handle --stay --major (stay should prevent increment)"
+        },
+        "@43c60ecb": {
+          "time": 6.3384,
+          "name": "bin/version-up.v2.sh / new features in v2 / git revision / should use git commit count as revision with --git flag"
+        }
+      }
+    }
+  },
+  "total_time": 637.3870999999999,
+  "file_count": 14,
+  "example_count": 685,
+  "source_files": [
+    "baseline-sanitized.xml"
+  ]
+}

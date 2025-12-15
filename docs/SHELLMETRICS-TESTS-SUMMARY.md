@@ -2,7 +2,7 @@
 
 ## Overview
 
-Comprehensive unit tests have been created for `bin/shellmetrics-compare.sh` following ShellSpec best practices and the project's testing patterns.
+Comprehensive unit tests have been created for `.github/scripts/shellmetrics-compare.sh` following ShellSpec best practices and the project's testing patterns.
 
 ## Files Created
 
@@ -29,7 +29,7 @@ All fixtures stored in `spec/fixtures/`:
 - **Content**: Test structure, running instructions, CI failure diagnosis guide
 
 ### 4. Diagnostic Script
-- **File**: `bin/diagnose-shellmetrics-failure.sh`
+- **File**: `.github/scripts/diagnose-shellmetrics-failure.sh`
 - **Purpose**: Helps diagnose CI failures by checking all dependencies and simulating workflows
 
 ## Test Coverage
@@ -127,7 +127,7 @@ Following the `.claude/skills/shellspec/SKILL.md guide`:
 ### 4. **CI Failure Diagnosis**
 Specific tests to reproduce the known failure:
 ```bash
-./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+./.github/scripts/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
 # Error: Process completed with exit code 1.
 ```
 
@@ -154,7 +154,7 @@ shellspec --xtrace spec/bin/shellmetrics-compare_spec.sh
 ### Run Diagnostic Script
 ```bash
 # Check if everything is set up correctly
-bash bin/diagnose-shellmetrics-failure.sh
+bash .github/scripts/diagnose-shellmetrics-failure.sh
 ```
 
 ## CI Integration
@@ -179,7 +179,7 @@ If `git worktree add` fails or the base branch doesn't have shell scripts:
 ### 2. **Script Not in Base Branch**
 The CI copies the script to the worktree:
 ```bash
-cp ./bin/shellmetrics-compare.sh /tmp/base-branch/
+cp ./.github/scripts/shellmetrics-compare.sh /tmp/base-branch/
 ```
 If the script format is incompatible or permissions are wrong, it may fail.
 
@@ -208,7 +208,7 @@ If the base branch has no `.scripts/` or `bin/` scripts:
 
 2. Run the diagnostic script in CI:
    ```bash
-   bash bin/diagnose-shellmetrics-failure.sh
+   bash .github/scripts/diagnose-shellmetrics-failure.sh
    ```
 
 3. Add explicit error handling in `compare_metrics`:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This test suite provides comprehensive unit testing for `bin/shellmetrics-compare.sh` using ShellSpec. The tests cover functionality, error handling, edge cases, and CI failure reproduction scenarios.
+This test suite provides comprehensive unit testing for `.github/scripts/shellmetrics-compare.sh` using ShellSpec. The tests cover functionality, error handling, edge cases, and CI failure reproduction scenarios.
 
 ## Test Structure
 
@@ -40,7 +40,7 @@ The test suite is organized into the following contexts:
 Specific tests to reproduce and diagnose the GitHub Actions CI failure:
 
 ```bash
-./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+./.github/scripts/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
 ```
 
 These tests verify:
@@ -133,7 +133,7 @@ The failure might occur if the git worktree step fails to collect base metrics:
 
 ```bash
 git worktree add --detach /tmp/base-branch origin/master
-cp ./bin/shellmetrics-compare.sh /tmp/base-branch/
+cp ./.github/scripts/shellmetrics-compare.sh /tmp/base-branch/
 cd /tmp/base-branch
 ./shellmetrics-compare.sh collect /tmp/base-metrics.csv
 ```
@@ -157,7 +157,7 @@ Test the compare command with debug output:
 
 ```bash
 set -x
-./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+./.github/scripts/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
 ```
 
 ### 4. Check CSV Format

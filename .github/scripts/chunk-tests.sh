@@ -25,7 +25,7 @@
 # Timing data is cached in .test-timings.json and generated from JUnit XML reports.
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-14
+## Last revisit: 2025-12-15
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -35,7 +35,7 @@ set -euo pipefail
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Parse arguments
 TOTAL_CHUNKS="${1:-4}"
@@ -81,12 +81,56 @@ if [ -n "$GRANULARITY" ]; then
 fi
 
 # Check for timing-based optimal distribution
-TIMING_FILE="$PROJECT_ROOT/.test-timings.json"
+DEFAULT_TIMING_FILE="$PROJECT_ROOT/.test-timings.json"
+TIMING_FILE="$DEFAULT_TIMING_FILE"
 JUNIT_SCRIPT_DIR="$SCRIPT_DIR/junit"
 
-if [ -f "$TIMING_FILE" ] && command -v bun >/dev/null 2>&1 && [ -f "$JUNIT_SCRIPT_DIR/calculate-optimal-chunks.ts" ]; then
+detect_ci_os_slug() {
+  local os="${RUNNER_OS:-}"
+
+  if [ -z "$os" ]; then
+    case "$(uname -s 2>/dev/null || true)" in
+      Darwin) os="macOS" ;;
+      Linux) os="Linux" ;;
+      *) os="" ;;
+    esac
+  fi
+
+  case "$os" in
+    Linux) echo "linux" ;;
+    macOS) echo "macos" ;;
+    *) echo "" ;;
+  esac
+}
+
+# Prefer a committed baseline timing file when present.
+# Override via E_BASH_TIMING_FILE (absolute or repo-relative path).
+if [ -n "${E_BASH_TIMING_FILE:-}" ]; then
+  if [[ "$E_BASH_TIMING_FILE" = /* ]]; then
+    if [ -f "$E_BASH_TIMING_FILE" ]; then
+      TIMING_FILE="$E_BASH_TIMING_FILE"
+    fi
+  else
+    if [ -f "$PROJECT_ROOT/$E_BASH_TIMING_FILE" ]; then
+      TIMING_FILE="$PROJECT_ROOT/$E_BASH_TIMING_FILE"
+    fi
+  fi
+else
+  OS_SLUG="$(detect_ci_os_slug)"
+  BASELINE_TIMING_FILE="$PROJECT_ROOT/.github/data/${OS_SLUG}/test-timings.json"
+  if [ -n "$OS_SLUG" ] && [ -f "$BASELINE_TIMING_FILE" ]; then
+    TIMING_FILE="$BASELINE_TIMING_FILE"
+  fi
+fi
+
+if [ -f "$TIMING_FILE" ] && command -v bun >/dev/null 2>&1 && [ -f "$JUNIT_SCRIPT_DIR/src/calculate-optimal-chunks.ts" ]; then
   # Use optimal bin-packing algorithm with timing data
-  if bun "$JUNIT_SCRIPT_DIR/calculate-optimal-chunks.ts" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" $GRANULARITY_ARG; then
+  if [[ "$TIMING_FILE" = "$PROJECT_ROOT/"* ]]; then
+    echo "📈 Timing source: ${TIMING_FILE#$PROJECT_ROOT/}" >&2
+  else
+    echo "📈 Timing source: $TIMING_FILE" >&2
+  fi
+  if bun "$JUNIT_SCRIPT_DIR/src/calculate-optimal-chunks.ts" "$TIMING_FILE" "$TOTAL_CHUNKS" "$CHUNK_INDEX" $GRANULARITY_ARG; then
     # Success - optimal distribution used
     exit 0
   else

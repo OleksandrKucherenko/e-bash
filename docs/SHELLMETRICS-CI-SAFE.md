@@ -4,7 +4,7 @@
 
 ### 1. **Script: Non-Critical Error Handling**
 
-**File**: `bin/shellmetrics-compare.sh`
+**File**: `.github/scripts/shellmetrics-compare.sh`
 
 **Before**:
 ```bash
@@ -104,7 +104,7 @@ Wrap the existing logic:
   run: |
     set +e  # Don't fail on errors
     
-    ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
+    ./.github/scripts/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md
     
     if [ $? -eq 0 ]; then
       # Add commit info...
@@ -125,7 +125,7 @@ Wrap the existing logic:
   if: github.event_name == 'pull_request'
   run: |
     # Command will not fail the step
-    ./bin/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md || {
+    ./.github/scripts/shellmetrics-compare.sh compare /tmp/base-metrics.csv current-metrics.csv metrics-report.md || {
       echo "⚠️  Metrics comparison failed"
       exit 0
     }

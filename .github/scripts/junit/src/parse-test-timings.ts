@@ -25,7 +25,7 @@ import {
     type TimingDataV1,
     type TimingDataV2,
     type ParsedExample,
-} from "./lib/parser";
+} from "./parser";
 
 // Output format interfaces
 interface OutputDataV1 {
