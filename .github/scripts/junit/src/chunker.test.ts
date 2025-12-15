@@ -13,7 +13,7 @@ import {
     calculateStaticWeightFromContent,
     type TestItem,
     type FileTimingV2,
-} from "../lib/chunker";
+} from "./chunker";
 
 describe("binPackingFFD", () => {
     test("distributes items evenly across bins", () => {
@@ -312,5 +312,96 @@ End
     test("handles empty content", () => {
         const weight = calculateStaticWeightFromContent("");
         expect(weight).toBe(1); // Single empty line
+    });
+});
+
+describe("e2e", () => {
+    test("parses multiple XML files and calculates optimal chunks", () => {
+        // Import parser functions for integration test
+        const { parseJUnitXMLContent, mergeTimingsV1 } = require("./parser");
+
+        // Step 1: Parse multiple JUnit XML files
+        const xml1 = `
+      <testsuites>
+        <testcase classname="spec/a_spec.sh" name="test 1" time="5.0"/>
+        <testcase classname="spec/a_spec.sh" name="test 2" time="3.0"/>
+        <testcase classname="spec/b_spec.sh" name="test 1" time="2.0"/>
+      </testsuites>
+    `;
+
+        const xml2 = `
+      <testsuites>
+        <testcase classname="spec/c_spec.sh" name="test 1" time="4.0"/>
+        <testcase classname="spec/d_spec.sh" name="test 1" time="6.0"/>
+      </testsuites>
+    `;
+
+        const timings1 = parseJUnitXMLContent(xml1);
+        const timings2 = parseJUnitXMLContent(xml2);
+
+        expect(timings1["spec/a_spec.sh"]).toBe(8.0);
+        expect(timings1["spec/b_spec.sh"]).toBe(2.0);
+        expect(timings2["spec/c_spec.sh"]).toBe(4.0);
+        expect(timings2["spec/d_spec.sh"]).toBe(6.0);
+
+        // Step 2: Merge timings
+        const merged = mergeTimingsV1([timings1, timings2]);
+
+        // Step 3: Build items and run bin-packing
+        const specFiles = Object.keys(merged);
+        const { items } = buildFileItemsFromTimings(specFiles, merged);
+
+        // Step 4: Distribute into 2 chunks
+        const [bins, weights] = binPackingFFD(items, 2);
+
+        // Verify total weight is preserved
+        const totalWeight = weights.reduce((a: number, b: number) => a + b, 0);
+        expect(totalWeight).toBe(20.0); // 8 + 2 + 4 + 6
+
+        // Verify balance (should be 10 each ideally)
+        expect(Math.abs(weights[0] - weights[1])).toBeLessThanOrEqual(4);
+    });
+
+    test("example-level chunking provides finer distribution", () => {
+        const { parseJUnitXMLContentExamples, mergeExamplesToV2 } = require("./parser");
+
+        // Use unique test names to avoid hash collisions
+        const xml = `
+      <testsuites>
+        <testcase classname="spec/big_spec.sh" name="big test one" time="10.0"/>
+        <testcase classname="spec/big_spec.sh" name="big test two" time="10.0"/>
+        <testcase classname="spec/big_spec.sh" name="big test three" time="10.0"/>
+        <testcase classname="spec/big_spec.sh" name="big test four" time="10.0"/>
+        <testcase classname="spec/small_spec.sh" name="small test one" time="2.0"/>
+      </testsuites>
+    `;
+
+        // Parse at example level
+        const examples = parseJUnitXMLContentExamples(xml);
+        const v2Timings = mergeExamplesToV2([examples]);
+
+        expect(v2Timings["spec/big_spec.sh"].total).toBe(40.0);
+        expect(Object.keys(v2Timings["spec/big_spec.sh"].examples)).toHaveLength(4);
+
+        // Build example-level items
+        const items: TestItem[] = [];
+        for (const [file, data] of Object.entries(v2Timings)) {
+            for (const [id, example] of Object.entries((data as any).examples)) {
+                items.push({ name: `${file}:${id}`, weight: (example as any).time, isExample: true });
+            }
+        }
+
+        // Distribute into 4 chunks
+        const [bins, weights] = binPackingFFD(items, 4);
+
+        // With example-level, we can split the big file across chunks
+        // Each chunk should have ~10.5 weight
+        for (const weight of weights) {
+            expect(weight).toBeLessThanOrEqual(12);
+        }
+
+        // Collapse output for verification
+        const chunk0Output = collapseExampleOutput(bins[0]);
+        expect(chunk0Output.length).toBeGreaterThan(0);
     });
 });

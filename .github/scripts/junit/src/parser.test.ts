@@ -14,9 +14,9 @@ import {
     mergeTimingsV1,
     mergeExamplesToV2,
     parseGranularity,
-} from "../lib/parser";
+} from "./parser";
 
-const FIXTURES_DIR = join(import.meta.dir, "../__fixtures__");
+const FIXTURES_DIR = join(import.meta.dir, "./__fixtures__");
 
 describe("normalizeSpecPath", () => {
     test("removes leading ./", () => {
@@ -242,5 +242,40 @@ describe("parseGranularity", () => {
     test("ignores invalid granularity value and uses default", () => {
         const result = parseGranularity(["--granularity=invalid", "output.json"]);
         expect(result.granularity).toBe("file");
+    });
+});
+
+describe("e2e", () => {
+    test("handles real-world ShellSpec JUnit format", () => {
+        // This mimics actual ShellSpec output format
+        const realWorldXml = `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="5" failures="0" errors="0" time="2.345">
+  <testsuite name="spec/arguments_spec.sh" tests="3" failures="0" errors="0" skipped="0" time="1.234">
+    <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / On no ARGS_DEFINITION provided, expected fallback to predefined flags" time="0.234">
+    </testcase>
+    <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / ARGS_DEFINITION set to &quot;-h,--help&quot; produce help env variable with value 1" time="0.500">
+    </testcase>
+    <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition #00" time="0.500">
+    </testcase>
+  </testsuite>
+  <testsuite name="spec/commons_spec.sh" tests="2" failures="0" errors="0" skipped="0" time="1.111">
+    <testcase classname="spec/commons_spec.sh" name="commons / returns script directory" time="0.555">
+    </testcase>
+    <testcase classname="spec/commons_spec.sh" name="commons / is_function works" time="0.556">
+    </testcase>
+  </testsuite>
+</testsuites>`;
+
+        const timings = parseJUnitXMLContent(realWorldXml);
+
+        expect(timings["spec/arguments_spec.sh"]).toBeCloseTo(1.234, 2);
+        expect(timings["spec/commons_spec.sh"]).toBeCloseTo(1.111, 2);
+
+        // Also test example-level parsing
+        const examples = parseJUnitXMLContentExamples(realWorldXml);
+        expect(examples).toHaveLength(5);
+
+        const argumentsExamples = examples.filter((e) => e.specFile === "spec/arguments_spec.sh");
+        expect(argumentsExamples).toHaveLength(3);
     });
 });

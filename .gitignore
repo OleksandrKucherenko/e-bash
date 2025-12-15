@@ -67,3 +67,6 @@ legacy/
 mise.toml
 .mcp.json
 .env.secrets.json
+
+# BUN/Typescript helpers
+bun.lock*

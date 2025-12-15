@@ -10,7 +10,7 @@
 # .github/workflows/baseline.yaml.
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-14
+## Last revisit: 2025-12-15
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -74,9 +74,9 @@ if ! command -v bun >/dev/null 2>&1; then
   exit 1
 fi
 
-bun "$SCRIPT_DIR/junit/sanitize-junit-xml.ts" "$OUT_DIR/report/baseline.xml" "${XML_FILES[@]}"
+bun "$SCRIPT_DIR/junit/src/sanitize-junit-xml.ts" "$OUT_DIR/report/baseline.xml" "${XML_FILES[@]}"
 
-bun "$SCRIPT_DIR/junit/parse-test-timings.ts" "$OUT_DIR/test-timings.json" "$OUT_DIR/report/baseline.xml" --granularity=example
+bun "$SCRIPT_DIR/junit/src/parse-test-timings.ts" "$OUT_DIR/test-timings.json" "$OUT_DIR/report/baseline.xml" --granularity=example
 
 echo ""
 echo "Baseline updated:"

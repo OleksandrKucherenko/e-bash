@@ -4,8 +4,9 @@
     "private": true,
     "description": "JUnit XML parsing and test chunk optimization tools for e-bash",
     "scripts": {
-        "parse-timings": "bun parse-test-timings.ts",
-        "calculate-chunks": "bun calculate-optimal-chunks.ts",
+        "parse-timings": "bun src/parse-test-timings.ts",
+        "calculate-chunks": "bun src/calculate-optimal-chunks.ts",
+        "sanitize": "bun src/sanitize-junit-xml.ts",
         "test": "bun test",
         "test:watch": "bun test --watch",
         "test:coverage": "bun test --coverage",

@@ -20,9 +20,7 @@
         "allowImportingTsExtensions": true
     },
     "include": [
-        "*.ts",
-        "lib/**/*.ts",
-        "__tests__/**/*.ts"
+        "src/**/*.ts"
     ],
     "exclude": [
         "node_modules"
