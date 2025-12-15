@@ -1,688 +1,688 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.2297"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.1762"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.3056"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.3047"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.3028"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.3123"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.3052"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0013"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.3200"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.1506"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.3310"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0012"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0217"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0226"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0222"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0235"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0234"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0244"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0246"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0238"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0244"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0235"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0221"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0219"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0225"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0223"/>
-  <testcase classname="spec/arguments_spec.sh" name="spec/arguments_spec.sh" time="0.0220"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0201"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0216"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0194"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0198"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0199"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0194"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0195"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0191"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0189"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0189"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0192"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0189"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0198"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0209"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0188"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0202"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0197"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0255"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0228"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0250"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0241"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0231"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0228"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0191"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0194"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0188"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0196"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0193"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0235"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0204"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0171"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0174"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0171"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0193"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0201"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0208"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0205"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0206"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0212"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0208"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0206"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0204"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0256"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0258"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0271"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0321"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0405"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0500"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0227"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0212"/>
-  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="spec/bin/git.conventional-commits_spec.sh" time="0.0191"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0288"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0230"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0693"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0685"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0773"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0780"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0559"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0691"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0394"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0409"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0421"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0491"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="11.2476"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.4058"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.4026"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0296"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0298"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0359"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0363"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0369"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0297"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0288"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0233"/>
-  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="spec/bin/git.verify-all-commits_spec.sh" time="0.0232"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0067"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0041"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0067"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0062"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0053"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0041"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0053"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0042"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0134"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0219"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0159"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0261"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0262"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0311"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0313"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0312"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0309"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0675"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0710"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0585"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0135"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0233"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0093"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0115"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0183"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.3426"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.3389"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.3348"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.1020"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0740"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0721"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0794"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0939"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0471"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0387"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0362"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0404"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0412"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.0353"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.9284"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.4561"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.4819"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.4950"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.5795"/>
-  <testcase classname="spec/bin/npm.versions_spec.sh" name="spec/bin/npm.versions_spec.sh" time="0.5414"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0237"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0272"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0266"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0224"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0246"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0228"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0281"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0252"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0281"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0246"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0782"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0767"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0804"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0758"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0726"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0721"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0868"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0817"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0786"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0804"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0752"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0597"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0730"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0722"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0703"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0755"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0718"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0699"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0281"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0249"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0252"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0241"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0265"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0374"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0353"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0355"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0757"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0791"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0808"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0292"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0259"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0272"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0590"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0208"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0901"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0228"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0262"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0888"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0589"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0621"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0707"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.1010"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0275"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0321"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0305"/>
-  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name="spec/bin/shellmetrics-compare_spec.sh" time="0.0932"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0114"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0227"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0127"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0256"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0185"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0120"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0121"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0253"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0088"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0121"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0085"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0124"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0126"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0125"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0126"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0120"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0123"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0123"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0114"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0116"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0069"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0115"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0113"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0114"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0114"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0116"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0112"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0113"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0069"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0067"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0098"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0119"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0117"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0119"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0172"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0186"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0160"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0132"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0176"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0136"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0135"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0136"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0142"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0139"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0140"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0141"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0141"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0183"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0086"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0093"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0158"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0086"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0173"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0167"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0143"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0168"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0141"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0143"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0168"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0143"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0173"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0172"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0142"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0170"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0142"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0189"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0190"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0191"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0234"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0233"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0320"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0315"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0195"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0234"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0235"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0325"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0350"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0229"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0157"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0168"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0148"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0172"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0191"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0144"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0194"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0190"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0226"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0192"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0146"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0173"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0225"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0184"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0192"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0311"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0307"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0223"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0203"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0231"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0350"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0160"/>
-  <testcase classname="spec/commons_spec.sh" name="spec/commons_spec.sh" time="0.0197"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0479"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0475"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0443"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0431"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0472"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0494"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0434"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0479"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0445"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0394"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0116"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0116"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0116"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0115"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0116"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0114"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0115"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0115"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0115"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0115"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0110"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0077"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0072"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0087"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0609"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0635"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0607"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0655"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0415"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0417"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0406"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0412"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0444"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0592"/>
-  <testcase classname="spec/dependencies_spec.sh" name="spec/dependencies_spec.sh" time="0.0601"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0063"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0415"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0272"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0407"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0265"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0404"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0403"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0397"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0145"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0303"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0099"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0100"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0442"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0473"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0470"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0231"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0249"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0289"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0420"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0470"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0336"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0305"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0250"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0433"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0311"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0256"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0401"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0223"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0221"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0400"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0255"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0214"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0260"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0262"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0400"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0197"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0226"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0371"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0368"/>
-  <testcase classname="spec/dryrun_spec.sh" name="spec/dryrun_spec.sh" time="0.0373"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0057"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0054"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0047"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0053"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0038"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0055"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0068"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0068"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0055"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0047"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0075"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0069"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0047"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0064"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0083"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0055"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0073"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0083"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0082"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0084"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0084"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0084"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0081"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0093"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0070"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0113"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0071"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0070"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0055"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0069"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0086"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0086"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0087"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="1.1324"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="1.1233"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="1.1217"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0046"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="1.1068"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="1.1403"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="1.1455"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="2.2508"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="2.2509"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="2.2471"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="2.2525"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0047"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0155"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0071"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0073"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0071"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0246"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0124"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0108"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0223"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0241"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0237"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0243"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0241"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0237"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0239"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0237"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0239"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0259"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0437"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0619"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0624"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0614"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0222"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0033"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0266"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0313"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0350"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0336"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0294"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.4054"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.3789"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.3687"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.3761"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.3616"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.3838"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.3620"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="2.2441"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0056"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0070"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0076"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0094"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0071"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0077"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0069"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0242"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0214"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0217"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0231"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.6862"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="2.1847"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.7621"/>
-  <testcase classname="spec/git_semantic_version_spec.sh" name="spec/git_semantic_version_spec.sh" time="0.0034"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0541"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0697"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0715"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0689"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1518"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1851"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1593"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1368"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1544"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1283"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1393"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1813"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1508"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="1.5961"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1555"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.8814"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.8555"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1214"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0704"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0739"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0716"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0736"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0975"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0968"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0021"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0015"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0015"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0227"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.3678"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.3255"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.2475"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="3.1505"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="1.6002"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.8824"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.9401"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0524"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0568"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0562"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1059"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1083"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0612"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.8900"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.8717"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.9067"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.8628"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.8698"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.8959"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.9317"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.9315"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="1.3609"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="1.3775"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="1.2797"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="1.3394"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0799"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.9177"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0978"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0984"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1206"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0998"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1011"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1190"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1181"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1231"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1259"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1341"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1176"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1026"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0701"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.1104"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1205"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="3.3730"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1163"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.0936"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1857"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="3.6877"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.0590"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1219"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1456"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0599"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1621"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1244"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="2.1357"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0643"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="3.6433"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="3.6662"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="3.6734"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.9379"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.9563"/>
-  <testcase classname="spec/installation_spec.sh" name="spec/installation_spec.sh" time="0.0731"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0194"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0317"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0268"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0246"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0188"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0168"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0188"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0147"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0155"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0184"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0152"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0149"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0311"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0162"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0173"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0201"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0192"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0163"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0156"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0194"/>
-  <testcase classname="spec/logger_spec.sh" name="spec/logger_spec.sh" time="0.0186"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0907"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0867"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0699"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0779"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0896"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.1012"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.1426"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.1041"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.1038"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.1432"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0696"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0924"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0174"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.1580"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0169"/>
-  <testcase classname="spec/traps_nested_spec.sh" name="spec/traps_nested_spec.sh" time="0.0323"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0113"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0079"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0083"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0528"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0247"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0210"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0401"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0490"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0660"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.1076"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0639"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0658"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0656"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0269"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0221"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0637"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0089"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0393"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0778"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0236"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0649"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0904"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0218"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.1311"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.2048"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0887"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0368"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0365"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0333"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0630"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0720"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0045"/>
-  <testcase classname="spec/traps_spec.sh" name="spec/traps_spec.sh" time="0.0485"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.1131"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.0861"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.1956"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3290"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3226"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3263"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3255"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3426"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3393"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3336"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3276"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3266"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3198"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.1797"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3042"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2034"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3663"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3828"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3764"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.4029"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3337"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3884"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3045"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="0.0495"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="0.0510"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3377"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3844"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="0.0280"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="0.0247"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="0.0249"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2859"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="0.0202"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="0.0447"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2815"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2971"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2957"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3102"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3001"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2863"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2919"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2874"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2961"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2748"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2777"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3046"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2996"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3036"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2940"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2760"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.2735"/>
-  <testcase classname="spec/version-up_spec.sh" name="spec/version-up_spec.sh" time="1.3090"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / On no ARGS_DEFINITION provided, expected fallback to predefined flags" time="0.3979"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / ARGS_DEFINITION set to &quot;-h,--help&quot; produce help env variable with value 1" time="0.1726"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Extract argument after --id flag into args_pno variable" time="0.3130"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Extract value into args_pno variable from key=value argument" time="0.3074"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Force &lt;empty&gt; value into args_pno variable from key=value argument" time="0.3018"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Force overwrite of default &quot;dummy&quot; value by &lt;empty&gt; from key=value argument" time="0.3005"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Extract multiple arguments into args_pno variable, space separated array" time="0.3107"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Missed argument for --id flag raise error message" time="0.0010"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Ignore undefined flag arguments and print warning message to stderr" time="0.3139"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Override default value of the definition by key=value argument" time="0.1505"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Print warning on multiple arguments definition for indexed arguments" time="0.3389"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / Expect default &quot;dummy&quot; value for ID for --id flag" time="0.0012"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #00" time="0.0217"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #01" time="0.0227"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #02" time="0.0225"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #03" time="0.0229"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #04" time="0.0244"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #05" time="0.0244"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #06" time="0.0246"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #07" time="0.0240"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #08" time="0.0249"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #09" time="0.0233"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #10" time="0.0230"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #11" time="0.0232"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #12" time="0.0238"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Parameters Matrix / parse:extract_output_definition for parse:arguments function #13" time="0.0229"/>
+  <testcase classname="spec/arguments_spec.sh" name="_arguments.sh / function parse:extract_output_definition() / Expected Waring when Indexed parameters has reservation for more than one argument" time="0.0268"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes feat as valid commit type" time="0.0225"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes fix as valid commit type" time="0.0226"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes docs as valid commit type" time="0.0228"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes style as valid commit type" time="0.0169"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes refactor as valid commit type" time="0.0195"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes perf as valid commit type" time="0.0203"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes test as valid commit type" time="0.0210"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes build as valid commit type" time="0.0203"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes ci as valid commit type" time="0.0231"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes chore as valid commit type" time="0.0208"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes revert as valid commit type" time="0.0198"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit type validation / recognizes wip as valid commit type" time="0.0202"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / invalid commit type validation / rejects bad as invalid commit type" time="0.0196"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / invalid commit type validation / rejects invalid as invalid commit type" time="0.0190"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / invalid commit type validation / rejects random as invalid commit type" time="0.0196"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / invalid commit type validation / rejects custom as invalid commit type" time="0.0188"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / invalid commit type validation / rejects update as invalid commit type" time="0.0204"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit format parsing / parses simple format: type: description" time="0.0269"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit format parsing / parses format with scope: type(scope): description" time="0.0303"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit format parsing / parses breaking change indicator" time="0.0256"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit format parsing / parses scope with breaking change" time="0.0274"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit format parsing / handles multi-line commit messages" time="0.0258"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional commit format parsing / detects breaking change in footer" time="0.0272"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / edge cases and malformed input / rejects empty message" time="0.0198"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / edge cases and malformed input / rejects message without type" time="0.0197"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / edge cases and malformed input / rejects message without description" time="0.0187"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / edge cases and malformed input / rejects message with invalid scope format" time="0.0201"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / edge cases and malformed input / handles messages with special characters" time="0.0226"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / edge cases and malformed input / handles very long descriptions" time="0.0219"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / generates valid regex pattern" time="0.0221"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes feat type" time="0.0201"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes fix type" time="0.0212"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes docs type" time="0.0215"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes style type" time="0.0209"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes refactor type" time="0.0211"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes perf type" time="0.0212"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes test type" time="0.0189"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes build type" time="0.0213"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes ci type" time="0.0213"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes chore type" time="0.0214"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes revert type" time="0.0192"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / pattern validation / pattern includes wip type" time="0.0181"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes simple commit correctly" time="0.0253"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes commit with scope" time="0.0261"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes breaking change" time="0.0280"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / conventional:recompose function / recomposes multi-line commit" time="0.0298"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / version commit detection / identifies version commits correctly" time="0.0378"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / version commit detection / handles change commits" time="0.0502"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / script execution modes / works when sourced" time="0.0195"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / error handling / handles git log failures gracefully" time="0.0207"/>
+  <testcase classname="spec/bin/git.conventional-commits_spec.sh" name="bin/git.conventional-commits.sh / conventional:grep function / error handling / handles invalid commit hashes" time="0.0204"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when checking git repository status detects valid git repository" time="0.0294"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when checking git repository status fails when not in git repository" time="0.0242"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when validating commit messages detects conventional commits correctly" time="0.0683"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when validating commit messages rejects non-conventional commits" time="0.0638"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when validating commit messages handles multi-line commit messages" time="0.0788"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when validating commit messages validates commit with scope and breaking change" time="0.0777"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when processing multiple commits counts failed commits correctly" time="0.0560"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when processing multiple commits skips merge commits" time="0.0832"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when using patch mode creates backup branch before modifying history" time="0.0406"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when using patch mode checks for clean working tree" time="0.0398"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when using patch mode prevents patching with uncommitted changes" time="0.0402"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when rewording commits shows current commit message" time="0.0504"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / when rewording commits provides format guidance" time="11.3487"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / argument parsing recognizes help flag" time="0.4099"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / argument parsing recognizes version flag" time="0.4024"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / argument parsing recognizes patch flag" time="0.0269"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / argument parsing recognizes branch flag" time="0.0265"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / conventional commit parsing parses simple conventional commit" time="0.0328"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / conventional commit parsing parses commit with scope" time="0.0320"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / conventional commit parsing parses breaking change" time="0.0327"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / conventional commit parsing rejects invalid format" time="0.0294"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / conventional commit parsing handles edge cases" time="0.0288"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / error handling handles missing git gracefully" time="0.0242"/>
+  <testcase classname="spec/bin/git.verify-all-commits_spec.sh" name="bin/git.verify-all-commits.sh / error handling handles git log failures" time="0.0230"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define print_usage function" time="0.0068"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define fetch_versions function" time="0.0043"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define display_versions function" time="0.0042"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define parse_range function" time="0.0040"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define confirm_unpublish function" time="0.0038"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define unpublish_version function" time="0.0066"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define verify_unpublish function" time="0.0038"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script sourcing and initialization / should define main function" time="0.0043"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should parse single index" time="0.0147"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should parse multiple comma-separated indexes" time="0.0212"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should parse range with dash" time="0.0179"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should parse mixed ranges and indexes" time="0.0245"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should handle input with spaces" time="0.0201"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should reject invalid index format" time="0.0285"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should reject out of range index (too high)" time="0.0293"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should reject invalid range format" time="0.0310"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / parse_range function / should reject out of range in range expression" time="0.0322"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / fetch_versions function / should configure npm registry before fetching" time="0.0723"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / fetch_versions function / should return sorted newline separated versions" time="0.0766"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / fetch_versions function / should return failure when npm view fails" time="0.0631"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / display_versions function / should display versions when versions array is not empty" time="0.0218"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / display_versions function / should fail when no versions provided" time="0.0240"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / display_versions function / should display version count" time="0.0096"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / display_versions function / should include index numbers for each version" time="0.0115"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / display_versions function / should handle single version" time="0.0190"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / print_usage function / should display usage information" time="0.3565"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / print_usage function / should display arguments help" time="0.3464"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / print_usage function / should display examples" time="0.3415"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / confirm_unpublish function / should return success when user types yes" time="0.1025"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / confirm_unpublish function / should return failure when user types no" time="0.0740"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / confirm_unpublish function / should return failure when user types anything else" time="0.0736"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / confirm_unpublish function / should display warning about irreversible action" time="0.0819"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / confirm_unpublish function / should list all versions to be unpublished" time="0.0994"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / unpublish_version function / should call npm unpublish with correct arguments" time="0.0465"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / unpublish_version function / should return failure when npm unpublish fails" time="0.0388"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / unpublish_version function / should use configured registry" time="0.0368"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / verify_unpublish function / should return success when version is not found" time="0.0416"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / verify_unpublish function / should return failure when version still exists" time="0.0437"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / verify_unpublish function / should use configured registry for verification" time="0.0379"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / Script entrypoint / displays usage when called with --help" time="0.9505"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / main function / returns failure when no versions are available" time="0.4672"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / main function / exits with success when user selects nothing" time="0.4962"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / main function / fails when selection input is invalid" time="0.5111"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / main function / unpublishes selected versions when confirmed" time="0.6044"/>
+  <testcase classname="spec/bin/npm.versions_spec.sh" name="bin/npm.versions.sh / main function / cancels operation when confirmation is denied" time="0.5488"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates totals from valid CSV" time="0.0254"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / calculate_totals function / handles CSV with single file" time="0.0274"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / calculate_totals function / handles empty CSV (header only)" time="0.0267"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates correct NLOC (lines - comment - blank)" time="0.0248"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates correct LLOC" time="0.0247"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / calculate_totals function / calculates correct CCN" time="0.0231"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / get_file_metrics function / extracts file-level metrics" time="0.0281"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / get_file_metrics function / removes quotes from file names" time="0.0227"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / get_file_metrics function / outputs sorted file list" time="0.0280"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / get_file_metrics function / handles files with special characters in paths" time="0.0259"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / generates markdown report successfully" time="0.0833"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / creates report with proper markdown structure" time="0.0775"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes all key metrics in summary" time="0.0779"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes metrics explanation" time="0.0771"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes file-level changes section" time="0.0745"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics function - basic operation / includes footer with ShellMetrics link" time="0.0770"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles missing base file gracefully" time="0.0840"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles missing current file gracefully" time="0.0783"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles missing output file path gracefully" time="0.0814"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles empty base metrics" time="0.0803"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles empty current metrics" time="0.0784"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - error handling / handles both files being empty" time="0.0647"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / detects file additions" time="0.0756"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / detects NLOC increases" time="0.0778"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / reports changes with delta indicators" time="0.0754"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / shows file-specific changes" time="0.0746"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / detects no changes when files are identical" time="0.0727"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare_metrics - change detection / handles negative per-file deltas without exiting" time="0.0688"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles help command" time="0.0241"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles --help flag" time="0.0229"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles -h flag" time="0.0221"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / shows help when no command provided" time="0.0232"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / main function - command dispatcher / handles unknown command" time="0.0262"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / collect command / creates output file with header" time="0.0419"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / collect command / uses default filename when not provided" time="0.0386"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / collect command / creates CSV with proper header" time="0.0376"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare command / executes compare with minimal arguments" time="0.0782"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare command / executes compare with all arguments" time="0.0801"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / compare command / uses default filenames when arguments missing" time="0.0820"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles very large CSV files" time="0.0294"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles files with zero metrics" time="0.0263"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles files with very high complexity" time="0.0230"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / edge cases and robustness / handles division by zero when no files exist" time="0.0564"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / ensure_shellmetrics function / checks for shellmetrics availability" time="0.0201"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / integration tests / full workflow: collect and compare" time="0.0904"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / script execution modes / can be sourced without execution" time="0.0234"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / script execution modes / executes when run directly with help" time="0.0278"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles CI workflow scenario with valid files" time="0.0924"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles missing base metrics gracefully" time="0.0614"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles missing current metrics gracefully" time="0.0657"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / CI failure reproduction / handles worktree scenario from CI" time="0.0751"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / portability / works with BSD-style mktemp (template required)" time="0.1036"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / github actions debug logging / does not emit ::debug:: logs by default" time="0.0329"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / github actions debug logging / emits ::debug:: logs when ACTIONS_STEP_DEBUG is enabled" time="0.0342"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / debugging CI failure / validates CSV format from collect command" time="0.0351"/>
+  <testcase classname="spec/bin/shellmetrics-compare_spec.sh" name=".github/scripts/shellmetrics-compare.sh / debugging CI failure / verifies compare works with collect output" time="0.0943"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / args:isHelp returns true when --help flag is provided" time="0.0119"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / env:variable:or:secret:file / No variable or secret file provided error" time="0.0226"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / env:variable:or:secret:file / Profided environment variable GITLAB_CI_INTEGRATION_TEST" time="0.0145"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / env:variable:or:secret:file / With provided secret file / Extract value from profided secret file gitlab_ci_integration_test" time="0.0253"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / env:variable:or:secret:file / With provided secret file / If provided environment variable and secret file, value selected from env variable" time="0.0228"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / env:variable:or:secret:file:optional / No variable or secret file provided error" time="0.0122"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / env:variable:or:secret:file:optional / Profided environment variable GITLAB_CI_INTEGRATION_TEST" time="0.0118"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / env:variable:or:secret:file:optional / With provided secret file / Extract value from profided secret file gitlab_ci_integration_test" time="0.0192"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l0 / Returns variable value when variable is set and non-empty" time="0.0072"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l0 / Returns default when variable is unset" time="0.0071"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l0 / Returns default when variable is empty" time="0.0073"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l0 / Handles special characters in variable value" time="0.0073"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l1 / Returns first variable value when first variable is set" time="0.0067"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l1 / Returns second variable value when first is unset" time="0.0126"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l1 / Returns second variable value when first is empty" time="0.0125"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l1 / Returns default when both variables are unset" time="0.0073"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l1 / Returns default when both variables are empty" time="0.0070"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / var:l1 / Handles complex fallback chain correctly" time="0.0073"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l0 / Returns value when value is non-empty" time="0.0070"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l0 / Returns default when value is empty" time="0.0068"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l0 / Handles numeric values" time="0.0088"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l0 / Handles special characters in value" time="0.0091"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l0 / Handles spaces in value" time="0.0121"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l1 / Returns first value when first value is non-empty" time="0.0072"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l1 / Returns second value when first is empty" time="0.0121"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l1 / Returns default when both values are empty" time="0.0118"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l1 / Handles numeric values correctly" time="0.0119"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l1 / Handles special characters in values" time="0.0123"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l1 / Handles spaces in values" time="0.0117"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / val:l1 / Falls through empty first to non-empty second" time="0.0084"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - first level wins" time="0.0120"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - second level wins" time="0.0102"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - third level wins" time="0.0118"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l3 with nested var:l1 calls - default wins" time="0.0125"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l4 with composable variable name - var4 pattern" time="0.0136"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l4 with composable variable name - fallback to default" time="0.0155"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Simulates var:l4 with composable variable name - multiple scripts pattern" time="0.0137"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Combines val:l1 and var:l1 for mixed value/variable fallbacks" time="0.0105"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Complex real-world pattern: CLI arg -&gt; ENV var -&gt; Config file -&gt; Script-specific -&gt; Default" time="0.0174"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Deep nesting with all levels empty except final default" time="0.0083"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / Composable fallback patterns (4-level nesting) / Demonstrates variable name composition with multiple separators" time="0.0119"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 0 (Global) - fallback to global when no other levels set" time="0.0117"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 1 (Pipeline) - pipeline overrides global" time="0.0084"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 2 (Step) - step overrides pipeline and global" time="0.0082"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Level 3 (Script) - script overrides all other levels" time="0.0082"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Composable variable names from context - pipeline specific" time="0.0119"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Composable variable names - step specific override" time="0.0137"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Multiple configuration keys - DRY_RUN, DEBUG, VERBOSE in same context" time="0.0196"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Real-world scenario: exclude all steps except specific one" time="0.0137"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Helper function pattern for CI config resolution" time="0.0109"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Complex scenario: multiple pipelines with different configurations" time="0.0126"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / CI Configuration Hierarchy (4-level: Global-&gt;Pipeline-&gt;Step-&gt;Script) / Strict naming convention enforcement through variable composition" time="0.0084"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Converts simple string to lowercase slug" time="0.0175"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Uses default separator underscore" time="0.0173"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Uses custom separator dash" time="0.0138"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Uses custom separator dot" time="0.0143"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Removes special characters" time="0.0140"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Cleans up repeated separators (underscores)" time="0.0141"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Cleans up repeated separators (dashes)" time="0.0169"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Cleans up mixed special characters creating repeated separators" time="0.0169"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Trims leading separators" time="0.0164"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Trims trailing separators" time="0.0168"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Trims leading and trailing separators" time="0.0168"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles short strings within default trim length" time="0.0170"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Uses default trim length of 20" time="0.0170"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Trims long string and adds hash when exceeds default trim (20)" time="0.0186"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Trims long string with custom trim length of 30" time="0.0185"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Trims long string with custom trim length of 15" time="0.0185"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles very small trim length (8 - minimum for hash)" time="0.0229"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles very small trim length (5 - less than hash size)" time="0.0230"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Produces consistent hash for same input" time="0.0303"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Produces different hash for different inputs" time="0.0302"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles empty string - generates hash-based slug with __ prefix" time="0.0207"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles only special characters - generates hash-based slug with __ prefix" time="0.0234"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles only spaces - generates hash-based slug with __ prefix" time="0.0233"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Hash-only slugs are unique for different inputs" time="0.0349"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Hash-only slugs are consistent for same input" time="0.0348"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Hash-only slug respects trim length" time="0.0232"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles mixed alphanumeric" time="0.0186"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles numbers only" time="0.0182"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Preserves alphanumeric and converts rest to separator" time="0.0182"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Creates filesystem-safe filename from path-like string" time="0.0182"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles unicode/international characters (converts to separator)" time="0.0199"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Real-world example: branch name to filename" time="0.0185"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Real-world example: commit message to filename" time="0.0235"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Real-world example: user input to safe filename" time="0.0234"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Hash is exactly 7 characters when used" time="0.0268"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Trimmed slug with hash has correct structure (prefix + separator + hash)" time="0.0232"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Does not add hash when exactly at trim length" time="0.0147"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Handles consecutive special characters between words" time="0.0166"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Different separators produce different outputs" time="0.0216"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - forces hash on short string" time="0.0186"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - forces hash on normal string" time="0.0190"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - produces consistent hash" time="0.0298"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - produces different hashes for different inputs" time="0.0302"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - works with custom separator" time="0.0211"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - hash appended to slug (not trimmed)" time="0.0224"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - useful for URLs (deterministic cache keys)" time="0.0229"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Strategy 'always' - different URLs produce different hashes" time="0.0311"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Backwards compatibility - numeric trim still works" time="0.0140"/>
+  <testcase classname="spec/commons_spec.sh" name="_commons.sh / to:slug / Invalid trim parameter defaults to 20" time="0.0188"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Dependency / Dependency OK on `dependency bash &quot;5.*.*&quot; &quot;brew install bash&quot; --version`" time="0.0428"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Dependency / Custom version request flag on `dependency bash &quot;5.*.*&quot; &quot;brew install bash&quot; --version`" time="0.0438"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Dependency / Range of version on `dependency bash &quot;[45].*.*&quot; &quot;brew install bash&quot; --version`" time="0.0428"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Dependency / Customized version pattern on `dependency bash &quot;[1-5].*.*(1)-release&quot; &quot;brew install bash&quot; --version`" time="0.0428"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Dependency / Wrong Version on `dependency bash &quot;99.*.*&quot; &quot;brew install bash&quot;`" time="0.0483"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Dependency / Do Exec on wrong version on `dependency bash &quot;99.*.*&quot; &quot;echo 'executted'&quot; --version --exec`" time="0.0493"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Dependency / Not Found on `dependency not_exist_tool &quot;1.0.0&quot;`" time="0.0404"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Optional / Optional OK on `optional bash &quot;5.*.*&quot; &quot;brew install bash&quot; --version --debug`" time="0.0444"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Optional / Wrong Version on `optional bash &quot;99.*.*&quot; &quot;brew install bash&quot; --version`" time="0.0454"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Optional / Not Found on `optional not_exist_tool &quot;1.0.0&quot;`" time="0.0410"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isDebug returns true when --debug flag is provided" time="0.0116"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isExec returns true when --exec flag is provided" time="0.0114"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isOptional returns true when --optional flag is provided" time="0.0059"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isSilent returns true when --silent flag is provided" time="0.0112"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true when CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1" time="0.0116"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true when CI=true and CI_E_BASH_INSTALL_DEPENDENCIES=true" time="0.0114"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true when CI=yes and CI_E_BASH_INSTALL_DEPENDENCIES=yes" time="0.0115"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with case-insensitive TRUE" time="0.0088"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with case-insensitive YES" time="0.0068"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with mixed case True" time="0.0066"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns true with mixed case YeS" time="0.0067"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns false when CI_E_BASH_INSTALL_DEPENDENCIES is unset" time="0.0066"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns false when CI is not set but CI_E_BASH_INSTALL_DEPENDENCIES=1" time="0.0067"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / Utilities / isCIAutoInstallEnabled returns false when CI=1 but CI_E_BASH_INSTALL_DEPENDENCIES has invalid value" time="0.0067"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode enabled with CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1 should auto-install missing tool" time="0.0617"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode enabled with CI=true and CI_E_BASH_INSTALL_DEPENDENCIES=true should auto-install missing tool" time="0.0591"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode enabled with CI=yes and CI_E_BASH_INSTALL_DEPENDENCIES=yes should auto-install missing tool" time="0.0601"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode enabled should auto-install tool with wrong version" time="0.0692"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode disabled should not auto-install (default behavior)" time="0.0382"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode with invalid value should not auto-install" time="0.0398"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI_E_BASH_INSTALL_DEPENDENCIES=1 without CI should not auto-install" time="0.0396"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode should skip optional dependencies (not auto-install)" time="0.0417"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode should skip optional dependencies with wrong version" time="0.0484"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode should still auto-install required dependencies" time="0.0603"/>
+  <testcase classname="spec/dependencies_spec.sh" name="_dependencies.sh / CI Auto-Install Mode / CI mode should work with case-insensitive TRUE value" time="0.0601"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Global Variables / Should set default values for global variables" time="0.0098"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dryrun:exec function / Should execute command successfully and return exit code" time="0.0397"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dryrun:exec function / Should handle command failure and return correct exit code" time="0.0261"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dryrun:exec function / Should display output when not in silent mode" time="0.0353"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dryrun:exec function / Should suppress output when in silent mode" time="0.0268"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dryrun:exec function / Should preserve errexit setting" time="0.0398"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dryrun:exec function / Should handle command with arguments containing spaces" time="0.0397"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dryrun:exec function / Should handle command with no arguments" time="0.0393"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dry-run function generator / Should generate wrapper functions for a single command" time="0.0143"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dry-run function generator / Should generate wrapper functions for multiple commands" time="0.0312"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dry-run function generator / Should use custom suffix when provided" time="0.0152"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / dry-run function generator / Should convert command name to uppercase for default suffix" time="0.0114"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / run: functions in normal mode / Should execute command normally when run:echo is called" time="0.0413"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / run: functions in normal mode / Should pass all arguments correctly" time="0.0457"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / dry: functions in normal mode / Should execute command normally when dry:echo is called" time="0.0436"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / run: functions in dry run mode / Should not execute command when DRY_RUN=true" time="0.0264"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / run: functions in dry run mode / Should return success without executing the actual command" time="0.0282"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / rollback: functions in normal mode / Should not execute command when UNDO_RUN=false (normal mode)" time="0.0285"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / rollback: functions in undo mode / Should execute command when UNDO_RUN=true" time="0.0467"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / undo: functions / Should delegate to rollback: function" time="0.0407"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / Silent mode behavior / Should suppress output in run: function when SILENT=true" time="0.0338"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Generated functions behavior / Silent mode behavior / Should suppress output in rollback: function when SILENT=true but still show dry run message" time="0.0306"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Per-command environment variable overrides / Should use DRY_RUN_ECHO override when set" time="0.0253"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Per-command environment variable overrides / Should use UNDO_RUN_ECHO override when set" time="0.0438"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Per-command environment variable overrides / Should use SILENT_ECHO override when set" time="0.0305"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Per-command environment variable overrides / Should fall back to global variables when command-specific ones are not set" time="0.0254"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Per-command environment variable overrides / Should prioritize command-specific variables over global ones" time="0.0434"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / rollback:func function / Should not execute function when UNDO_RUN=false" time="0.0180"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / rollback:func function / Should not execute function when DRY_RUN=true" time="0.0221"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / rollback:func function / Should execute function when UNDO_RUN=true and DRY_RUN=false" time="0.0402"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / rollback:func function / Should display function body when function exists and in dry mode" time="0.0247"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / rollback:func function / Should handle non-existent function gracefully" time="0.0218"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / rollback:func function / Should respect SILENT setting" time="0.0265"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Complex scenarios and edge cases / Should handle mixed global and per-command settings" time="0.0262"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Complex scenarios and edge cases / Should respect per-command override over global settings" time="0.0436"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Complex scenarios and edge cases / Should handle command names with special characters" time="0.0208"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Complex scenarios and edge cases / Should handle empty command arguments" time="0.0243"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Complex scenarios and edge cases / Should preserve shell options correctly" time="0.0376"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Integration with logger system / Should use correct logger tags for different operations" time="0.0363"/>
+  <testcase classname="spec/dryrun_spec.sh" name="_dryrun.sh / Integration with logger system / Should respect DEBUG environment for logger output" time="0.0387"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects feat commit" time="0.0046"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects fix commit" time="0.0036"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects chore commit" time="0.0075"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects docs commit" time="0.0072"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects refactor commit" time="0.0072"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects test commit" time="0.0069"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects ci commit" time="0.0067"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / detects perf commit" time="0.0055"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / handles commit with scope" time="0.0045"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / handles non-conventional commit as unknown" time="0.0054"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:parse_commit_type() / handles merge commit" time="0.0070"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects breaking change with !" time="0.0069"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects breaking change with ! and scope" time="0.0069"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects BREAKING CHANGE in body" time="0.0082"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:has_breaking_change() / detects BREAKING-CHANGE in body" time="0.0081"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:has_breaking_change() / returns false for non-breaking change" time="0.0068"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns major for breaking change" time="0.0068"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns minor for feat" time="0.0086"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for fix" time="0.0073"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for chore" time="0.0079"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for docs" time="0.0067"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns patch for refactor" time="0.0067"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns none for merge" time="0.0066"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() / returns none for unknown commit type" time="0.0079"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:add_keyword() / adds custom keyword successfully" time="0.0069"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:add_keyword() / validates bump type" time="0.0141"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:add_keyword() / allows major bump type" time="0.0047"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:add_keyword() / allows minor bump type" time="0.0075"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:add_keyword() / allows patch bump type" time="0.0055"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:add_keyword() / allows none bump type" time="0.0068"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() with custom keywords / respects added wip keyword" time="0.0073"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() with custom keywords / respects custom keyword with none bump" time="0.0082"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:determine_bump() with custom keywords / respects custom keyword with minor bump" time="0.0085"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:bump_version() / bumps patch version" time="1.1209"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:bump_version() / bumps minor version and resets patch" time="1.1347"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:bump_version() / bumps major version and resets minor and patch" time="1.1378"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:bump_version() / returns same version for none bump" time="0.0071"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:bump_version() / handles 0.x.x versions correctly for patch" time="1.1533"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:bump_version() / handles 0.x.x versions correctly for minor" time="1.1391"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:bump_version() / handles 0.0.x versions correctly for major" time="1.1406"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:version_diff() / shows patch diff" time="2.2528"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:version_diff() / shows minor diff" time="2.2543"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:version_diff() / shows major diff" time="2.2548"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:version_diff() / shows only highest level change for complex diff" time="2.2537"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:version_diff() / shows no diff for same version" time="0.0056"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:format_output_line() / formats output line in markdown format" time="0.0090"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:format_output_line() / handles missing tag parameter with default dash" time="0.0072"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:format_output_line() / handles long commit messages without truncation" time="0.0044"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:format_output_line() / handles long git tags without truncation" time="0.0055"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_first_commit() / returns the first commit hash in repository" time="0.0274"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_commit_tags() / returns empty string for commits without tags" time="0.0143"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_commit_tags() / handles invalid commit hash gracefully" time="0.0117"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version from tag with v prefix" time="0.0243"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version from tag without prefix" time="0.0239"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version from tag with path and v prefix" time="0.0222"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version with pre-release suffix" time="0.0240"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts version with build metadata" time="0.0220"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / returns empty for non-semver tag" time="0.0214"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / returns empty for invalid version format" time="0.0217"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / handles tag with path prefix without v" time="0.0226"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semver_from_tag() / extracts from complex tag with full semver" time="0.0235"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / extracts single semver from single tag" time="0.0254"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / extracts multiple semvers from multiple tags" time="0.0454"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / filters out non-semver tags" time="0.0626"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / returns empty for all non-semver tags" time="0.0609"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:extract_semvers_from_tags() / handles mixed prefix formats" time="0.0646"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_last_version_tag() / returns latest semver tag if exists" time="0.0210"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_last_version_tag() / strips 'v' prefix from tags" time="0.0018"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_last_version_tag_commit() / returns commit hash for latest version tag" time="0.0301"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_branch_start_commit() / returns a valid commit hash" time="0.0308"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_commit_from_n_versions_back() / returns commit hash when versions exist" time="0.0324"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_commit_from_n_versions_back() / handles when N is larger than version count" time="0.0347"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / gitsv:get_commit_from_n_versions_back() / handles empty tag list (no semver tags exist) - regression test" time="0.0321"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Command line argument parsing / displays help with --help" time="0.4095"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Command line argument parsing / accepts --initial-version parameter" time="0.3741"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Command line argument parsing / rejects invalid --initial-version format" time="0.3730"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Command line argument parsing / accepts --add-keyword parameter" time="0.3870"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Command line argument parsing / rejects invalid --add-keyword format" time="0.3720"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Command line argument parsing / accepts multiple --add-keyword parameters" time="0.3739"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Command line argument parsing / rejects unknown options" time="0.3493"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Tag diff format (commit 905698f) / formats regular version diff with + prefix" time="2.2850"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Tag diff format (commit 905698f) / would format tag diff as ={version} in processing loop" time="0.0058"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns patch bump type for fix: commits" time="0.0071"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns none bump type for non-conventional commits" time="0.0089"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns minor bump type for feat: commits" time="0.0077"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / returns major bump type for breaking changes" time="0.0076"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / determines bump type independent of version suffix (fix: commit)" time="0.0087"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Bump type determines color (commit cd3c8b2) / determines bump type independent of version suffix (non-conventional)" time="0.0091"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / processes tag with pre-release suffix correctly" time="0.0243"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / extracts semver from tag with alpha pre-release suffix" time="0.0235"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / extracts semver from tag with beta pre-release suffix" time="0.0225"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Regression: Tag priority over pre-release check (commit cd42269) / extracts semver from tag with rc pre-release suffix" time="0.0251"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Integration tests / processes commits from recent history" time="0.7268"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Integration tests / works with --from-last-tag strategy" time="1.9514"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Integration tests / shows tag column in output" time="0.9741"/>
+  <testcase classname="spec/git_semantic_version_spec.sh" name="bin/git.semantic-version.sh / Integration tests / validates not in git repository" time="0.0035"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Check Prerequisites / should detect when not in a git repository" time="0.0559"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Check Unstaged Changes / should detect unstaged or uncommited changes for empty files" time="0.0714"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Check Unstaged Changes / should detect unstaged or uncommited changes for non-empty files" time="0.0693"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Check Unstaged Changes / should detect untracked directories" time="0.0705"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should install e-bash scripts successfully" time="2.0058"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should integrate with mise.toml if file exists" time="1.9110"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should not modify mise.toml if it already has E_BASH configuration" time="1.9593"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should insert into existing [env] section before other sections" time="2.0459"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should handle mise.toml with [[env]] array of tables" time="2.0006"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should not modify mise.toml with [[env]] if E_BASH exists" time="1.9538"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should detect &quot;main&quot; branch correctly" time="1.9040"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should detect &quot;custom&quot; branch correctly" time="1.9965"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should work on &quot;new_branch&quot; branch correctly" time="1.9340"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should install v1.0.1-alpha.1 version of e-bash" time="1.2969"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install / should create README.md with instructions" time="1.9459"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Upgrade / should upgrade to the latest version successfully" time="2.5380"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Upgrade / should print uninstall instructions on merge conflict" time="2.6227"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Rollback / should rollback to previous version successfully" time="0.1287"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Rollback / should fail when no previous version exists" time="0.0760"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Rollback / should fail with empty previous version file" time="0.0796"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Rollback / should fail with invalid commit hash format" time="0.0776"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Rollback / should fail with non-existent commit hash" time="0.0792"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Rollback / should accept valid commit hash" time="0.1039"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Rollback / should accept valid short commit hash" time="0.1020"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Permission Errors / should detect read-only repository during install" time="0.0014"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Permission Errors / should detect read-only repository during uninstall" time="0.0016"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Permission Errors / should provide helpful error message for permission denied" time="0.0016"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Permission Errors / should have check_write_permissions function defined in script" time="0.0239"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Versions / should list all available versions" time="0.2699"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Versions / on top of existing repo / should mark current alpha installed version" time="1.7739"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Versions / on top of existing repo / should mark current stable installed version" time="1.8042"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Versions / on top of existing repo / should mark latest stable installed version" time="2.7614"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install Version / should install the specified version" time="1.3068"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install Version / should not install not-existing version of e-bash" time="0.7099"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Install Version / should fail with clear error for non-existent version during validation" time="0.8244"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Help / should correctly show --help message" time="0.0552"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Help / should correctly show help message" time="0.0582"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Script Name Detection / should show script path when run directly" time="0.0570"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Script Name Detection / should show curl command when piped through bash" time="0.1072"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Script Name Detection / should show curl command for uninstall when piped through bash" time="0.1102"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Script Name Detection / should show script path for uninstall when run directly" time="0.0606"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should install e-bash scripts globally to HOME directory" time="0.7736"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should install specific version globally" time="0.7441"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should update shell configuration files" time="0.7814"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should export correct E_BASH path for master version in shell rc" time="0.7851"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should export versioned E_BASH path for tagged version in shell rc" time="0.7899"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should support NO symlink creation with --no-create-symlink option" time="0.7875"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should detect broken .scripts symlink" time="0.7752"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should install globally and bind to current repo" time="0.8174"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should upgrade repo binding to the latest version" time="1.1866"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / should downgrade repo to another version" time="1.0814"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / Global Rollback / should rollback from master to previous version" time="1.1528"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / Global Rollback / should rollback from versioned to master" time="1.1354"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / Global Rollback / should show error when global installation not found" time="0.0805"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Install / Global Rollback / should show error when version not available" time="0.8548"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should require --confirm flag for safety" time="0.0967"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should remove .scripts directory with --confirm" time="0.1147"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should remove .e-bash-previous-version file" time="0.1246"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should remove e-bash remote" time="0.1006"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should remove e-bash branches" time="0.1006"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should remove bin/install.e-bash.sh if it exists" time="0.1187"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should clean .envrc E_BASH configuration" time="0.1197"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should clean .mise.toml E_BASH configuration with [env]" time="0.1290"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should clean .mise.toml E_BASH configuration with [[env]]" time="0.1260"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should preserve other [[env]] entries when cleaning" time="0.1312"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should preserve user files during uninstall" time="0.1151"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should support dry-run mode" time="0.1039"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should show error when not installed" time="0.0681"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Uninstall / should NOT remove shell RC files" time="0.1058"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should install to custom directory with --directory flag" time="1.9234"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should read .ebashrc on upgrade and use custom directory" time="3.1133"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should create .ebashrc with correct format" time="1.9415"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should not create .ebashrc for default directory" time="1.8674"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should remove .ebashrc on uninstall" time="1.8857"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should handle --directory flag with upgrade command" time="3.5407"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should allow --directory flag to override .ebashrc" time="1.7975"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should update .envrc with custom directory path" time="1.9203"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should update .mise.toml with custom directory path" time="1.8397"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should require argument for --directory flag" time="0.0631"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should install to nested directory that does not exist" time="1.9554"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should handle deeply nested custom directory" time="1.8729"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should update .envrc with nested directory path" time="1.8282"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should validate directory path does not start with --" time="0.0616"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should update .envrc when switching from default to custom directory" time="3.2988"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should update .mise.toml when switching from default to custom directory" time="3.2861"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Custom Directory Installation / should update .envrc when switching from custom back to default directory" time="3.2797"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Uninstall / should only remove symlink from current project" time="0.8041"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Uninstall / should preserve global installation directory" time="0.8139"/>
+  <testcase classname="spec/installation_spec.sh" name="bin/install.e-bash.sh / Global Uninstall / should show error when no symlink exists" time="0.0738"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Basic logger registration / returns empty output when registering pre-defined common logger" time="0.0217"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Basic logger registration / outputs TAGS dump when registering token after common loggers" time="0.0312"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Logger with custom prefixes / echo:Tag outputs with custom prefix" time="0.0284"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Logger with custom prefixes / printf:Tag outputs with custom prefix (macOS compatibility test)" time="0.0239"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Logger with custom prefixes / printf:Tag with custom prefix and format specifiers" time="0.0188"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Logger with custom prefixes / echo:Tag with custom prefix using logger:prefix helper" time="0.0167"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Logger with custom prefixes / echo:Tag with multiple arguments" time="0.0181"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / DEBUG filtering logic / enables logger when tag explicitly listed" time="0.0155"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / DEBUG filtering logic / enables logger via wildcard" time="0.0147"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / DEBUG filtering logic / disables logger via negation pattern" time="0.0215"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / DEBUG filtering logic / disables logger by default when DEBUG is empty" time="0.0190"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / DEBUG filtering logic / enables logger in complex DEBUG list" time="0.0173"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / DEBUG filtering logic / isolates multiple loggers (disabled logger fails)" time="0.0303"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Advanced features / handles printf:Tag with special characters (\n \t)" time="0.0186"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Advanced features / handles printf:Tag with % in arguments" time="0.0171"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Advanced features / initializes logger with logger:init helper" time="0.0195"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Advanced features / redirects logger output to /dev/null" time="0.0182"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Advanced features / preserves and restores state with logger:push/pop" time="0.0169"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Advanced features / handles empty message with prefix" time="0.0160"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Edge cases / printf:Tag with plain text (no format specifiers)" time="0.0175"/>
+  <testcase classname="spec/logger_spec.sh" name="_logger.sh / Edge cases / printf:Tag with multiple plain arguments demonstrates edge case" time="0.0163"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Sequential sourcing / accumulates handlers when scripts sourced sequentially" time="0.0904"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Sequential sourcing / preserves handler registration order" time="0.0873"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Multiple sourcing prevention / warns on duplicate handler registration" time="0.0741"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Multiple sourcing prevention / does not duplicate handler without flag" time="0.0784"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Multiple sourcing prevention / allows duplicates with --allow-duplicates flag" time="0.0910"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Scoped handlers with push/pop / restores handler state after pop" time="0.1058"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Scoped handlers with push/pop / supports nested push/pop (depth 3)" time="0.1494"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Scoped handlers with push/pop / maintains separate stacks for different signals" time="0.1077"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Scoped cleanup pattern / auto-cleans handlers with scope:begin/end" time="0.1059"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Scoped cleanup pattern / supports nested scopes" time="0.1504"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Library pattern (reusable sourcing) / prevents duplicate registration via guard pattern" time="0.0683"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Stack level tracking / tracks stack level correctly" time="0.0916"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Stack level tracking / prevents pop when stack is empty" time="0.0173"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Multiple signals with scoping / pushes and pops multiple signals together" time="0.1607"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Error handling in nested contexts / handles missing function gracefully during registration" time="0.0177"/>
+  <testcase classname="spec/traps_nested_spec.sh" name="_traps.sh nested loading / Error handling in nested contexts / recovers from stack corruption" time="0.0329"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Module initialization / loads without errors" time="0.0070"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Module initialization / creates trap:off function" time="0.0045"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Module initialization / creates trap:list function" time="0.0044"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / basic functionality / registers single handler for EXIT signal" time="0.0523"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / basic functionality / fails when handler function does not exist" time="0.0244"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / basic functionality / fails when no signals specified" time="0.0244"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / basic functionality / normalizes SIGINT to INT" time="0.0420"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / basic functionality / normalizes signal 0 to EXIT" time="0.0506"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / multiple handlers / registers multiple handlers for same signal" time="0.0683"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / multiple handlers / registers handler for multiple signals" time="0.1132"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / duplicate handling / warns when handler already registered" time="0.0686"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:on / duplicate handling / allows duplicates with --allow-duplicates flag" time="0.0691"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:off / functionality / removes handler from signal" time="0.0669"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:off / functionality / handles non-existent handler gracefully" time="0.0270"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:off / functionality / fails when no signals specified" time="0.0221"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:list / functionality / lists handlers for specific signal" time="0.0647"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:list / functionality / shows empty output for uninitialized signal" time="0.0095"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:list / functionality / lists all signals when no argument provided" time="0.0393"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:clear / functionality / clears all handlers for signal" time="0.0789"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:clear / functionality / fails when no signals specified" time="0.0221"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:push and trap:pop / pushes current trap state" time="0.0678"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:push and trap:pop / pops and restores trap state" time="0.0935"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:push and trap:pop / fails when popping empty stack" time="0.0252"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:push and trap:pop / supports nested push/pop" time="0.1383"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:push and trap:pop / snapshots all active signals when called without arguments" time="0.2142"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / trap:scope:begin and trap:scope:end / creates scoped trap section" time="0.0941"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Signal normalization / normalizes SIGTERM to TERM" time="0.0372"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Signal normalization / normalizes lowercase to uppercase" time="0.0385"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Signal normalization / normalizes numeric signals using kill -l" time="0.0362"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Trap dispatcher execution / allows handler registration and listing" time="0.0624"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Trap dispatcher execution / can clear and re-register handlers" time="0.0741"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Trap dispatcher execution / dispatcher function exists and is callable" time="0.0044"/>
+  <testcase classname="spec/traps_spec.sh" name="_traps.sh / Legacy trap handling / captures existing trap configuration" time="0.0508"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-000: displays usage help information and exits with 0" time="1.1648"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-001: displays script version and exits with 0" time="1.1007"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-002: should detect empty git repository" time="1.1848"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-002: proposes version 0.0.1-alpha in a fresh git repository" time="1.3673"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.3.0' from tag 'v1.2.3' after '' flag" time="1.3429"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.4' from tag 'v1.2.3' after '--default' flag" time="1.3529"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v2.0.0' from tag 'v1.2.3' after '--major' flag" time="1.3807"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.3.0' from tag 'v1.2.3' after '--minor' flag" time="1.3828"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.4' from tag 'v1.2.3' after '--patch' flag" time="1.3686"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3-alpha' from tag 'v1.2.3' after '--alpha' flag" time="1.4039"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3-beta' from tag 'v1.2.3' after '--beta' flag" time="1.3756"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3-rc' from tag 'v1.2.3' after '--rc' flag" time="1.3736"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-003: version scenarios / should be proposed 'v1.2.3+1' from tag 'v1.2.3' after '--revision' flag" time="1.3553"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / forced stay on the same version tag / test-003: should reuse version when on a MASTER branch" time="1.2023"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / forced stay on the same version tag / test-003: forced stay strategy on a MASTER branch" time="1.3019"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / forced stay on the same version tag / test-004: should reuse version when on a branch named after that version tag" time="1.2251"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-005: should propose REVISION segment increase when on a branch from a version tag" time="1.3837"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-005: should propose PATCH segment increase when on a branch from a version tag" time="1.3785"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-005: should propose PATCH increase with stage keeping" time="1.4295"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / monorepo version detection / test-020: should auto-detect prefix in monorepo structure" time="1.4629"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / monorepo version detection / test-021: should use root prefix strategy in monorepo structure" time="1.3643"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / monorepo version detection / test-022: should use sub-folder prefix strategy in monorepo structure" time="1.4053"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / monorepo version detection / test-023: should use custom prefix string in monorepo structure" time="1.3190"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-024: multiple version.properties files / should merge settings from multiple version.properties files (dotenv behavior)" time="0.0493"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / test-025: multiple prefixes without clear winner / should detect ambiguous prefixes and suggest resolution" time="0.0513"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-050: should not apply changes in dry-run mode" time="1.3870"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-051: should detect and report tag conflicts" time="1.4058"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-052: should reject invalid prefix with colon" time="0.0270"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-052: should reject invalid prefix with asterisk" time="0.0257"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-052: should reject invalid prefix with brackets" time="0.0252"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-053: should reuse version from existing version.properties with --stay" time="1.3250"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-054: should fail when not in a git repository" time="0.0203"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / corner cases / test-055: should handle corrupted version.properties gracefully" time="0.0428"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / --build custom metadata / should accept custom build metadata with --build flag" time="1.3258"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / --build custom metadata / should use --build instead of --revision when both provided" time="1.3195"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / --pre-release custom stage / should accept custom pre-release stage with --pre-release flag" time="1.3165"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / --pre-release custom stage / should use --pre-release instead of --alpha when both provided" time="1.3189"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / --pre-release custom stage / should combine custom pre-release and build metadata" time="1.3379"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / override values / should accept --major=5 to set specific major version" time="1.3255"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / override values / should accept --minor=10 to set specific minor version" time="1.3378"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / override values / should accept --patch=99 to set specific patch version" time="1.3397"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / override values / should accept --revision=1000 to set specific revision build" time="1.3061"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / override values / should combine multiple override values" time="1.3314"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / override values / should combine overrides with custom stage" time="1.3445"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / multiple flags combination / should handle --major --alpha combination" time="1.3253"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / multiple flags combination / should handle --minor --beta --revision combination" time="1.3479"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / multiple flags combination / should handle --patch --git-revision combination" time="1.3685"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / conflicting flags / should handle --alpha --beta --rc (last one wins)" time="1.3618"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / conflicting flags / should handle --major --minor --patch (all applied, only last takes effect)" time="1.3167"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / conflicting flags / should handle --stay --major (stay should prevent increment)" time="1.3248"/>
+  <testcase classname="spec/version-up_spec.sh" name="bin/version-up.v2.sh / new features in v2 / git revision / should use git commit count as revision with --git flag" time="1.3700"/>
 </testsuites>
