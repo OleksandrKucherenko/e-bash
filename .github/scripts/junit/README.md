@@ -9,6 +9,7 @@ This package provides:
 1. **`src/parse-test-timings.ts`** - Parse JUnit XML reports to extract timing data
 2. **`src/calculate-optimal-chunks.ts`** - Distribute tests across CI chunks using bin-packing
 3. **`src/sanitize-junit-xml.ts`** - Strip unnecessary data from JUnit XML for efficient storage
+4. **`src/add-lineno-to-timings.ts`** - Add `lineno` to v2.0 timing data for `shellspec file:line` selectors
 
 ## Installation
 
@@ -27,6 +28,14 @@ bun src/parse-test-timings.ts .test-timings.json report/*.xml
 
 # Example-level timing (v2.0 format)
 bun src/parse-test-timings.ts .test-timings.json report/*.xml --granularity=example
+```
+
+### Add Line Numbers (v2.0)
+
+Example-level chunking works best with `lineno` present so selectors can use `shellspec spec/file_spec.sh:<line>`.
+
+```bash
+bun src/add-lineno-to-timings.ts .test-timings.json .test-timings.json
 ```
 
 ### Calculate Optimal Chunks
@@ -86,6 +95,7 @@ bun run typecheck
     ├── calculate-optimal-chunks.test.ts    # Chunk calculator tests (e2e)
     ├── sanitize-junit-xml.ts               # XML sanitizer script
     ├── sanitize-junit-xml.test.ts          # Sanitizer tests (e2e)
+    ├── add-lineno-to-timings.ts            # Add lineno to v2.0 timing data
     └── __fixtures__/
         ├── sample-results.xml    # Sample JUnit XML for testing
         ├── sample-results-2.xml  # Additional sample XML

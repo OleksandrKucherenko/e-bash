@@ -32,42 +32,50 @@ interface TimingDataV2 {
     [key: string]: unknown;
 }
 
-function getTestLineNumbers(): Map<string, Map<string, number>> {
-    // Run shellspec --dry-run to get test names with line info
-    const result = spawnSync("shellspec", ["--dry-run", "--format", "documentation"], {
-        encoding: "utf-8",
-        maxBuffer: 10 * 1024 * 1024,
-    });
-
-    if (result.error) {
-        console.error("Failed to run shellspec:", result.error);
-        process.exit(1);
+export function parseShellspecExamplesLinenoOutput(stdout: string): Map<string, number[]> {
+    const fileLineNumbers: Map<string, number[]> = new Map();
+    for (const rawLine of stdout.trim().split("\n")) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        const match = line.match(/^(.+):(\d+)$/);
+        if (!match) continue;
+        const [, file, lineno] = match;
+        const n = parseInt(lineno, 10);
+        if (!Number.isFinite(n)) continue;
+        if (!fileLineNumbers.has(file)) fileLineNumbers.set(file, []);
+        fileLineNumbers.get(file)!.push(n);
     }
+    return fileLineNumbers;
+}
 
-    // Also get examples with line numbers
-    const linenoResult = spawnSync("shellspec", ["--list", "examples:lineno"], {
-        encoding: "utf-8",
-    });
+export function attachLinenoByOrder(
+    data: TimingDataV2,
+    fileLineNumbers: Map<string, number[]>,
+    opts: { overwrite?: boolean } = {}
+): number {
+    const overwrite = opts.overwrite ?? true;
+    let updatedCount = 0;
 
-    const lineMap = new Map<string, Map<string, number>>();
+    for (const [file, fileData] of Object.entries(data.timings)) {
+        const lineNumbers = fileLineNumbers.get(file);
+        if (!lineNumbers) continue;
 
-    if (linenoResult.stdout) {
-        // Parse: spec/file.sh:35
-        const lines = linenoResult.stdout.trim().split("\n");
-        for (const line of lines) {
-            const match = line.match(/^(.+):(\d+)$/);
-            if (match) {
-                const [, file, lineno] = match;
-                if (!lineMap.has(file)) {
-                    lineMap.set(file, new Map());
-                }
-                // Store line number indexed by line number (we'll match by position later)
-                lineMap.get(file)!.set(lineno, parseInt(lineno, 10));
+        const exampleEntries = Object.entries(fileData.examples);
+        let lineIndex = 0;
+
+        for (const [, example] of exampleEntries) {
+            if (lineIndex >= lineNumbers.length) break;
+            if (!overwrite && example.lineno !== undefined) {
+                lineIndex++;
+                continue;
             }
+            example.lineno = lineNumbers[lineIndex];
+            updatedCount++;
+            lineIndex++;
         }
     }
 
-    return lineMap;
+    return updatedCount;
 }
 
 function main() {
@@ -102,44 +110,8 @@ function main() {
         process.exit(1);
     }
 
-    // Build mapping: file -> array of line numbers (in order)
-    const fileLineNumbers: Map<string, number[]> = new Map();
-    const lines = linenoResult.stdout.trim().split("\n");
-    for (const line of lines) {
-        const match = line.match(/^(.+):(\d+)$/);
-        if (match) {
-            const [, file, lineno] = match;
-            if (!fileLineNumbers.has(file)) {
-                fileLineNumbers.set(file, []);
-            }
-            fileLineNumbers.get(file)!.push(parseInt(lineno, 10));
-        }
-    }
-
-    // Update timing data with line numbers
-    let updatedCount = 0;
-
-    for (const [file, fileData] of Object.entries(data.timings)) {
-        const lineNumbers = fileLineNumbers.get(file);
-        if (!lineNumbers) {
-            console.error(`Warning: No line numbers found for ${file}`);
-            continue;
-        }
-
-        // Sort examples by their order in the file (assuming hash order corresponds to order in XML)
-        const exampleEntries = Object.entries(fileData.examples);
-
-        // Assign line numbers based on order
-        // This assumes the examples in timing data are in the same order as in the spec file
-        let lineIndex = 0;
-        for (const [exampleId, example] of exampleEntries) {
-            if (lineIndex < lineNumbers.length) {
-                example.lineno = lineNumbers[lineIndex];
-                updatedCount++;
-                lineIndex++;
-            }
-        }
-    }
+    const fileLineNumbers = parseShellspecExamplesLinenoOutput(linenoResult.stdout);
+    const updatedCount = attachLinenoByOrder(data, fileLineNumbers, { overwrite: true });
 
     // Write updated timing data
     writeFileSync(outputFile, JSON.stringify(data, null, 2) + "\n");
@@ -147,4 +119,6 @@ function main() {
     console.log(`💾 Saved to: ${outputFile}`);
 }
 
-main();
+if (import.meta.main) {
+    main();
+}

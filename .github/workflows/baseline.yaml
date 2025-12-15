@@ -111,6 +111,8 @@ jobs:
           fi
           bun .github/scripts/junit/src/sanitize-junit-xml.ts .github/data/linux/report/baseline.xml "${XML_FILES[@]}"
           bun .github/scripts/junit/src/parse-test-timings.ts .github/data/linux/test-timings.json .github/data/linux/report/baseline.xml --granularity=example
+          bun .github/scripts/junit/src/add-lineno-to-timings.ts .github/data/linux/test-timings.json .github/data/linux/test-timings.json.tmp
+          mv .github/data/linux/test-timings.json.tmp .github/data/linux/test-timings.json
 
       - name: Upload baseline artifact (Linux)
         uses: actions/upload-artifact@v4
@@ -183,6 +185,8 @@ jobs:
           fi
           bun .github/scripts/junit/src/sanitize-junit-xml.ts .github/data/macos/report/baseline.xml "${XML_FILES[@]}"
           bun .github/scripts/junit/src/parse-test-timings.ts .github/data/macos/test-timings.json .github/data/macos/report/baseline.xml --granularity=example
+          bun .github/scripts/junit/src/add-lineno-to-timings.ts .github/data/macos/test-timings.json .github/data/macos/test-timings.json.tmp
+          mv .github/data/macos/test-timings.json.tmp .github/data/macos/test-timings.json
 
       - name: Upload baseline artifact (macOS)
         uses: actions/upload-artifact@v4

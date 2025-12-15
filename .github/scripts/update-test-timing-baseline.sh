@@ -77,6 +77,8 @@ fi
 bun "$SCRIPT_DIR/junit/src/sanitize-junit-xml.ts" "$OUT_DIR/report/baseline.xml" "${XML_FILES[@]}"
 
 bun "$SCRIPT_DIR/junit/src/parse-test-timings.ts" "$OUT_DIR/test-timings.json" "$OUT_DIR/report/baseline.xml" --granularity=example
+bun "$SCRIPT_DIR/junit/src/add-lineno-to-timings.ts" "$OUT_DIR/test-timings.json" "$OUT_DIR/test-timings.json.tmp"
+mv "$OUT_DIR/test-timings.json.tmp" "$OUT_DIR/test-timings.json"
 
 echo ""
 echo "Baseline updated:"
