@@ -12,7 +12,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 function extractAttribute(tag: string, attrName: string): string | null {
-    const match = tag.match(new RegExp(`${attrName}="([^"]*)"`, "i"));
+    // Use (?:^|\s) to ensure we match the exact attribute name, not substrings
+    // (e.g., 'name' should not match 'classname')
+    const match = tag.match(new RegExp(`(?:^|\\s)${attrName}="([^"]*)"`, "i"));
     return match ? match[1] : null;
 }
 
