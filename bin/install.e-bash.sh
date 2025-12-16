@@ -349,18 +349,18 @@ function repo_uninstall() {
     ((uninstall_steps++))
   fi
 
-  # Clean .mise.toml if it exists
-  if [ -f ".mise.toml" ]; then
-    if grep -q "E_BASH" ".mise.toml"; then
+  # Clean mise.toml if it exists
+  if [ -f "mise.toml" ]; then
+    if grep -q "E_BASH" "mise.toml"; then
       if [ "$DRY_RUN" = true ]; then
-        echo -e "${CYAN}dry run: clean .mise.toml configuration${NC}"
+        echo -e "${CYAN}dry run: clean mise.toml configuration${NC}"
       else
         # Use a simple and reliable approach
         # Step 1: Remove the e-bash comment line
-        sed -i.bak '/# e-bash scripts configuration/d' ".mise.toml"
+        sed -i.bak '/# e-bash scripts configuration/d' "mise.toml"
 
         # Step 2: Remove E_BASH and _.path lines
-        sed -i '/E_BASH.*\.scripts/d; /_.path.*\.scripts/d' ".mise.toml"
+        sed -i '/E_BASH.*\.scripts/d; /_.path.*\.scripts/d' "mise.toml"
 
         # Step 3: Remove empty [[env]] and [env]] sections using awk
         awk '
@@ -390,10 +390,10 @@ function repo_uninstall() {
         }
         # Print all other lines
         { print }
-        ' ".mise.toml" >".mise.toml.tmp" && mv ".mise.toml.tmp" ".mise.toml"
+        ' "mise.toml" >"mise.toml.tmp" && mv "mise.toml.tmp" "mise.toml"
 
-        rm -f ".mise.toml.bak"
-        echo -e "${GREEN}Cleaned .mise.toml configuration${NC}"
+        rm -f "mise.toml.bak"
+        echo -e "${GREEN}Cleaned mise.toml configuration${NC}"
       fi
       ((uninstall_steps++))
     fi
@@ -952,13 +952,13 @@ function post_installation_steps() {
     echo -e "${prefix}${GRAY}Skipping DIRENV integration. No ${YELLOW}${PWD}/.envrc${GRAY} file.${NC}" >&2
   fi
 
-  # Check for .mise.toml file and update it if found
-  if [ -f ".mise.toml" ] && [ "$DRY_RUN" == false ]; then
+  # Check for mise.toml file and update it if found
+  if [ -f "mise.toml" ] && [ "$DRY_RUN" == false ]; then
     update_mise_configuration
   else
     local prefix=""
     [ "$DRY_RUN" == true ] && prefix="${CYAN}dry run: ${NC}"
-    echo -e "${prefix}${GRAY}Skipping MISE integration. No ${YELLOW}${PWD}/.mise.toml${GRAY} file.${NC}" >&2
+    echo -e "${prefix}${GRAY}Skipping MISE integration. No ${YELLOW}${PWD}/mise.toml${GRAY} file.${NC}" >&2
   fi
 
   # Check for bin directory and copy installer script
@@ -1093,10 +1093,10 @@ function update_mise_configuration() {
         print
         exit
       }
-    ' ".mise.toml"
+    ' "mise.toml"
   }
 
-  # Helper: Update existing E_BASH path in .mise.toml
+  # Helper: Update existing E_BASH path in mise.toml
   update_mise_path() {
     local old_path="$1"
     local new_path="$2"
@@ -1104,13 +1104,13 @@ function update_mise_configuration() {
     echo -e "${BLUE}Updating MISE configuration from ${YELLOW}${old_path}${BLUE} to ${YELLOW}${new_path}${NC}"
 
     # Update E_BASH path
-    sed -i.bak "s|E_BASH = \"{{config_root}}/${old_path}\"|E_BASH = \"{{config_root}}/${new_path}\"|g" ".mise.toml"
+    sed -i.bak "s|E_BASH = \"{{config_root}}/${old_path}\"|E_BASH = \"{{config_root}}/${new_path}\"|g" "mise.toml"
 
     # Update _.path entries
-    sed -i.bak "s|\"{{config_root}}/${old_path}\"|\"{{config_root}}/${new_path}\"|g" ".mise.toml"
+    sed -i.bak "s|\"{{config_root}}/${old_path}\"|\"{{config_root}}/${new_path}\"|g" "mise.toml"
 
-    rm -f ".mise.toml.bak"
-    echo -e "${GREEN}Updated e-bash configuration in ${YELLOW}${PWD}/.mise.toml${NC}"
+    rm -f "mise.toml.bak"
+    echo -e "${GREEN}Updated e-bash configuration in ${YELLOW}${PWD}/mise.toml${NC}"
     echo -e "${YELLOW}Run 'mise trust' to apply the changes${NC}"
   }
 
@@ -1122,7 +1122,7 @@ function update_mise_configuration() {
       /^\[env\]$/ || /^\[\[env\]\]$/ { in_env=1; next }
       /^\[/ { in_env=0 }
       in_env && /^[[:space:]]*_.path[[:space:]]*=/ { print "true"; exit }
-    ' ".mise.toml")
+    ' "mise.toml")
     [ "$result" = "true" ]
   }
 
@@ -1138,7 +1138,7 @@ function update_mise_configuration() {
         print
         exit
       }
-    ' ".mise.toml"
+    ' "mise.toml"
   }
 
   # Helper: Check if a specific path entry exists in the existing paths
@@ -1153,7 +1153,7 @@ function update_mise_configuration() {
   }
 
   # Check if E_BASH is already configured in any [env] or [[env]] section
-  if [ -f ".mise.toml" ]; then
+  if [ -f "mise.toml" ]; then
     local existing_value=$(get_mise_env_value "E_BASH")
     if [ -n "$existing_value" ]; then
       # Extract the directory path from the existing value
@@ -1162,7 +1162,7 @@ function update_mise_configuration() {
 
       # If the path matches current SCRIPTS_DIR, skip
       if [ "$current_path" = "$SCRIPTS_DIR" ]; then
-        echo -e "${GRAY}Skipping MISE integration. E_BASH already configured in ${YELLOW}${PWD}/.mise.toml${NC}"
+        echo -e "${GRAY}Skipping MISE integration. E_BASH already configured in ${YELLOW}${PWD}/mise.toml${NC}"
         return 0
       fi
 
@@ -1176,9 +1176,9 @@ function update_mise_configuration() {
   local has_env_table=false # [env] - single table
   local has_env_array=false # [[env]] - array of tables
 
-  if [ -f ".mise.toml" ]; then
-    grep -q "^\\[env\\]" ".mise.toml" && has_env_table=true
-    grep -q "^\\[\\[env\\]\\]" ".mise.toml" && has_env_array=true
+  if [ -f "mise.toml" ]; then
+    grep -q "^\\[env\\]" "mise.toml" && has_env_table=true
+    grep -q "^\\[\\[env\\]\\]" "mise.toml" && has_env_array=true
   fi
 
   # Check if we already have _.path entries and if our entries are already included
@@ -1218,12 +1218,12 @@ function update_mise_configuration() {
         # Create new _.path with our entries
         echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
       fi
-    } >>".mise.toml"
-    echo -e "${GREEN}Added e-bash configuration as new [[env]] entry in ${YELLOW}${PWD}/.mise.toml${NC}"
+    } >>"mise.toml"
+    echo -e "${GREEN}Added e-bash configuration as new [[env]] entry in ${YELLOW}${PWD}/mise.toml${NC}"
   elif [ "$has_env_table" = true ]; then
     # Insert into existing [env] section (before next section or EOF)
     # Find the line number where [env] section ends
-    local env_end=$(awk '/^\[env\]/{start=NR; next} start && /^\[/{print NR-1; found=1; exit} END{if(start && !found) print NR}' ".mise.toml")
+    local env_end=$(awk '/^\[env\]/{start=NR; next} start && /^\[/{print NR-1; found=1; exit} END{if(start && !found) print NR}' "mise.toml")
 
     # Handle _.path merging for [env] section
     local new_path=""
@@ -1256,15 +1256,15 @@ function update_mise_configuration() {
     # Create temp file with insertion, removing existing _.path lines
     {
       # Output lines before the insertion point, excluding existing _.path
-      head -n "$env_end" ".mise.toml" | grep -v "^[[:space:]]*_.path[[:space:]]*="
+      head -n "$env_end" "mise.toml" | grep -v "^[[:space:]]*_.path[[:space:]]*="
       echo "# e-bash scripts configuration"
       echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
       echo "_.path = ${new_path}"
-      tail -n +$((env_end + 1)) ".mise.toml"
-    } >".mise.toml.tmp"
+      tail -n +$((env_end + 1)) "mise.toml"
+    } >"mise.toml.tmp"
 
-    mv ".mise.toml.tmp" ".mise.toml"
-    echo -e "${GREEN}Added e-bash configuration to existing [env] section in ${YELLOW}${PWD}/.mise.toml${NC}"
+    mv "mise.toml.tmp" "mise.toml"
+    echo -e "${GREEN}Added e-bash configuration to existing [env] section in ${YELLOW}${PWD}/mise.toml${NC}"
   else
     # Create new [env] table (prefer single table for simplicity)
     {
@@ -1273,8 +1273,8 @@ function update_mise_configuration() {
       echo "[env]"
       echo "E_BASH = \"{{config_root}}/${SCRIPTS_DIR}\""
       echo "_.path = [\"{{config_root}}/${SCRIPTS_DIR}\", \"{{config_root}}/bin\"]"
-    } >>".mise.toml"
-    echo -e "${GREEN}Added e-bash configuration to ${YELLOW}${PWD}/.mise.toml${NC}"
+    } >>"mise.toml"
+    echo -e "${GREEN}Added e-bash configuration to ${YELLOW}${PWD}/mise.toml${NC}"
   fi
 
   echo -e "${YELLOW}Run 'mise trust' to apply the changes${NC}"

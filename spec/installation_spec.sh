@@ -194,8 +194,8 @@ Describe 'bin/install.e-bash.sh /'
     End
 
     It 'should integrate with mise.toml if file exists'
-      touch .mise.toml
-      git add .mise.toml
+      touch mise.toml
+      git add mise.toml
       git commit --no-gpg-sign -m "Add mise.toml" -q 2>/dev/null || git commit -m "Add mise.toml" -q
 
       When run ./install.e-bash.sh install
@@ -204,18 +204,18 @@ Describe 'bin/install.e-bash.sh /'
       The result of function no_colors_error should include "installer: e-bash scripts"
       The result of function no_colors_output should include "Installation complete"
       The result of function no_colors_output should include "Added e-bash configuration to"
-      The result of function no_colors_output should include ".mise.toml"
-      The file ".mise.toml" should be present
-      The contents of file ".mise.toml" should include "E_BASH"
-      The contents of file ".mise.toml" should include "{{config_root}}/.scripts"
-      The contents of file ".mise.toml" should include "_.path"
+      The result of function no_colors_output should include "mise.toml"
+      The file "mise.toml" should be present
+      The contents of file "mise.toml" should include "E_BASH"
+      The contents of file "mise.toml" should include "{{config_root}}/.scripts"
+      The contents of file "mise.toml" should include "_.path"
     End
 
     It 'should not modify mise.toml if it already has E_BASH configuration'
-      touch .mise.toml
-      echo '[env]' >>.mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
-      git add .mise.toml
+      touch mise.toml
+      echo '[env]' >>mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>mise.toml
+      git add mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with E_BASH" -q 2>/dev/null || git commit -m "Add mise.toml with E_BASH" -q
 
       When run ./install.e-bash.sh install
@@ -227,16 +227,16 @@ Describe 'bin/install.e-bash.sh /'
     End
 
     It 'should insert into existing [env] section before other sections'
-      touch .mise.toml
-      echo '[env]' >>.mise.toml
-      echo 'NODE_ENV = "development"' >>.mise.toml
-      echo '' >>.mise.toml
-      echo '[tools]' >>.mise.toml
-      echo 'node = "20"' >>.mise.toml
-      git add .mise.toml
+      touch mise.toml
+      echo '[env]' >>mise.toml
+      echo 'NODE_ENV = "development"' >>mise.toml
+      echo '' >>mise.toml
+      echo '[tools]' >>mise.toml
+      echo 'node = "20"' >>mise.toml
+      git add mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with [env] and [tools]" -q 2>/dev/null || git commit -m "Add mise.toml with [env] and [tools]" -q
 
-      When run sh -c './install.e-bash.sh install && echo "=== FILE CONTENT ===" && cat .mise.toml'
+      When run sh -c './install.e-bash.sh install && echo "=== FILE CONTENT ===" && cat mise.toml'
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
@@ -251,10 +251,10 @@ Describe 'bin/install.e-bash.sh /'
     End
 
     It 'should handle mise.toml with [[env]] array of tables'
-      touch .mise.toml
-      echo '[[env]]' >>.mise.toml
-      echo 'NODE_ENV = "development"' >>.mise.toml
-      git add .mise.toml
+      touch mise.toml
+      echo '[[env]]' >>mise.toml
+      echo 'NODE_ENV = "development"' >>mise.toml
+      git add mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with [[env]]" -q 2>/dev/null || git commit -m "Add mise.toml with [[env]]" -q
 
       When run ./install.e-bash.sh install
@@ -263,17 +263,17 @@ Describe 'bin/install.e-bash.sh /'
       The result of function no_colors_error should include "installer: e-bash scripts"
       The result of function no_colors_output should include "Installation complete"
       The result of function no_colors_output should include "Added e-bash configuration as new [[env]] entry"
-      The file ".mise.toml" should be present
-      The contents of file ".mise.toml" should include "[[env]]"
-      The contents of file ".mise.toml" should include "E_BASH"
-      The contents of file ".mise.toml" should include "NODE_ENV"
+      The file "mise.toml" should be present
+      The contents of file "mise.toml" should include "[[env]]"
+      The contents of file "mise.toml" should include "E_BASH"
+      The contents of file "mise.toml" should include "NODE_ENV"
     End
 
     It 'should not modify mise.toml with [[env]] if E_BASH exists'
-      touch .mise.toml
-      echo '[[env]]' >>.mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
-      git add .mise.toml
+      touch mise.toml
+      echo '[[env]]' >>mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>mise.toml
+      git add mise.toml
       git commit --no-gpg-sign -m "Add mise.toml with [[env]] and E_BASH" -q 2>/dev/null || git commit -m "Add mise.toml with [[env]] and E_BASH" -q
 
       When run ./install.e-bash.sh install
@@ -1062,57 +1062,57 @@ Describe 'bin/install.e-bash.sh /'
       The file ".envrc" should not include "PATH_add"
     End
 
-    It 'should clean .mise.toml E_BASH configuration with [env]'
+    It 'should clean mise.toml E_BASH configuration with [env]'
       mock_install
-      touch .mise.toml
-      echo '# e-bash scripts configuration' >>.mise.toml
-      echo '[env]' >>.mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
-      echo '_.path = ["{{config_root}}/.scripts"]' >>.mise.toml
+      touch mise.toml
+      echo '# e-bash scripts configuration' >>mise.toml
+      echo '[env]' >>mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >>mise.toml
 
       When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
       The result of function no_colors_output should include "Uninstall complete!"
-      The file ".mise.toml" should not include "E_BASH"
-      The file ".mise.toml" should not include "_.path"
+      The file "mise.toml" should not include "E_BASH"
+      The file "mise.toml" should not include "_.path"
     End
 
-    It 'should clean .mise.toml E_BASH configuration with [[env]]'
+    It 'should clean mise.toml E_BASH configuration with [[env]]'
       mock_install
-      touch .mise.toml
-      echo '# e-bash scripts configuration' >>.mise.toml
-      echo '[[env]]' >>.mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
-      echo '_.path = ["{{config_root}}/.scripts"]' >>.mise.toml
+      touch mise.toml
+      echo '# e-bash scripts configuration' >>mise.toml
+      echo '[[env]]' >>mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >>mise.toml
 
       When run ./install.e-bash.sh uninstall --confirm
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
       The result of function no_colors_output should include "Uninstall complete!"
-      The file ".mise.toml" should not include "E_BASH"
-      The file ".mise.toml" should not include "_.path"
+      The file "mise.toml" should not include "E_BASH"
+      The file "mise.toml" should not include "_.path"
     End
 
     It 'should preserve other [[env]] entries when cleaning'
       mock_install
-      touch .mise.toml
-      echo '[[env]]' >>.mise.toml
-      echo 'NODE_ENV = "development"' >>.mise.toml
-      echo '' >>.mise.toml
-      echo '# e-bash scripts configuration' >>.mise.toml
-      echo '[[env]]' >>.mise.toml
-      echo 'E_BASH = "{{config_root}}/.scripts"' >>.mise.toml
-      echo '_.path = ["{{config_root}}/.scripts"]' >>.mise.toml
+      touch mise.toml
+      echo '[[env]]' >>mise.toml
+      echo 'NODE_ENV = "development"' >>mise.toml
+      echo '' >>mise.toml
+      echo '# e-bash scripts configuration' >>mise.toml
+      echo '[[env]]' >>mise.toml
+      echo 'E_BASH = "{{config_root}}/.scripts"' >>mise.toml
+      echo '_.path = ["{{config_root}}/.scripts"]' >>mise.toml
 
-      When run sh -c './install.e-bash.sh uninstall --confirm && echo "=== FILE CONTENT CHECK ===" && cat .mise.toml'
+      When run sh -c './install.e-bash.sh uninstall --confirm && echo "=== FILE CONTENT CHECK ===" && cat mise.toml'
 
       The status should be success
       The result of function no_colors_error should include "installer: e-bash scripts"
       The result of function no_colors_output should include "Uninstall complete!"
-      The file ".mise.toml" should not include "E_BASH"
+      The file "mise.toml" should not include "E_BASH"
       The output should include "NODE_ENV"
     End
 
@@ -1280,19 +1280,19 @@ Describe 'bin/install.e-bash.sh /'
       The contents of file ".envrc" should include "E_BASH="
     End
 
-    It 'should update .mise.toml with custom directory path'
-      # Create empty .mise.toml (no E_BASH configuration yet)
-      touch .mise.toml
-      git add .mise.toml
-      git commit --no-gpg-sign -m "Add .mise.toml" -q 2>/dev/null || git commit -m "Add .mise.toml" -q
+    It 'should update mise.toml with custom directory path'
+      # Create empty mise.toml (no E_BASH configuration yet)
+      touch mise.toml
+      git add mise.toml
+      git commit --no-gpg-sign -m "Add mise.toml" -q 2>/dev/null || git commit -m "Add mise.toml" -q
 
       When run ./install.e-bash.sh install --directory .ebash-tools
 
       The status should be success
       The result of function no_colors_output should include "Installation complete"
-      The file ".mise.toml" should be present
-      The contents of file ".mise.toml" should include ".ebash-tools"
-      The contents of file ".mise.toml" should include "E_BASH"
+      The file "mise.toml" should be present
+      The contents of file "mise.toml" should include ".ebash-tools"
+      The contents of file "mise.toml" should include "E_BASH"
     End
 
     It 'should require argument for --directory flag'
@@ -1370,15 +1370,15 @@ Describe 'bin/install.e-bash.sh /'
       The dir ".custom-ebash" should be present
     End
 
-    It 'should update .mise.toml when switching from default to custom directory'
+    It 'should update mise.toml when switching from default to custom directory'
       # First install with default directory
-      touch .mise.toml
-      git add .mise.toml
-      git commit --no-gpg-sign -m "Add .mise.toml" -q 2>/dev/null || git commit -m "Add .mise.toml" -q
+      touch mise.toml
+      git add mise.toml
+      git commit --no-gpg-sign -m "Add mise.toml" -q 2>/dev/null || git commit -m "Add mise.toml" -q
       ./install.e-bash.sh install 2>/dev/null >/dev/null
 
-      # Verify .mise.toml has .scripts path
-      grep -q "E_BASH.*{{config_root}}/.scripts" .mise.toml || exit 1
+      # Verify mise.toml has .scripts path
+      grep -q "E_BASH.*{{config_root}}/.scripts" mise.toml || exit 1
 
       # Now upgrade with custom directory (treated as fresh install to new location)
       When run ./install.e-bash.sh upgrade --directory .ebash-alt
@@ -1387,10 +1387,10 @@ Describe 'bin/install.e-bash.sh /'
       # When switching directories, it's treated as a fresh install to new location
       The result of function no_colors_output should include "e-bash scripts not installed. Installing instead."
       The result of function no_colors_output should include "Installation complete"
-      # Config gets added to .mise.toml during install
+      # Config gets added to mise.toml during install
       The result of function no_colors_output should include "Added e-bash configuration to"
-      The result of function no_colors_output should include ".mise.toml"
-      The contents of file ".mise.toml" should include "{{config_root}}/.ebash-alt"
+      The result of function no_colors_output should include "mise.toml"
+      The contents of file "mise.toml" should include "{{config_root}}/.ebash-alt"
       The dir ".ebash-alt" should be present
     End
 
