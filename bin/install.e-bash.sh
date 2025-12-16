@@ -15,11 +15,17 @@ set -e
 shopt -s extdebug # enable extended debugging
 
 # Configuration.
-readonly REMOTE_NAME="e-bash"
-readonly REMOTE_MASTER="master"
-readonly REMOTE_URL="https://github.com/OleksandrKucherenko/e-bash.git"
-readonly REMOTE_INSTALL_SH="https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh"
-readonly REMOTE_SHORT="https://git.new/e-bash"
+# These can be overridden via environment variables for testing or alternative repositories:
+# - E_BASH_REMOTE_NAME: Git remote name (default: "e-bash")
+# - E_BASH_REMOTE_MASTER: Master branch name (default: "master")
+# - E_BASH_REMOTE_URL: Git repository URL
+# - E_BASH_REMOTE_INSTALL_SH: Installation script URL
+# - E_BASH_REMOTE_SHORT: Short URL for curl installation
+readonly REMOTE_NAME="${E_BASH_REMOTE_NAME:-e-bash}"
+readonly REMOTE_MASTER="${E_BASH_REMOTE_MASTER:-master}"
+readonly REMOTE_URL="${E_BASH_REMOTE_URL:-https://github.com/OleksandrKucherenko/e-bash.git}"
+readonly REMOTE_INSTALL_SH="${E_BASH_REMOTE_INSTALL_SH:-https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh}"
+readonly REMOTE_SHORT="${E_BASH_REMOTE_SHORT:-https://git.new/e-bash}"
 readonly TEMP_BRANCH="e-bash-temp"
 readonly SCRIPTS_BRANCH="e-bash-scripts"
 readonly DEFAULT_SCRIPTS_DIR=".scripts"

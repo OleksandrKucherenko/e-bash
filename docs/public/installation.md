@@ -20,6 +20,49 @@ This document provides detailed test scenarios for installing, upgrading, and ma
   - [Scenario 12: Installation with insufficient permissions](#scenario-12-installation-with-insufficient-permissions)
   - [Scenario 13: Network failure during installation](#scenario-13-network-failure-during-installation)
 
+## Environment Variables
+
+The installation script supports environment variable overrides for advanced use cases such as:
+- Installing from a forked or alternative repository
+- Using a company-internal mirror of the e-bash repository
+- Testing with a local git repository
+- Continuous integration and automated testing
+
+### Available Environment Variables
+
+| Variable | Default Value | Description |
+|----------|--------------|-------------|
+| `E_BASH_REMOTE_NAME` | `e-bash` | Git remote name used for the e-bash repository |
+| `E_BASH_REMOTE_MASTER` | `master` | Master branch name in the remote repository |
+| `E_BASH_REMOTE_URL` | `https://github.com/OleksandrKucherenko/e-bash.git` | Git repository URL for cloning and fetching |
+| `E_BASH_REMOTE_INSTALL_SH` | `https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/bin/install.e-bash.sh` | URL to the installation script |
+| `E_BASH_REMOTE_SHORT` | `https://git.new/e-bash` | Short URL for quick installation via curl |
+
+### Usage Examples
+
+#### Installing from a Fork
+
+```bash
+export E_BASH_REMOTE_URL="https://github.com/mycompany/e-bash.git"
+export E_BASH_REMOTE_INSTALL_SH="https://raw.githubusercontent.com/mycompany/e-bash/master/bin/install.e-bash.sh"
+curl -sSL "$E_BASH_REMOTE_INSTALL_SH" | bash -s -- install
+```
+
+#### Installing from a Local Repository (Testing)
+
+```bash
+export E_BASH_REMOTE_URL="/path/to/local/e-bash.git"
+./bin/install.e-bash.sh install
+```
+
+#### Using with Different Branch Name
+
+```bash
+export E_BASH_REMOTE_MASTER="main"
+export E_BASH_REMOTE_URL="https://github.com/mycompany/e-bash.git"
+./bin/install.e-bash.sh install
+```
+
 ## Review of the Script Actions
 
 The following state diagram illustrates the logic flow of the `install.e-bash.sh` script, showing the various states and transitions during the installation, upgrade, and rollback processes.

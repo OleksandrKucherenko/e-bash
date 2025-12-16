@@ -18,6 +18,23 @@ eval "$(shellspec - -c) exit 1"
 # TDD:
 #  watchman-make -p 'spec/installation_spec.sh' 'bin/*.sh' --run "clear && shellspec --no-kcov --focus spec/installation_spec.sh -- "
 #
+# TEST ISOLATION:
+#  Tests are designed to be isolated and atomic by:
+#  1. Running in temporary directories ($TEST_DIR)
+#  2. Creating temporary git repositories for each test
+#  3. Using environment variables to override repository URLs
+#  4. Providing a fake local git remote to avoid network dependencies
+#
+#  To use the fake remote in tests (for full isolation):
+#    Before 'temp_repo; setup_fake_remote_env; cp_install; ...'
+#    After 'cleanup_fake_remote_env; cleanup_temp_repo'
+#
+#  Benefits:
+#  - No network access required
+#  - Tests run faster
+#  - Tests are more reliable (no GitHub downtime issues)
+#  - Tests work offline
+#
 
 # Path to the installation script
 INSTALL_SCRIPT="bin/install.e-bash.sh"
@@ -59,6 +76,77 @@ Describe 'bin/install.e-bash.sh /'
   do_uninstall() { ./install.e-bash.sh uninstall --confirm 2>/dev/null >/dev/null; }
   do_uninstall_global() { HOME="$TEMP_HOME" ./install.e-bash.sh uninstall --confirm --global 2>/dev/null >/dev/null; }
 
+  # Create a local bare git repository with e-bash content for isolated testing
+  # This eliminates the need for network access to GitHub
+  create_fake_remote() {
+    local fake_remote_dir="$TEST_DIR/../fake-e-bash-remote.git"
+
+    # Skip if already exists
+    if [ -d "$fake_remote_dir" ]; then
+      return 0
+    fi
+
+    # Create a bare repository
+    mkdir -p "$fake_remote_dir"
+    git init --bare -q "$fake_remote_dir"
+
+    # Create a temporary working directory to populate the remote
+    local temp_work_dir="$TEST_DIR/../fake-e-bash-work"
+    mkdir -p "$temp_work_dir"
+    cd "$temp_work_dir" || return 1
+
+    git init -q
+    git config user.name "Test User"
+    git config user.email "test@example.com"
+
+    # Copy e-bash scripts to .scripts directory
+    mkdir -p .scripts
+    cp -r "$SHELLSPEC_PROJECT_ROOT/.scripts/"* .scripts/ 2>/dev/null || true
+
+    # Add and commit
+    git add .scripts
+    git commit --no-gpg-sign -m "Initial e-bash scripts" -q 2>/dev/null || git commit -m "Initial e-bash scripts" -q
+
+    # Create version tags
+    git tag v1.0.0
+    git tag v1.0.1-alpha.1
+    git tag v1.1.0
+
+    # Push to bare repository
+    git remote add origin "$fake_remote_dir"
+    git push -q origin master --tags 2>/dev/null || true
+
+    # Clean up working directory
+    cd "$TEST_DIR" || return 1
+    rm -rf "$temp_work_dir"
+
+    return 0
+  }
+
+  # Set environment variables to use local fake repository
+  setup_fake_remote_env() {
+    local fake_remote_dir="$TEST_DIR/../fake-e-bash-remote.git"
+
+    # Create fake remote if it doesn't exist
+    create_fake_remote
+
+    # Export environment variables to override repository URLs
+    export E_BASH_REMOTE_NAME="e-bash"
+    export E_BASH_REMOTE_MASTER="master"
+    export E_BASH_REMOTE_URL="$fake_remote_dir"
+    export E_BASH_REMOTE_INSTALL_SH="file://$fake_remote_dir/master/bin/install.e-bash.sh"
+    export E_BASH_REMOTE_SHORT="$fake_remote_dir"
+  }
+
+  # Clean up fake remote environment variables
+  cleanup_fake_remote_env() {
+    unset E_BASH_REMOTE_NAME
+    unset E_BASH_REMOTE_MASTER
+    unset E_BASH_REMOTE_URL
+    unset E_BASH_REMOTE_INSTALL_SH
+    unset E_BASH_REMOTE_SHORT
+  }
+
   # Mock installation state without network access
   # Simulates a successful local installation by creating expected directory structure
   mock_install() {
@@ -73,8 +161,9 @@ Describe 'bin/install.e-bash.sh /'
     # Create a fake tag v1.0.0 on current commit to simulate version detection
     git tag v1.0.0 2>/dev/null || true
 
-    # Set up git remote and branches as the install script would
-    git remote add e-bash https://github.com/OleksandrKucherenko/e-bash.git 2>/dev/null || true
+    # Set up git remote using fake remote if available, otherwise use real URL
+    local remote_url="${E_BASH_REMOTE_URL:-https://github.com/OleksandrKucherenko/e-bash.git}"
+    git remote add e-bash "$remote_url" 2>/dev/null || true
 
     # Create e-bash-scripts branch pointing to the tagged commit
     git branch e-bash-scripts 2>/dev/null || true
