@@ -507,7 +507,30 @@ bin/git.files.sh 1 --tree
 
 ## Self-Update
 
-Default version script: `bin/version-up.v2.sh` (legacy v1 is kept at `legacy/bin/version-up.v1.sh`).
+**Purpose:** The self-update functionality allows any project that uses the e-bash scripts library to automatically detect source updates and update library files file-by-file. This is designed specifically for BASH scripts built on top of the e-bash library.
+
+**Main Usage Pattern:** The recommended approach is to invoke `self-update` when your script exits, ensuring the library stays current for the next execution:
+
+```bash
+# Using e-bash traps module (recommended)
+source ".scripts/_self-update.sh"
+source ".scripts/_traps.sh"
+
+function on_exit_update() {
+  self-update '^1.0.0'
+}
+trap:on on_exit_update EXIT
+
+# Or using built-in trap (simpler, but less flexible)
+trap "self-update '^1.0.0'" EXIT
+```
+
+**How It Works:**
+1. Maintains a local git repository at `~/.e-bash/` with multiple version worktrees
+2. Creates symbolic links from your project's `.scripts/` files to version-specific files
+3. Performs file-by-file updates with automatic backup creation
+4. Verifies updates using SHA1 hash comparison
+5. Supports rollback to previous versions or backup files
 
 Requirements:
 
@@ -519,14 +542,15 @@ Requirements:
   - [ ] extract archive to a version sub-folder
 - [x] rollback to previous version (or specified one)
   - [x] rollback to latest backup file (if exists)
-- [ ] partial update of the scripts, different versions of scripts from different version sub-folders
+- [x] partial update of the scripts, different versions of scripts from different version sub-folders
   - [x] developer can bind file to a specific version by calling function `self-update:version:bind`
 - [x] verify SHA1 hash of the scripts
   - [x] compute file SHA1 hash and store it in \*.sha1 file
 - [x] understand version expressions
-  - [ ] `latest` - latest stable version
-  - [ ] `*` or `next` - any highest version tag (INCLUDING: alpha, beta, rc etc)
-  - [ ] `branch:{any_branch}` or `tag:{any_tag}` - any branch name (also works for TAGs)
+  - [x] `latest` - latest stable version (no pre-release tags)
+  - [x] `*` or `next` - any highest version tag (INCLUDING: alpha, beta, rc etc)
+  - [x] `branch:{any_branch}` - update from any branch name
+  - [x] `tag:{any_tag}` - update to specific tag
   - [x] `>`, `<`, `>=`, `<=`, `~`, `!=`, `||` - comparison syntax
   - [x] `1.0.0` or `=1.0.0` - exact version
   - [x] `~1.0.0` - version in range >= 1.0.x, patch releases allowed
