@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-24
+## Last revisit: 2025-12-16
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -11,9 +11,9 @@
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # include e-bash scripts: _colors, _logger, _commons, _dependencies, _arguments
-# shellcheck disable=SC1090 source=../.scripts/_colors.sh
+# shellcheck disable=SC1090 source=./_colors.sh
 source "$E_BASH/_colors.sh"
-# shellcheck disable=SC1090 source=../.scripts/_logger.sh
+# shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
 
 # Global DRY_RUN, UNDO_RUN and SILENT, can be overridden per command with DRY_RUN_{SUFFIX}, UNDO_RUN_{SUFFIX}, SILENT_{SUFFIX}
