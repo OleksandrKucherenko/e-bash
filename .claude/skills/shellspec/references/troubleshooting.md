@@ -6,7 +6,7 @@ Systematic approaches to debugging test failures and preparing scripts for testa
 
 ### Decision Tree
 
-```
+```text
 Test Fails
 ├─> Run with --xtrace (execution trace)
 ├─> Use Dump directive (inspect output)
@@ -17,22 +17,26 @@ Test Fails
 
 ### Systematic Process
 
-**Step 1: Verify Spec Syntax**
+**Step 1: Verify Spec Syntax**:
+
 ```bash
 shellspec --syntax-check spec/my_spec.sh
 ```
 
-**Step 2: Enable Trace Mode**
+**Step 2: Enable Trace Mode**:
+
 ```bash
 shellspec --xtrace spec/my_spec.sh
 ```
 
-**Step 3: Inspect Generated Code**
+**Step 3: Inspect Generated Code**:
+
 ```bash
 shellspec --translate spec/my_spec.sh
 ```
 
-**Step 4: Use Dump**
+**Step 4: Use Dump**:
+
 ```bash
 It 'fails mysteriously'
   When call my_function "input"
@@ -41,7 +45,8 @@ It 'fails mysteriously'
 End
 ```
 
-**Step 5: Run Single Test**
+**Step 5: Run Single Test**:
+
 ```bash
 shellspec spec/my_spec.sh:42
 ```
@@ -82,6 +87,7 @@ shellspec --quick
 ### Differentiating Test vs. Script Issues
 
 **Diagnostic Questions**:
+
 1. Does test fail when run alone?
 2. Does test fail with `--xtrace`?
 3. Does script work manually?
@@ -175,7 +181,8 @@ End
 
 ### Refactoring Example
 
-**Before: Untestable**
+**Before: Untestable**:
+
 ```bash
 #!/bin/bash
 # Runs immediately when sourced
@@ -183,7 +190,8 @@ curl https://api.example.com > /tmp/data.json
 /usr/local/bin/process /tmp/data.json
 ```
 
-**After: Testable**
+**After: Testable**:
+
 ```bash
 #!/bin/bash
 
@@ -212,7 +220,8 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 ```
 
-**Test File**
+**Test File**:
+
 ```bash
 Describe 'testable_script'
   Include testable_script.sh
@@ -230,21 +239,24 @@ End
 
 ### Source Guard Patterns
 
-**Pattern 1: Bash/Zsh**
+**Pattern 1: Bash/Zsh**:
+
 ```bash
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   main "$@"
 fi
 ```
 
-**Pattern 2: POSIX Compatible**
+**Pattern 2: POSIX Compatible**:
+
 ```bash
 if [ "$(basename -- "$0")" = "myscript.sh" ]; then
   main "$@"
 fi
 ```
 
-**Pattern 3: ShellSpec Flag**
+**Pattern 3: ShellSpec Flag**:
+
 ```bash
 ${__SOURCED__:+return}
 main "$@"
@@ -253,18 +265,22 @@ main "$@"
 ## Common Error Messages
 
 ### "Command not found"
+
 **Cause**: Unmocked external command
 **Solution**: Add Mock block
 
 ### "Function not found"
+
 **Cause**: Script not sourced
 **Solution**: Add `Include` directive
 
 ### "Permission denied"
+
 **Cause**: Script not executable
 **Solution**: `chmod +x script.sh` or use `sh script.sh`
 
 ### "Variable not preserved"
+
 **Cause**: Variable in subshell
 **Solution**: Use `%preserve` directive
 
@@ -294,6 +310,7 @@ echo "Next: shellspec --xtrace $spec_file"
 ## Best Practices Checklist
 
 ### Do's
+
 ✅ Run tests in isolation first
 ✅ Use `--xtrace` to see execution
 ✅ Use `Dump` to inspect state
@@ -303,6 +320,7 @@ echo "Next: shellspec --xtrace $spec_file"
 ✅ Clean up in `AfterEach`
 
 ### Don'ts
+
 ❌ Ignore failed tests
 ❌ Use global state
 ❌ Hard-code paths
