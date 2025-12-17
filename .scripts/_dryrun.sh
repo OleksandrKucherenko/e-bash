@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-16
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -25,19 +25,36 @@ export SILENT=${SILENT:-false}
 function dryrun:exec() {
   local logger_suffix="$1"
   local is_silent="$2"
-  shift 2
-  local cmd="$1"
-  shift
+  local cmd="$3"
+  shift 3
+
+  # prevent command failure from exiting the script
   local output result immediate_exit_on_error color
   [[ $- == *e* ]] && immediate_exit_on_error=true || immediate_exit_on_error=false
   set +e
-  printf:${logger_suffix} "%s" "${cmd} $* "
+
+  # log command with arguments before execution (with logger prefix)
+  printf:${logger_suffix} "%s" "${cmd} $*"
+
+  # execute command and capture output and exit code
   output=$("$cmd" "$@" 2>&1)
   result=$?
+
+  # print command result (without logger prefix) as continuos output 
   [ $result -eq 0 ] && color=${cl_green} || color=${cl_red}
   printf " / code: ${color}%s${cl_reset}\n" "$result" >&2
-  [ -n "$output" ] && [ "$is_silent" != "true" ] && echo -e "$output" | log:Output
+
+  # log command output
+  [ -n "$output" ] && [ "$is_silent" != "true" ] && printf '%s\n' "$output" | log:Output
+
+  # restore immediate exit flag state
   [ "$immediate_exit_on_error" = true ] && set -e
+  
+  # return output to stdout (avoid emitting a newline when output is empty), unless in silent mode
+  [ -n "$output" ] && [ "$is_silent" != "true" ] && printf '%s\n' "$output" || true
+
+  # TODO: should we store output in global variable before return exit code?
+
   return $result
 }
 
@@ -86,14 +103,14 @@ function dry-run() {
     function rollback:${cmd}() {
       local is_undo=\${${undo_var}:-\${UNDO_RUN:-false}} is_dry=\${${dry_var}:-\${DRY_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
       if [ \"\$is_undo\" != true ]; then
-        echo:Rollback \"(dry) ${cmd} \$*\"
+        echo:Udry \"${cmd} \$*\"
         return 0
       fi
       if [ \"\$is_dry\" = true ]; then
-        echo:Rollback \"(dry) ${cmd} \$*\"
+        echo:Udry \"${cmd} \$*\"
         return 0
       fi
-      dryrun:exec Rollback \"\$is_silent\" ${cmd} \"\$@\"
+      dryrun:exec Undo \"\$is_silent\" ${cmd} \"\$@\"
     }
     function undo:${cmd}() { rollback:${cmd} \"\$@\"; }
     "
@@ -106,20 +123,20 @@ function rollback:func() {
   shift
   local is_undo=${UNDO_RUN:-false} is_dry=${DRY_RUN:-false} is_silent=${SILENT:-false}
   if [ "$is_undo" != true ]; then
-    echo:Rollback "(dry-func): ${func_name} $*"
+    echo:Undo "(dry-func): ${func_name} $*"
     if type "$func_name" &>/dev/null; then
       declare -f "$func_name" | tail -n +3 | sed '$d' | sed 's/^/    /' >&2
     fi
     return 0
   fi
   if [ "$is_dry" = true ]; then
-    echo:Rollback "(dry-func): ${func_name} $*"
+    echo:Undo "(dry-func): ${func_name} $*"
     if type "$func_name" &>/dev/null; then
       declare -f "$func_name" | tail -n +3 | sed '$d' | sed 's/^/    /' >&2
     fi
     return 0
   fi
-  dryrun:exec Rollback "$is_silent" "$func_name" "$@"
+  dryrun:exec Undo "$is_silent" "$func_name" "$@"
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
@@ -129,7 +146,8 @@ ${__SOURCED__:+return}
 
 logger:init exec "${cl_cyan}execute: ${cl_reset}" ">&2"
 logger:init dry "${cl_green}dry run: ${cl_reset}" ">&2"
-logger:init rollback "${cl_yellow}undoing: ${cl_reset}" ">&2"
+logger:init udry "${cl_purple}on undo: ${cl_reset}" ">&2"
+logger:init undo "${cl_yellow}undoing: ${cl_reset}" ">&2"
 logger:init output "${cl_gray}| ${cl_reset}" ">&2"
 
 logger loader "$@" # initialize logger
