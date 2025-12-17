@@ -146,6 +146,7 @@ jobs:
           brew cleanup
 
       - name: Run shellspec Tests (chunk ${{ matrix.chunk }})
+        timeout-minutes: 10
         run: |
           # Get test files for this chunk using configured granularity
           CHUNK_FILES=$(./.github/scripts/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY_MACOS }})
@@ -363,6 +364,7 @@ jobs:
           brew cleanup
 
       - name: Run shellspec tests with coverage (chunk ${{ matrix.chunk }})
+        timeout-minutes: 10
         run: |
           # Get test files for this chunk using configured granularity
           CHUNK_FILES=$(./.github/scripts/chunk-tests.sh 4 ${{ matrix.chunk }} --granularity=${{ env.CHUNK_GRANULARITY }})
