@@ -82,7 +82,11 @@ function array:qsort() {
   local array=("$@")
   local length=${#array[@]}
 
-  if ((length <= 1)); then
+  if ((length == 0)); then
+    return
+  fi
+
+  if ((length == 1)); then
     echo "${array[@]}"
     return
   fi
