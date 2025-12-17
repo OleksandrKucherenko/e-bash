@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-28
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -141,6 +141,7 @@ function semver:parse() {
   local output_variable="${2:-"__semver_parse_result"}"
   local SEMVER_REGEX="$(semver:grep)"
   declare -A parsed=(["version"]="" ["version-core"]="" ["pre-release"]="" ["build"]="")
+  local i=0 # make $i local to avoid conflicts
 
   if [[ "$version" =~ $SEMVER_REGEX ]]; then
     # debug output
@@ -241,6 +242,7 @@ function semver:increase:patch() {
 function semver:compare() {
   local version1="$1"
   local version2="$2"
+  local i=0 # make $i local to avoid conflicts
 
   # quick check for equality
   if [[ "$version1" == "$version2" ]]; then return 0; fi
@@ -304,19 +306,21 @@ function semver:compare() {
     if [[ "${#parts1[@]}" -gt "${#parts2[@]}" ]]; then return 1; fi
     if [[ "${#parts1[@]}" -lt "${#parts2[@]}" ]]; then return 2; fi
 
-    # numbers are equal? but how? Only META left uncomared
+    # numbers are equal? but how? Only META left un-compared
     echo:Semver "Warning: verify versions, are is META an only difference: $version1 $version2"
     return 0
   else
     echo:Semver "Warning: No pre-release part in versions: $version1 $version2"
 
     # Build metadata MUST be ignored when determining version precedence. (Rule #10)
-    # So versions are equal during the comparisson!
+    # So versions are equal during the comparison!
     return 0
   fi
 
   # We should never reach this point!
+  # shellcheck disable=SC2059
   echo:Semver "Error: $version1 $version2" >&2
+  # shellcheck disable=SC2059
   return 3 # error
 }
 
@@ -355,6 +359,7 @@ function semver:constraints:simple() {
   # remove whitespaces during assigning to local variable
   local expression="${1//[[:space:]]/}"
   local left="" operator="" right=""
+  local i=0 # make $i local to avoid conflicts
 
   # split expression to left, operator and right parts
   if [[ "$expression" =~ ^([^<>=!]+)(!=|>=|<=|>|=|<)(.+)$ ]]; then

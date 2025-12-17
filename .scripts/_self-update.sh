@@ -171,11 +171,11 @@ function self-update:version:tags() {
 
   # create sorted array of versions
   while IFS= read -r line; do
-    [ -z "$line" ] && continue # skip empty line
+    [[ -z "${line//[[:space:]]/}" ]] && continue # skip empty line
     __REPO_VERSIONS+=("$line")
   done < <(array:qsort "compare:versions" "${versions[@]}")
 
-  popd &>/dev/null || exit 1
+  popd &>/dev/null || return 1
 }
 
 # find the highest version tag in git repo that matches version expression/constraints
@@ -190,8 +190,9 @@ function self-update:version:find() {
 
   local version=""
   local last=${#__REPO_VERSIONS[@]} && ((last--))
-  for ((i = last; i >= 0; i--)); do
-    version="${__REPO_VERSIONS[$i]}"
+  local iLast # FIXME: do not reuse `i` variable, its a global variable
+  for ((iLast = last; iLast >= 0; iLast--)); do
+    version="${__REPO_VERSIONS[$iLast]}"
 
     if semver:constraints "${version}" "${constraints}"; then
       # found the highest version tag that matches version expression
@@ -230,8 +231,9 @@ function self-update:version:find:latest_stable() {
   # iterate from highest to lowest to find first stable version (no pre-release)
   local version=""
   local last=${#__REPO_VERSIONS[@]} && ((last--))
-  for ((i = last; i >= 0; i--)); do
-    version="${__REPO_VERSIONS[$i]}"
+  local iStable # FIXME: do not reuse `i` variable, its a global variable
+  for ((iStable = last; iStable >= 0; iStable--)); do
+    version="${__REPO_VERSIONS[$iStable]}"
 
     # check if version has no pre-release part (no dash after version numbers)
     if ! echo "$version" | grep -E -- "-" >/dev/null; then

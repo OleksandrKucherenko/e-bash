@@ -54,6 +54,16 @@ demo:step "Extract latest version"
 self-update:version:get:latest
 
 # ============================================================================
+# Core functions check
+# ============================================================================
+
+demo:section "CORE FUNCTIONS CHECK"
+demo:step "1. self-update:version:find"
+
+# set -x
+self-update:version:find "1.0.0"
+
+# ============================================================================
 # VERSION RESOLUTION DEMONSTRATIONS
 # ============================================================================
 

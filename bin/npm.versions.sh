@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-10
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -233,6 +233,7 @@ function parse_range() {
       ((end--))
       
       # Add all versions in range
+      local i=0 # make $i local to avoid conflicts
       for ((i=start; i<=end; i++)); do
         if [[ $i -ge 0 && $i -lt ${#versions[@]} ]]; then
           selected+=("$i")

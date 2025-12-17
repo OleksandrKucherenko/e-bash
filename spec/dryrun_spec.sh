@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shell: sh altsh=shellspec
+# shell: bash altsh=shellspec
 # shellcheck shell=bash
 # shellcheck disable=SC2317,SC2016,SC2288
 
