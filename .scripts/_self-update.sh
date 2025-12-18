@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
+## Last revisit: 2025-12-18
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -368,7 +368,11 @@ function self-update:self:version() {
     echo "${bind_version}" # expected tag: v1.0.0
   else                     # file content
     # try to extract version from script copyright comments, expected `## Version: 1.0.0`
-    local file_version=$(grep -E "^## Version: ${__VERSION_PATTERN}$" "${script_folder}/${script_file}" | sed -E "s/^## Version: (.*)$/\1/")
+    local file_version=$(
+      grep -E "^## Version: ${__VERSION_PATTERN}$" "${script_folder}/${script_file}" \
+        | head -n 1 \
+        | sed -E "s/^## Version: (.*)$/\1/"
+    )
 
     if [ -n "${file_version}" ]; then
       echo:Version "copyright: ${cl_blue}${script_file}${cl_reset} to ${cl_yellow}${file_version}${cl_reset}" >&2

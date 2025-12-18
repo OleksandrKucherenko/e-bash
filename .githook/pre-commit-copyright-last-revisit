@@ -67,6 +67,9 @@ for FILE in "${STAGED_FILES[@]}"; do
   # Skip if file doesn't exist (could happen with some git operations)
   [ ! -f "$FILE" ] && continue
 
+  # Never mutate test fixtures (keeps specs stable)
+  [[ "$FILE" == spec/fixtures/* ]] && continue
+
   # Check if file contains "## Last revisit:" line
   if ggrep -q "## Last revisit:" "$FILE"; then
     # Update the "## Last revisit:" line with current date

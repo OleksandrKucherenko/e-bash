@@ -205,6 +205,9 @@ for FILE in "${STAGED_SH_FILES[@]}"; do
   # Skip if file doesn't exist
   [[ ! -f "$FILE" ]] && continue
 
+  # Never mutate test fixtures (keeps specs stable)
+  [[ "$FILE" == spec/fixtures/* ]] && continue
+
   # Verify copyright in file
   verify_copyright "$FILE"
   copyright_status=$?
