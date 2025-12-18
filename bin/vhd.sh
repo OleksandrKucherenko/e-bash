@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-26
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -238,6 +238,7 @@ function parse_range() {
             fi
 
             # Add all numbers in the range
+            local i=0 # make $i local to avoid conflicts
             for ((i = start; i <= end; i++)); do
                 indices+=("$i")
             done

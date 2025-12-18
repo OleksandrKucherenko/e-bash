@@ -2,7 +2,7 @@
 # shellcheck disable=SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -38,6 +38,7 @@ function parse_file() {
   mapfile -t array < <(cat "${file}")
 
   # get list of exports from direnv file
+  local i=0 # make $i local to avoid conflicts
   for ((i = 0; i < ${#array[@]}; i++)); do
     line=${array[$i]}
     if [[ $line == export\ * ]]; then

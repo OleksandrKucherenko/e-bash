@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-02
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -12,6 +12,7 @@
 
 function report:colors() {
     local contrast=0 reset="" nl=""
+    local i=0 # make $i local to avoid conflicts
 
     reset=$(printf "\033[0m")
 

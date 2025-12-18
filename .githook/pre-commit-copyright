@@ -3,13 +3,53 @@
 
 # pre-commit hook to verify copyright notices in *.sh files
 
-VERSION="1.0.0"
-
 # Get the current date in YYYY-MM-DD format
 CURRENT_DATE=$(date +%Y-%m-%d)
 
 # Get the repository root directory
 REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# Auto-detect project version using semantic version calculator
+# This computes the version based on conventional commits since last tag
+detect_project_version() {
+  local semver_script="$REPO_ROOT/bin/git.semantic-version.sh"
+
+  # Check if semantic version script exists
+  if [[ ! -f "$semver_script" ]]; then
+    # Fallback to last git tag if script not found
+    local last_tag=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+    if [[ -n "$last_tag" ]] && [[ "$last_tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      echo "$last_tag"
+    else
+      echo "1.0.0"
+    fi
+    return
+  fi
+
+  # Compute version from conventional commits (this is the source of truth)
+  # Run with default auto-detection strategy to get full computed version
+  # Strip ANSI color codes before parsing to handle colored output
+  local computed_version=$("$semver_script" 2>/dev/null | \
+    grep "Final Version:" | \
+    sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | \
+    sed -E 's/.*Final Version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+
+  # Return computed version or fallback to git tag / 1.0.0
+  if [[ -n "$computed_version" ]] && [[ "$computed_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "$computed_version"
+  else
+    # Fallback to last git tag
+    local last_tag=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+    if [[ -n "$last_tag" ]] && [[ "$last_tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      echo "$last_tag"
+    else
+      echo "1.0.0"
+    fi
+  fi
+}
+
+# Detect the current project version
+VERSION=$(detect_project_version)
 
 # Path to the COPYRIGHT template file
 COPYRIGHT_TEMPLATE="$REPO_ROOT/COPYRIGHT"
@@ -19,6 +59,7 @@ declare -a STAGED_SH_FILES
 
 readonly cl_grey=$(tput setaf 8)
 readonly cl_gray=$cl_grey # alias to the same color
+readonly cl_cyan=$(tput setaf 6)
 readonly cl_reset=$(tput sgr0)
 
 # Check if HOOK_TEST environment variable is set (TEST mode)
@@ -149,6 +190,9 @@ if [[ ${#STAGED_SH_FILES[@]} -eq 0 ]]; then
   exit 0
 fi
 
+# Show detected version (helpful for debugging)
+echo "${cl_grey}Copyright hook using version: ${cl_cyan}${VERSION}${cl_reset}"
+
 # Flag to track if we should abort the commit
 ABORT_COMMIT=0
 
@@ -160,6 +204,9 @@ declare -a OLD_FORMAT_FILES=()
 for FILE in "${STAGED_SH_FILES[@]}"; do
   # Skip if file doesn't exist
   [[ ! -f "$FILE" ]] && continue
+
+  # Never mutate test fixtures (keeps specs stable)
+  [[ "$FILE" == spec/fixtures/* ]] && continue
 
   # Verify copyright in file
   verify_copyright "$FILE"

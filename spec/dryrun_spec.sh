@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# shell: sh altsh=shellspec
+# shell: bash altsh=shellspec
 # shellcheck shell=bash
 # shellcheck disable=SC2317,SC2016,SC2288
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -60,9 +60,29 @@ Mock echo:Rollback
   echo "$@"
 End
 
+Mock echo:Undo
+  # Output to stdout for undo messages
+  echo "$@"
+End
+
+Mock printf:Undo
+  # Redirect to stderr to match actual behavior
+  printf "$@" >&2
+End
+
+Mock echo:Udry
+  # Output to stdout for undo dry-run messages with prefix
+  echo "(dry) $*"
+End
+
+Mock printf:Udry
+  # Redirect to stderr to match actual behavior
+  printf "$@" >&2
+End
+
 Mock log:Output
-  # Pass through the output as expected by the tests
-  cat
+  # Redirect to stderr to avoid duplicate output on stdout
+  cat >&2
 End
 
 Mock echo:Loader

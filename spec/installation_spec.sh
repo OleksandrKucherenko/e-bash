@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# shell: sh altsh=shellspec
+# shell: bash altsh=shellspec
 # shellcheck shell=bash
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-12
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -188,8 +188,14 @@ Describe 'bin/install.e-bash.sh /'
 
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
-  no_colors_error() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
-  no_colors_output() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+  no_colors_error() { 
+    # Use printf to create the escape sequences for better portability
+    echo -n "$2" | sed -E "s/$(printf '\033')\[[0-9;]*[A-Za-z]//g; s/$(printf '\033')\([A-Z]//g; s/$(printf '\017')//g" | tr -s ' '
+  }
+  no_colors_output() { 
+    # Use printf to create the escape sequences for better portability
+    echo -n "$1" | sed -E "s/$(printf '\033')\[[0-9;]*[A-Za-z]//g; s/$(printf '\033')\([A-Z]//g; s/$(printf '\017')//g" | tr -s ' '
+  }
 
   Describe 'Check Prerequisites /'
     Before 'temp_repo; cp_install'

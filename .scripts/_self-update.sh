@@ -2,10 +2,42 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2024-01-05
+## Last revisit: 2025-12-18
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+##
+## Purpose:
+##   Self-update functionality for projects using e-bash scripts library.
+##   Allows automatic detection of e-bash source updates and file-by-file
+##   library updates. Designed for BASH scripts built on top of e-bash.
+##
+## Compatibility:
+##   Works with bin/install.e-bash.sh - both use ${HOME}/.e-bash/ global directory.
+##   - install.e-bash.sh: Supports local (project) and global (HOME) installations
+##   - self-update.sh: Works only with global part (manages ~/.e-bash/.versions/)
+##   Self-update creates symlinks from project files to versioned global files.
+##
+## Main Usage Pattern:
+##   The recommended approach is to invoke self-update on script exit:
+##     trap "self-update '^1.0.0'" EXIT
+##
+## How It Works:
+##   1. Maintains local git repo at ~/.e-bash/ with multiple version worktrees
+##   2. Creates symbolic links from project .scripts/ to version-specific files
+##   3. Performs file-by-file updates with automatic backup creation
+##   4. Verifies updates using SHA1 hash comparison
+##   5. Supports rollback to previous versions or backup files
+##
+## Supported Version Expressions:
+##   - 'latest'           - latest stable version (no pre-release tags)
+##   - '*' or 'next'      - highest version tag (including alpha, beta, rc)
+##   - 'branch:{name}'    - update from specific branch
+##   - 'tag:{name}'       - update to specific tag
+##   - '^1.0.0'           - minor and patch releases (>= 1.0.0 < 2.0.0)
+##   - '~1.0.0'           - patch releases only (>= 1.0.0 < 1.1.0)
+##   - '>1.0.0 <=1.5.0'   - version range with comparison operators
+##   - '1.0.0'            - exact version match
 
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -50,7 +82,11 @@ function array:qsort() {
   local array=("$@")
   local length=${#array[@]}
 
-  if ((length <= 1)); then
+  if ((length == 0)); then
+    return
+  fi
+
+  if ((length == 1)); then
     echo "${array[@]}"
     return
   fi
@@ -135,11 +171,11 @@ function self-update:version:tags() {
 
   # create sorted array of versions
   while IFS= read -r line; do
-    [ -z "$line" ] && continue # skip empty line
+    [[ -z "${line//[[:space:]]/}" ]] && continue # skip empty line
     __REPO_VERSIONS+=("$line")
   done < <(array:qsort "compare:versions" "${versions[@]}")
 
-  popd &>/dev/null || exit 1
+  popd &>/dev/null || return 1
 }
 
 # find the highest version tag in git repo that matches version expression/constraints
@@ -154,8 +190,9 @@ function self-update:version:find() {
 
   local version=""
   local last=${#__REPO_VERSIONS[@]} && ((last--))
-  for ((i = last; i >= 0; i--)); do
-    version="${__REPO_VERSIONS[$i]}"
+  local iLast # FIXME: do not reuse `i` variable, its a global variable
+  for ((iLast = last; iLast >= 0; iLast--)); do
+    version="${__REPO_VERSIONS[$iLast]}"
 
     if semver:constraints "${version}" "${constraints}"; then
       # found the highest version tag that matches version expression
@@ -181,6 +218,29 @@ function self-update:version:find:highest_tag() {
   local version="${__REPO_VERSIONS[$last]}"
 
   # old: local version=$(git tag -l --sort="v:refname" | grep -i -E "^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-zA-Z]+(\.[a-z0-9]+)?)?$" | sort -V | tail -n1)
+
+  # resolve version to real tag name
+  echo "${__REPO_MAPPING[$version]}"
+}
+
+# find latest stable version tag (no pre-release tags like alpha, beta, rc)
+function self-update:version:find:latest_stable() {
+  # extract tags if they are not extracted yet
+  [ ${#__REPO_VERSIONS[@]} -eq 0 ] && self-update:version:tags
+
+  # iterate from highest to lowest to find first stable version (no pre-release)
+  local version=""
+  local last=${#__REPO_VERSIONS[@]} && ((last--))
+  local iStable # FIXME: do not reuse `i` variable, its a global variable
+  for ((iStable = last; iStable >= 0; iStable--)); do
+    version="${__REPO_VERSIONS[$iStable]}"
+
+    # check if version has no pre-release part (no dash after version numbers)
+    if ! echo "$version" | grep -E -- "-" >/dev/null; then
+      # found the highest stable version
+      break
+    fi
+  done
 
   # resolve version to real tag name
   echo "${__REPO_MAPPING[$version]}"
@@ -308,7 +368,11 @@ function self-update:self:version() {
     echo "${bind_version}" # expected tag: v1.0.0
   else                     # file content
     # try to extract version from script copyright comments, expected `## Version: 1.0.0`
-    local file_version=$(grep -E "^## Version: ${__VERSION_PATTERN}$" "${script_folder}/${script_file}" | sed -E "s/^## Version: (.*)$/\1/")
+    local file_version=$(
+      grep -E "^## Version: ${__VERSION_PATTERN}$" "${script_folder}/${script_file}" \
+        | head -n 1 \
+        | sed -E "s/^## Version: (.*)$/\1/"
+    )
 
     if [ -n "${file_version}" ]; then
       echo:Version "copyright: ${cl_blue}${script_file}${cl_reset} to ${cl_yellow}${file_version}${cl_reset}" >&2
@@ -489,6 +553,33 @@ function self-update:initialize() {
   self-update:version:get:first
 }
 
+# Resolve version expression to actual version/tag/branch
+# This function handles all supported version notation patterns
+function self-update:version:resolve() {
+  local version_expression="$1"
+  local resolved_version=""
+
+  # Handle special version notations
+  if [[ "$version_expression" == "latest" ]]; then
+    # latest stable version (no pre-release tags)
+    resolved_version=$(self-update:version:find:latest_stable)
+  elif [[ "$version_expression" == "*" || "$version_expression" == "next" ]]; then
+    # any highest version tag (including alpha, beta, rc)
+    resolved_version=$(self-update:version:find:highest_tag)
+  elif [[ "$version_expression" =~ ^branch:(.+)$ ]]; then
+    # branch notation: branch:master, branch:develop, etc.
+    resolved_version="${BASH_REMATCH[1]}"
+  elif [[ "$version_expression" =~ ^tag:(.+)$ ]]; then
+    # tag notation: tag:v1.0.0, tag:v2.0.0-beta, etc.
+    resolved_version="${BASH_REMATCH[1]}"
+  else
+    # standard semver constraint expression
+    resolved_version=$(self-update:version:find "$version_expression")
+  fi
+
+  echo "$resolved_version"
+}
+
 # Entry point for self-update
 function self-update() {
   local version_expression="$1"
@@ -500,8 +591,10 @@ function self-update() {
   # always, get latest version on disk
   self-update:version:get:latest
 
-  # find version tag that matches version expression
-  local upgrade_version=$(self-update:version:find "$version_expression")
+  # resolve version expression to actual version/tag/branch
+  local upgrade_version=$(self-update:version:resolve "$version_expression")
+
+  # ensure version is available locally
   self-update:version:has "${upgrade_version}" || self-update:version:get "${upgrade_version}"
 
   local current_version=$(self-update:self:version "${file}")

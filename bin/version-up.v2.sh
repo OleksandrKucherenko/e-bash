@@ -3,7 +3,7 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-07-06
+## Last revisit: 2025-12-17
 ## Version: 3.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -552,6 +552,7 @@ function set_stage() {
 
 # compose version from PARTS and output it to STDOUT
 function compose() {
+    local i=0 # make $i local to avoid conflicts
 	for i in "${!PARTS[@]}"; do echo:Dbg "$i: ${PARTS[$i]}"; done
 	declare -A V=(
 		["major"]="${PARTS["major"]}"

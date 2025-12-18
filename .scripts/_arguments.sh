@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-14
+## Last revisit: 2025-12-17
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -93,6 +93,7 @@ function parse:mapping() {
   declare -A -g index_to_keys && index_to_keys=()       # index-to-keys_definition
 
   # build parameters mapping
+  local i=0 # make $i local to avoid conflicts
   for i in "${!definitions[@]}"; do
     # TODO (olku): validate the pattern format, otherwise throw an error
     # shellcheck disable=SC2206

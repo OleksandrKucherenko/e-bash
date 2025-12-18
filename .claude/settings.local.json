@@ -62,7 +62,8 @@
       "Bash(perl -i -pe:*)",
       "WebFetch(domain:lefthook.dev)",
       "Bash(mkdir:*)",
-      "Read(//home/linuxbrew/.linuxbrew/Cellar/shellspec/0.28.1/lib/shellspec/lib/**)"
+      "Read(//home/linuxbrew/.linuxbrew/Cellar/shellspec/0.28.1/lib/shellspec/lib/**)",
+      "Bash(array:qsort \"compare:versions\" \"2.0.0\" \"1.0.0\" \"1.5.0\")"
     ],
     "deny": [],
     "ask": []
