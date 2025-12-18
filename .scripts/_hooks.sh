@@ -18,7 +18,7 @@ if [[ -z ${HOOKS_DEFINED+x} ]]; then declare -g -A HOOKS_DEFINED; fi
 
 # default hooks directory (can be overridden)
 if [[ -z ${HOOKS_DIR+x} ]]; then
-  declare -g HOOKS_DIR=".hooks"
+  declare -g HOOKS_DIR="ci-cd"
 fi
 
 # default hooks function prefix
@@ -72,17 +72,23 @@ function hooks:define() {
 #
 # Execution order:
 #   1. Check if hook is defined via hooks:define
-#   2. Check if function hook:{name} exists
-#   3. Check if script .hooks/{name}.sh exists
-#   4. Execute and return result
+#   2. Execute function hook:{name} if it exists
+#   3. Find and execute all matching scripts in ci-cd/{hook_name}-*.sh or ci-cd/{hook_name}_*.sh
+#   4. Scripts are executed in alphabetical order
+#
+# Script naming patterns:
+#   - {hook_name}-{purpose}.sh
+#   - {hook_name}_{NN}_{purpose}.sh (recommended for ordered execution)
 #
 # Returns:
-#   Hook's exit code or 0 if not implemented
-#   Hook's stdout is passed through
+#   Last hook's exit code or 0 if not implemented
+#   All hooks' stdout is passed through
 #
 function on:hook() {
   local hook_name="$1"
   shift
+
+  local last_exit_code=0
 
   # check if hook is defined
   if [[ -z ${HOOKS_DEFINED[$hook_name]+x} ]]; then
@@ -90,24 +96,36 @@ function on:hook() {
     return 0
   fi
 
-  # check for function implementation: hook:{name}
+  # execute function implementation first: hook:{name}
   local func_name="${HOOKS_PREFIX}${hook_name}"
   if declare -F "$func_name" >/dev/null 2>&1; then
-    # execute the hook function
     "$func_name" "$@"
-    return $?
+    last_exit_code=$?
   fi
 
-  # check for script implementation: .hooks/{name}.sh
-  local script_path="${HOOKS_DIR}/${hook_name}.sh"
-  if [[ -f "$script_path" ]] && [[ -x "$script_path" ]]; then
-    # execute the hook script
-    "$script_path" "$@"
-    return $?
+  # find and execute all matching script implementations
+  # patterns: {hook_name}-*.sh or {hook_name}_*.sh
+  if [[ -d "$HOOKS_DIR" ]]; then
+    local -a hook_scripts=()
+
+    # find scripts matching the patterns
+    while IFS= read -r -d '' script; do
+      hook_scripts+=("$script")
+    done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -executable -print0 2>/dev/null | sort -z)
+
+    # execute each script in alphabetical order
+    for script in "${hook_scripts[@]}"; do
+      "$script" "$@"
+      last_exit_code=$?
+
+      # optionally stop on first failure (uncomment if needed)
+      # if [[ $last_exit_code -ne 0 ]]; then
+      #   return $last_exit_code
+      # fi
+    done
   fi
 
-  # hook defined but not implemented, silent skip
-  return 0
+  return $last_exit_code
 }
 
 #
@@ -130,24 +148,33 @@ function hooks:list() {
 
   echo "Defined hooks:"
   for hook_name in "${!HOOKS_DEFINED[@]}"; do
-    local status="not implemented"
-    local impl_type=""
+    local implementations=()
 
     # check if implemented as function
     local func_name="${HOOKS_PREFIX}${hook_name}"
     if declare -F "$func_name" >/dev/null 2>&1; then
-      status="implemented"
-      impl_type="(function)"
+      implementations+=("function")
     fi
 
-    # check if implemented as script
-    local script_path="${HOOKS_DIR}/${hook_name}.sh"
-    if [[ -f "$script_path" ]] && [[ -x "$script_path" ]]; then
-      status="implemented"
-      impl_type="(script)"
+    # check for script implementations
+    if [[ -d "$HOOKS_DIR" ]]; then
+      local script_count=0
+      while IFS= read -r -d '' script; do
+        ((script_count++))
+      done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -executable -print0 2>/dev/null)
+
+      if [[ $script_count -gt 0 ]]; then
+        implementations+=("${script_count} script(s)")
+      fi
     fi
 
-    echo "  - $hook_name: $status $impl_type"
+    # format output
+    if [[ ${#implementations[@]} -eq 0 ]]; then
+      echo "  - $hook_name: not implemented"
+    else
+      local impl_str=$(IFS=', '; echo "${implementations[*]}")
+      echo "  - $hook_name: implemented ($impl_str)"
+    fi
   done
 
   return 0
@@ -202,10 +229,17 @@ function hooks:has_implementation() {
     return 0
   fi
 
-  # check for script implementation
-  local script_path="${HOOKS_DIR}/${hook_name}.sh"
-  if [[ -f "$script_path" ]] && [[ -x "$script_path" ]]; then
-    return 0
+  # check for script implementations (any matching pattern)
+  if [[ -d "$HOOKS_DIR" ]]; then
+    local script_count=0
+    while IFS= read -r -d '' script; do
+      ((script_count++))
+      break  # found at least one, no need to count all
+    done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -executable -print0 2>/dev/null)
+
+    if [[ $script_count -gt 0 ]]; then
+      return 0
+    fi
   fi
 
   return 1

@@ -241,13 +241,75 @@ echo "  Exit code: $failure_code ${cl_red}(failure)${cl_reset}"
 echo ""
 
 # ============================================================================
-# Example 9: Configuration Options
+# Example 9: CI/CD Multiple Script Pattern
 # ============================================================================
-echo "${cl_cyan}${st_b}Example 9: Configuration Options${st_no_b}${cl_reset}"
+echo "${cl_cyan}${st_b}Example 9: CI/CD Multiple Script Pattern${st_no_b}${cl_reset}"
+echo "----------------------------------------"
+
+# Create temporary ci-cd directory for demo
+DEMO_HOOKS_DIR="/tmp/demo_cicd_$$"
+mkdir -p "$DEMO_HOOKS_DIR"
+export HOOKS_DIR="$DEMO_HOOKS_DIR"
+
+hooks:define deploy
+
+# Create multiple hook scripts with numbered pattern
+cat > "$DEMO_HOOKS_DIR/deploy_01_backup.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "  [Step 01] Creating backup..."
+EOF
+
+cat > "$DEMO_HOOKS_DIR/deploy_02_stop.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "  [Step 02] Stopping service..."
+EOF
+
+cat > "$DEMO_HOOKS_DIR/deploy_03_update.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "  [Step 03] Updating files..."
+EOF
+
+cat > "$DEMO_HOOKS_DIR/deploy_04_start.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "  [Step 04] Starting service..."
+EOF
+
+cat > "$DEMO_HOOKS_DIR/deploy-verify.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "  [Verify] Health check..."
+EOF
+
+chmod +x "$DEMO_HOOKS_DIR"/*.sh
+
+echo "Created multiple hook scripts in: $HOOKS_DIR"
+echo "  deploy_01_backup.sh"
+echo "  deploy_02_stop.sh"
+echo "  deploy_03_update.sh"
+echo "  deploy_04_start.sh"
+echo "  deploy-verify.sh"
+echo ""
+
+echo "Executing: ${cl_cyan}on:hook deploy${cl_reset}"
+on:hook deploy
+
+echo ""
+echo "Listing hooks:"
+hooks:list
+
+# Cleanup
+rm -rf "$DEMO_HOOKS_DIR"
+export HOOKS_DIR="ci-cd"
+
+echo ""
+
+# ============================================================================
+# Example 10: Configuration Options
+# ============================================================================
+echo "${cl_cyan}${st_b}Example 10: Configuration Options${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
 echo "Hook system configuration:"
-echo "  HOOKS_DIR=${cl_yellow}${HOOKS_DIR}${cl_reset} (default: .hooks)"
+echo "  HOOKS_DIR=${cl_yellow}${HOOKS_DIR}${cl_reset} (default: ci-cd)"
 echo "  HOOKS_PREFIX=${cl_yellow}${HOOKS_PREFIX}${cl_reset} (default: hook:)"
 echo ""
 echo "These can be customized before sourcing the module:"
@@ -269,6 +331,7 @@ echo "  • ${cl_green}Silent skipping${cl_reset} of undefined/unimplemented hoo
 echo "  • ${cl_green}Parameter passing${cl_reset} to hook implementations"
 echo "  • ${cl_green}Return value capture${cl_reset} for decision-making"
 echo "  • ${cl_green}Introspection capabilities${cl_reset} for dynamic behavior"
+echo "  • ${cl_green}Multiple scripts per hook${cl_reset} with ci-cd pattern"
 echo ""
 echo "Usage patterns:"
 echo "  1. ${cl_cyan}hooks:define${cl_reset} hook1 hook2 ...    # Declare hooks"
@@ -276,6 +339,11 @@ echo "  2. ${cl_cyan}on:hook${cl_reset} hook_name [params]     # Execute hook"
 echo "  3. ${cl_cyan}hooks:list${cl_reset}                     # List all hooks"
 echo "  4. ${cl_cyan}hooks:is_defined${cl_reset} hook_name    # Check if defined"
 echo "  5. ${cl_cyan}hooks:has_implementation${cl_reset} name # Check if implemented"
+echo ""
+echo "CI/CD Script Naming Patterns:"
+echo "  • ${cl_yellow}ci-cd/{hook_name}-{purpose}.sh${cl_reset}        - Simple pattern"
+echo "  • ${cl_yellow}ci-cd/{hook_name}_{NN}_{purpose}.sh${cl_reset}   - Numbered pattern (recommended)"
+echo "  • Scripts execute in ${cl_cyan}alphabetical order${cl_reset}"
 echo ""
 echo "For more information, see: ${cl_yellow}docs/public/hooks.md${cl_reset}"
 echo ""

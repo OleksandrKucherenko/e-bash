@@ -68,15 +68,24 @@ hook:begin() {
 # The hook will be automatically called when on:hook begin is executed
 ```
 
-**Method 2: Script-based (external files)**
+**Method 2: Script-based (external files in ci-cd folder)**
 ```bash
-# Create .hooks/begin.sh
-cat > .hooks/begin.sh <<'EOF'
+# Create ci-cd/begin-init.sh
+mkdir -p ci-cd
+cat > ci-cd/begin-init.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Initialization from external script"
 EOF
 
-chmod +x .hooks/begin.sh
+chmod +x ci-cd/begin-init.sh
+
+# You can have multiple scripts per hook (executed in alphabetical order)
+cat > ci-cd/begin_01_setup.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Step 1: Setup"
+EOF
+
+chmod +x ci-cd/begin_01_setup.sh
 ```
 
 ## Overview
@@ -134,7 +143,7 @@ fi
 
 ### Hook Implementation Methods
 
-**Priority Order**: When both function and script implementations exist, the function takes precedence.
+**Execution Order**: Function implementations execute first, then all matching scripts in alphabetical order.
 
 1. **Function Implementation** (`hook:{name}`)
    ```bash
@@ -143,12 +152,31 @@ fi
    }
    ```
 
-2. **Script Implementation** (`.hooks/{name}.sh`)
+2. **Multiple Script Implementations** (`ci-cd/{hook_name}-*.sh` or `ci-cd/{hook_name}_*.sh`)
+
+   **Naming Patterns:**
+   - `{hook_name}-{purpose}.sh` - Simple descriptive naming
+   - `{hook_name}_{NN}_{purpose}.sh` - Numbered for explicit ordering (recommended)
+
    ```bash
-   # File: .hooks/begin.sh
+   # File: ci-cd/begin-setup.sh
    #!/usr/bin/env bash
-   echo "Script-based hook"
+   echo "Script 1: Setup"
+
+   # File: ci-cd/begin_01_init.sh
+   #!/usr/bin/env bash
+   echo "Script 2: Init (executed before begin_02)"
+
+   # File: ci-cd/begin_02_validate.sh
+   #!/usr/bin/env bash
+   echo "Script 3: Validate"
    ```
+
+   **Key Points:**
+   - All scripts matching the pattern are executed
+   - Scripts execute in **alphabetical order**
+   - Use numbered prefixes (`01`, `02`, `10`) for explicit ordering
+   - Both dash (`-`) and underscore (`_`) separators are supported
 
 ### Hook Introspection
 
@@ -363,7 +391,20 @@ on:hook end
 7. **Use function hooks for simple logic**, script hooks for complex operations
 8. **Test hook implementations independently** before integrating
 9. **Consider hook execution order** when defining multiple hooks
-10. **Make external hook scripts executable**: `chmod +x .hooks/*.sh`
+10. **Make external hook scripts executable**: `chmod +x ci-cd/*.sh`
+
+### CI/CD Hook Scripting Best Practices
+
+11. **Use numbered prefixes for ordered execution**: `begin_01_init.sh`, `begin_02_validate.sh`
+12. **Pad numbers with leading zeros**: `01`, `02`, ... `10`, `11` ensures proper alphabetical sorting
+13. **Use descriptive names after the number**: `deploy_10_backup.sh`, `deploy_20_update.sh`
+14. **Group related hooks**: Keep all `begin` hooks together, all `deploy` hooks together
+15. **Make scripts idempotent**: Scripts should be safe to run multiple times
+16. **Exit with meaningful codes**: `0` for success, non-zero for failure
+17. **Log what each script does**: Help debugging by echoing script actions
+18. **Keep scripts focused**: Each script should do one specific task
+19. **Test scripts independently**: Ensure each script works standalone
+20. **Use consistent naming**: Choose either dash or underscore and stick with it
 
 ## Reference
 
@@ -371,8 +412,14 @@ on:hook end
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HOOKS_DIR` | `.hooks` | Directory containing hook scripts |
+| `HOOKS_DIR` | `ci-cd` | Directory containing hook scripts |
 | `HOOKS_PREFIX` | `hook:` | Prefix for hook function names |
+
+**Note**: You can override `HOOKS_DIR` before sourcing the module:
+```bash
+export HOOKS_DIR="my-hooks"  # Use custom directory
+source "$E_BASH/_hooks.sh"
+```
 
 ### Global Arrays
 
@@ -402,19 +449,33 @@ hooks:define begin end decide error rollback
 
 Executes a hook if it's defined and has an implementation.
 
+**Execution Order:**
+1. Function `hook:{name}` (if exists)
+2. All scripts matching `ci-cd/{hook_name}-*.sh` (alphabetically)
+3. All scripts matching `ci-cd/{hook_name}_*.sh` (alphabetically)
+
 **Parameters:**
 - `$1` - Hook name
-- `$@` - Additional parameters passed to the hook
+- `$@` - Additional parameters passed to the hook (and all scripts)
 
 **Returns:**
-- Hook's exit code or `0` if not implemented
-- Hook's stdout is passed through
+- Exit code of the last executed hook/script, or `0` if not implemented
+- All hooks' stdout is passed through
 
 **Example:**
 ```bash
 on:hook begin
 on:hook error "Something failed" 1
 result=$(on:hook decide "Continue?")
+```
+
+**Script Pattern Examples:**
+```bash
+# These scripts will execute in this order for: on:hook deploy
+ci-cd/deploy-backup.sh      # 1. Alphabetically first
+ci-cd/deploy-update.sh      # 2. Alphabetically second
+ci-cd/deploy_01_init.sh     # 3. Underscore pattern
+ci-cd/deploy_02_verify.sh   # 4. Underscore pattern
 ```
 
 #### `hooks:list`
@@ -565,63 +626,105 @@ mysql -e "COMMIT;"
 echo "Transaction successful"
 ```
 
-### Example 4: Script-Based Hooks
+### Example 4: CI/CD Pipeline with Multiple Hook Scripts
 
-**Main script:**
+**Main deployment script:**
 ```bash
 #!/usr/bin/env bash
 source "$E_BASH/_hooks.sh"
 
-hooks:define validate backup deploy verify
+hooks:define pre_deploy deploy post_deploy verify
 
-echo "Starting deployment..."
-on:hook validate || { echo "Validation failed"; exit 1; }
-on:hook backup || { echo "Backup failed"; exit 1; }
+echo "Starting deployment pipeline..."
+on:hook pre_deploy || { echo "Pre-deployment failed"; exit 1; }
 on:hook deploy || { echo "Deployment failed"; exit 1; }
+on:hook post_deploy || { echo "Post-deployment failed"; exit 1; }
 on:hook verify || { echo "Verification failed"; exit 1; }
 echo "Deployment complete!"
 ```
 
-**.hooks/validate.sh:**
+**ci-cd/pre_deploy_01_validate.sh:**
 ```bash
 #!/usr/bin/env bash
-echo "Validating environment..."
-[[ -f config.yml ]] || { echo "Missing config.yml"; exit 1; }
-[[ -d /var/www/app ]] || { echo "Missing app directory"; exit 1; }
-echo "Validation passed"
+echo "[01] Validating environment..."
+[[ -f config.yml ]] || { echo "ERROR: Missing config.yml"; exit 1; }
+[[ -d /var/www/app ]] || { echo "ERROR: Missing app directory"; exit 1; }
+echo "✓ Validation passed"
 ```
 
-**.hooks/backup.sh:**
+**ci-cd/pre_deploy_02_backup.sh:**
 ```bash
 #!/usr/bin/env bash
 backup_dir="/backups/$(date +%Y%m%d_%H%M%S)"
-echo "Creating backup: $backup_dir"
+echo "[02] Creating backup: $backup_dir"
 mkdir -p "$backup_dir"
 cp -r /var/www/app "$backup_dir/"
-echo "Backup complete"
+echo "✓ Backup complete"
 ```
 
-**.hooks/deploy.sh:**
+**ci-cd/deploy_01_stop.sh:**
 ```bash
 #!/usr/bin/env bash
-echo "Deploying application..."
+echo "[Deploy 01] Stopping application service..."
+systemctl stop app-service
+echo "✓ Service stopped"
+```
+
+**ci-cd/deploy_02_update.sh:**
+```bash
+#!/usr/bin/env bash
+echo "[Deploy 02] Deploying new version..."
 rsync -av --delete ./dist/ /var/www/app/
-systemctl restart app-service
-echo "Deployment complete"
+echo "✓ Files updated"
 ```
 
-**.hooks/verify.sh:**
+**ci-cd/deploy_03_start.sh:**
 ```bash
 #!/usr/bin/env bash
-echo "Verifying deployment..."
+echo "[Deploy 03] Starting application service..."
+systemctl start app-service
+sleep 2
+echo "✓ Service started"
+```
+
+**ci-cd/post_deploy-migrations.sh:**
+```bash
+#!/usr/bin/env bash
+echo "[Post] Running database migrations..."
+cd /var/www/app && ./manage.py migrate
+echo "✓ Migrations complete"
+```
+
+**ci-cd/verify-health.sh:**
+```bash
+#!/usr/bin/env bash
+echo "[Verify] Checking application health..."
 sleep 2
 if curl -sf http://localhost/health > /dev/null; then
-  echo "Health check passed"
+  echo "✓ Health check passed"
   exit 0
 else
-  echo "Health check failed"
+  echo "✗ Health check failed"
   exit 1
 fi
+```
+
+**Execution Flow:**
+```
+on:hook pre_deploy
+  → pre_deploy_01_validate.sh  (alphabetically first)
+  → pre_deploy_02_backup.sh
+
+on:hook deploy
+  → deploy_01_stop.sh
+  → deploy_02_update.sh
+  → deploy_03_start.sh
+
+on:hook post_deploy
+  → post_deploy-migrations.sh
+
+on:hook verify
+  → verify-health.sh
 ```
 
 ---

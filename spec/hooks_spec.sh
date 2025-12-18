@@ -235,6 +235,210 @@ EOF
     End
   End
 
+  Context 'Multiple hook scripts with ci-cd pattern /'
+    setup_cicd_dir() {
+      mkdir -p /tmp/test_cicd
+      export HOOKS_DIR=/tmp/test_cicd
+    }
+
+    cleanup_cicd_dir() {
+      rm -rf /tmp/test_cicd
+    }
+
+    BeforeAll 'setup_cicd_dir'
+    AfterAll 'cleanup_cicd_dir'
+
+    It 'executes multiple scripts in alphabetical order'
+      setup() {
+        hooks:define deploy
+        cat > /tmp/test_cicd/deploy-backup.sh <<'EOF'
+#!/usr/bin/env bash
+echo "1: Backup"
+EOF
+        cat > /tmp/test_cicd/deploy-update.sh <<'EOF'
+#!/usr/bin/env bash
+echo "2: Update"
+EOF
+        cat > /tmp/test_cicd/deploy-restart.sh <<'EOF'
+#!/usr/bin/env bash
+echo "3: Restart"
+EOF
+        chmod +x /tmp/test_cicd/deploy-*.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook deploy
+
+      The status should be success
+      The line 1 should eq "1: Backup"
+      The line 2 should eq "2: Update"
+      The line 3 should eq "3: Restart"
+    End
+
+    It 'executes scripts with numbered pattern in order'
+      setup() {
+        hooks:define begin
+        cat > /tmp/test_cicd/begin_01_init.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Step 1: Init"
+EOF
+        cat > /tmp/test_cicd/begin_02_validate.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Step 2: Validate"
+EOF
+        cat > /tmp/test_cicd/begin_10_finalize.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Step 10: Finalize"
+EOF
+        chmod +x /tmp/test_cicd/begin_*.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook begin
+
+      The status should be success
+      The line 1 should eq "Step 1: Init"
+      The line 2 should eq "Step 10: Finalize"
+      The line 3 should eq "Step 2: Validate"
+    End
+
+    It 'passes parameters to all hook scripts'
+      setup() {
+        hooks:define process
+        cat > /tmp/test_cicd/process-validate.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Validate: $1"
+EOF
+        cat > /tmp/test_cicd/process-execute.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Execute: $1"
+EOF
+        chmod +x /tmp/test_cicd/process-*.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook process "data.txt"
+
+      The status should be success
+      The line 1 should eq "Execute: data.txt"
+      The line 2 should eq "Validate: data.txt"
+    End
+
+    It 'returns exit code of last executed script'
+      setup() {
+        hooks:define test_hook
+        cat > /tmp/test_cicd/test_hook-first.sh <<'EOF'
+#!/usr/bin/env bash
+echo "First"
+exit 0
+EOF
+        cat > /tmp/test_cicd/test_hook-second.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Second"
+exit 42
+EOF
+        chmod +x /tmp/test_cicd/test_hook-*.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook test_hook
+
+      The status should eq 42
+      The output should include "First"
+      The output should include "Second"
+    End
+
+    It 'executes function before scripts'
+      setup() {
+        hooks:define mixed_hook
+        hook:mixed_hook() {
+          echo "Function executed"
+        }
+        cat > /tmp/test_cicd/mixed_hook-script.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Script executed"
+EOF
+        chmod +x /tmp/test_cicd/mixed_hook-script.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook mixed_hook
+
+      The status should be success
+      The line 1 should eq "Function executed"
+      The line 2 should eq "Script executed"
+    End
+
+    It 'skips non-matching script names'
+      setup() {
+        hooks:define specific_hook
+        cat > /tmp/test_cicd/specific_hook-valid.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Valid script"
+EOF
+        cat > /tmp/test_cicd/other_hook-invalid.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Should not execute"
+EOF
+        chmod +x /tmp/test_cicd/*.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook specific_hook
+
+      The status should be success
+      The output should eq "Valid script"
+      The output should not include "Should not execute"
+    End
+
+    It 'lists multiple script implementations'
+      setup() {
+        hooks:define multi_hook
+        cat > /tmp/test_cicd/multi_hook-a.sh <<'EOF'
+#!/usr/bin/env bash
+:
+EOF
+        cat > /tmp/test_cicd/multi_hook-b.sh <<'EOF'
+#!/usr/bin/env bash
+:
+EOF
+        cat > /tmp/test_cicd/multi_hook-c.sh <<'EOF'
+#!/usr/bin/env bash
+:
+EOF
+        chmod +x /tmp/test_cicd/multi_hook-*.sh
+      }
+      BeforeCall 'setup'
+
+      When call hooks:list
+
+      The status should be success
+      The output should include "multi_hook: implemented (3 script(s))"
+    End
+
+    It 'supports both dash and underscore patterns'
+      setup() {
+        hooks:define flexible
+        cat > /tmp/test_cicd/flexible-dash.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Dash pattern"
+EOF
+        cat > /tmp/test_cicd/flexible_underscore.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Underscore pattern"
+EOF
+        chmod +x /tmp/test_cicd/flexible*.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook flexible
+
+      The status should be success
+      The output should include "Dash pattern"
+      The output should include "Underscore pattern"
+    End
+  End
+
   Context 'Hook introspection /'
     It 'lists defined hooks when none exist'
       setup() {
