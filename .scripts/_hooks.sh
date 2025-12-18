@@ -13,12 +13,15 @@ if type hooks:define 2>/dev/null | grep -q "is a function"; then return 0; fi
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# shellcheck disable=SC1090 source=./_colors.sh
+source "$E_BASH/_colors.sh"
+
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
 
 # Initialize logger for hooks (disabled by default, enable with DEBUG=hooks or DEBUG=*)
-# Redirect to stderr for traceability (user output goes to stdout, logging to stderr)
-logger "hooks" && logger:redirect "hooks" ">&2"
+# Output to stderr for traceability (user output goes to stdout, logging to stderr)
+logger:init hooks "${cl_grey}[hooks]${cl_reset} " ">&2"
 
 # declare global associative array for hooks tracking
 if [[ -z ${HOOKS_DEFINED+x} ]]; then declare -g -A HOOKS_DEFINED; fi
