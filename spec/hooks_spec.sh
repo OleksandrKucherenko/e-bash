@@ -1157,4 +1157,317 @@ EOF
       rm -f "$external_script"
     End
   End
+
+  Context 'Pattern registration /'
+    setup_pattern_test() {
+      hooks:cleanup
+      source ".scripts/_hooks.sh"
+    }
+
+    AfterEach 'setup_pattern_test'
+
+    It 'registers source patterns with hook:as:source'
+      When call hook:as:source "config-*.sh" "env-*.sh"
+
+      The status should be success
+      # Verify patterns were added to the array
+      The result of function no_colors_stderr should include "Registered pattern for sourced execution: config-*.sh"
+      The result of function no_colors_stderr should include "Registered pattern for sourced execution: env-*.sh"
+    End
+
+    It 'registers script patterns with hook:as:script'
+      When call hook:as:script "notify-*.sh" "cleanup-*.sh"
+
+      The status should be success
+      # Verify patterns were added to the array
+      The result of function no_colors_stderr should include "Registered pattern for script execution: notify-*.sh"
+      The result of function no_colors_stderr should include "Registered pattern for script execution: cleanup-*.sh"
+    End
+
+    It 'accumulates multiple pattern registrations'
+      setup() {
+        hook:as:source "first-*.sh" 2>/dev/null
+        hook:as:source "second-*.sh" 2>/dev/null
+      }
+      BeforeCall 'setup'
+
+      When call hook:as:source "third-*.sh"
+
+      The status should be success
+      # Verify all patterns are registered
+      The result of function no_colors_stderr should include "Registered pattern for sourced execution: third-*.sh"
+    End
+
+    It 'determines execution mode with hooks:get_exec_mode for source patterns'
+      setup() {
+        hook:as:source "config-*.sh" 2>/dev/null
+        hook:as:script "notify-*.sh" 2>/dev/null
+      }
+      BeforeCall 'setup'
+
+      When call hooks:get_exec_mode "config-init.sh"
+
+      The status should be success
+      The output should eq "source"
+    End
+
+    It 'determines execution mode with hooks:get_exec_mode for script patterns'
+      setup() {
+        hook:as:source "config-*.sh" 2>/dev/null
+        hook:as:script "notify-*.sh" 2>/dev/null
+      }
+      BeforeCall 'setup'
+
+      When call hooks:get_exec_mode "notify-slack.sh"
+
+      The status should be success
+      The output should eq "exec"
+    End
+
+    It 'falls back to global HOOKS_EXEC_MODE for unmatched patterns'
+      setup() {
+        export HOOKS_EXEC_MODE="source"
+        hook:as:source "config-*.sh" 2>/dev/null
+        hook:as:script "notify-*.sh" 2>/dev/null
+      }
+      BeforeCall 'setup'
+
+      When call hooks:get_exec_mode "random-script.sh"
+
+      The status should be success
+      The output should eq "source"
+    End
+
+    It 'prioritizes source patterns over script patterns'
+      setup() {
+        hook:as:script "test-*.sh" 2>/dev/null
+        hook:as:source "test-*.sh" 2>/dev/null
+      }
+      BeforeCall 'setup'
+
+      When call hooks:get_exec_mode "test-example.sh"
+
+      The status should be success
+      The output should eq "source"
+    End
+
+    It 'handles wildcard patterns correctly'
+      setup() {
+        hook:as:source "*-init.sh" 2>/dev/null
+        hook:as:script "*-cleanup.sh" 2>/dev/null
+      }
+      BeforeCall 'setup'
+
+      test_patterns() {
+        local mode1 mode2 mode3
+        mode1=$(hooks:get_exec_mode "begin-init.sh")
+        mode2=$(hooks:get_exec_mode "end-cleanup.sh")
+        mode3=$(hooks:get_exec_mode "middle-process.sh")
+        echo "init:$mode1 cleanup:$mode2 process:$mode3"
+      }
+
+      When call test_patterns
+
+      The status should be success
+      The output should eq "init:source cleanup:exec process:exec"
+    End
+  End
+
+  Context 'Pattern-based execution mode integration /'
+    setup_pattern_integration() {
+      mkdir -p /tmp/test_patterns
+      export HOOKS_DIR=/tmp/test_patterns
+      export HOOKS_EXEC_MODE="exec"  # Default to exec mode
+      hooks:cleanup
+      source ".scripts/_hooks.sh"
+    }
+
+    cleanup_pattern_integration() {
+      rm -rf /tmp/test_patterns
+      export HOOKS_EXEC_MODE="exec"
+    }
+
+
+
+    It 'executes scripts in source mode when pattern matches'
+      test_pattern_source() {
+        # Use the existing HOOKS_DIR (ci-cd)
+        echo "Using HOOKS_DIR: $HOOKS_DIR"
+        echo "Current working directory: $(pwd)"
+        
+        # Create HOOKS_DIR if it doesn't exist
+        mkdir -p "$HOOKS_DIR"
+        
+        # Register pattern first
+        hook:as:source "test_pattern-*.sh" 2>/dev/null
+        
+        # Define hook
+        hooks:define test_pattern
+        
+        # Create script in the current HOOKS_DIR
+        cat > "$HOOKS_DIR/test_pattern-config.sh" <<'EOF'
+#!/usr/bin/env bash
+function hook:run() {
+  echo "Sourced via pattern"
+}
+EOF
+        chmod +x "$HOOKS_DIR/test_pattern-config.sh"
+        
+        # Execute hook
+        on:hook test_pattern
+        
+        # Clean up
+        rm -f "$HOOKS_DIR/test_pattern-config.sh"
+      }
+
+      When call test_pattern_source
+
+      The status should be success
+      The output should include "Sourced via pattern"
+      The result of function no_colors_stderr should include "sourced mode"
+    End
+
+    It 'executes scripts in exec mode when pattern matches'
+      test_exec_script() {
+        # Create HOOKS_DIR if it doesn't exist
+        mkdir -p "$HOOKS_DIR"
+        
+        # Register pattern first
+        hook:as:script "test_exec-*.sh" 2>/dev/null
+        
+        # Define hook
+        hooks:define test_exec
+        
+        # Create script
+        cat > "$HOOKS_DIR/test_exec-notify.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "Executed as script"
+EOF
+        chmod +x "$HOOKS_DIR/test_exec-notify.sh"
+        
+        # Execute hook
+        on:hook test_exec
+        
+        # Clean up
+        rm -f "$HOOKS_DIR/test_exec-notify.sh"
+      }
+
+      When call test_exec_script
+
+      The status should be success
+      The output should include "Executed as script"
+      The result of function no_colors_stderr should include "exec mode"
+    End
+
+    It 'overrides global HOOKS_EXEC_MODE with source pattern'
+      test_override_source() {
+        export HOOKS_EXEC_MODE="exec"  # Global setting
+        
+        # Create HOOKS_DIR if it doesn't exist
+        mkdir -p "$HOOKS_DIR"
+        
+        # Register pattern first
+        hook:as:source "override_test-*.sh" 2>/dev/null
+        
+        # Define hook
+        hooks:define override_test
+        
+        # Create script
+        cat > "$HOOKS_DIR/override_test-config.sh" <<'EOF'
+#!/usr/bin/env bash
+function hook:run() {
+  echo "Pattern overrode global mode"
+}
+EOF
+        chmod +x "$HOOKS_DIR/override_test-config.sh"
+        
+        # Execute hook
+        on:hook override_test
+        
+        # Clean up
+        rm -f "$HOOKS_DIR/override_test-config.sh"
+      }
+
+      When call test_override_source
+
+      The status should be success
+      The output should include "Pattern overrode global mode"
+      The result of function no_colors_stderr should include "sourced mode"
+    End
+
+    It 'overrides global HOOKS_EXEC_MODE with script pattern'
+      test_override_script() {
+        export HOOKS_EXEC_MODE="source"  # Global setting
+        
+        # Create HOOKS_DIR if it doesn't exist
+        mkdir -p "$HOOKS_DIR"
+        
+        # Register pattern first
+        hook:as:script "script_override-*.sh" 2>/dev/null
+        
+        # Define hook
+        hooks:define script_override
+        
+        # Create script
+        cat > "$HOOKS_DIR/script_override-notify.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "Script pattern overrode global source mode"
+EOF
+        chmod +x "$HOOKS_DIR/script_override-notify.sh"
+        
+        # Execute hook
+        on:hook script_override
+        
+        # Clean up
+        rm -f "$HOOKS_DIR/script_override-notify.sh"
+      }
+
+      When call test_override_script
+
+      The status should be success
+      The output should include "Script pattern overrode global source mode"
+      The result of function no_colors_stderr should include "exec mode"
+    End
+
+    It 'handles multiple scripts with different patterns'
+      test_mixed_patterns() {
+        # Create HOOKS_DIR if it doesn't exist
+        mkdir -p "$HOOKS_DIR"
+        
+        # Register patterns first
+        hook:as:source "mixed_patterns-config*.sh" 2>/dev/null
+        hook:as:script "mixed_patterns-notify*.sh" 2>/dev/null
+        
+        # Define hook
+        hooks:define mixed_patterns
+        
+        # Create scripts
+        cat > "$HOOKS_DIR/mixed_patterns-config.sh" <<'EOF'
+#!/usr/bin/env bash
+function hook:run() {
+  echo "Config sourced"
+}
+EOF
+        cat > "$HOOKS_DIR/mixed_patterns-notify.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "Notify executed"
+EOF
+        chmod +x "$HOOKS_DIR/mixed_patterns-"*.sh
+        
+        # Execute hook
+        on:hook mixed_patterns
+        
+        # Clean up
+        rm -f "$HOOKS_DIR/mixed_patterns-"*.sh
+      }
+
+      When call test_mixed_patterns
+
+      The status should be success
+      The output should include "Config sourced"
+      The output should include "Notify executed"
+      The result of function no_colors_stderr should include "sourced mode"
+      The result of function no_colors_stderr should include "exec mode"
+    End
+  End
 End
