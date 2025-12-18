@@ -844,9 +844,31 @@ function create_symlink() {
 
   local source_path
   if [ "$version" = "master" ]; then
-    source_path=$(realpath "${GLOBAL_INSTALL_DIR}/${SCRIPTS_DIR}")
+    # Use realpath if available, otherwise use a fallback for macOS compatibility
+    if command -v realpath >/dev/null 2>&1; then
+      source_path=$(realpath "${GLOBAL_INSTALL_DIR}/${SCRIPTS_DIR}")
+    else
+      # Fallback for systems without realpath (like some macOS versions)
+      if [ -d "${GLOBAL_INSTALL_DIR}" ]; then
+        source_path=$(cd "${GLOBAL_INSTALL_DIR}" && pwd)/${SCRIPTS_DIR}
+      else
+        echo -e "${RED}Error: Global installation directory ${GLOBAL_INSTALL_DIR} does not exist${NC}" >&2
+        return 1
+      fi
+    fi
   else
-    source_path=$(realpath "${versionedDir}/${SCRIPTS_DIR}")
+    # Use realpath if available, otherwise use a fallback for macOS compatibility
+    if command -v realpath >/dev/null 2>&1; then
+      source_path=$(realpath "${versionedDir}/${SCRIPTS_DIR}")
+    else
+      # Fallback for systems without realpath (like some macOS versions)
+      if [ -d "${versionedDir}" ]; then
+        source_path=$(cd "${versionedDir}" && pwd)/${SCRIPTS_DIR}
+      else
+        echo -e "${RED}Error: Version directory ${versionedDir} does not exist${NC}" >&2
+        return 1
+      fi
+    fi
   fi
 
   # delete old symlink if exists
@@ -874,6 +896,12 @@ function bind_ebash_global_version() {
   local version="${1:-master}"
   local worktree="./${__WORKTREES}/${version}"
   local versionedDir="${GLOBAL_INSTALL_DIR}/${__WORKTREES}/${version}"
+
+  # Verify global installation directory exists before proceeding
+  if [ ! -d "${GLOBAL_INSTALL_DIR}" ] || [ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
+    echo -e "${RED}Error: Cannot bind version - global installation not found at ${GLOBAL_INSTALL_DIR}${NC}" >&2
+    return 1
+  fi
 
   # jump to e-bash home dir to make a worktree extraction
   pushd "${GLOBAL_INSTALL_DIR}" &>/dev/null || exit 1
@@ -1807,9 +1835,14 @@ function repo_rollback() {
     echo -e "${BLUE}Rolling back global e-bash installation...${NC}"
 
     # Check if global installation exists
-    if [ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
-      echo -e "${RED}Error: Global e-bash installation not found at ${GLOBAL_INSTALL_DIR}${NC}"
-      echo -e "${YELLOW}Run: $(script_name) install --global${NC}"
+    if [ ! -d "${GLOBAL_INSTALL_DIR}" ] || [ ! -d "${GLOBAL_INSTALL_DIR}/.git" ]; then
+      echo -e "${RED}Error: Global e-bash installation not found${NC}"
+      if [ ! -d "${GLOBAL_INSTALL_DIR}" ]; then
+        echo -e "${YELLOW}Directory ${GLOBAL_INSTALL_DIR} does not exist${NC}" >&2
+      else
+        echo -e "${YELLOW}Directory ${GLOBAL_INSTALL_DIR} exists but is not a git repository${NC}" >&2
+      fi
+      echo -e "${YELLOW}Run: $(script_name) install --global${NC}" >&2
       return 1
     fi
 
