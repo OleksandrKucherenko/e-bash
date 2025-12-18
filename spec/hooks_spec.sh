@@ -533,6 +533,107 @@ EOF
     End
   End
 
+  Context 'Sourced execution mode /'
+    setup_source_dir() {
+      mkdir -p /tmp/test_source
+      export HOOKS_DIR=/tmp/test_source
+      export HOOKS_EXEC_MODE="source"
+    }
+
+    cleanup_source_dir() {
+      rm -rf /tmp/test_source
+      export HOOKS_EXEC_MODE="exec"
+    }
+
+    BeforeAll 'setup_source_dir'
+    AfterAll 'cleanup_source_dir'
+
+    It 'sources script and calls hook:run function'
+      setup() {
+        hooks:define test_source
+        cat > /tmp/test_source/test_source-script.sh <<'EOF'
+#!/usr/bin/env bash
+function hook:run() {
+  echo "Sourced execution"
+}
+EOF
+        chmod +x /tmp/test_source/test_source-script.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook test_source
+
+      The status should be success
+      The output should include "Sourced execution"
+    End
+
+    It 'passes parameters to hook:run function'
+      setup() {
+        hooks:define test_params
+        cat > /tmp/test_source/test_params-script.sh <<'EOF'
+#!/usr/bin/env bash
+function hook:run() {
+  echo "Params: $*"
+}
+EOF
+        chmod +x /tmp/test_source/test_params-script.sh
+      }
+      BeforeCall 'setup'
+
+      When call on:hook test_params arg1 arg2
+
+      The status should be success
+      The output should include "Params: arg1 arg2"
+    End
+
+    It 'skips script without hook:run function'
+      setup() {
+        export DEBUG="hooks"
+        hooks:define test_no_func
+        cat > /tmp/test_source/test_no_func-script.sh <<'EOF'
+#!/usr/bin/env bash
+echo "This should not execute"
+EOF
+        chmod +x /tmp/test_source/test_no_func-script.sh
+      }
+      BeforeCall 'setup'
+      AfterCall 'export DEBUG=""'
+
+      When call on:hook test_no_func
+
+      The status should be success
+      The output should not include "This should not execute"
+      The stderr should include "No hook:run function found"
+    End
+
+    It 'can access parent shell variables in sourced mode'
+      setup() {
+        hooks:define test_env
+        export TEST_VAR="parent_value"
+        cat > /tmp/test_source/test_env-script.sh <<'EOF'
+#!/usr/bin/env bash
+function hook:run() {
+  echo "TEST_VAR=$TEST_VAR"
+  TEST_VAR="modified"
+}
+EOF
+        chmod +x /tmp/test_source/test_env-script.sh
+      }
+      BeforeCall 'setup'
+
+      check_var() {
+        on:hook test_env
+        echo "After hook: TEST_VAR=$TEST_VAR"
+      }
+
+      When call check_var
+
+      The status should be success
+      The output should include "TEST_VAR=parent_value"
+      The output should include "After hook: TEST_VAR=modified"
+    End
+  End
+
   Context 'Real-world usage patterns /'
     It 'simulates begin/end hook pattern'
       setup() {

@@ -298,6 +298,70 @@ hooks:define clean prepare compile test package publish
 hooks:define extract transform validate load index notify
 ```
 
+## Execution Modes
+
+The hooks system supports two execution modes for scripts, controlled by `HOOKS_EXEC_MODE`:
+
+### Exec Mode (Default)
+
+Scripts are executed directly as subprocesses. This provides isolation - scripts cannot modify the parent shell's environment.
+
+```bash
+export HOOKS_EXEC_MODE="exec"  # Default
+source "$E_BASH/_hooks.sh"
+
+# Scripts run in subprocesses
+# Changes to variables don't affect parent shell
+```
+
+**Use exec mode when:**
+- Scripts should be isolated
+- Scripts shouldn't modify parent environment
+- Standard subprocess behavior is desired
+- Scripts are standalone tools
+
+### Source Mode
+
+Scripts are sourced into the current shell and must provide a `hook:run` function. This allows scripts to modify the parent shell environment.
+
+```bash
+export HOOKS_EXEC_MODE="source"
+source "$E_BASH/_hooks.sh"
+
+# Scripts are sourced and hook:run is called
+# Can modify parent shell variables
+```
+
+**Hook script example for source mode:**
+```bash
+#!/usr/bin/env bash
+
+# This function is called when script is sourced
+function hook:run() {
+  local param1="$1"
+  local param2="$2"
+
+  # Can access parent shell variables
+  echo "Current directory: $PWD"
+
+  # Can modify parent shell variables
+  DEPLOYMENT_STATUS="completed"
+  export BUILD_NUMBER="$param1"
+
+  # Can change directory, set variables, etc.
+  # These changes persist in the parent shell
+}
+```
+
+**Use source mode when:**
+- Hooks need to modify parent shell environment
+- Setting environment variables for subsequent hooks
+- Changing current directory
+- Defining functions for later use
+- Maintaining state across hook executions
+
+**Note**: In source mode, if a script doesn't define `hook:run`, it will be skipped with a warning (visible with `DEBUG=hooks`).
+
 ## Implementation Patterns
 
 ### Function-Based Hooks
@@ -406,6 +470,17 @@ on:hook end
 19. **Test scripts independently**: Ensure each script works standalone
 20. **Use consistent naming**: Choose either dash or underscore and stick with it
 
+### Logging and Debugging Best Practices
+
+21. **Enable hook logging for debugging**: `export DEBUG=hooks` to see execution flow
+22. **Use stderr for hook output**: Logging goes to stderr, leaving stdout for data
+23. **Monitor exit codes**: Check logs for non-zero exit codes indicating failures
+24. **Verify script discovery**: Logs show which scripts were found and executed
+25. **Check execution order**: Logs display script execution sequence
+26. **Use exec mode for isolation**: Default mode runs scripts in subprocess
+27. **Use source mode for state sharing**: When hooks need to modify parent environment
+28. **Implement hook:run for sourced mode**: Define this function in scripts for source execution
+
 ## Reference
 
 ### Environment Variables
@@ -414,11 +489,61 @@ on:hook end
 |----------|---------|-------------|
 | `HOOKS_DIR` | `ci-cd` | Directory containing hook scripts |
 | `HOOKS_PREFIX` | `hook:` | Prefix for hook function names |
+| `HOOKS_EXEC_MODE` | `exec` | Execution mode: `exec` (subprocess) or `source` (current shell) |
+| `DEBUG` | (unset) | Enable logging: `hooks` for hooks only, `*` for all modules |
 
-**Note**: You can override `HOOKS_DIR` before sourcing the module:
+**Configuration Examples:**
 ```bash
-export HOOKS_DIR="my-hooks"  # Use custom directory
+# Use custom directory
+export HOOKS_DIR="my-hooks"
+
+# Enable sourced execution mode
+export HOOKS_EXEC_MODE="source"
+
+# Enable hooks logging for debugging
+export DEBUG="hooks"
+
+# Enable all logging
+export DEBUG="*"
+
+# Then source the module
 source "$E_BASH/_hooks.sh"
+```
+
+### Logging
+
+The hooks system provides comprehensive logging for traceability and debugging.
+
+**Enable Logging:**
+```bash
+export DEBUG="hooks"  # Enable hooks logging only
+export DEBUG="*"      # Enable all module logging
+export DEBUG="-"      # Disable all logging
+```
+
+**What Gets Logged (to stderr):**
+- Hook registration during `hooks:define`
+- Hook execution start/completion
+- Function hook execution
+- Script discovery (count and names)
+- Script execution order (1/N, 2/N, etc.)
+- Execution mode (exec vs source)
+- Exit codes for each implementation
+- Warnings for missing implementations or functions
+
+**Log Output Example:**
+```
+Defining hooks: deploy
+  ✓ Registered hook: deploy
+Executing hook: deploy
+  Found 3 script(s) for hook 'deploy'
+  → [script 1/3] deploy_01_backup.sh (exec mode)
+    ↳ exit code: 0
+  → [script 2/3] deploy_02_update.sh (exec mode)
+    ↳ exit code: 0
+  → [script 3/3] deploy_03_verify.sh (exec mode)
+    ↳ exit code: 0
+  ✓ Completed hook 'deploy' (3 implementation(s), final exit code: 0)
 ```
 
 ### Global Arrays

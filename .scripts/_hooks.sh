@@ -13,6 +13,13 @@ if type hooks:define 2>/dev/null | grep -q "is a function"; then return 0; fi
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# shellcheck disable=SC1090 source=./_logger.sh
+source "$E_BASH/_logger.sh"
+
+# Initialize logger for hooks (disabled by default, enable with DEBUG=hooks or DEBUG=*)
+# Redirect to stderr for traceability (user output goes to stdout, logging to stderr)
+logger "hooks" && logger:redirect "hooks" ">&2"
+
 # declare global associative array for hooks tracking
 if [[ -z ${HOOKS_DEFINED+x} ]]; then declare -g -A HOOKS_DEFINED; fi
 
@@ -24,6 +31,13 @@ fi
 # default hooks function prefix
 if [[ -z ${HOOKS_PREFIX+x} ]]; then
   declare -g HOOKS_PREFIX="hook:"
+fi
+
+# default hooks execution mode: "exec" or "source"
+# exec - execute script directly (default, runs in subprocess)
+# source - source script and call hook:run function (runs in current shell)
+if [[ -z ${HOOKS_EXEC_MODE+x} ]]; then
+  declare -g HOOKS_EXEC_MODE="exec"
 fi
 
 #
@@ -43,6 +57,8 @@ fi
 function hooks:define() {
   local hook_name
 
+  echo:Hooks "Defining hooks: $*"
+
   # validate and register each hook
   for hook_name in "$@"; do
     # validate hook name (alphanumeric, underscore, dash only)
@@ -53,6 +69,7 @@ function hooks:define() {
 
     # register the hook
     HOOKS_DEFINED[$hook_name]=1
+    echo:Hooks "  ✓ Registered hook: $hook_name"
   done
 
   return 0
@@ -80,6 +97,17 @@ function hooks:define() {
 #   - {hook_name}-{purpose}.sh
 #   - {hook_name}_{NN}_{purpose}.sh (recommended for ordered execution)
 #
+# Execution modes (controlled by HOOKS_EXEC_MODE):
+#   - "exec" (default): Execute scripts directly in subprocess
+#   - "source": Source scripts and call hook:run function (runs in current shell)
+#
+# Logging:
+#   Enable with DEBUG=hooks or DEBUG=* to see:
+#   - Hook definitions and registrations
+#   - Hook execution flow
+#   - Script discovery and execution order
+#   - Exit codes for each implementation
+#
 # Returns:
 #   Last hook's exit code or 0 if not implemented
 #   All hooks' stdout is passed through
@@ -89,18 +117,24 @@ function on:hook() {
   shift
 
   local last_exit_code=0
+  local impl_count=0
 
   # check if hook is defined
   if [[ -z ${HOOKS_DEFINED[$hook_name]+x} ]]; then
-    # hook not defined, silent skip
+    echo:Hooks "Hook '$hook_name' not defined, skipping"
     return 0
   fi
+
+  echo:Hooks "Executing hook: $hook_name"
 
   # execute function implementation first: hook:{name}
   local func_name="${HOOKS_PREFIX}${hook_name}"
   if declare -F "$func_name" >/dev/null 2>&1; then
+    echo:Hooks "  → [function] ${func_name}"
     "$func_name" "$@"
     last_exit_code=$?
+    echo:Hooks "    ↳ exit code: $last_exit_code"
+    ((impl_count++))
   fi
 
   # find and execute all matching script implementations
@@ -113,16 +147,50 @@ function on:hook() {
       hook_scripts+=("$script")
     done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -executable -print0 2>/dev/null | sort -z)
 
+    # log discovered scripts
+    if [[ ${#hook_scripts[@]} -gt 0 ]]; then
+      echo:Hooks "  Found ${#hook_scripts[@]} script(s) for hook '$hook_name'"
+    fi
+
     # execute each script in alphabetical order
+    local script_num=0
     for script in "${hook_scripts[@]}"; do
-      "$script" "$@"
-      last_exit_code=$?
+      ((script_num++))
+      local script_name=$(basename "$script")
+
+      if [[ "$HOOKS_EXEC_MODE" == "source" ]]; then
+        echo:Hooks "  → [script $script_num/$((${#hook_scripts[@]}))] ${script_name} (sourced mode)"
+        # Source the script and call hook:run function if it exists
+        # shellcheck disable=SC1090
+        source "$script"
+        if declare -F "hook:run" >/dev/null 2>&1; then
+          hook:run "$@"
+          last_exit_code=$?
+        else
+          echo:Hooks "    ⚠ No hook:run function found in ${script_name}, skipping"
+          last_exit_code=0
+        fi
+      else
+        echo:Hooks "  → [script $script_num/${#hook_scripts[@]}] ${script_name} (exec mode)"
+        "$script" "$@"
+        last_exit_code=$?
+      fi
+
+      echo:Hooks "    ↳ exit code: $last_exit_code"
+      ((impl_count++))
 
       # optionally stop on first failure (uncomment if needed)
       # if [[ $last_exit_code -ne 0 ]]; then
+      #   echo:Hooks "  ✗ Hook failed, stopping execution"
       #   return $last_exit_code
       # fi
     done
+  fi
+
+  if [[ $impl_count -eq 0 ]]; then
+    echo:Hooks "  ⚠ No implementations found for hook '$hook_name'"
+  else
+    echo:Hooks "  ✓ Completed hook '$hook_name' (${impl_count} implementation(s), final exit code: $last_exit_code)"
   fi
 
   return $last_exit_code
