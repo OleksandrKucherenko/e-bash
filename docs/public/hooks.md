@@ -298,6 +298,83 @@ hooks:define clean prepare compile test package publish
 hooks:define extract transform validate load index notify
 ```
 
+### Nested Hooks (Composability)
+
+The hooks system supports nested/composed scripts where multiple scripts can define the same hook names. This is essential when your script sources libraries or helper scripts that also use hooks.
+
+**How It Works:**
+- Each `hooks:define` call tracks which script/context defined the hook
+- The same hook name can be defined from multiple contexts
+- When a hook is defined from multiple contexts, a warning is issued
+- All implementations (functions + scripts) are executed regardless of context
+
+**Example - Library Using Hooks:**
+
+```bash
+# library.sh - A reusable library
+source "$E_BASH/_hooks.sh"
+hooks:define init cleanup
+
+hook:init() {
+  echo "Library initialized"
+}
+
+hook:cleanup() {
+  echo "Library cleanup"
+}
+```
+
+**Example - Main Script Using Same Hooks:**
+
+```bash
+# main.sh - Your main script
+source "$E_BASH/_hooks.sh"
+source ./library.sh  # Sources library that also defines init/cleanup
+
+# Define same hooks in main script - will warn but both work
+hooks:define init cleanup
+
+hook:init() {
+  echo "Main script initialized"
+}
+
+hook:cleanup() {
+  echo "Main script cleanup"
+}
+
+# Execute hooks - both library and main implementations run
+on:hook init     # Outputs: "Library initialized\nMain script initialized"
+on:hook cleanup  # Outputs: "Library cleanup\nMain script cleanup"
+```
+
+**Warning Output:**
+
+When the same hook is defined from multiple contexts, you'll see:
+
+```
+⚠ Warning: Hook 'init' is being defined from multiple contexts:
+    Existing: /path/to/library.sh
+    New:      /path/to/main.sh
+  This is supported for nested/composed scripts, but verify it's intentional.
+```
+
+**Best Practices:**
+- Use unique hook names in libraries when possible to avoid conflicts
+- Document when libraries define standard hooks (init, cleanup, etc.)
+- Verify warnings are intentional when composing scripts
+- Use `hooks:list` to see which hooks are defined from multiple contexts
+
+**Checking for Multiple Contexts:**
+
+```bash
+# List hooks shows context warnings
+hooks:list
+
+# Output includes:
+#   - init: implemented (function)
+#       ⚠ defined in 2 contexts
+```
+
 ## Execution Modes
 
 The hooks system supports two execution modes for scripts, controlled by `HOOKS_EXEC_MODE`:

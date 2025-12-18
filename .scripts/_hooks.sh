@@ -24,7 +24,12 @@ source "$E_BASH/_logger.sh"
 logger:init hooks "${cl_grey}[hooks]${cl_reset} " ">&2"
 
 # declare global associative array for hooks tracking (internal)
+# stores hook_name -> "1" for quick existence check
 if [[ -z ${__HOOKS_DEFINED+x} ]]; then declare -g -A __HOOKS_DEFINED; fi
+
+# declare global associative array for tracking hook contexts (internal)
+# stores hook_name -> "context1|context2|context3" pipe-separated list
+if [[ -z ${__HOOKS_CONTEXTS+x} ]]; then declare -g -A __HOOKS_CONTEXTS; fi
 
 # declare global arrays for execution mode pattern registration (internal)
 if [[ -z ${____HOOKS_SOURCE_PATTERNS+x} ]]; then declare -g -a ____HOOKS_SOURCE_PATTERNS=(); fi
@@ -64,7 +69,17 @@ fi
 function hooks:define() {
   local hook_name
 
-  echo:Hooks "Defining hooks: $*"
+  # Get the calling script context (the script that called hooks:define)
+  # BASH_SOURCE[0] = _hooks.sh, BASH_SOURCE[1] = calling script
+  local caller_context="${BASH_SOURCE[1]:-main}"
+
+  # Normalize context path (remove ./ prefix and resolve to absolute path if possible)
+  if [[ "$caller_context" != "main" && -f "$caller_context" ]]; then
+    caller_context="$(cd "$(dirname "$caller_context")" && pwd)/$(basename "$caller_context")"
+  fi
+
+  echo:Hooks "Defining hooks from context: $caller_context"
+  echo:Hooks "  hooks: $*"
 
   # validate and register each hook
   for hook_name in "$@"; do
@@ -74,9 +89,34 @@ function hooks:define() {
       return 1
     fi
 
+    # check if hook already exists from a different context
+    if [[ -n ${__HOOKS_DEFINED[$hook_name]+x} ]]; then
+      # hook already defined - check contexts
+      local existing_contexts="${__HOOKS_CONTEXTS[$hook_name]}"
+
+      # check if this context already registered this hook
+      if [[ "|${existing_contexts}|" == *"|${caller_context}|"* ]]; then
+        echo:Hooks "  ℹ Hook '$hook_name' already registered from this context, skipping"
+        continue
+      fi
+
+      # different context - warn about potential conflict
+      printf "${cl_yellow}[hooks]${cl_reset} " >&2
+      echo "⚠ Warning: Hook '$hook_name' is being defined from multiple contexts:" >&2
+      echo "    Existing: $existing_contexts" >&2
+      echo "    New:      $caller_context" >&2
+      echo "  This is supported for nested/composed scripts, but verify it's intentional." >&2
+
+      # append new context to existing list
+      __HOOKS_CONTEXTS[$hook_name]="${existing_contexts}|${caller_context}"
+    else
+      # first time defining this hook
+      __HOOKS_CONTEXTS[$hook_name]="$caller_context"
+    fi
+
     # register the hook
     __HOOKS_DEFINED[$hook_name]=1
-    echo:Hooks "  ✓ Registered hook: $hook_name"
+    echo:Hooks "  ✓ Registered hook: $hook_name (context: $caller_context)"
   done
 
   return 0
@@ -380,12 +420,21 @@ function hooks:list() {
       fi
     fi
 
+    # get context info
+    local contexts="${__HOOKS_CONTEXTS[$hook_name]:-unknown}"
+    local context_count=$(echo "$contexts" | tr '|' '\n' | wc -l)
+
     # format output
     if [[ ${#implementations[@]} -eq 0 ]]; then
       echo "  - $hook_name: not implemented"
     else
       local impl_str=$(IFS=', '; echo "${implementations[*]}")
       echo "  - $hook_name: implemented ($impl_str)"
+    fi
+
+    # show context info if multiple contexts
+    if [[ $context_count -gt 1 ]]; then
+      echo "      ${cl_yellow}⚠ defined in $context_count contexts${cl_reset}"
     fi
   done
 
@@ -462,6 +511,7 @@ function hooks:has_implementation() {
 #
 function hooks:cleanup() {
   unset __HOOKS_DEFINED
+  unset __HOOKS_CONTEXTS
   unset __HOOKS_SOURCE_PATTERNS
   unset __HOOKS_SCRIPT_PATTERNS
   unset HOOKS_DIR

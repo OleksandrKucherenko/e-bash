@@ -728,4 +728,134 @@ EOF
       The line 2 should eq "Rollback complete"
     End
   End
+
+  Context 'Nested hooks support /'
+    setup_nested_test() {
+      mkdir -p /tmp/test_nested
+      export HOOKS_DIR=/tmp/test_nested
+    }
+
+    cleanup_nested_test() {
+      rm -rf /tmp/test_nested
+      hooks:cleanup
+    }
+
+    BeforeEach 'setup_nested_test'
+    AfterEach 'cleanup_nested_test'
+
+    It 'detects when same hook is defined from multiple contexts'
+      # Create a helper script that defines a hook
+      cat > /tmp/test_nested/helper.sh <<'EOF'
+#!/usr/bin/env bash
+source "$E_BASH/_hooks.sh"
+hooks:define deploy
+EOF
+
+      # Source the helper script (defines deploy from helper context)
+      source /tmp/test_nested/helper.sh
+
+      # Define the same hook from current context (should warn)
+      When call hooks:define deploy
+
+      The status should be success
+      The stderr should include "Warning: Hook 'deploy' is being defined from multiple contexts"
+    End
+
+    It 'allows same context to redefine hook without warning'
+      # Define hook twice from same context
+      hooks:define deploy
+
+      When call hooks:define deploy
+
+      The status should be success
+      The stderr should not include "Warning"
+      The stderr should include "already registered from this context, skipping"
+    End
+
+    It 'tracks contexts for each hook'
+      # Create two helper scripts
+      cat > /tmp/test_nested/helper1.sh <<'EOF'
+#!/usr/bin/env bash
+source "$E_BASH/_hooks.sh"
+hooks:define build
+EOF
+
+      cat > /tmp/test_nested/helper2.sh <<'EOF'
+#!/usr/bin/env bash
+source "$E_BASH/_hooks.sh"
+hooks:define build
+EOF
+
+      # Source both helpers
+      source /tmp/test_nested/helper1.sh 2>/dev/null
+      source /tmp/test_nested/helper2.sh 2>/dev/null
+
+      # Check that context tracking works
+      test_contexts() {
+        # The hook should be defined
+        if [[ -n ${__HOOKS_DEFINED[build]+x} ]]; then
+          echo "Hook defined: yes"
+        else
+          echo "Hook defined: no"
+        fi
+
+        # Should have multiple contexts
+        local contexts="${__HOOKS_CONTEXTS[build]}"
+        local count=$(echo "$contexts" | tr '|' '\n' | wc -l)
+        echo "Context count: $count"
+      }
+
+      When call test_contexts
+
+      The status should be success
+      The line 1 should eq "Hook defined: yes"
+      The line 2 should eq "Context count: 2"
+    End
+
+    It 'shows context count in hooks:list for multiple contexts'
+      # Create helper script
+      cat > /tmp/test_nested/helper.sh <<'EOF'
+#!/usr/bin/env bash
+source "$E_BASH/_hooks.sh"
+hooks:define test_hook
+EOF
+
+      # Source helper and define from current context
+      source /tmp/test_nested/helper.sh 2>/dev/null
+      hooks:define test_hook 2>/dev/null
+
+      When call hooks:list
+
+      The status should be success
+      The output should include "test_hook"
+      The output should include "defined in 2 contexts"
+    End
+
+    It 'executes hooks defined from multiple contexts'
+      # Create a script implementation
+      cat > /tmp/test_nested/multi_ctx_hook-test.sh <<'EOF'
+#!/usr/bin/env bash
+echo "Hook executed"
+exit 0
+EOF
+      chmod +x /tmp/test_nested/multi_ctx_hook-test.sh
+
+      # Create helper that defines the hook
+      cat > /tmp/test_nested/helper.sh <<'EOF'
+#!/usr/bin/env bash
+source "$E_BASH/_hooks.sh"
+hooks:define multi_ctx_hook
+EOF
+
+      # Source helper and define from current context
+      source /tmp/test_nested/helper.sh 2>/dev/null
+      hooks:define multi_ctx_hook 2>/dev/null
+
+      # Execute the hook - should work even with multiple contexts
+      When call on:hook multi_ctx_hook
+
+      The status should be success
+      The output should include "Hook executed"
+    End
+  End
 End
