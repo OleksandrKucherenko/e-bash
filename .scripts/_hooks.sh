@@ -31,6 +31,10 @@ if [[ -z ${__HOOKS_DEFINED+x} ]]; then declare -g -A __HOOKS_DEFINED; fi
 # stores hook_name -> "context1|context2|context3" pipe-separated list
 if [[ -z ${__HOOKS_CONTEXTS+x} ]]; then declare -g -A __HOOKS_CONTEXTS; fi
 
+# declare global associative array for registered functions (internal)
+# stores hook_name -> "friendly1:func1|friendly2:func2" pipe-separated list
+if [[ -z ${__HOOKS_REGISTERED+x} ]]; then declare -g -A __HOOKS_REGISTERED; fi
+
 # declare global arrays for execution mode pattern registration (internal)
 if [[ -z ${____HOOKS_SOURCE_PATTERNS+x} ]]; then declare -g -a ____HOOKS_SOURCE_PATTERNS=(); fi
 if [[ -z ${____HOOKS_SCRIPT_PATTERNS+x} ]]; then declare -g -a ____HOOKS_SCRIPT_PATTERNS=(); fi
@@ -171,6 +175,135 @@ function hook:as:script() {
 }
 
 #
+# Register a function to be executed as part of a hook
+#
+# Usage:
+#   hook:register deploy "10-backup" backup_database
+#   hook:register deploy "20-update" update_code
+#   hook:register build "metrics" track_build_metrics
+#
+# Parameters:
+#   $1 - Hook name
+#   $2 - Friendly name (used for alphabetical sorting)
+#   $3 - Function name to execute
+#
+# Returns:
+#   0 - Success
+#   1 - Invalid parameters or function doesn't exist
+#
+# Notes:
+#   - Functions are executed in alphabetical order by friendly name
+#   - Multiple functions can be registered for the same hook
+#   - Friendly names must be unique within a hook
+#
+function hook:register() {
+  local hook_name="$1"
+  local friendly_name="$2"
+  local function_name="$3"
+
+  # Validate parameters
+  if [[ -z "$hook_name" || -z "$friendly_name" || -z "$function_name" ]]; then
+    echo "Error: hook:register requires three parameters: <hook_name> <friendly_name> <function_name>" >&2
+    return 1
+  fi
+
+  # Validate function exists
+  if ! declare -F "$function_name" >/dev/null 2>&1; then
+    echo "Error: Function '$function_name' does not exist" >&2
+    return 1
+  fi
+
+  # Check if hook is defined (optional - register anyway but warn)
+  if [[ -z ${__HOOKS_DEFINED[$hook_name]+x} ]]; then
+    echo:Hooks "⚠ Registering function for undefined hook '$hook_name' (hook should be defined first)"
+  fi
+
+  # Get existing registrations for this hook
+  local existing="${__HOOKS_REGISTERED[$hook_name]}"
+
+  # Check if friendly name already exists for this hook
+  if [[ -n "$existing" && "|${existing}|" == *"|${friendly_name}:"* ]]; then
+    echo "Error: Friendly name '$friendly_name' already registered for hook '$hook_name'" >&2
+    return 1
+  fi
+
+  # Add the new registration
+  if [[ -z "$existing" ]]; then
+    __HOOKS_REGISTERED[$hook_name]="${friendly_name}:${function_name}"
+  else
+    __HOOKS_REGISTERED[$hook_name]="${existing}|${friendly_name}:${function_name}"
+  fi
+
+  echo:Hooks "Registered function '${function_name}' as '${friendly_name}' for hook '${hook_name}'"
+  return 0
+}
+
+#
+# Unregister a function from a hook
+#
+# Usage:
+#   hook:unregister deploy "10-backup"
+#   hook:unregister build "metrics"
+#
+# Parameters:
+#   $1 - Hook name
+#   $2 - Friendly name of the registration to remove
+#
+# Returns:
+#   0 - Success
+#   1 - Invalid parameters or registration not found
+#
+function hook:unregister() {
+  local hook_name="$1"
+  local friendly_name="$2"
+
+  # Validate parameters
+  if [[ -z "$hook_name" || -z "$friendly_name" ]]; then
+    echo "Error: hook:unregister requires two parameters: <hook_name> <friendly_name>" >&2
+    return 1
+  fi
+
+  # Get existing registrations
+  local existing="${__HOOKS_REGISTERED[$hook_name]}"
+
+  if [[ -z "$existing" ]]; then
+    echo "Error: No registrations found for hook '$hook_name'" >&2
+    return 1
+  fi
+
+  # Check if friendly name exists
+  if [[ "|${existing}|" != *"|${friendly_name}:"* ]]; then
+    echo "Error: Registration '$friendly_name' not found for hook '$hook_name'" >&2
+    return 1
+  fi
+
+  # Remove the registration
+  local new_registrations=""
+  local entry
+  IFS='|' read -ra entries <<< "$existing"
+  for entry in "${entries[@]}"; do
+    local entry_friendly="${entry%%:*}"
+    if [[ "$entry_friendly" != "$friendly_name" ]]; then
+      if [[ -z "$new_registrations" ]]; then
+        new_registrations="$entry"
+      else
+        new_registrations="${new_registrations}|${entry}"
+      fi
+    fi
+  done
+
+  # Update or remove the entry
+  if [[ -z "$new_registrations" ]]; then
+    unset "__HOOKS_REGISTERED[$hook_name]"
+  else
+    __HOOKS_REGISTERED[$hook_name]="$new_registrations"
+  fi
+
+  echo:Hooks "Unregistered '${friendly_name}' from hook '${hook_name}'"
+  return 0
+}
+
+#
 # Determine execution mode for a specific script
 #
 # Parameters:
@@ -221,8 +354,9 @@ function hooks:get_exec_mode() {
 # Execution order:
 #   1. Check if hook is defined via hooks:define
 #   2. Execute function hook:{name} if it exists
-#   3. Find and execute all matching scripts in ci-cd/{hook_name}-*.sh or ci-cd/{hook_name}_*.sh
-#   4. Scripts are executed in alphabetical order
+#   3. Execute registered functions (hook:register) in alphabetical order by friendly name
+#   4. Find and execute all matching scripts in ci-cd/{hook_name}-*.sh or ci-cd/{hook_name}_*.sh
+#   5. Scripts are executed in alphabetical order
 #
 # Script naming patterns:
 #   - {hook_name}-{purpose}.sh
@@ -266,6 +400,40 @@ function on:hook() {
     last_exit_code=$?
     echo:Hooks "    ↳ exit code: $last_exit_code"
     ((impl_count++))
+  fi
+
+  # execute registered functions in alphabetical order by friendly name
+  local registered="${__HOOKS_REGISTERED[$hook_name]}"
+  if [[ -n "$registered" ]]; then
+    # Split registrations and sort by friendly name
+    local -a sorted_registrations=()
+    local entry
+    IFS='|' read -ra entries <<< "$registered"
+
+    # Sort entries by friendly name (part before colon)
+    IFS=$'\n' sorted_registrations=($(sort <<<"${entries[*]}"))
+    unset IFS
+
+    local reg_count=${#sorted_registrations[@]}
+    echo:Hooks "  Found ${reg_count} registered function(s) for hook '$hook_name'"
+
+    local reg_num=0
+    for entry in "${sorted_registrations[@]}"; do
+      ((reg_num++))
+      local friendly="${entry%%:*}"
+      local func="${entry#*:}"
+
+      # Verify function still exists
+      if declare -F "$func" >/dev/null 2>&1; then
+        echo:Hooks "  → [registered $reg_num/$reg_count] ${friendly} → ${func}()"
+        "$func" "$@"
+        last_exit_code=$?
+        echo:Hooks "    ↳ exit code: $last_exit_code"
+        ((impl_count++))
+      else
+        echo:Hooks "  ⚠ [registered $reg_num/$reg_count] ${friendly} → function ${func}() not found, skipping"
+      fi
+    done
   fi
 
   # find and execute all matching script implementations
@@ -408,6 +576,13 @@ function hooks:list() {
       implementations+=("function")
     fi
 
+    # check for registered functions
+    local registered="${__HOOKS_REGISTERED[$hook_name]}"
+    if [[ -n "$registered" ]]; then
+      local reg_count=$(echo "$registered" | tr '|' '\n' | wc -l)
+      implementations+=("${reg_count} registered")
+    fi
+
     # check for script implementations
     if [[ -d "$HOOKS_DIR" ]]; then
       local script_count=0
@@ -512,6 +687,7 @@ function hooks:has_implementation() {
 function hooks:cleanup() {
   unset __HOOKS_DEFINED
   unset __HOOKS_CONTEXTS
+  unset __HOOKS_REGISTERED
   unset __HOOKS_SOURCE_PATTERNS
   unset __HOOKS_SCRIPT_PATTERNS
   unset HOOKS_DIR

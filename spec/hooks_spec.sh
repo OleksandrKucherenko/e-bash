@@ -858,4 +858,150 @@ EOF
       The output should include "Hook executed"
     End
   End
+
+  Context 'Function registration /'
+    setup_registration_test() {
+      hooks:cleanup
+    }
+
+    AfterEach 'setup_registration_test'
+
+    It 'registers a function for a hook'
+      test_func() {
+        echo "Test function executed"
+      }
+
+      hooks:define build
+      hook:register build "10-test" test_func
+
+      When call on:hook build
+
+      The status should be success
+      The output should include "Test function executed"
+    End
+
+    It 'registers multiple functions for same hook in alphabetical order'
+      func_a() { echo "Function A"; }
+      func_b() { echo "Function B"; }
+      func_c() { echo "Function C"; }
+
+      hooks:define deploy
+      hook:register deploy "30-third" func_c
+      hook:register deploy "10-first" func_a
+      hook:register deploy "20-second" func_b
+
+      When call on:hook deploy
+
+      The status should be success
+      The line 1 should eq "Function A"
+      The line 2 should eq "Function B"
+      The line 3 should eq "Function C"
+    End
+
+    It 'unregisters a function from a hook'
+      test_func() { echo "Test function"; }
+
+      hooks:define clean
+      hook:register clean "test" test_func
+      hook:unregister clean "test"
+
+      When call on:hook clean
+
+      The status should be success
+      The output should not include "Test function"
+    End
+
+    It 'fails to register if function does not exist'
+      hooks:define test_hook
+
+      When call hook:register test_hook "friendly" non_existent_func
+
+      The status should be failure
+      The stderr should include "Function 'non_existent_func' does not exist"
+    End
+
+    It 'fails to register duplicate friendly name'
+      test_func1() { echo "Func 1"; }
+      test_func2() { echo "Func 2"; }
+
+      hooks:define test_hook
+      hook:register test_hook "same-name" test_func1
+
+      When call hook:register test_hook "same-name" test_func2
+
+      The status should be failure
+      The stderr should include "Friendly name 'same-name' already registered"
+    End
+
+    It 'executes hook:prefix function before registered functions'
+      hook:build() { echo "Hook function"; }
+      registered_func() { echo "Registered function"; }
+
+      hooks:define build
+      hook:register build "50-registered" registered_func
+
+      When call on:hook build
+
+      The status should be success
+      The line 1 should eq "Hook function"
+      The line 2 should eq "Registered function"
+    End
+
+    It 'shows registered functions in hooks:list'
+      func1() { echo "F1"; }
+      func2() { echo "F2"; }
+
+      hooks:define deploy
+      hook:register deploy "10-first" func1
+      hook:register deploy "20-second" func2
+
+      When call hooks:list
+
+      The status should be success
+      The output should include "deploy: implemented (2 registered)"
+    End
+
+    It 'handles unregistering from non-existent hook'
+      When call hook:unregister non_existent_hook "friendly"
+
+      The status should be failure
+      The stderr should include "No registrations found for hook 'non_existent_hook'"
+    End
+
+    It 'handles unregistering non-existent friendly name'
+      test_func() { echo "Test"; }
+
+      hooks:define test_hook
+      hook:register test_hook "exists" test_func
+
+      When call hook:unregister test_hook "does_not_exist"
+
+      The status should be failure
+      The stderr should include "Registration 'does_not_exist' not found"
+    End
+
+    It 'can register functions for forwarding to external scripts'
+      external_script="/tmp/external_test.sh"
+      cat > "$external_script" <<'EOF'
+#!/usr/bin/env bash
+echo "External script via function"
+exit 0
+EOF
+      chmod +x "$external_script"
+
+      forward_to_external() {
+        "$external_script" "$@"
+      }
+
+      hooks:define process
+      hook:register process "external" forward_to_external
+
+      When call on:hook process
+
+      The status should be success
+      The output should include "External script via function"
+
+      rm -f "$external_script"
+    End
+  End
 End

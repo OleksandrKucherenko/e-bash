@@ -521,6 +521,123 @@ on:hook process "$@"
 on:hook end
 ```
 
+### Registered Functions
+
+Register any Bash function as a hook implementation dynamically. This is perfect for adding observability, metrics, or forwarding to external scripts.
+
+**Key Features:**
+- Register multiple functions per hook
+- Functions execute in alphabetical order by friendly name
+- Functions can be registered and unregistered at runtime
+- Useful for metrics, logging, and external script forwarding
+
+**Basic Registration:**
+
+```bash
+source "$E_BASH/_hooks.sh"
+hooks:define deploy
+
+# Define functions to register
+track_metrics() {
+  echo "📊 Tracking deployment metrics..."
+  # Send metrics to monitoring system
+}
+
+notify_team() {
+  echo "📢 Notifying team..."
+  # Send notification
+}
+
+# Register functions with friendly names for sorting
+hook:register deploy "10-metrics" track_metrics
+hook:register deploy "20-notify" notify_team
+
+# Execute hook - all registered functions run in alphabetical order
+on:hook deploy
+# Output:
+#   📊 Tracking deployment metrics...
+#   📢 Notifying team...
+```
+
+**Forwarding to External Scripts:**
+
+```bash
+# Function that forwards to an external script
+forward_to_datadog() {
+  /usr/local/bin/datadog-deploy.sh "$@"
+}
+
+forward_to_slack() {
+  /usr/local/bin/slack-notify.sh "deployment" "$@"
+}
+
+hooks:define deploy
+hook:register deploy "50-datadog" forward_to_datadog
+hook:register deploy "60-slack" forward_to_slack
+
+on:hook deploy "production" "v1.2.3"
+# Calls: datadog-deploy.sh production v1.2.3
+# Calls: slack-notify.sh deployment production v1.2.3
+```
+
+**Dynamic Registration for Observability:**
+
+```bash
+# Add observability hooks dynamically
+add_observability() {
+  local hook_name="$1"
+
+  # Create timing wrapper
+  local timing_func="${hook_name}_timing"
+  eval "${timing_func}() {
+    local start=\$SECONDS
+    echo \"⏱️  Starting ${hook_name}\"
+    # Hook already executed by on:hook
+    local duration=\$((SECONDS - start))
+    echo \"✓ ${hook_name} completed in \${duration}s\"
+  }"
+
+  # Register timing function
+  hook:register "$hook_name" "99-timing" "$timing_func"
+}
+
+hooks:define build test deploy
+add_observability build
+add_observability test
+add_observability deploy
+```
+
+**Unregistering Functions:**
+
+```bash
+# Register a function
+hook:register build "metrics" track_build_metrics
+
+# Later, unregister it by friendly name
+hook:unregister build "metrics"
+```
+
+**Execution Order:**
+1. `hook:{name}()` function (if exists)
+2. Registered functions (alphabetical by friendly name)
+3. External scripts (alphabetical by filename)
+
+**Use Cases:**
+1. **Metrics & Observability**: Track execution time, success rates, resource usage
+2. **External Tool Integration**: Forward to Datadog, Slack, PagerDuty, etc.
+3. **Conditional Logic**: Register different functions based on environment
+4. **Testing**: Register mock functions to override production behavior
+5. **Plugin Systems**: Allow plugins to register their hook handlers
+
+**Checking Registrations:**
+
+```bash
+# List hooks shows registered function count
+hooks:list
+# Output:
+#   - deploy: implemented (function, 3 registered, 2 script(s))
+```
+
 ## Best Practices
 
 1. **Always declare hooks upfront** using `hooks:define` to make them discoverable
