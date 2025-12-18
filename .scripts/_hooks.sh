@@ -23,8 +23,12 @@ source "$E_BASH/_logger.sh"
 # Output to stderr for traceability (user output goes to stdout, logging to stderr)
 logger:init hooks "${cl_grey}[hooks]${cl_reset} " ">&2"
 
-# declare global associative array for hooks tracking
-if [[ -z ${HOOKS_DEFINED+x} ]]; then declare -g -A HOOKS_DEFINED; fi
+# declare global associative array for hooks tracking (internal)
+if [[ -z ${__HOOKS_DEFINED+x} ]]; then declare -g -A __HOOKS_DEFINED; fi
+
+# declare global arrays for execution mode pattern registration (internal)
+if [[ -z ${____HOOKS_SOURCE_PATTERNS+x} ]]; then declare -g -a ____HOOKS_SOURCE_PATTERNS=(); fi
+if [[ -z ${____HOOKS_SCRIPT_PATTERNS+x} ]]; then declare -g -a ____HOOKS_SCRIPT_PATTERNS=(); fi
 
 # default hooks directory (can be overridden)
 if [[ -z ${HOOKS_DIR+x} ]]; then
@@ -71,10 +75,94 @@ function hooks:define() {
     fi
 
     # register the hook
-    HOOKS_DEFINED[$hook_name]=1
+    __HOOKS_DEFINED[$hook_name]=1
     echo:Hooks "  ✓ Registered hook: $hook_name"
   done
 
+  return 0
+}
+
+#
+# Register file patterns to always execute in sourced mode
+#
+# Usage:
+#   hook:as:source "begin-*-init.sh"
+#   hook:as:source "env-*.sh" "config-*.sh"
+#
+# Parameters:
+#   $@ - File patterns (wildcards supported)
+#
+# Returns:
+#   0 - Success
+#
+function hook:as:source() {
+  local pattern
+
+  for pattern in "$@"; do
+    __HOOKS_SOURCE_PATTERNS+=("$pattern")
+    echo:Hooks "Registered pattern for sourced execution: $pattern"
+  done
+
+  return 0
+}
+
+#
+# Register file patterns to always execute as scripts
+#
+# Usage:
+#   hook:as:script "end-datadog.sh"
+#   hook:as:script "notify-*.sh"
+#
+# Parameters:
+#   $@ - File patterns (wildcards supported)
+#
+# Returns:
+#   0 - Success
+#
+function hook:as:script() {
+  local pattern
+
+  for pattern in "$@"; do
+    __HOOKS_SCRIPT_PATTERNS+=("$pattern")
+    echo:Hooks "Registered pattern for script execution: $pattern"
+  done
+
+  return 0
+}
+
+#
+# Determine execution mode for a specific script
+#
+# Parameters:
+#   $1 - Script filename (basename)
+#
+# Returns:
+#   Echoes "source" or "exec"
+#
+function hooks:get_exec_mode() {
+  local script_name="$1"
+  local pattern
+
+  # Check source patterns first (higher priority)
+  for pattern in "${__HOOKS_SOURCE_PATTERNS[@]}"; do
+    # shellcheck disable=SC2053
+    if [[ "$script_name" == $pattern ]]; then
+      echo "source"
+      return 0
+    fi
+  done
+
+  # Check script patterns
+  for pattern in "${__HOOKS_SCRIPT_PATTERNS[@]}"; do
+    # shellcheck disable=SC2053
+    if [[ "$script_name" == $pattern ]]; then
+      echo "exec"
+      return 0
+    fi
+  done
+
+  # Fall back to global mode
+  echo "$HOOKS_EXEC_MODE"
   return 0
 }
 
@@ -123,7 +211,7 @@ function on:hook() {
   local impl_count=0
 
   # check if hook is defined
-  if [[ -z ${HOOKS_DEFINED[$hook_name]+x} ]]; then
+  if [[ -z ${__HOOKS_DEFINED[$hook_name]+x} ]]; then
     echo:Hooks "Hook '$hook_name' not defined, skipping"
     return 0
   fi
@@ -160,8 +248,9 @@ function on:hook() {
     for script in "${hook_scripts[@]}"; do
       ((script_num++))
       local script_name=$(basename "$script")
+      local exec_mode=$(hooks:get_exec_mode "$script_name")
 
-      if [[ "$HOOKS_EXEC_MODE" == "source" ]]; then
+      if [[ "$exec_mode" == "source" ]]; then
         echo:Hooks "  → [script $script_num/$((${#hook_scripts[@]}))] ${script_name} (sourced mode)"
         # Source the script and call hook:run function if it exists
         # shellcheck disable=SC1090
@@ -200,6 +289,58 @@ function on:hook() {
 }
 
 #
+# Execute a hook with scripts sourced (ignores HOOKS_EXEC_MODE for call-level override)
+#
+# Usage:
+#   on:source-hook begin
+#   on:source-hook deploy param1 param2
+#
+# Parameters:
+#   $1 - Hook name
+#   $@ - Additional parameters passed to the hook
+#
+# Returns:
+#   Last hook's exit code or 0 if not implemented
+#
+function on:source-hook() {
+  local saved_mode="$HOOKS_EXEC_MODE"
+  HOOKS_EXEC_MODE="source"
+
+  echo:Hooks "Call-level override: forcing sourced mode for this hook execution"
+  on:hook "$@"
+  local exit_code=$?
+
+  HOOKS_EXEC_MODE="$saved_mode"
+  return $exit_code
+}
+
+#
+# Execute a hook with scripts executed as subprocesses (ignores HOOKS_EXEC_MODE for call-level override)
+#
+# Usage:
+#   on:script-hook end
+#   on:script-hook notify url status
+#
+# Parameters:
+#   $1 - Hook name
+#   $@ - Additional parameters passed to the hook
+#
+# Returns:
+#   Last hook's exit code or 0 if not implemented
+#
+function on:script-hook() {
+  local saved_mode="$HOOKS_EXEC_MODE"
+  HOOKS_EXEC_MODE="exec"
+
+  echo:Hooks "Call-level override: forcing exec mode for this hook execution"
+  on:hook "$@"
+  local exit_code=$?
+
+  HOOKS_EXEC_MODE="$saved_mode"
+  return $exit_code
+}
+
+#
 # List all defined hooks
 #
 # Usage:
@@ -212,13 +353,13 @@ function on:hook() {
 function hooks:list() {
   local hook_name
 
-  if [[ ${#HOOKS_DEFINED[@]} -eq 0 ]]; then
+  if [[ ${#__HOOKS_DEFINED[@]} -eq 0 ]]; then
     echo "No hooks defined"
     return 0
   fi
 
   echo "Defined hooks:"
-  for hook_name in "${!HOOKS_DEFINED[@]}"; do
+  for hook_name in "${!__HOOKS_DEFINED[@]}"; do
     local implementations=()
 
     # check if implemented as function
@@ -269,7 +410,7 @@ function hooks:list() {
 function hooks:is_defined() {
   local hook_name="$1"
 
-  if [[ -n ${HOOKS_DEFINED[$hook_name]+x} ]]; then
+  if [[ -n ${__HOOKS_DEFINED[$hook_name]+x} ]]; then
     return 0
   fi
 
@@ -320,7 +461,10 @@ function hooks:has_implementation() {
 # Cleanup function for tests
 #
 function hooks:cleanup() {
-  unset HOOKS_DEFINED
+  unset __HOOKS_DEFINED
+  unset __HOOKS_SOURCE_PATTERNS
+  unset __HOOKS_SCRIPT_PATTERNS
   unset HOOKS_DIR
   unset HOOKS_PREFIX
+  unset HOOKS_EXEC_MODE
 }

@@ -150,11 +150,11 @@ Describe '_hooks.sh /'
     It 'executes hook script when present'
       setup() {
         hooks:define script_hook
-        cat > /tmp/test_hooks/script_hook.sh <<'EOF'
+        cat > /tmp/test_hooks/script_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Script hook executed"
 EOF
-        chmod +x /tmp/test_hooks/script_hook.sh
+        chmod +x /tmp/test_hooks/script_hook-test.sh
       }
       BeforeCall 'setup'
 
@@ -167,11 +167,11 @@ EOF
     It 'passes parameters to hook script'
       setup() {
         hooks:define script_hook
-        cat > /tmp/test_hooks/script_hook.sh <<'EOF'
+        cat > /tmp/test_hooks/script_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Script params: $*"
 EOF
-        chmod +x /tmp/test_hooks/script_hook.sh
+        chmod +x /tmp/test_hooks/script_hook-test.sh
       }
       BeforeCall 'setup'
 
@@ -184,11 +184,11 @@ EOF
     It 'propagates script exit code'
       setup() {
         hooks:define fail_hook
-        cat > /tmp/test_hooks/fail_hook.sh <<'EOF'
+        cat > /tmp/test_hooks/fail_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 exit 13
 EOF
-        chmod +x /tmp/test_hooks/fail_hook.sh
+        chmod +x /tmp/test_hooks/fail_hook-test.sh
       }
       BeforeCall 'setup'
 
@@ -203,11 +203,11 @@ EOF
         hook:priority_hook() {
           echo "Function implementation"
         }
-        cat > /tmp/test_hooks/priority_hook.sh <<'EOF'
+        cat > /tmp/test_hooks/priority_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Script implementation"
 EOF
-        chmod +x /tmp/test_hooks/priority_hook.sh
+        chmod +x /tmp/test_hooks/priority_hook-test.sh
       }
       BeforeCall 'setup'
 
@@ -220,7 +220,7 @@ EOF
     It 'skips non-executable script files'
       setup() {
         hooks:define no_exec_hook
-        cat > /tmp/test_hooks/no_exec_hook.sh <<'EOF'
+        cat > /tmp/test_hooks/no_exec_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "This should not execute"
 EOF
@@ -504,11 +504,11 @@ EOF
         mkdir -p /tmp/test_hooks2
         export HOOKS_DIR=/tmp/test_hooks2
         hooks:define impl_hook
-        cat > /tmp/test_hooks2/impl_hook.sh <<'EOF'
+        cat > /tmp/test_hooks2/impl_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 :
 EOF
-        chmod +x /tmp/test_hooks2/impl_hook.sh
+        chmod +x /tmp/test_hooks2/impl_hook-test.sh
       }
       cleanup() {
         rm -rf /tmp/test_hooks2
