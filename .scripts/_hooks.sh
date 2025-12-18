@@ -32,8 +32,8 @@ if [[ -z ${__HOOKS_CONTEXTS+x} ]]; then declare -g -A __HOOKS_CONTEXTS; fi
 if [[ -z ${__HOOKS_REGISTERED+x} ]]; then declare -g -A __HOOKS_REGISTERED; fi
 
 # declare global arrays for execution mode pattern registration (internal)
-if [[ -z ${____HOOKS_SOURCE_PATTERNS+x} ]]; then declare -g -a ____HOOKS_SOURCE_PATTERNS=(); fi
-if [[ -z ${____HOOKS_SCRIPT_PATTERNS+x} ]]; then declare -g -a ____HOOKS_SCRIPT_PATTERNS=(); fi
+if [[ -z ${__HOOKS_SOURCE_PATTERNS+x} ]]; then declare -g -a __HOOKS_SOURCE_PATTERNS=(); fi
+if [[ -z ${__HOOKS_SCRIPT_PATTERNS+x} ]]; then declare -g -a __HOOKS_SCRIPT_PATTERNS=(); fi
 
 # default hooks directory (can be overridden)
 if [[ -z ${HOOKS_DIR+x} ]]; then
