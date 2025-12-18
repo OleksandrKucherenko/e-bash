@@ -500,11 +500,11 @@ export HOOKS_DIR="my-hooks"
 # Enable sourced execution mode
 export HOOKS_EXEC_MODE="source"
 
-# Enable hooks logging for debugging
-export DEBUG="hooks"
+# Enable hooks logging for debugging (respects existing DEBUG value)
+export DEBUG=${DEBUG:-"hooks"}
 
-# Enable all logging
-export DEBUG="*"
+# Or enable all logging
+# export DEBUG=${DEBUG:-"*"}
 
 # Then source the module
 source "$E_BASH/_hooks.sh"
@@ -516,9 +516,15 @@ The hooks system provides comprehensive logging for traceability and debugging.
 
 **Enable Logging:**
 ```bash
-export DEBUG="hooks"  # Enable hooks logging only
-export DEBUG="*"      # Enable all module logging
-export DEBUG="-"      # Disable all logging
+# Respect existing DEBUG value, or set default
+export DEBUG=${DEBUG:-"hooks"}  # Enable hooks logging only (respects user's DEBUG)
+export DEBUG=${DEBUG:-"*"}      # Enable all module logging (respects user's DEBUG)
+export DEBUG=${DEBUG:-"-"}      # Disable all logging (respects user's DEBUG)
+
+# Or override unconditionally (use sparingly)
+export DEBUG="hooks"  # Force hooks logging only
+export DEBUG="*"      # Force all module logging
+export DEBUG="-"      # Force disable all logging
 ```
 
 **What Gets Logged (to stderr):**

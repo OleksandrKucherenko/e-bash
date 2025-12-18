@@ -9,8 +9,8 @@
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
 
-# Enable hooks logging to see traceability
-export DEBUG="hooks"
+# Enable hooks logging to see traceability (respects existing DEBUG value)
+export DEBUG=${DEBUG:-"hooks"}
 
 # shellcheck disable=SC1090 source=../.scripts/_hooks.sh
 source "$E_BASH/_hooks.sh"
