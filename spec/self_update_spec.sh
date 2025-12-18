@@ -4,7 +4,7 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
+## Last revisit: 2025-12-18
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -15,6 +15,9 @@ eval "$(shellspec - -c) exit 1"
 # $1 = stdout, $2 = stderr, $3 = exit status
 no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+
+is_sha1() { grep -Eq '^[a-f0-9]{40}$'; }
+is_hash_log() { grep -Eq '^hash: [a-f0-9]{40} of '; }
 
 Describe 'Self-Update Module /'
   # Note: We include the script which defines readonly variables
@@ -114,6 +117,48 @@ Describe 'Self-Update Module /'
       The stderr should include "(1.0.0-beta < 1.0.0) -> (< <= !=)"
       The stderr should include "(1.0.0-alpha < 1.0.0) -> (< <= !=)"
       The stderr should include "(1.0.0-alpha < 1.0.0-beta) -> (< <= !=)"
+    End
+  End
+
+  Describe 'semver:constraints /'
+    It 'v1 incorrectly allows prerelease in stable ranges'
+      When call semver:constraints:v1 "1.0.1-alpha" "~1.0.0"
+      The status should be success
+      The stderr should include "[~1.0.0]:"
+      
+      # Dump
+    End
+
+    It 'v2 excludes prerelease unless range includes prerelease'
+      When call semver:constraints:v2 "1.0.1-alpha" "~1.0.0"
+      The status should be failure
+      The stderr should include "[~1.0.0]:"
+      
+      # Dump
+    End
+
+    It 'v2 allows prerelease with same patch when range includes prerelease'
+      When call semver:constraints:v2 "1.0.1-beta" "~1.0.1-alpha"
+      The status should be success
+      The stderr should include "[~1.0.1-alpha]:"
+      
+      # Dump
+    End
+
+    It 'v2 excludes prerelease with different patch even if range includes prerelease'
+      When call semver:constraints:v2 "1.0.2-alpha" "~1.0.1-alpha"
+      The status should be failure
+      The stderr should include "[~1.0.1-alpha]:"
+      
+      # Dump
+    End
+
+    It 'v2 still allows stable versions within prerelease range'
+      When call semver:constraints:v2 "1.0.2" "~1.0.1-alpha"
+      The status should be success
+      The stderr should include "[~1.0.1-alpha]:"
+      
+      # Dump
     End
   End
 
@@ -229,8 +274,6 @@ Describe 'Self-Update Module /'
 
   Describe 'self-update:version:find /'
     setup_find_versions() {
-      echo "Setting up versions for find tests"
-
       __REPO_VERSIONS=("1.0.0" "1.0.1" "1.1.0" "1.2.0" "2.0.0")
       declare -g -A __REPO_MAPPING=(
         ["1.0.0"]="v1.0.0"
@@ -411,7 +454,7 @@ Describe 'Self-Update Module /'
         The result of function no_colors_stdout should include "e-bash is outdated: v1.0.0 -> v1.1.0"
         The stderr should include "binding to: v1.1.0"
 
-        Dump
+        # Dump
       End
 
       It 'resolves "~1.0.0" using semver constraints'
@@ -426,7 +469,7 @@ Describe 'Self-Update Module /'
         The stdout should include "different-hash"
         The stderr should not include "binding to: v1.0.1-alpha"
 
-        Dump
+        # Dump
       End
     End
   End
@@ -452,7 +495,7 @@ Describe 'Self-Update Module /'
       The status should be success
 
       The output should equal "$TEMP_DIR/test-file.sh"
-      The stderr should include "file ~> $TEMP_DIR/test-file.sh"
+      The result of function no_colors_stderr should include "file ~> $TEMP_DIR/test-file.sh"
     End
 
     It 'resolves relative path from working directory'
@@ -462,12 +505,14 @@ Describe 'Self-Update Module /'
       
       The status should be success
       The output should equal "$TEMP_DIR/test-file.sh"
+      The result of function no_colors_stderr should include "file ~> $TEMP_DIR/test-file.sh"
     End
 
     It 'resolves nested file path'
       When call path:resolve "$TEMP_DIR/subdir/nested-file.sh" "$TEMP_DIR"
       The output should equal "$TEMP_DIR/subdir/nested-file.sh"
       The status should be success
+      The result of function no_colors_stderr should include "file ~> $TEMP_DIR/subdir/nested-file.sh"
     End
 
     It 'returns error for non-existent file'
@@ -475,48 +520,57 @@ Describe 'Self-Update Module /'
       
       The status should be failure
       The stdout should include "$TEMP_DIR/non-existent.sh"
+      The result of function no_colors_stderr should include "ERROR: file not found ($TEMP_DIR): $TEMP_DIR/non-existent.sh"
     End
   End
 
   Describe 'self-update:self:version /'
     setup_version_test() {
-      TEMP_DIR=$(mktemp -d)
-
-      # Create test script with version in copyright
-      cat > "$TEMP_DIR/versioned-script.sh" << 'EOF'
-#!/usr/bin/env bash
-## Version: 1.2.3
-echo "test"
-EOF
-
-      # Create test script without version
-      cat > "$TEMP_DIR/no-version.sh" << 'EOF'
-#!/usr/bin/env bash
-echo "test"
-EOF
-
-      chmod +x "$TEMP_DIR"/*.sh
+      VERSIONED_SCRIPT_FIXTURE="$SHELLSPEC_PROJECT_ROOT/spec/fixtures/versioned-script.sh"
+      NO_VERSION_SCRIPT_FIXTURE="$SHELLSPEC_PROJECT_ROOT/spec/fixtures/no-version.sh"
     }
 
     cleanup_version_test() {
-      rm -rf "$TEMP_DIR"
+      unset VERSIONED_SCRIPT_FIXTURE NO_VERSION_SCRIPT_FIXTURE
     }
 
     BeforeEach 'setup_version_test'
     AfterEach 'cleanup_version_test'
 
     It 'extracts version from script copyright comments'
-      When call self-update:self:version "$TEMP_DIR/versioned-script.sh"
+      When call self-update:self:version "$VERSIONED_SCRIPT_FIXTURE"
       The output should equal "v1.2.3"
+      The result of function no_colors_stderr should include "copyright: versioned-script.sh to 1.2.3"
     End
 
     It 'returns default version for scripts without version comments'
-      When call self-update:self:version "$TEMP_DIR/no-version.sh"
+      When call self-update:self:version "$NO_VERSION_SCRIPT_FIXTURE"
       The output should equal "v1.0.0"
+      The result of function no_colors_stderr should include "fallback: no-version.sh to v1.0.0"
     End
   End
 
-  Describe 'self-update:file:hash'
+  Describe 'self-update:file:hash /'
+    hash_test:cached() {
+      local file="$1"
+      self-update:file:hash "$file" >/dev/null
+      self-update:file:hash "$file"
+    }
+
+    hash_test:detect_change() {
+      local file="$1"
+      local hash1
+      hash1="$(self-update:file:hash "$file")"
+
+      echo "modified content" >"$file"
+
+      local hash2
+      hash2="$(self-update:file:hash "$file")"
+
+      [[ "$hash1" != "$hash2" ]] || return 1
+      echo "$hash2"
+    }
+
     setup_hash_test() {
       TEMP_DIR=$(mktemp -d)
       echo "test content" > "$TEMP_DIR/test-file.sh"
@@ -531,33 +585,41 @@ EOF
 
     It 'calculates SHA1 hash of file'
       When call self-update:file:hash "$TEMP_DIR/test-file.sh"
-      The output should match pattern '^[a-f0-9]{40}$'
+      
+      # Expected: printed hash in stdout and stderr messages
+      The stdout should satisfy is_sha1
+      The result of function no_colors_stderr should satisfy is_hash_log
+      The result of function no_colors_stderr should include "of $TEMP_DIR/test-file.sh"
       The status should be success
+      
+      # Dump
     End
 
     It 'creates .sha1 cache file'
-      self-update:file:hash "$TEMP_DIR/test-file.sh" >/dev/null
+      When call self-update:file:hash "$TEMP_DIR/test-file.sh"
+      The status should be success
+      The stdout should satisfy is_sha1
+      The result of function no_colors_stderr should satisfy is_hash_log
+
       The path "$TEMP_DIR/test-file.sh.sha1" should be file
+      The output should equal "$(cat "$TEMP_DIR/test-file.sh.sha1")"
     End
 
     It 'uses cached hash on subsequent calls'
-      # First call creates cache
-      hash1=$(self-update:file:hash "$TEMP_DIR/test-file.sh")
-      # Second call should use cache
-      hash2=$(self-update:file:hash "$TEMP_DIR/test-file.sh")
-
-      The value "$hash1" should equal "$hash2"
+      When call hash_test:cached "$TEMP_DIR/test-file.sh"
+      The status should be success
+      The stdout should satisfy is_sha1
+      The output should equal "$(cat "$TEMP_DIR/test-file.sh.sha1")"
+      The result of function no_colors_stderr should satisfy is_hash_log
+      The result of function no_colors_stderr should include "from test-file.sh.sha1"
     End
 
     It 'detects file changes and updates hash'
-      hash1=$(self-update:file:hash "$TEMP_DIR/test-file.sh")
-
-      # Modify file
-      echo "modified content" > "$TEMP_DIR/test-file.sh"
-
-      hash2=$(self-update:file:hash "$TEMP_DIR/test-file.sh")
-
-      The value "$hash1" should not equal "$hash2"
+      When call hash_test:detect_change "$TEMP_DIR/test-file.sh"
+      The status should be success
+      The stdout should satisfy is_sha1
+      The output should equal "$(cat "$TEMP_DIR/test-file.sh.sha1")"
+      The result of function no_colors_stderr should satisfy is_hash_log
     End
   End
 End
