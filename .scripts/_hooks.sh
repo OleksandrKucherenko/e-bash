@@ -19,10 +19,6 @@ source "$E_BASH/_colors.sh"
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
 
-# Initialize logger for hooks (disabled by default, enable with DEBUG=hooks or DEBUG=*)
-# Output to stderr for traceability (user output goes to stdout, logging to stderr)
-logger:init hooks "${cl_grey}[hooks]${cl_reset} " ">&2"
-
 # declare global associative array for hooks tracking (internal)
 # stores hook_name -> "1" for quick existence check
 if [[ -z ${__HOOKS_DEFINED+x} ]]; then declare -g -A __HOOKS_DEFINED; fi
@@ -685,12 +681,39 @@ function hooks:has_implementation() {
 # Cleanup function for tests
 #
 function hooks:cleanup() {
+  # Properly unset and re-declare arrays to ensure correct types
   unset __HOOKS_DEFINED
   unset __HOOKS_CONTEXTS
   unset __HOOKS_REGISTERED
   unset __HOOKS_SOURCE_PATTERNS
   unset __HOOKS_SCRIPT_PATTERNS
-  unset HOOKS_DIR
-  unset HOOKS_PREFIX
-  unset HOOKS_EXEC_MODE
+  
+  # Re-declare as associative arrays
+  declare -g -A __HOOKS_DEFINED
+  declare -g -A __HOOKS_CONTEXTS
+  declare -g -A __HOOKS_REGISTERED
+  
+  # Re-declare as indexed arrays
+  declare -g -a __HOOKS_SOURCE_PATTERNS
+  declare -g -a __HOOKS_SCRIPT_PATTERNS=()
+  __HOOKS_SOURCE_PATTERNS=()
+  
+  # Reset configuration to defaults
+  HOOKS_DIR="ci-cd"
+  HOOKS_PREFIX="hook:"
+  HOOKS_EXEC_MODE="exec"
 }
+
+# This is the writing style presented by ShellSpec, which is short but unfamiliar.
+# Note that it returns the current exit status (could be non-zero).
+# DO NOT allow execution of code below this line in shellspec tests
+${__SOURCED__:+return}
+
+# Initialize logger for hooks (disabled by default, enable with DEBUG=hooks or DEBUG=*)
+# Output to stderr for traceability (user output goes to stdout, logging to stderr)
+logger:init hooks "${cl_grey}[hooks]${cl_reset} " ">&2"
+
+logger loader "$@" # initialize logger
+echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
+
+: # Ensure successful exit code (echo:Loader returns 1 when debug disabled)

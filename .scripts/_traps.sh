@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-25
+## Last revisit: 2025-12-18
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -548,4 +548,5 @@ ${__SOURCED__:+return}
 logger trap "$@" # declare echo:Trap & printf:Trap functions
 # logger:init trap "[${cl_lblue}trap${cl_reset}] " ">&2"
 
+logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
