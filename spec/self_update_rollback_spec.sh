@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 0.11.4
+## Version: 0.11.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -110,6 +110,8 @@ Describe 'Self-Update Rollback and Cleanup /'
       The status should be success
       # Should restore from latest backup (.~3~)
       The contents of file "$TEMP_PROJECT_DIR/.scripts/test.sh" should equal "backup 3"
+      # Verify logger output
+      The result of function no_colors_stderr should include "Found backup file:"
     End
 
     It 'outputs backup file path found'
@@ -139,6 +141,8 @@ Describe 'Self-Update Rollback and Cleanup /'
       The status should be success
       # Should select .~10~ (highest number)
       The contents of file "$TEMP_PROJECT_DIR/.scripts/test.sh" should equal "backup 10"
+      # Verify logger output
+      The result of function no_colors_stderr should include "Found backup file:"
     End
 
     It 'removes backup file after restoration'
@@ -148,6 +152,8 @@ Describe 'Self-Update Rollback and Cleanup /'
       The status should be success
       # Backup file should be removed (moved to replace current file)
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~" should not be exist
+      # Verify logger output
+      The result of function no_colors_stderr should include "Found backup file:"
     End
   End
 
@@ -182,8 +188,11 @@ Describe 'Self-Update Rollback and Cleanup /'
       When call self-update:rollback:version "$TEST_ROLLBACK_VERSION" "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh" should be symlink
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash binding: test.sh ~>"
       # Link should point to version
-      The result of "readlink $TEMP_PROJECT_DIR/.scripts/test.sh" should include "$TEST_ROLLBACK_VERSION"
+      link_target=$(readlink "$TEMP_PROJECT_DIR/.scripts/test.sh")
+      The variable link_target should include "$TEST_ROLLBACK_VERSION"
     End
 
     It 'uses default version v1.0.0 if not specified'
@@ -196,7 +205,11 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       When call self-update:rollback:version "" "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
-      The result of "readlink $TEMP_PROJECT_DIR/.scripts/test.sh" should include "v1.0.0"
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash binding:"
+      # Check link target
+      link_target=$(readlink "$TEMP_PROJECT_DIR/.scripts/test.sh")
+      The variable link_target should include "v1.0.0"
 
       # Cleanup
       rm -rf "${__E_ROOT}/${__WORKTREES}/v1.0.0"
@@ -209,6 +222,8 @@ Describe 'Self-Update Rollback and Cleanup /'
       The status should be success
       # Should create backup with numbered pattern
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~" should be file
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash binding:"
     End
   End
 
@@ -238,14 +253,20 @@ Describe 'Self-Update Rollback and Cleanup /'
     It 'converts symlink to regular file'
       When call self-update:unlink "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
+      The stdout should equal "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh" should be file
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh" should not be symlink
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash unlink:"
     End
 
     It 'preserves file content after unlinking'
       When call self-update:unlink "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
+      The stdout should equal "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The contents of file "$TEMP_PROJECT_DIR/.scripts/test.sh" should include "# version file content"
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash unlink:"
     End
 
     It 'outputs unlink message'
@@ -273,9 +294,12 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/mydir"
       The status should be success
+      The stdout should equal "$TEMP_PROJECT_DIR/mydir"
       The path "$TEMP_PROJECT_DIR/mydir" should be directory
       The path "$TEMP_PROJECT_DIR/mydir" should not be symlink
       The path "$TEMP_PROJECT_DIR/mydir/file.txt" should be file
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash unlink:"
     End
 
     It 'preserves directory content after unlinking'
@@ -286,7 +310,10 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/mydir"
       The status should be success
+      The stdout should equal "$TEMP_PROJECT_DIR/mydir"
       The contents of file "$TEMP_PROJECT_DIR/mydir/file.txt" should equal "test content"
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash unlink:"
     End
 
     It 'handles broken symlinks'
@@ -323,8 +350,11 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh"
       The status should be success
+      The stdout should equal "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh"
       The path "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh" should be file
       The path "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh" should not be symlink
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash unlink:"
     End
 
     It 'handles relative symlinks'
@@ -339,8 +369,11 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/.scripts/relative.sh"
       The status should be success
+      The stdout should equal "$TEMP_PROJECT_DIR/.scripts/relative.sh"
       The path "$TEMP_PROJECT_DIR/.scripts/relative.sh" should be file
       The contents of file "$TEMP_PROJECT_DIR/.scripts/relative.sh" should include "relative content"
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash unlink:"
 
       rm -rf "$TEMP_REPO_DIR"
     End
