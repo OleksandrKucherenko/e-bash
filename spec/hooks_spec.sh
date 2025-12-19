@@ -276,7 +276,11 @@ EOF
     End
 
     It 'executes function first, then scripts when both exist'
-      setup() {
+      test_priority_hook() {
+        # Set up test environment
+        mkdir -p /tmp/test_hooks
+        export HOOKS_DIR=/tmp/test_hooks
+        
         hooks:define priority_hook
         hook:priority_hook() {
           echo "Function implementation"
@@ -286,15 +290,18 @@ EOF
 echo "Script implementation"
 EOF
         chmod +x /tmp/test_hooks/priority_hook-test.sh
+        
+        on:hook priority_hook
+        
+        # Clean up
+        rm -f /tmp/test_hooks/priority_hook-test.sh
       }
-      BeforeCall 'setup'
 
-      When call on:hook priority_hook
+      When call test_priority_hook
 
       The status should be success
       The line 1 should eq "Function implementation"
       The line 2 should eq "Script implementation"
-      # Verify both function and script were executed
       The result of function no_colors_stderr should include "[function] hook:priority_hook"
       The result of function no_colors_stderr should include "[script 1/1]"
     End
