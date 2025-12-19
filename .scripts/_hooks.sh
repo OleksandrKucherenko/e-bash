@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 1.0.0
+## Version: 1.17.7
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -577,7 +577,7 @@ function hooks:list() {
     # check for registered functions
     local registered="${__HOOKS_REGISTERED[$hook_name]}"
     if [[ -n "$registered" ]]; then
-      local reg_count=$(echo "$registered" | tr '|' '\n' | wc -l)
+      local reg_count=$(echo "$registered" | tr '|' '\n' | wc -l | tr -d ' ')
       implementations+=("${reg_count} registered")
     fi
 
@@ -597,7 +597,7 @@ function hooks:list() {
 
     # get context info
     local contexts="${__HOOKS_CONTEXTS[$hook_name]:-unknown}"
-    local context_count=$(echo "$contexts" | tr '|' '\n' | wc -l)
+    local context_count=$(echo "$contexts" | tr '|' '\n' | wc -l | tr -d ' ')
 
     # format output
     if [[ ${#implementations[@]} -eq 0 ]]; then

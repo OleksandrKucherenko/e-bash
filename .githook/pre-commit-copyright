@@ -212,9 +212,21 @@ for FILE in "${STAGED_SH_FILES[@]}"; do
   verify_copyright "$FILE"
   copyright_status=$?
 
-  # If copyright is valid (return code 0), continue to next file
+  # If copyright is valid (return code 0), check/update version
   if [[ $copyright_status -eq 0 ]]; then
-    echo "✅ $FILE - valid copyright"
+    # Extract version from file
+    current_file_version=$(ggrep "^## Version: " "$FILE" | gsed 's/^## Version: *//')
+
+    # Check if version exists and is different
+    if [[ -n "$current_file_version" && "$current_file_version" != "$VERSION" ]]; then
+      # Update version in place
+      # sed -i is not standard across all platforms (macOS requires extension), but gsed is GNU sed
+      gsed -i "s/^## Version: .*/## Version: $VERSION/" "$FILE"
+      git add "$FILE"
+      echo "📝 $FILE - updated version: $current_file_version -> $VERSION"
+    else
+      echo "✅ $FILE - valid copyright"
+    fi
     continue
   fi
 

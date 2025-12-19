@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.17.7
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -975,7 +975,7 @@ EOF
 
         # Should have multiple contexts
         local contexts="${__HOOKS_CONTEXTS[build]}"
-        local count=$(echo "$contexts" | tr '|' '\n' | wc -l)
+        local count=$(echo "$contexts" | tr '|' '\n' | wc -l | tr -d ' ')
         echo "Context count: $count"
       }
 
