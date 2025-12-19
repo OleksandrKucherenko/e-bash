@@ -92,13 +92,176 @@ End
 
 | Mode              | Use Case            | Isolation         | Coverage |
 | ----------------- | ------------------- | ----------------- | -------- |
-| `When call func`  | Unit test functions | Same shell (fast) | ✅ Yes    |
-| `When run script` | Integration test    | New process       | ✅ Yes    |
-| `When run source` | Hybrid approach     | Subshell          | ✅ Yes    |
+| `When call func`  | Unit test functions | Same shell (fast) | Yes      |
+| `When run script` | Integration test    | New process       | Yes      |
+| `When run source` | Hybrid approach     | Subshell          | Yes      |
 
 **Recommended**: Use `When call` for unit tests (fastest), `When run script` for integration tests.
 
 ## Making Scripts Testable
+
+### Pattern 0: Logger-Driven Testability (Foundation)
+
+**Analogy**: Like a black box flight recorder - captures execution paths for post-flight analysis, enabling verification of which code branches executed.
+
+For scripts verification via tests, use the project's logger (`.scripts/_logger.sh`). Each module declares its own unique logger tag that can be partially enabled or disabled via the `DEBUG` environment variable.
+
+**Module Setup**:
+
+```bash
+#!/bin/bash
+# my_module.sh
+
+# shellcheck source=.scripts/_logger.sh
+source "${E_BASH:-$(dirname "$0")}/_logger.sh"
+
+process_data() {
+  local input="$1"
+  
+  if [[ -z "$input" ]]; then
+    echo:Mymodule "validation failed: empty input"
+    return 1
+  fi
+  
+  echo:Mymodule "processing: $input"
+  # ... actual processing ...
+  echo:Mymodule "completed successfully"
+  return 0
+}
+
+# DO NOT allow execution of code bellow those line in shellspec tests
+${__SOURCED__:+return}
+
+# Declare unique logger for this module
+logger:init "mymodule" "[mymodule] " ">&2"
+
+```
+
+**Controlling Logger Output**:
+
+```bash
+# Enable specific loggers via DEBUG variable
+DEBUG=mymodule ./my_module.sh       # Enable only 'mymodule' logger
+DEBUG=mymodule,hooks ./my_module.sh # Enable multiple loggers
+DEBUG=* ./my_module.sh              # Enable all loggers
+DEBUG=*,-mymodule ./my_module.sh    # Enable all except 'mymodule'
+```
+
+**Test Verification Strategy**:
+
+```bash
+Describe 'my_module'
+  Include .scripts/_logger.sh
+  Include my_module.sh
+  
+  # Helper functions to strip ANSI color codes for comparison
+  # $1 = stdout, $2 = stderr, $3 = exit status
+  no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+  no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+  
+  BeforeEach 'enable_logger'
+  enable_logger() {
+    TAGS[mymodule]=1  # Enable logger output for verification
+  }
+  
+  Context 'when input is empty'
+    It 'logs validation failure and returns error'
+      When call process_data ""
+      The status should be failure
+      # Verify execution path via logger output
+      The stderr should include "validation failed: empty input"
+    End
+  End
+  
+  Context 'when input is valid'
+    It 'logs processing steps and succeeds'
+      When call process_data "test-data"
+      The status should be success
+      # Verify which branch executed via log messages
+      The result of no_colors_stderr should include "processing: test-data"
+      The result of no_colors_stderr should include "completed successfully"
+    End
+  End
+End
+```
+
+**Testability Balance**: Achieve comprehensive test coverage by combining:
+
+| Verification Method | Use Case                                    | Example                                                                    |
+| ------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| **Logger output**   | Verify execution paths, internal decisions  | `The stderr should include user-friendly message like "branch A executed"` |
+| **stdout**          | Verify user-facing output, function results | `The output should eq "result"`                                            |
+| **stderr**          | Verify error messages, warnings             | `The error should include "warning"`                                       |
+| **Exit status**     | Verify success/failure outcomes             | `The status should be failure`                                             |
+| **Mocks/Spies**     | Verify external command calls in isolation  | `Mock curl; ...; End`                                                      |
+
+**Test Isolation Pattern** (Mocking Logger Functions):
+
+The practical approach used in tests is to:
+1. Set `DEBUG=tag` once at the file level to enable specific logger(s)
+2. Mock `logger:init` to suppress logger initialization side effects
+3. Mock `echo:Tag` and `printf:Tag` functions to redirect output for verification
+
+```bash
+#!/usr/bin/env bash
+# spec/mymodule_spec.sh
+
+eval "$(shellspec - -c) exit 1"
+
+# 1. Enable debug output for this module at file level
+export DEBUG="mymodule"
+
+# 2. Mock logger initialization to prevent side effects
+Mock logger:init
+  return 0
+End
+
+# 3. Mock logger output functions - redirect to stderr for test verification
+Mock printf:Mymodule
+  printf "$@" >&2
+End
+
+Mock echo:Mymodule
+  echo "$@" >&2
+End
+
+# Helper to strip ANSI color codes for comparison
+# $1 = stdout, $2 = stderr, $3 = exit status
+no_colors_stderr() { 
+  echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '
+}
+
+Include ".scripts/mymodule.sh"
+
+Describe 'mymodule'
+  It 'verifies execution path via logger output'
+    When call process_data "test"
+
+    The status should be success
+    # Verify which code branch executed via logger messages
+    The result of function no_colors_stderr should include "processing: test"
+  End
+End
+```
+
+**Alternative: Suppress Logger Output Entirely**:
+
+When you don't need to verify logger output but want to prevent noise:
+
+```bash
+# Mock logger functions to suppress all output
+Mock echo:Mymodule
+  :  # No-op - silently ignore
+End
+
+Mock printf:Mymodule
+  :  # No-op - silently ignore
+End
+```
+
+**Pros**: Precise verification of code paths, debuggable tests, controlled verbosity
+**Cons**: Requires logger discipline in production code
+**Recommended action**: Add unique logger to each module, use `DEBUG=tag` to control output, verify logs in tests
 
 ### Pattern 1: Source Guard (Critical)
 
@@ -241,19 +404,21 @@ End
 ### Comparing Without Color Codes
 
 ```bash
-# Helper function to strip ANSI codes
-strip_colors() {
-  sed 's/\x1B\[[0-9;]*[mK]//g'
-}
+# Helper functions to strip ANSI color codes for comparison
+# $1 = stdout, $2 = stderr, $3 = exit status
+no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 
 It 'compares without colors'
   When call colored_output
-  The result of output filtered by strip_colors should eq "Plain text"
+  The result of no_colors_stdout should eq "Plain text"
+  The result of no_colors_stderr should eq "Plain text"
 End
 
 # Alternative: Disable colors via environment
 It 'disables colors'
-  NO_COLOR=1
+  BeforeCall 'export NO_COLOR=1'
+  BeforeCall 'export TERM=dumb'
   When call my_command
   The output should not include pattern '\x1B\['
 End
@@ -266,13 +431,18 @@ End
 ### Temporary Directories
 
 ```bash
+eval "$(shellspec - -c) exit 1"
+
+# shellcheck disable=SC2288
+% TEST_DIR: "$SHELLSPEC_TMPBASE/tmprepo"
+
 Describe 'isolated environment'
   BeforeEach 'setup_test_env'
   AfterEach 'cleanup_test_env'
   
   setup_test_env() {
-    export TEST_DIR=$(mktemp -d)
-    cd "$TEST_DIR"
+    mkdir -p "$TEST_DIR" || true
+    cd "$TEST_DIR" || exit 1
   }
   
   cleanup_test_env() {
@@ -512,7 +682,7 @@ For deeper coverage of advanced patterns, see:
 
 ```bash
 # Common commands
-shellspec                    # Run all tests
+shellspec                   # Run all tests
 shellspec --quick           # Re-run failures only
 shellspec --xtrace          # Debug trace
 shellspec --kcov            # With coverage
