@@ -5,36 +5,73 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 0.11.2
+## Version: 0.11.4
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 eval "$(shellspec - -c) exit 1"
+
+# Enable DEBUG for logger verification
+export DEBUG="version,git,loader,semver"
 
 # Helper functions to strip ANSI color codes
 # $1 = stdout, $2 = stderr, $3 = exit status
 no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 
+# Mock logger functions to output to stderr for verification
+Mock printf:Version
+  printf "$@" >&2
+End
+
+Mock echo:Version
+  echo "$@" >&2
+End
+
+Mock printf:Git
+  printf "$@" >&2
+End
+
+Mock echo:Git
+  echo "$@" >&2
+End
+
+Mock printf:Loader
+  printf "$@" >&2
+End
+
+Mock echo:Loader
+  echo "$@" >&2
+End
+
+Mock printf:Semver
+  printf "$@" >&2
+End
+
+Mock echo:Semver
+  echo "$@" >&2
+End
+
+Mock echo:Regex
+  :
+End
+
+Mock printf:Regex
+  :
+End
+
+Mock echo:Simple
+  echo "$@" >&2
+End
+
+Mock printf:Simple
+  printf "$@" >&2
+End
+
 Describe 'Self-Update Rollback and Cleanup /'
   # Note: We include the script which defines readonly variables
   # Do not try to override them in setup
   Include .scripts/_self-update.sh
-
-  setup() {
-    # Mock all logger functions to avoid errors
-    echo:Version() { echo "$@" >&2; }
-    echo:Git() { echo "$@" >&2; }
-    echo:Regex() { :; }
-    echo:Loader() { echo "$@" >&2; }
-    echo:Simple() { echo "$@" >&2; }
-    echo:Semver() { echo "$@" >&2; }
-
-    printf:Version() { printf "$@" >&2; }
-    printf:Git() { printf "$@" >&2; }
-    printf:Regex() { :; }
-    printf:Simple() { printf "$@" >&2; }
-  }
 
   cleanup() {
     # Clean up test artifacts
@@ -42,7 +79,6 @@ Describe 'Self-Update Rollback and Cleanup /'
     declare -g -A __REPO_MAPPING=()
   }
 
-  BeforeEach 'setup'
   AfterEach 'cleanup'
 
   Describe 'self-update:rollback:backup /'
