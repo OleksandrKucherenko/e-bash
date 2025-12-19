@@ -29,8 +29,8 @@ End
 
 # Helper functions to strip ANSI color codes for comparison
 # $1 = stdout, $2 = stderr, $3 = exit status
-no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
-no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
+no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' ' | sed 's/^ *//; s/ *$//'; }
+no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' ' | sed 's/^ *//; s/ *$//'; }
 
 Describe '_hooks.sh /'
   Include ".scripts/_hooks.sh"
@@ -193,59 +193,85 @@ Describe '_hooks.sh /'
     AfterAll 'cleanup_hooks_dir'
 
     It 'executes hook script when present'
-      setup() {
+      test_script_hook() {
+        # Set up test environment
+        mkdir -p /tmp/test_hooks
+        export HOOKS_DIR=/tmp/test_hooks
+        
         hooks:define script_hook
         cat > /tmp/test_hooks/script_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Script hook executed"
 EOF
         chmod +x /tmp/test_hooks/script_hook-test.sh
+        
+        on:hook script_hook
+        
+        # Clean up
+        rm -f /tmp/test_hooks/script_hook-test.sh
       }
-      BeforeCall 'setup'
 
-      When call on:hook script_hook
+      When call test_script_hook
 
       The status should be success
       The output should eq "Script hook executed"
-      # Verify via logger that script was executed
       The result of function no_colors_stderr should include "[script 1/1] script_hook-test.sh"
       The result of function no_colors_stderr should include "exit code: 0"
     End
 
     It 'passes parameters to hook script'
-      setup() {
+      test_script_params() {
+        # Set up test environment
+        mkdir -p /tmp/test_hooks
+        export HOOKS_DIR=/tmp/test_hooks
+        
         hooks:define script_hook
         cat > /tmp/test_hooks/script_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Script params: $*"
 EOF
         chmod +x /tmp/test_hooks/script_hook-test.sh
+        
+        on:hook script_hook arg1 arg2
+        
+        # Clean up
+        rm -f /tmp/test_hooks/script_hook-test.sh
       }
-      BeforeCall 'setup'
 
-      When call on:hook script_hook arg1 arg2
+      When call test_script_params
 
       The status should be success
       The output should eq "Script params: arg1 arg2"
-      # Verify script execution logged
       The result of function no_colors_stderr should include "Executing hook: script_hook"
     End
 
     It 'propagates script exit code'
-      setup() {
+      test_script_exit_code() {
+        # Set up test environment
+        mkdir -p /tmp/test_hooks
+        export HOOKS_DIR=/tmp/test_hooks
+        
         hooks:define fail_hook
         cat > /tmp/test_hooks/fail_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 exit 13
 EOF
         chmod +x /tmp/test_hooks/fail_hook-test.sh
+        
+        # Execute hook and capture exit code
+        on:hook fail_hook
+        local exit_code=$?
+        
+        # Clean up
+        rm -f /tmp/test_hooks/fail_hook-test.sh
+        
+        # Return the captured exit code
+        return $exit_code
       }
-      BeforeCall 'setup'
 
-      When call on:hook fail_hook
+      When call test_script_exit_code
 
       The status should eq 13
-      # Verify exit code was logged
       The result of function no_colors_stderr should include "exit code: 13"
     End
 
