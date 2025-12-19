@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -25,7 +25,7 @@ echo "${cl_cyan}${st_b}Example 1: Basic Hook Definition${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
 # Define available hooks
-hooks:define begin end
+hooks:declare begin end
 
 echo "✓ Defined hooks: begin, end"
 echo ""
@@ -41,9 +41,9 @@ hook:end() {
 
 # Execute hooks
 echo "Calling hooks:"
-on:hook begin
+hooks:do begin
 echo "  ${cl_grey}[Main script logic here]${cl_reset}"
-on:hook end
+hooks:do end
 
 echo ""
 
@@ -53,7 +53,7 @@ echo ""
 echo "${cl_cyan}${st_b}Example 2: Hooks with Parameters${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
-hooks:define greet
+hooks:declare greet
 
 hook:greet() {
   local name="$1"
@@ -62,8 +62,8 @@ hook:greet() {
 }
 
 echo "Calling hook with parameters:"
-on:hook greet "Alice" "Dr."
-on:hook greet "Bob"
+hooks:do greet "Alice" "Dr."
+hooks:do greet "Bob"
 
 echo ""
 
@@ -73,7 +73,7 @@ echo ""
 echo "${cl_cyan}${st_b}Example 3: Decision Hooks${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
-hooks:define decide
+hooks:declare decide
 
 hook:decide() {
   local question="$1"
@@ -82,7 +82,7 @@ hook:decide() {
 }
 
 echo "Using decision hook:"
-if [[ "$(on:hook decide "Should we continue?")" == "yes" ]]; then
+if [[ "$(hooks:do decide "Should we continue?")" == "yes" ]]; then
   echo "  ${cl_green}✓ Decision was YES - proceeding${cl_reset}"
 else
   echo "  ${cl_red}✗ Decision was NO - stopping${cl_reset}"
@@ -96,7 +96,7 @@ echo ""
 echo "${cl_cyan}${st_b}Example 4: Error Handling${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
-hooks:define error rollback
+hooks:declare error rollback
 
 hook:error() {
   local message="$1"
@@ -110,8 +110,8 @@ hook:rollback() {
 }
 
 echo "Simulating error scenario:"
-on:hook error "Database connection failed" 42
-on:hook rollback
+hooks:do error "Database connection failed" 42
+hooks:do rollback
 
 echo ""
 
@@ -122,7 +122,7 @@ echo "${cl_cyan}${st_b}Example 5: Hook Introspection${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
 # Define some hooks without implementations
-hooks:define implemented not_implemented custom_hook
+hooks:declare implemented not_implemented custom_hook
 
 hook:implemented() {
   echo "This hook has an implementation"
@@ -134,15 +134,15 @@ hooks:list
 echo ""
 
 echo "Checking specific hooks:"
-if hooks:is_defined implemented; then
+if hooks:known implemented; then
   echo "  ${cl_green}✓ 'implemented' hook is defined${cl_reset}"
 fi
 
-if hooks:has_implementation implemented; then
+if hooks:runnable implemented; then
   echo "  ${cl_green}✓ 'implemented' hook has an implementation${cl_reset}"
 fi
 
-if ! hooks:has_implementation not_implemented; then
+if ! hooks:runnable not_implemented; then
   echo "  ${cl_yellow}! 'not_implemented' hook has NO implementation${cl_reset}"
 fi
 
@@ -155,13 +155,13 @@ echo "${cl_cyan}${st_b}Example 6: Silent Skipping${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
 echo "Calling undefined hook (silently skipped):"
-on:hook undefined_hook "param1" "param2"
+hooks:do undefined_hook "param1" "param2"
 echo "  ${cl_green}✓ Script continued without error${cl_reset}"
 
 echo ""
 
 echo "Calling defined but not implemented hook:"
-on:hook not_implemented
+hooks:do not_implemented
 echo "  ${cl_green}✓ Script continued without error${cl_reset}"
 
 echo ""
@@ -172,7 +172,7 @@ echo ""
 echo "${cl_cyan}${st_b}Example 7: Lifecycle Pattern${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
-hooks:define pre_validate validate post_validate pre_process process post_process
+hooks:declare pre_validate validate post_validate pre_process process post_process
 
 hook:pre_validate() {
   echo "  ${cl_grey}→ Pre-validation setup${cl_reset}"
@@ -201,13 +201,13 @@ hook:post_process() {
 }
 
 echo "Executing lifecycle hooks:"
-on:hook pre_validate
-on:hook validate && echo "  ${cl_green}✓ Validation passed${cl_reset}"
-on:hook post_validate
+hooks:do pre_validate
+hooks:do validate && echo "  ${cl_green}✓ Validation passed${cl_reset}"
+hooks:do post_validate
 
-on:hook pre_process
-on:hook process && echo "  ${cl_green}✓ Processing complete${cl_reset}"
-on:hook post_process
+hooks:do pre_process
+hooks:do process && echo "  ${cl_green}✓ Processing complete${cl_reset}"
+hooks:do post_process
 
 echo ""
 
@@ -217,7 +217,7 @@ echo ""
 echo "${cl_cyan}${st_b}Example 8: Return Values and Exit Codes${st_no_b}${cl_reset}"
 echo "----------------------------------------"
 
-hooks:define success_hook failure_hook
+hooks:declare success_hook failure_hook
 
 hook:success_hook() {
   echo "  ${cl_green}→ Success hook returning 0${cl_reset}"
@@ -230,11 +230,11 @@ hook:failure_hook() {
 }
 
 echo "Testing exit codes:"
-on:hook success_hook
+hooks:do success_hook
 success_code=$?
 echo "  Exit code: $success_code ${cl_green}(success)${cl_reset}"
 
-on:hook failure_hook
+hooks:do failure_hook
 failure_code=$?
 echo "  Exit code: $failure_code ${cl_red}(failure)${cl_reset}"
 
@@ -251,7 +251,7 @@ DEMO_HOOKS_DIR="/tmp/demo_cicd_$$"
 mkdir -p "$DEMO_HOOKS_DIR"
 export HOOKS_DIR="$DEMO_HOOKS_DIR"
 
-hooks:define deploy
+hooks:declare deploy
 
 # Create multiple hook scripts with numbered pattern
 cat > "$DEMO_HOOKS_DIR/deploy_01_backup.sh" <<'EOF'
@@ -289,8 +289,8 @@ echo "  deploy_04_start.sh"
 echo "  deploy-verify.sh"
 echo ""
 
-echo "Executing: ${cl_cyan}on:hook deploy${cl_reset}"
-on:hook deploy
+echo "Executing: ${cl_cyan}hooks:do deploy${cl_reset}"
+hooks:do deploy
 
 echo ""
 echo "Listing hooks:"
@@ -325,7 +325,7 @@ echo ""
 echo "${cl_lblue}${st_b}=== Summary ===${st_no_b}${cl_reset}"
 echo ""
 echo "The hooks system provides:"
-echo "  • ${cl_green}Declarative hook definition${cl_reset} via hooks:define"
+echo "  • ${cl_green}Declarative hook definition${cl_reset} via hooks:declare"
 echo "  • ${cl_green}Flexible implementation${cl_reset} via functions or scripts"
 echo "  • ${cl_green}Silent skipping${cl_reset} of undefined/unimplemented hooks"
 echo "  • ${cl_green}Parameter passing${cl_reset} to hook implementations"
@@ -334,11 +334,11 @@ echo "  • ${cl_green}Introspection capabilities${cl_reset} for dynamic behavio
 echo "  • ${cl_green}Multiple scripts per hook${cl_reset} with ci-cd pattern"
 echo ""
 echo "Usage patterns:"
-echo "  1. ${cl_cyan}hooks:define${cl_reset} hook1 hook2 ...    # Declare hooks"
-echo "  2. ${cl_cyan}on:hook${cl_reset} hook_name [params]     # Execute hook"
+echo "  1. ${cl_cyan}hooks:declare${cl_reset} hook1 hook2 ...    # Declare hooks"
+echo "  2. ${cl_cyan}hooks:do${cl_reset} hook_name [params]     # Execute hook"
 echo "  3. ${cl_cyan}hooks:list${cl_reset}                     # List all hooks"
-echo "  4. ${cl_cyan}hooks:is_defined${cl_reset} hook_name    # Check if defined"
-echo "  5. ${cl_cyan}hooks:has_implementation${cl_reset} name # Check if implemented"
+echo "  4. ${cl_cyan}hooks:known${cl_reset} hook_name    # Check if defined"
+echo "  5. ${cl_cyan}hooks:runnable${cl_reset} name # Check if implemented"
 echo ""
 echo "CI/CD Script Naming Patterns:"
 echo "  • ${cl_yellow}ci-cd/{hook_name}-{purpose}.sh${cl_reset}        - Simple pattern"

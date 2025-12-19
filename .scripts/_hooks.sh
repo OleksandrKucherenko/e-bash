@@ -3,12 +3,12 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 1.17.7
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # one time initialization
-if type hooks:define 2>/dev/null | grep -q "is a function"; then return 0; fi
+if type hooks:declare 2>/dev/null | grep -q "is a function"; then return 0; fi
 
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -36,28 +36,21 @@ if [[ -z ${__HOOKS_SOURCE_PATTERNS+x} ]]; then declare -g -a __HOOKS_SOURCE_PATT
 if [[ -z ${__HOOKS_SCRIPT_PATTERNS+x} ]]; then declare -g -a __HOOKS_SCRIPT_PATTERNS=(); fi
 
 # default hooks directory (can be overridden)
-if [[ -z ${HOOKS_DIR+x} ]]; then
-  declare -g HOOKS_DIR="ci-cd"
-fi
+if [[ -z ${HOOKS_DIR+x} ]]; then declare -g HOOKS_DIR="ci-cd"; fi
 
 # default hooks function prefix
-if [[ -z ${HOOKS_PREFIX+x} ]]; then
-  declare -g HOOKS_PREFIX="hook:"
-fi
+if [[ -z ${HOOKS_PREFIX+x} ]]; then declare -g HOOKS_PREFIX="hook:"; fi
 
 # default hooks execution mode: "exec" or "source"
 # exec - execute script directly (default, runs in subprocess)
 # source - source script and call hook:run function (runs in current shell)
-if [[ -z ${HOOKS_EXEC_MODE+x} ]]; then
-  declare -g HOOKS_EXEC_MODE="exec"
-fi
+if [[ -z ${HOOKS_EXEC_MODE+x} ]]; then declare -g HOOKS_EXEC_MODE="exec"; fi
 
-#
 # Define available hooks in the script
 #
 # Usage:
-#   hooks:define begin end decide error rollback
-#   hooks:define custom_hook another_hook
+#   hooks:declare begin end decide error rollback
+#   hooks:declare custom_hook another_hook
 #
 # Parameters:
 #   $@ - List of hook names to define
@@ -66,10 +59,10 @@ fi
 #   0 - Success
 #   1 - Invalid hook name
 #
-function hooks:define() {
+function hooks:declare() {
   local hook_name
 
-  # Get the calling script context (the script that called hooks:define)
+  # Get the calling script context (the script that called hooks:declare)
   # BASH_SOURCE[0] = _hooks.sh, BASH_SOURCE[1] = calling script
   local caller_context="${BASH_SOURCE[1]:-main}"
 
@@ -126,8 +119,8 @@ function hooks:define() {
 # Register file patterns to always execute in sourced mode
 #
 # Usage:
-#   hook:as:source "begin-*-init.sh"
-#   hook:as:source "env-*.sh" "config-*.sh"
+#   hooks:pattern:source "begin-*-init.sh"
+#   hooks:pattern:source "env-*.sh" "config-*.sh"
 #
 # Parameters:
 #   $@ - File patterns (wildcards supported)
@@ -135,7 +128,7 @@ function hooks:define() {
 # Returns:
 #   0 - Success
 #
-function hook:as:source() {
+function hooks:pattern:source() {
   local pattern
 
   for pattern in "$@"; do
@@ -150,8 +143,8 @@ function hook:as:source() {
 # Register file patterns to always execute as scripts
 #
 # Usage:
-#   hook:as:script "end-datadog.sh"
-#   hook:as:script "notify-*.sh"
+#   hooks:pattern:script "end-datadog.sh"
+#   hooks:pattern:script "notify-*.sh"
 #
 # Parameters:
 #   $@ - File patterns (wildcards supported)
@@ -159,7 +152,7 @@ function hook:as:source() {
 # Returns:
 #   0 - Success
 #
-function hook:as:script() {
+function hooks:pattern:script() {
   local pattern
 
   for pattern in "$@"; do
@@ -174,9 +167,9 @@ function hook:as:script() {
 # Register a function to be executed as part of a hook
 #
 # Usage:
-#   hook:register deploy "10-backup" backup_database
-#   hook:register deploy "20-update" update_code
-#   hook:register build "metrics" track_build_metrics
+#   hooks:register deploy "10-backup" backup_database
+#   hooks:register deploy "20-update" update_code
+#   hooks:register build "metrics" track_build_metrics
 #
 # Parameters:
 #   $1 - Hook name
@@ -192,14 +185,14 @@ function hook:as:script() {
 #   - Multiple functions can be registered for the same hook
 #   - Friendly names must be unique within a hook
 #
-function hook:register() {
+function hooks:register() {
   local hook_name="$1"
   local friendly_name="$2"
   local function_name="$3"
 
   # Validate parameters
   if [[ -z "$hook_name" || -z "$friendly_name" || -z "$function_name" ]]; then
-    echo "Error: hook:register requires three parameters: <hook_name> <friendly_name> <function_name>" >&2
+    echo "Error: hooks:register requires three parameters: <hook_name> <friendly_name> <function_name>" >&2
     return 1
   fi
 
@@ -238,8 +231,8 @@ function hook:register() {
 # Unregister a function from a hook
 #
 # Usage:
-#   hook:unregister deploy "10-backup"
-#   hook:unregister build "metrics"
+#   hooks:unregister deploy "10-backup"
+#   hooks:unregister build "metrics"
 #
 # Parameters:
 #   $1 - Hook name
@@ -249,13 +242,13 @@ function hook:register() {
 #   0 - Success
 #   1 - Invalid parameters or registration not found
 #
-function hook:unregister() {
+function hooks:unregister() {
   local hook_name="$1"
   local friendly_name="$2"
 
   # Validate parameters
   if [[ -z "$hook_name" || -z "$friendly_name" ]]; then
-    echo "Error: hook:unregister requires two parameters: <hook_name> <friendly_name>" >&2
+    echo "Error: hooks:unregister requires two parameters: <hook_name> <friendly_name>" >&2
     return 1
   fi
 
@@ -308,7 +301,7 @@ function hook:unregister() {
 # Returns:
 #   Echoes "source" or "exec"
 #
-function hooks:get_exec_mode() {
+function hooks:exec:mode() {
   local script_name="$1"
   local pattern
 
@@ -339,18 +332,18 @@ function hooks:get_exec_mode() {
 # Execute a hook if it's defined and has an implementation
 #
 # Usage:
-#   on:hook begin
-#   on:hook decide param1 param2
-#   result=$(on:hook decide "question")
+#   hooks:do begin
+#   hooks:do decide param1 param2
+#   result=$(hooks:do decide "question")
 #
 # Parameters:
 #   $1 - Hook name
 #   $@ - Additional parameters passed to the hook
 #
 # Execution order:
-#   1. Check if hook is defined via hooks:define
+#   1. Check if hook is defined via hooks:declare
 #   2. Execute function hook:{name} if it exists
-#   3. Execute registered functions (hook:register) in alphabetical order by friendly name
+#   3. Execute registered functions (hooks:register) in alphabetical order by friendly name
 #   4. Find and execute all matching scripts in ci-cd/{hook_name}-*.sh or ci-cd/{hook_name}_*.sh
 #   5. Scripts are executed in alphabetical order
 #
@@ -373,7 +366,7 @@ function hooks:get_exec_mode() {
 #   Last hook's exit code or 0 if not implemented
 #   All hooks' stdout is passed through
 #
-function on:hook() {
+function hooks:do() {
   local hook_name="$1"
   shift
 
@@ -397,6 +390,8 @@ function on:hook() {
     echo:Hooks "    ↳ exit code: $last_exit_code"
     ((impl_count++))
   fi
+
+  # TODO: registered functions and script files should make one sequence and be executed in alphabetical order
 
   # execute registered functions in alphabetical order by friendly name
   local registered="${__HOOKS_REGISTERED[$hook_name]}"
@@ -454,7 +449,7 @@ function on:hook() {
     for script in "${hook_scripts[@]}"; do
       ((script_num++))
       local script_name=$(basename "$script")
-      local exec_mode=$(hooks:get_exec_mode "$script_name")
+      local exec_mode=$(hooks:exec:mode "$script_name")
 
       if [[ "$exec_mode" == "source" ]]; then
         echo:Hooks "  → [script $script_num/$((${#hook_scripts[@]}))] ${script_name} (sourced mode)"
@@ -486,6 +481,7 @@ function on:hook() {
   fi
 
   if [[ $impl_count -eq 0 ]]; then
+    # TODO: its not a warning, its 99% of the usages. so message should INFO, not WARNING
     echo:Hooks "  ⚠ No implementations found for hook '$hook_name'"
   else
     echo:Hooks "  ✓ Completed hook '$hook_name' (${impl_count} implementation(s), final exit code: $last_exit_code)"
@@ -498,8 +494,8 @@ function on:hook() {
 # Execute a hook with scripts sourced (ignores HOOKS_EXEC_MODE for call-level override)
 #
 # Usage:
-#   on:source-hook begin
-#   on:source-hook deploy param1 param2
+#   hooks:do:source begin
+#   hooks:do:source deploy param1 param2
 #
 # Parameters:
 #   $1 - Hook name
@@ -508,12 +504,12 @@ function on:hook() {
 # Returns:
 #   Last hook's exit code or 0 if not implemented
 #
-function on:source-hook() {
+function hooks:do:source() {
   local saved_mode="$HOOKS_EXEC_MODE"
   HOOKS_EXEC_MODE="source"
 
   echo:Hooks "Call-level override: forcing sourced mode for this hook execution"
-  on:hook "$@"
+  hooks:do "$@"
   local exit_code=$?
 
   HOOKS_EXEC_MODE="$saved_mode"
@@ -524,8 +520,8 @@ function on:source-hook() {
 # Execute a hook with scripts executed as subprocesses (ignores HOOKS_EXEC_MODE for call-level override)
 #
 # Usage:
-#   on:script-hook end
-#   on:script-hook notify url status
+#   hooks:do:script end
+#   hooks:do:script notify url status
 #
 # Parameters:
 #   $1 - Hook name
@@ -534,12 +530,12 @@ function on:source-hook() {
 # Returns:
 #   Last hook's exit code or 0 if not implemented
 #
-function on:script-hook() {
+function hooks:do:script() {
   local saved_mode="$HOOKS_EXEC_MODE"
   HOOKS_EXEC_MODE="exec"
 
   echo:Hooks "Call-level override: forcing exec mode for this hook execution"
-  on:hook "$@"
+  hooks:do "$@"
   local exit_code=$?
 
   HOOKS_EXEC_MODE="$saved_mode"
@@ -620,7 +616,7 @@ function hooks:list() {
 # Check if a hook is defined
 #
 # Usage:
-#   if hooks:is_defined begin; then
+#   if hooks:known begin; then
 #     echo "begin hook is defined"
 #   fi
 #
@@ -631,7 +627,7 @@ function hooks:list() {
 #   0 - Hook is defined
 #   1 - Hook is not defined
 #
-function hooks:is_defined() {
+function hooks:known() {
   local hook_name="$1"
 
   if [[ -n ${__HOOKS_DEFINED[$hook_name]+x} ]]; then
@@ -645,7 +641,7 @@ function hooks:is_defined() {
 # Check if a hook has an implementation
 #
 # Usage:
-#   if hooks:has_implementation begin; then
+#   if hooks:runnable begin; then
 #     echo "begin hook has implementation"
 #   fi
 #
@@ -656,7 +652,7 @@ function hooks:is_defined() {
 #   0 - Hook has implementation (function or script)
 #   1 - Hook has no implementation
 #
-function hooks:has_implementation() {
+function hooks:runnable() {
   local hook_name="$1"
 
   # check for function implementation
@@ -686,7 +682,7 @@ function hooks:has_implementation() {
 #
 # Cleanup function for tests
 #
-function hooks:cleanup() {
+function hooks:reset() {
   # Properly unset and re-declare arrays to ensure correct types
   unset __HOOKS_DEFINED
   unset __HOOKS_CONTEXTS
@@ -702,7 +698,6 @@ function hooks:cleanup() {
   # Re-declare as indexed arrays
   declare -g -a __HOOKS_SOURCE_PATTERNS=()
   declare -g -a __HOOKS_SCRIPT_PATTERNS=()
-  __HOOKS_SOURCE_PATTERNS=()
   
   # Reset configuration to defaults
   HOOKS_DIR="ci-cd"
