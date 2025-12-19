@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -47,8 +47,8 @@ Describe 'bin/install.e-bash.sh /'
   cleanup_temp_repo() { rm -rf "$TEST_DIR"; }
   cp_install() { cp "$SHELLSPEC_PROJECT_ROOT/$INSTALL_SCRIPT" ./; }
   git_init() { git init -q; }
-  git_config_user() { git config --local user.name "Test User"; }
-  git_config_email() { git config --local user.email "test@example.com"; }
+  git_config_user() { git config user.name "Test User" 2>/dev/null || git config --global user.name "Test User"; }
+  git_config_email() { git config user.email "test@example.com" 2>/dev/null || git config --global user.email "test@example.com"; }
   git_config() { git_config_user && git_config_email; }
   git_commit() { git commit -q -m "Initial commit"; }
   git_amend() { git commit --amend -q --no-edit; }
@@ -96,8 +96,8 @@ Describe 'bin/install.e-bash.sh /'
     cd "$temp_work_dir" || return 1
 
     git init -q
-    git config user.name "Test User"
-    git config user.email "test@example.com"
+    git config user.name "Test User" 2>/dev/null || git config --global user.name "Test User"
+    git config user.email "test@example.com" 2>/dev/null || git config --global user.email "test@example.com"
 
     # Copy e-bash scripts to .scripts directory
     mkdir -p .scripts
@@ -198,7 +198,7 @@ Describe 'bin/install.e-bash.sh /'
   }
 
   Describe 'Check Prerequisites /'
-    Before 'temp_repo; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; cp_install'
     After 'cleanup_temp_repo'
 
     # Scenario 9
@@ -229,7 +229,7 @@ Describe 'bin/install.e-bash.sh /'
     }
     git_untracked_dir() { mkdir -p untracked/nested; }
 
-    Before 'temp_repo; git_init; git_config; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
     It 'should detect unstaged or uncommited changes for empty files'
@@ -273,7 +273,7 @@ Describe 'bin/install.e-bash.sh /'
     git_rename_main() { git branch -m main; }
     git_new_branch() { git checkout -b new_branch 1>/dev/null 2>&1; }
 
-    Before 'temp_repo; git_init; git_config; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
     # Scenario 1
@@ -439,7 +439,7 @@ Describe 'bin/install.e-bash.sh /'
 
   # Test upgrading e-bash
   Describe 'Upgrade /'
-    Before 'temp_repo; git_init; git_config; cp_install; install_stable'
+    Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install; install_stable'
     After 'cleanup_temp_repo'
 
     It 'should upgrade to the latest version successfully'
@@ -453,10 +453,32 @@ Describe 'bin/install.e-bash.sh /'
 
     It 'should print uninstall instructions on merge conflict'
       # user has repo with e-bash script installed manually...
+      
+      # Create conflicting content in the fake remote to trigger merge conflicts
+      local fake_remote_dir="$TEST_DIR/../fake-e-bash-remote.git"
+      local temp_work_dir="$TEST_DIR/../fake-e-bash-conflict-work"
+      
+      # Modify the fake remote to have conflicting content
+      mkdir -p "$temp_work_dir"
+      cd "$temp_work_dir" || return 1
+      git clone -q "$fake_remote_dir" . 2>/dev/null || true
+      
+      # Configure git user for this temporary repository
+      git config user.name "Test User" 2>/dev/null || git config --global user.name "Test User"
+      git config user.email "test@example.com" 2>/dev/null || git config --global user.email "test@example.com"
+      
+      # Create conflicting content in the remote
+      echo "REMOTE CONFLICTING CONTENT THAT WILL CONFLICT" > .scripts/_colors.sh
+      git add .scripts/_colors.sh
+      git commit --no-gpg-sign -m "Remote conflicting changes" -q 2>/dev/null || git commit -m "Remote conflicting changes" -q
+      git push -q origin master 2>/dev/null || true
+      
+      cd "$TEST_DIR" || return 1
+      rm -rf "$temp_work_dir"
 
       # I mean something in .scripts folder
       mkdir -p .scripts                        # create out destination folder
-      echo "fake content" >.scripts/_colors.sh # is_installed() == true
+      echo "LOCAL CONFLICTING CONTENT THAT WILL CONFLICT" >.scripts/_colors.sh # is_installed() == true
       git_add_all
       git_amend
 
@@ -471,7 +493,7 @@ Describe 'bin/install.e-bash.sh /'
 
   # Test rollback functionality
   Describe 'Rollback /'
-    Before 'temp_repo; git_init; git_config; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
     It 'should rollback to previous version successfully'
@@ -644,7 +666,7 @@ Describe 'bin/install.e-bash.sh /'
   # Scenario 5: Viewing available versions of e-Bash
   Describe 'Versions /'
 
-    Before 'temp_repo; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; cp_install'
     After 'cleanup_temp_repo'
 
     It 'should list all available versions'
@@ -657,7 +679,7 @@ Describe 'bin/install.e-bash.sh /'
     End
 
     Describe 'on top of existing repo /'
-      Before 'temp_repo; git_init; git_config; cp_install'
+      Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install'
 
       It 'should mark current alpha installed version'
         install_alpha
@@ -697,7 +719,7 @@ Describe 'bin/install.e-bash.sh /'
 
   # Test specific version installation
   Describe 'Install Version /'
-    Before 'temp_repo; git_init; git_config; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
     It 'should install the specified version'
@@ -823,7 +845,7 @@ Describe 'bin/install.e-bash.sh /'
       rm -rf "$TEMP_HOME"
     }
 
-    Before 'temp_repo; setup_temp_home; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; setup_temp_home; cp_install'
     After 'restore_real_home; cleanup_temp_repo'
 
     It 'should install e-bash scripts globally to HOME directory'
@@ -1073,7 +1095,7 @@ Describe 'bin/install.e-bash.sh /'
 
   # Test automated uninstall functionality
   Describe 'Uninstall /'
-    Before 'temp_repo; git_init; git_config; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install'
     After 'cleanup_temp_repo'
 
     It 'should require --confirm flag for safety'
@@ -1273,7 +1295,7 @@ Describe 'bin/install.e-bash.sh /'
       git branch -D e-bash-scripts e-bash-temp 2>/dev/null || true
       git remote remove e-bash 2>/dev/null || true
     }
-    Before 'temp_repo; git_init; git_config; cp_install; cleanup_scripts'
+    Before 'temp_repo; setup_fake_remote_env; git_init; git_config; cp_install; cleanup_scripts'
     After 'cleanup_temp_repo'
 
     It 'should install to custom directory with --directory flag'
@@ -1531,7 +1553,7 @@ Describe 'bin/install.e-bash.sh /'
       rm -rf "$TEMP_HOME"
     }
 
-    Before 'temp_repo; setup_temp_home; cp_install'
+    Before 'temp_repo; setup_fake_remote_env; setup_temp_home; cp_install'
     After 'restore_real_home; cleanup_temp_repo'
 
     It 'should only remove symlink from current project'

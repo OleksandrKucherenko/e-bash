@@ -3,8 +3,8 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -13,7 +13,7 @@
 
 # Set up test environment
 set_test_env() {
-  export TEST_DIR=$(mktemp -d)
+  export TEST_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/test_env.XXXXXX")
   export ORIGINAL_DIR=$(pwd)
   cd "$TEST_DIR"
 

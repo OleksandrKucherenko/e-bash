@@ -42,6 +42,9 @@ version.properties
 *.~*~
 *.sha1
 
+# e-bash installation tracking files
+.e-bash-requested-version
+
 # openapi experiments
 bin/bitbucket
 

@@ -4,8 +4,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -669,29 +669,80 @@ Describe "bin/git.semantic-version.sh /"
   End
 
   Describe "Integration tests /"
+    setup_integration_test() {
+      TEST_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/semver.XXXXXX")
+      export TEST_DIR
+      # We need to save the original directory to return to it if needed, 
+      # but ShellSpec runs in subshells mostly.
+      # However, we need to access the script.
+      SCRIPT_PATH="$SHELLSPEC_PROJECT_ROOT/bin/git.semantic-version.sh"
+      
+      cd "$TEST_DIR" || return 1
+      git init -q
+      git config user.email "test@example.com"
+      git config user.name "Test User"
+      
+      # Create some commits to simulate history
+      # HEAD~10..HEAD
+      for i in {1..11}; do
+        echo "change $i" > file.txt
+        git add file.txt
+        if [ "$i" -eq 6 ]; then
+           git commit -q -m "feat: feature $i"
+           git tag v1.0.0
+        else
+           git commit -q -m "fix: fix $i"
+        fi
+      done
+    }
+
+    cleanup_integration_test() {
+      rm -rf "$TEST_DIR"
+    }
+
+    Before 'setup_integration_test'
+    After 'cleanup_integration_test'
+
     It "processes commits from recent history"
-      When run script bin/git.semantic-version.sh --from-commit HEAD~5 --initial-version 1.0.0
+      When run script "$SCRIPT_PATH" --from-commit HEAD~5 --initial-version 1.0.0
       The status should be success
       The result of function no_colors_stdout should include "Semantic Version History"
       The result of function no_colors_stdout should include "Summary:"
     End
 
     It "works with --from-last-tag strategy"
-      When run script bin/git.semantic-version.sh --from-last-tag --initial-version 1.0.0
+      When run script "$SCRIPT_PATH" --from-last-tag --initial-version 1.0.0
       The status should be success
       The result of function no_colors_stdout should include "Semantic Version History"
     End
 
     It "shows tag column in output"
-      When run script bin/git.semantic-version.sh --from-commit HEAD~10 --initial-version 1.0.0
+      When run script "$SCRIPT_PATH" --from-commit HEAD~10 --initial-version 1.0.0
       The status should be success
       # Should have Tag column header
       The result of function no_colors_stdout should include "| Tag |"
     End
 
     It "validates not in git repository"
-      # This would require running in a non-git directory
-      Skip "Requires running outside git repository"
+      # This runs in a subprocess, so we can control the CWD
+      # create a non-git dir OUTSIDE of TEST_DIR (which is a git repo)
+      # A subdirectory of a git repo is still inside the git repo!
+      NOGIT_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/nogit.XXXXXX")
+      
+      # We use a subshell to run the script in the non-git dir
+      # run script works by executing the script. 
+      # ShellSpec 'When run' uses the command given.
+      
+      cwd_cmd() {
+         cd "$NOGIT_DIR" && "$SCRIPT_PATH" "$@"
+      }
+      
+      When run cwd_cmd
+      The status should be failure
+      The stderr should include "Not a git repository"
+      
+      # Cleanup the extra temp directory
+      rm -rf "$NOGIT_DIR"
     End
   End
 End

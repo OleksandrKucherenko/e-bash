@@ -4,8 +4,8 @@
 # shellcheck disable=SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -18,6 +18,8 @@ VERIFY_SCRIPT="${SCRIPT_DIR}/git.verify-all-commits.sh"
 
 # Set E_BASH variable manually for tests
 export E_BASH="${PROJECT_ROOT}/.scripts"
+# Speed up tests by suppressing git filter-branch warning (saves ~5-10s)
+export FILTER_BRANCH_SQUELCH_WARNING=1
 
 Describe 'bin/git.verify-all-commits.sh /'
   Include "$VERIFY_SCRIPT"
@@ -26,7 +28,7 @@ Describe 'bin/git.verify-all-commits.sh /'
   AfterEach 'cleanup_test_environment'
 
   setup_test_environment() {
-    TEST_DIR=$(mktemp -d)
+    TEST_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/verify_commits.XXXXXX")
     export TEST_DIR
     ORIGINAL_DIR=$(pwd)
     export ORIGINAL_DIR

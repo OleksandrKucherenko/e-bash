@@ -665,9 +665,27 @@ function clean_temp_branches() {
   exec:git branch -D "$SCRIPTS_BRANCH" 2>/dev/null || true
 }
 
+## Store the requested version for later retrieval
+function store_requested_version() {
+  local version="$1"
+  echo "$version" > ".e-bash-requested-version"
+}
+
+## Get the stored requested version
+function get_requested_version() {
+  if [ -f ".e-bash-requested-version" ]; then
+    cat ".e-bash-requested-version"
+  else
+    echo ""
+  fi
+}
+
 ## Create temporary branch based on version. Exit code.
 function create_temp_branch() {
   local version="$1"
+
+  # Store the requested version for later detection
+  store_requested_version "$version"
 
   if [ "$version" = "$REMOTE_MASTER" ]; then
     exec:git checkout --quiet --force -b "$TEMP_BRANCH" "$REMOTE_NAME/$REMOTE_MASTER"
@@ -1681,8 +1699,45 @@ function get_installed_version() {
   # Scripts branch exists, get its hash
   branch_hash=$(git rev-parse "$SCRIPTS_BRANCH")
 
+  # Check if we have a stored requested version
+  local requested_version
+  requested_version=$(get_requested_version)
+  
+  if [ -n "$requested_version" ]; then
+    # We have a stored version, use it
+    if [ "$requested_version" = "$REMOTE_MASTER" ]; then
+      # Check if master is up to date
+      if git rev-parse --verify "$TEMP_BRANCH" >/dev/null 2>&1; then
+        local temp_hash
+        local remote_master_hash
+        temp_hash=$(git rev-parse "$TEMP_BRANCH")
+        remote_master_hash=$(git ls-remote "$REMOTE_NAME" master | cut -f1)
+        
+        if [ -n "$temp_hash" ] && [ -n "$remote_master_hash" ] && [ "$temp_hash" = "$remote_master_hash" ]; then
+          echo "master (up to date)"
+          return 0
+        else
+          echo "master (updates available)"
+          return 0
+        fi
+      else
+        echo "master"
+        return 0
+      fi
+    else
+      # Return the stored version
+      echo "$requested_version"
+      return 0
+    fi
+  fi
+
+  # Fallback to old detection logic if no stored version
   # Check if temp branch exists
   if git rev-parse --verify "$TEMP_BRANCH" >/dev/null 2>&1; then
+    local temp_hash
+    temp_hash=$(git rev-parse "$TEMP_BRANCH")
+
+    # First try to find tag from temp branch
     local temp_branch_version
     temp_branch_version=$(git describe --tags --exact-match "$TEMP_BRANCH" 2>/dev/null || echo "")
 
@@ -1691,33 +1746,32 @@ function get_installed_version() {
       echo "$temp_branch_version"
       return 0
     fi
+
+    # If no tag found, check if it's from master
+    local remote_master_hash
+    remote_master_hash=$(git ls-remote "$REMOTE_NAME" master | cut -f1)
+
+    # If temp branch matches remote master, this is a master installation
+    if [ -n "$temp_hash" ] && [ -n "$remote_master_hash" ] && [ "$temp_hash" = "$remote_master_hash" ]; then
+      echo "master (up to date)"
+      return 0
+    elif [ -n "$temp_hash" ] && [ -n "$remote_master_hash" ]; then
+      # Check if it's an outdated master
+      local master_base
+      master_base=$(git merge-base "$temp_hash" "$remote_master_hash" 2>/dev/null || echo "")
+      if [ "$master_base" = "$temp_hash" ]; then
+        echo "master (updates available)"
+        return 0
+      fi
+    fi
   fi
 
-  # Try direct tag detection
+  # Try direct tag detection from scripts branch
   local direct_tag_version
   direct_tag_version=$(git describe --tags --exact-match "$branch_hash" 2>/dev/null || echo "")
 
   if [ -n "$direct_tag_version" ]; then
     echo "$direct_tag_version"
-    return 0
-  fi
-
-  # If still no tag found, check if it's from master
-  local remote_master_hash
-  remote_master_hash=$(git ls-remote "$REMOTE_NAME" master | cut -f1)
-
-  if git rev-parse --verify "$TEMP_BRANCH" >/dev/null 2>&1; then
-    local temp_hash
-    local master_status="up to date"
-
-    temp_hash=$(git rev-parse "$TEMP_BRANCH")
-
-    # Compare current hash with remote master hash
-    if [ -n "$temp_hash" ] && [ -n "$remote_master_hash" ]; then
-      [ "$temp_hash" != "$remote_master_hash" ] && master_status="updates available"
-    fi
-
-    echo "master ($master_status)"
     return 0
   fi
 
