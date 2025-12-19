@@ -453,10 +453,28 @@ Describe 'bin/install.e-bash.sh /'
 
     It 'should print uninstall instructions on merge conflict'
       # user has repo with e-bash script installed manually...
+      
+      # Create conflicting content in the fake remote to trigger merge conflicts
+      local fake_remote_dir="$TEST_DIR/../fake-e-bash-remote.git"
+      local temp_work_dir="$TEST_DIR/../fake-e-bash-conflict-work"
+      
+      # Modify the fake remote to have conflicting content
+      mkdir -p "$temp_work_dir"
+      cd "$temp_work_dir" || return 1
+      git clone -q "$fake_remote_dir" . 2>/dev/null || true
+      
+      # Create conflicting content in the remote
+      echo "REMOTE CONFLICTING CONTENT THAT WILL CONFLICT" > .scripts/_colors.sh
+      git add .scripts/_colors.sh
+      git commit --no-gpg-sign -m "Remote conflicting changes" -q 2>/dev/null || git commit -m "Remote conflicting changes" -q
+      git push -q origin master 2>/dev/null || true
+      
+      cd "$TEST_DIR" || return 1
+      rm -rf "$temp_work_dir"
 
       # I mean something in .scripts folder
       mkdir -p .scripts                        # create out destination folder
-      echo "fake content" >.scripts/_colors.sh # is_installed() == true
+      echo "LOCAL CONFLICTING CONTENT THAT WILL CONFLICT" >.scripts/_colors.sh # is_installed() == true
       git_add_all
       git_amend
 
