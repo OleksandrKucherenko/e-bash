@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 0.11.2
+## Version: 0.11.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -59,6 +59,10 @@ Describe 'Self-Update Initialization /'
       When call self-update:initialize
       The status should be success
       The path "${__E_ROOT}" should be directory
+
+      # Verify logger output confirms initialization
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
+      The result of function no_colors_stderr should include "Mock: Extract first version"
     End
 
     It 'initializes git repository in .e-bash directory'
@@ -68,12 +72,16 @@ Describe 'Self-Update Initialization /'
       When call self-update:initialize
       The status should be success
       The path "${__E_ROOT}/.git" should be directory
+
+      # Verify initialization message
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
     End
 
     It 'outputs initialization success message'
       self-update:version:get:first() { :; }
 
       When call self-update:initialize
+      The status should be success
       The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
     End
 
@@ -86,6 +94,9 @@ Describe 'Self-Update Initialization /'
       # .gitignore should exist and contain .versions/
       The path "${__E_ROOT}/.gitignore" should be file
       The contents of file "${__E_ROOT}/.gitignore" should include ".versions/"
+
+      # Verify initialization completed via logger
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
     End
 
     It 'calls self-update:version:get:first'
@@ -95,9 +106,13 @@ Describe 'Self-Update Initialization /'
         echo:Version "Mock: Extract first version" >&2
       }
 
-      self-update:initialize >/dev/null 2>&1
-
+      When call self-update:initialize
+      The status should be success
       The variable mock_called should equal true
+
+      # Verify both initialization and mock were called via logger messages
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
+      The result of function no_colors_stderr should include "Mock: Extract first version"
     End
   End
 
@@ -142,20 +157,28 @@ Describe 'Self-Update Initialization /'
 
       # Initialize multiple times
       self-update:initialize >/dev/null 2>&1
-      self-update:initialize >/dev/null 2>&1
+
+      When call self-update:initialize
+      The status should be success
 
       cd "${__E_ROOT}" || Skip "Cannot cd to __E_ROOT"
       # Count occurrences of .versions/ in .gitignore
       count=$(grep -c ".versions/" .gitignore 2>/dev/null || echo 0)
       The variable count should equal 1
+
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
     End
 
     It 'adds comment explaining exclusion'
       self-update:version:get:first() { :; }
 
-      self-update:initialize >/dev/null 2>&1
-
+      When call self-update:initialize
+      The status should be success
       The contents of file "${__E_ROOT}/.gitignore" should include "# exclude .versions worktree folder from git"
+
+      # Verify initialization via logger
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
     End
   End
 
@@ -202,14 +225,14 @@ Describe 'Self-Update Initialization /'
         esac
       }
 
-      self-update:initialize >/dev/null 2>&1
+      When call self-update:initialize
+      The status should be success
 
-      # Should have performed init, remote operations, fetch, checkout, reset
-      [[ "${GIT_OPS[*]}" =~ "init" ]] || true
-      [[ "${GIT_OPS[*]}" =~ "fetch" ]] || true
-      [[ "${GIT_OPS[*]}" =~ "checkout" ]] || true
-      [[ "${GIT_OPS[*]}" =~ "reset" ]] || true
+      # Verify initialization message via logger
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
 
+      # Should have performed git operations
+      [[ "${GIT_OPS[*]}" =~ "fetch" ]]
       The status should be success
 
       unset -f git
@@ -228,11 +251,15 @@ Describe 'Self-Update Initialization /'
         echo "*.tmp" >> "${__E_ROOT}/.gitignore"
       fi
 
-      self-update:initialize >/dev/null 2>&1
+      When call self-update:initialize
+      The status should be success
 
       # Should preserve existing content and add .versions/
       The contents of file "${__E_ROOT}/.gitignore" should include "*.tmp"
       The contents of file "${__E_ROOT}/.gitignore" should include ".versions/"
+
+      # Verify initialization via logger
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
     End
 
     It 'creates .e-bash directory structure properly'
@@ -244,6 +271,9 @@ Describe 'Self-Update Initialization /'
       # Verify key directories exist
       The path "${__E_ROOT}" should be directory
       The path "${__E_ROOT}/.git" should be directory
+
+      # Verify initialization via logger
+      The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
     End
   End
 End
