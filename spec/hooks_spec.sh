@@ -307,21 +307,28 @@ EOF
     End
 
     It 'skips non-executable script files'
-      setup() {
+      test_non_executable() {
+        # Set up test environment
+        mkdir -p /tmp/test_hooks
+        export HOOKS_DIR=/tmp/test_hooks
+        
         hooks:define no_exec_hook
         cat > /tmp/test_hooks/no_exec_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "This should not execute"
 EOF
         # Intentionally not making it executable
+        
+        on:hook no_exec_hook
+        
+        # Clean up
+        rm -f /tmp/test_hooks/no_exec_hook-test.sh
       }
-      BeforeCall 'setup'
 
-      When call on:hook no_exec_hook
+      When call test_non_executable
 
       The status should be success
       The output should eq ''
-      # Verify logger shows no implementations or script not found
       The result of function no_colors_stderr should include "No implementations found"
     End
   End
@@ -340,7 +347,11 @@ EOF
     AfterAll 'cleanup_cicd_dir'
 
     It 'executes multiple scripts in alphabetical order'
-      setup() {
+      test_multiple_scripts() {
+        # Set up test environment
+        mkdir -p /tmp/test_cicd
+        export HOOKS_DIR=/tmp/test_cicd
+        
         hooks:define deploy
         cat > /tmp/test_cicd/deploy-backup.sh <<'EOF'
 #!/usr/bin/env bash
@@ -355,17 +366,20 @@ EOF
 echo "3: Restart"
 EOF
         chmod +x /tmp/test_cicd/deploy-*.sh
+        
+        on:hook deploy
+        
+        # Clean up
+        rm -f /tmp/test_cicd/deploy-*.sh
       }
-      BeforeCall 'setup'
 
-      When call on:hook deploy
+      When call test_multiple_scripts
 
       The status should be success
       # Scripts execute in alphabetical order by filename: backup < restart < update
       The line 1 should eq "1: Backup"
       The line 2 should eq "3: Restart"
       The line 3 should eq "2: Update"
-      # Verify via logger that 3 scripts were found and executed
       The result of function no_colors_stderr should include "Found 3 script(s) for hook 'deploy'"
       The result of function no_colors_stderr should include "[script 1/3] deploy-backup.sh"
       The result of function no_colors_stderr should include "[script 2/3] deploy-restart.sh"
@@ -373,7 +387,11 @@ EOF
     End
 
     It 'executes scripts with numbered pattern in order'
-      setup() {
+      test_numbered_scripts() {
+        # Set up test environment
+        mkdir -p /tmp/test_cicd
+        export HOOKS_DIR=/tmp/test_cicd
+        
         hooks:define begin
         cat > /tmp/test_cicd/begin_01_init.sh <<'EOF'
 #!/usr/bin/env bash
@@ -388,17 +406,20 @@ EOF
 echo "Step 10: Finalize"
 EOF
         chmod +x /tmp/test_cicd/begin_*.sh
+        
+        on:hook begin
+        
+        # Clean up
+        rm -f /tmp/test_cicd/begin_*.sh
       }
-      BeforeCall 'setup'
 
-      When call on:hook begin
+      When call test_numbered_scripts
 
       The status should be success
       # Scripts execute in lexicographic order: 01 < 02 < 10
       The line 1 should eq "Step 1: Init"
       The line 2 should eq "Step 2: Validate"
       The line 3 should eq "Step 10: Finalize"
-      # Verify via logger that scripts were executed in order
       The result of function no_colors_stderr should include "Found 3 script(s) for hook 'begin'"
     End
 
