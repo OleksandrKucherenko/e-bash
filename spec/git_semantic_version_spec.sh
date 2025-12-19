@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 1.12.0
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -670,7 +670,7 @@ Describe "bin/git.semantic-version.sh /"
 
   Describe "Integration tests /"
     setup_integration_test() {
-      TEST_DIR=$(mktemp -d)
+      TEST_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/semver.XXXXXX")
       export TEST_DIR
       # We need to save the original directory to return to it if needed, 
       # but ShellSpec runs in subshells mostly.
@@ -725,20 +725,24 @@ Describe "bin/git.semantic-version.sh /"
 
     It "validates not in git repository"
       # This runs in a subprocess, so we can control the CWD
-      # create a non-git dir
-      mkdir -p "$TEST_DIR/nogit"
+      # create a non-git dir OUTSIDE of TEST_DIR (which is a git repo)
+      # A subdirectory of a git repo is still inside the git repo!
+      NOGIT_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/nogit.XXXXXX")
       
       # We use a subshell to run the script in the non-git dir
       # run script works by executing the script. 
       # ShellSpec 'When run' uses the command given.
       
       cwd_cmd() {
-         cd "$TEST_DIR/nogit" && "$SCRIPT_PATH" "$@"
+         cd "$NOGIT_DIR" && "$SCRIPT_PATH" "$@"
       }
       
       When run cwd_cmd
       The status should be failure
-      The stderr should include "Not in a git repository"
+      The stderr should include "Not a git repository"
+      
+      # Cleanup the extra temp directory
+      rm -rf "$NOGIT_DIR"
     End
   End
 End

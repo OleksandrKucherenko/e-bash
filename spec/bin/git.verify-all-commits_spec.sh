@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 1.12.0
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -28,7 +28,7 @@ Describe 'bin/git.verify-all-commits.sh /'
   AfterEach 'cleanup_test_environment'
 
   setup_test_environment() {
-    TEST_DIR=$(mktemp -d)
+    TEST_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/verify_commits.XXXXXX")
     export TEST_DIR
     ORIGINAL_DIR=$(pwd)
     export ORIGINAL_DIR

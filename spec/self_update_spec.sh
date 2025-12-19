@@ -4,8 +4,8 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -477,7 +477,7 @@ Describe 'Self-Update Module /'
   Describe 'path:resolve /'
     setup_path_test() {
       # Create temporary directory structure for testing
-      TEMP_DIR=$(mktemp -d)
+      TEMP_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/path_resolve.XXXXXX")
       mkdir -p "$TEMP_DIR/subdir"
       touch "$TEMP_DIR/test-file.sh"
       touch "$TEMP_DIR/subdir/nested-file.sh"
@@ -572,7 +572,7 @@ Describe 'Self-Update Module /'
     }
 
     setup_hash_test() {
-      TEMP_DIR=$(mktemp -d)
+      TEMP_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/hash_test.XXXXXX")
       echo "test content" > "$TEMP_DIR/test-file.sh"
     }
 

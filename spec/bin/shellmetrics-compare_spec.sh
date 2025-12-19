@@ -4,8 +4,8 @@
 # shellcheck disable=SC2329,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-14
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -19,7 +19,7 @@ Describe '.github/scripts/shellmetrics-compare.sh /'
   AfterEach 'cleanup_test_environment'
 
   setup_test_environment() {
-    export TEST_DIR=$(mktemp -d)
+    export TEST_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/shellmetrics.XXXXXX")
     export ORIGINAL_DIR=$(pwd)
     # Use an executable copy of the script under TEST_DIR so specs don't
     # depend on checkout filemode support (e.g., core.filemode=false).

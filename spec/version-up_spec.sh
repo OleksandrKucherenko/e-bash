@@ -3,15 +3,15 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 eval "$(shellspec - -c) exit 1"
 
 # shellcheck disable=SC2288
-% TEST_DIR: "$SHELLSPEC_TMPBASE/tmprepo"
+% TEST_DIR: "$SHELLSPEC_TMPBASE/tmprepo-$$"
 
 #
 # TDD:
@@ -30,16 +30,50 @@ Describe 'bin/version-up.v2.sh /'
   no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
   no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 
-  mk_repo() {
-    mkdir -p "$TEST_DIR" || true
-    cd "$TEST_DIR" || exit 1
+  # Global variable for the git template directory
+  GIT_TEMPLATE_DIR="$SHELLSPEC_TMPBASE/git_template"
+
+  prepare_template() {
+    # If template already exists, nothing to do
+    [ -d "$GIT_TEMPLATE_DIR" ] && return 0
+
+    # Create template repo once. Use a lock to prevent race conditions during parallel execution.
+    local lock_dir="$GIT_TEMPLATE_DIR.lock"
+    if mkdir "$lock_dir" 2>/dev/null; then
+      (
+        mkdir -p "$GIT_TEMPLATE_DIR"
+        cd "$GIT_TEMPLATE_DIR" || exit 1
+        git init -q
+        git config --local user.name "Test User"
+        git config --local user.email "test@example.com"
+        git config --local commit.gpgsign false
+      )
+      rmdir "$lock_dir"
+    else
+      # Wait for another process to finish initialization
+      local count=0
+      while [ ! -d "$GIT_TEMPLATE_DIR" ] || [ -d "$lock_dir" ]; do
+        sleep 0.1
+        count=$((count + 1))
+        [ $count -gt 100 ] && break # Timeout after 10s
+      done
+    fi
   }
+
   git_init() { git init -q; }
   git_config_user() { git config --local user.name "Test User"; }
   git_config_email() { git config --local user.email "test@example.com"; }
   git_config_no_signing() { git config --local commit.gpgsign false; }
   git_config() { git_config_user && git_config_email && git_config_no_signing; }
-  ln_script() { ln -s "$ROOT_SCRIPT" "$VERSION_UP_SCRIPT"; }
+
+  mk_repo() {
+    prepare_template
+    rm -rf "$TEST_DIR"
+    cp -rp "$GIT_TEMPLATE_DIR" "$TEST_DIR"
+    cd "$TEST_DIR" || exit 1
+    ln -s "$ROOT_SCRIPT" "$VERSION_UP_SCRIPT"
+  }
+
   rm_repo() { rm -rf "$TEST_DIR"; }
   git_first_commit() { (git add . && git commit -m "Initial commit"); }
   git_next_commit() { (git add . && git commit -m "Next commit${1:-" $(date)"}"); }
@@ -47,7 +81,7 @@ Describe 'bin/version-up.v2.sh /'
   random_change() { echo "$(date) - $$-$RANDOM" >>random.txt; }
   #endregion
 
-  Before 'mk_repo; git_init; git_config; ln_script'
+  Before 'mk_repo'
   After 'rm_repo'
 
   # test-000
