@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
+## Last revisit: 2025-12-19
 ## Version: 1.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -439,8 +439,10 @@ function on:hook() {
 
     # find scripts matching the patterns
     while IFS= read -r -d '' script; do
-      hook_scripts+=("$script")
-    done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -executable -print0 2>/dev/null | sort -z)
+      if [[ -x "$script" ]]; then
+        hook_scripts+=("$script")
+      fi
+    done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -print0 2>/dev/null | sort -z)
 
     # log discovered scripts
     if [[ ${#hook_scripts[@]} -gt 0 ]]; then
@@ -583,8 +585,10 @@ function hooks:list() {
     if [[ -d "$HOOKS_DIR" ]]; then
       local script_count=0
       while IFS= read -r -d '' script; do
-        ((script_count++))
-      done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -executable -print0 2>/dev/null)
+        if [[ -x "$script" ]]; then
+          ((script_count++))
+        fi
+      done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -print0 2>/dev/null)
 
       if [[ $script_count -gt 0 ]]; then
         implementations+=("${script_count} script(s)")
@@ -665,9 +669,11 @@ function hooks:has_implementation() {
   if [[ -d "$HOOKS_DIR" ]]; then
     local script_count=0
     while IFS= read -r -d '' script; do
-      ((script_count++))
-      break  # found at least one, no need to count all
-    done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -executable -print0 2>/dev/null)
+      if [[ -x "$script" ]]; then
+        ((script_count++))
+        break  # found at least one, no need to count all
+      fi
+    done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -print0 2>/dev/null)
 
     if [[ $script_count -gt 0 ]]; then
       return 0
