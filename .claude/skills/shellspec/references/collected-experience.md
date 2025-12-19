@@ -2029,3 +2029,261 @@ Include "$UNDER_TEST"
 
 **Last Updated:** 2025-12-10
 **Context:** Refactoring npm.versions.sh after discovering __SOURCED__ guard pattern from .scripts files.
+
+---
+
+## Part IX: _hooks.sh Testing Experience - Logger-Driven Test Verification
+
+### Case Study 9: Comprehensive Hook System Test Suite (54 Tests)
+
+This section documents the extensive debugging and refactoring of `hooks_spec.sh`, transforming superficial tests into robust, logger-verified unit tests that validate actual business logic.
+
+#### The Problem: Tests That Don't Verify Business Logic
+
+**Initial (Bad) Test Pattern:**
+```bash
+It 'defines single hook successfully'
+  When call hooks:define begin
+
+  The status should be success
+  The output should eq ''    # ❌ Only checks exit code and empty output
+End
+```
+
+**Why This Is Bad:**
+1. Only verifies status/return code, not actual behavior
+2. No logger capture to verify execution path
+3. No business value verification
+4. Cannot detect if function is mocked vs actually executed
+5. Cannot detect code path taken or data state changes
+
+#### The Solution: Logger-Driven Test Verification
+
+**Improved Test Pattern:**
+```bash
+It 'defines single hook successfully'
+  When call hooks:define begin
+
+  The status should be success
+  # Verify via logger that hook was actually registered
+  The result of function no_colors_stderr should include "Registered hook: begin"
+End
+```
+
+### Key Patterns Discovered
+
+#### 1. Enable DEBUG Mode for Module Under Test
+
+```bash
+# At the top of spec file
+export DEBUG="hooks"    # Enable logger for hooks module
+
+# Mock logger functions to output to stderr for verification
+Mock printf:Hooks
+  printf "$@" >&2
+End
+
+Mock echo:Hooks
+  echo "$@" >&2
+End
+```
+
+**Why:** Logger output is the primary verification mechanism - it shows which code path executed, what data was processed, and whether functions were called.
+
+#### 2. Helper Functions for Color Code Stripping
+
+```bash
+# Required for comparing logger output (which contains ANSI colors)
+no_colors_stderr() { 
+  echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '
+}
+no_colors_stdout() { 
+  echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '
+}
+```
+
+**Usage:**
+```bash
+The result of function no_colors_stderr should include "Registered hook: begin"
+The result of function no_colors_stderr should include "[function] hook:test_hook"
+The result of function no_colors_stderr should include "exit code: 0"
+```
+
+#### 3. Silencing Setup Code stderr
+
+**The Problem:** Code running OUTSIDE `When call` produces stderr output that ShellSpec flags as "Unexpected output to stderr occurred".
+
+```bash
+# ❌ BAD - Setup produces unexpected stderr
+It 'registers a function for a hook'
+  hooks:define build                              # Produces stderr!
+  hook:register build "10-test" test_func         # Produces stderr!
+
+  When call on:hook build
+
+  The status should be success
+  # ShellSpec will fail with "Unexpected output to stderr"
+End
+```
+
+**Solution:** Redirect stderr from setup code to `/dev/null`:
+
+```bash
+# ✅ GOOD - Setup stderr silenced
+It 'registers a function for a hook'
+  hooks:define build 2>/dev/null
+  hook:register build "10-test" test_func 2>/dev/null
+
+  When call on:hook build
+
+  The status should be success
+  The result of function no_colors_stderr should include "[registered 1/1] 10-test"
+End
+```
+
+#### 4. Mock Functions Should Be Simple
+
+**❌ BAD - Conditional mocks that can return non-zero:**
+```bash
+Mock echo:Hooks
+  [[ "$DEBUG" == *hooks* ]] && echo "$@" >&2 || true
+End
+```
+
+**Why Bad:** The `[[ ]] && ... || true` pattern works, but mocks should be simple. If you need DEBUG-conditional output, just enable DEBUG globally.
+
+**✅ GOOD - Simple, always-output mocks:**
+```bash
+Mock printf:Hooks
+  printf "$@" >&2
+End
+
+Mock echo:Hooks
+  echo "$@" >&2
+End
+```
+
+#### 5. hooks:cleanup Must Preserve Array Types
+
+**Critical Bug Discovered:** Using `unset` on associative arrays removes their type. Re-declaration is required.
+
+**❌ BAD - Type lost after unset:**
+```bash
+hooks:cleanup() {
+  unset HOOKS_DEFINED
+  HOOKS_DEFINED=()    # Now indexed array, not associative!
+}
+```
+
+**✅ GOOD - Proper type preservation:**
+```bash
+hooks:cleanup() {
+  unset HOOKS_DEFINED
+  declare -g -A HOOKS_DEFINED=()   # Explicitly associative
+  
+  unset HOOKS_FUNCTIONS
+  declare -g -a HOOKS_FUNCTIONS=() # Explicitly indexed
+}
+```
+
+#### 6. The ${__SOURCED__:+return} Guard for Testability
+
+**Problem:** Scripts that run logger initialization at the top level cause issues when sourced/included by ShellSpec.
+
+**Solution:** Move dynamic initialization AFTER the guard:
+
+```bash
+# Static content - function definitions
+function hooks:define() { ... }
+function on:hook() { ... }
+
+# THE GUARD - stops here when sourced by ShellSpec
+${__SOURCED__:+return}
+
+# Dynamic initialization - only runs for direct execution
+logger:init loader "hooks" ">&2"
+echo:Loader "loaded: ${BASH_SOURCE[0]}"
+```
+
+**Benefit:** ShellSpec's `Include` directive automatically sets `__SOURCED__`, so the script stops before logger initialization, avoiding side effects in tests.
+
+#### 7. Logger Conditionals Can Cause set -e Failures
+
+**Problem:** Logger functions often use patterns like:
+```bash
+[[ "$DEBUG" == *module* ]] && echo "debug output" >&2
+```
+
+When `set -e` is active (errexit), if the condition is false, the entire line returns non-zero, causing script abort.
+
+**Solution at script level:** Add explicit success at end of script:
+```bash
+${__SOURCED__:+return}
+logger:init ...
+: # Ensure successful exit code
+```
+
+**Solution at test level:** Use `|| true` when sourcing:
+```bash
+source "$E_BASH/_hooks.sh" || true
+```
+
+### Test Verification Patterns by Category
+
+#### Defining Hooks
+```bash
+The result of function no_colors_stderr should include "Registered hook: begin"
+The result of function no_colors_stderr should include "Defining hooks from context:"
+```
+
+#### Executing Hooks via Function
+```bash
+The result of function no_colors_stderr should include "Executing hook: test_hook"
+The result of function no_colors_stderr should include "[function] hook:test_hook"
+The result of function no_colors_stderr should include "exit code: 0"
+The result of function no_colors_stderr should include "Completed hook 'test_hook'"
+```
+
+#### Executing Hooks via Script
+```bash
+The result of function no_colors_stderr should include "Found 3 script(s) for hook 'deploy'"
+The result of function no_colors_stderr should include "[script 1/3] deploy-backup.sh"
+The result of function no_colors_stderr should include "(exec mode)"
+The result of function no_colors_stderr should include "(sourced mode)"
+```
+
+#### Registered Functions
+```bash
+The result of function no_colors_stderr should include "Registered function 'test_func'"
+The result of function no_colors_stderr should include "Found 2 registered function(s)"
+The result of function no_colors_stderr should include "[registered 1/2] 10-first"
+```
+
+#### Error/Warning Cases
+```bash
+The result of function no_colors_stderr should include "not defined, skipping"
+The result of function no_colors_stderr should include "No implementations found for hook"
+The result of function no_colors_stderr should include "Warning: Hook 'deploy' is being defined from multiple contexts"
+```
+
+### Testing Checklist for Logger-Based Tests
+
+- [ ] Enable `DEBUG="module_name"` at file level
+- [ ] Create mock functions that output to stderr
+- [ ] Add `no_colors_stderr` helper function
+- [ ] Silence setup stderr with `2>/dev/null`
+- [ ] Verify status code AND logger messages
+- [ ] Check for meaningful business logic strings, not just exit codes
+- [ ] Use `The result of function no_colors_stderr should include` for verification
+
+### Testing Statistics for _hooks.sh
+
+- **Total Tests:** 54 tests
+- **Test Categories:** 10 contexts (Hook definition, Execution with functions, Execution with scripts, Multiple scripts, Introspection, Sourced mode, Real-world patterns, Nested hooks, Function registration)
+- **Debugging Time Saved:** Proper logger verification catches issues immediately vs mysterious "test passes but code is broken" scenarios
+- **Code Coverage:** 3.15% instrumented lines (hooks-specific code paths)
+
+---
+
+**Last Updated:** 2025-12-18
+**Context:** Comprehensive _hooks.sh test suite development - transforming 54 superficial tests into logger-verified unit tests with proper business logic validation.
