@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -39,7 +39,7 @@ cat > /tmp/demo_library.sh <<'EOF'
 source "$E_BASH/_hooks.sh"
 
 # Library defines its own hooks
-hooks:define init cleanup process
+hooks:declare init cleanup process
 
 # Library provides implementations
 hook:init() {
@@ -75,7 +75,7 @@ echo "Main script also defines init, cleanup, and process hooks..."
 echo
 
 # Main script defines the same hooks - this will trigger warnings
-hooks:define init cleanup process
+hooks:declare init cleanup process
 
 # Main script provides its own implementations
 hook:init() {
@@ -101,15 +101,15 @@ echo "${cl_green}Example 3: Executing Hooks (Both Implementations Run)${cl_reset
 echo
 
 echo "${cl_yellow}→ Executing init hook:${cl_reset}"
-on:hook init
+hooks:do init
 echo
 
 echo "${cl_yellow}→ Executing process hook:${cl_reset}"
-on:hook process
+hooks:do process
 echo
 
 echo "${cl_yellow}→ Executing cleanup hook:${cl_reset}"
-on:hook cleanup
+hooks:do cleanup
 echo
 
 #
@@ -131,7 +131,7 @@ echo
 cat > /tmp/demo_helper.sh <<'EOF'
 #!/usr/bin/env bash
 source "$E_BASH/_hooks.sh"
-hooks:define init
+hooks:declare init
 
 hook:init() {
   echo "  [Helper] Helper initialization"
@@ -143,7 +143,7 @@ source /tmp/demo_helper.sh
 echo
 
 echo "${cl_yellow}→ Now executing init with THREE contexts:${cl_reset}"
-on:hook init
+hooks:do init
 echo
 
 echo "${cl_yellow}→ Listing hooks shows 3 contexts:${cl_reset}"
@@ -165,7 +165,7 @@ echo
 echo "Example scenario:"
 echo "  1. Library initializes database connection (hook:init)"
 echo "  2. Main script initializes application state (hook:init)"
-echo "  3. on:hook init runs BOTH in sequence"
+echo "  3. hooks:do init runs BOTH in sequence"
 echo "  4. Both components are properly initialized!"
 echo
 
@@ -176,8 +176,8 @@ echo "${cl_green}Example 7: Re-defining Hook in Same Context${cl_reset}"
 echo "If the same context defines a hook twice, no warning is shown..."
 echo
 
-hooks:define test_hook
-hooks:define test_hook  # Same context, no warning
+hooks:declare test_hook
+hooks:declare test_hook  # Same context, no warning
 
 echo
 

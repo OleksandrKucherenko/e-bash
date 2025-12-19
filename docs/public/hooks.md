@@ -46,12 +46,12 @@ The e-bash hooks system provides a declarative way to add extension points to yo
 source "$E_BASH/_hooks.sh"
 
 # Declare available hooks in your script
-hooks:define begin end
+hooks:declare begin end
 
 # Later in your script, delegate control to hooks
-on:hook begin
+hooks:do begin
 echo "Main script logic here"
-on:hook end
+hooks:do end
 ```
 
 ### Implementing Hooks
@@ -65,7 +65,7 @@ hook:begin() {
   echo "Initialization started"
 }
 
-# The hook will be automatically called when on:hook begin is executed
+# The hook will be automatically called when hooks:do begin is executed
 ```
 
 **Method 2: Script-based (external files in ci-cd folder)**
@@ -99,8 +99,8 @@ Hooks are named points in your script where you delegate control to external imp
 
 The hooks system consists of two main components:
 
-1. **Hook Definition** (`hooks:define`): Declares which hooks are available in your script
-2. **Hook Execution** (`on:hook`): Executes a hook if it has an implementation
+1. **Hook Definition** (`hooks:declare`): Declares which hooks are available in your script
+2. **Hook Execution** (`hooks:do`): Executes a hook if it has an implementation
 
 ## Features and Capabilities
 
@@ -110,13 +110,13 @@ Define available hooks at the beginning of your script to make them discoverable
 
 ```bash
 # Define standard lifecycle hooks
-hooks:define begin end
+hooks:declare begin end
 
 # Define multiple hooks at once
-hooks:define begin end decide error rollback
+hooks:declare begin end decide error rollback
 
 # Define custom domain-specific hooks
-hooks:define validate_input sanitize_data notify_completion
+hooks:declare validate_input sanitize_data notify_completion
 ```
 
 Hook names must be alphanumeric with optional underscores and dashes.
@@ -127,16 +127,16 @@ Execute hooks at strategic points in your script:
 
 ```bash
 # Simple hook execution
-on:hook begin
+hooks:do begin
 
 # Hook with parameters
-on:hook error "Database connection failed" 1
+hooks:do error "Database connection failed" 1
 
 # Capture hook output
-result=$(on:hook decide "Continue processing?")
+result=$(hooks:do decide "Continue processing?")
 
 # Use hook output in conditionals
-if [[ "$(on:hook decide)" == "yes" ]]; then
+if [[ "$(hooks:do decide)" == "yes" ]]; then
   echo "Proceeding with operation"
 fi
 ```
@@ -187,12 +187,12 @@ Query hook status and implementations:
 hooks:list
 
 # Check if a hook is defined
-if hooks:is_defined begin; then
+if hooks:known begin; then
   echo "begin hook is available"
 fi
 
 # Check if a hook has an implementation
-if hooks:has_implementation begin; then
+if hooks:runnable begin; then
   echo "begin hook is implemented"
 else
   echo "begin hook needs implementation"
@@ -218,10 +218,10 @@ While you can define custom hooks, these standard names are commonly used:
 Use hooks to externalize decision-making logic:
 
 ```bash
-hooks:define decide
+hooks:declare decide
 
 # In your script
-if [[ "$(on:hook decide "Process large file?")" == "yes" ]]; then
+if [[ "$(hooks:do decide "Process large file?")" == "yes" ]]; then
   process_large_file
 else
   skip_processing
@@ -240,12 +240,12 @@ hook:decide() {
 Delegate error handling to hooks:
 
 ```bash
-hooks:define error rollback
+hooks:declare error rollback
 
 perform_operation() {
   if ! critical_task; then
-    on:hook error "Critical task failed" $?
-    on:hook rollback
+    hooks:do error "Critical task failed" $?
+    hooks:do rollback
     return 1
   fi
   return 0
@@ -270,16 +270,16 @@ hook:rollback() {
 Structure complex scripts with lifecycle hooks:
 
 ```bash
-hooks:define pre_validate validate post_validate pre_process process post_process
+hooks:declare pre_validate validate post_validate pre_process process post_process
 
 main() {
-  on:hook pre_validate
-  on:hook validate || { echo "Validation failed"; return 1; }
-  on:hook post_validate
+  hooks:do pre_validate
+  hooks:do validate || { echo "Validation failed"; return 1; }
+  hooks:do post_validate
 
-  on:hook pre_process
-  on:hook process || { echo "Processing failed"; return 1; }
-  on:hook post_process
+  hooks:do pre_process
+  hooks:do process || { echo "Processing failed"; return 1; }
+  hooks:do post_process
 }
 ```
 
@@ -289,13 +289,13 @@ Create domain-specific hooks for your application:
 
 ```bash
 # For a deployment script
-hooks:define backup pre_deploy deploy post_deploy verify notify
+hooks:declare backup pre_deploy deploy post_deploy verify notify
 
 # For a build script
-hooks:define clean prepare compile test package publish
+hooks:declare clean prepare compile test package publish
 
 # For a data pipeline
-hooks:define extract transform validate load index notify
+hooks:declare extract transform validate load index notify
 ```
 
 ### Nested Hooks (Composability)
@@ -303,7 +303,7 @@ hooks:define extract transform validate load index notify
 The hooks system supports nested/composed scripts where multiple scripts can define the same hook names. This is essential when your script sources libraries or helper scripts that also use hooks.
 
 **How It Works:**
-- Each `hooks:define` call tracks which script/context defined the hook
+- Each `hooks:declare` call tracks which script/context defined the hook
 - The same hook name can be defined from multiple contexts
 - When a hook is defined from multiple contexts, a warning is issued
 - All implementations (functions + scripts) are executed regardless of context
@@ -313,7 +313,7 @@ The hooks system supports nested/composed scripts where multiple scripts can def
 ```bash
 # library.sh - A reusable library
 source "$E_BASH/_hooks.sh"
-hooks:define init cleanup
+hooks:declare init cleanup
 
 hook:init() {
   echo "Library initialized"
@@ -332,7 +332,7 @@ source "$E_BASH/_hooks.sh"
 source ./library.sh  # Sources library that also defines init/cleanup
 
 # Define same hooks in main script - will warn but both work
-hooks:define init cleanup
+hooks:declare init cleanup
 
 hook:init() {
   echo "Main script initialized"
@@ -343,8 +343,8 @@ hook:cleanup() {
 }
 
 # Execute hooks - both library and main implementations run
-on:hook init     # Outputs: "Library initialized\nMain script initialized"
-on:hook cleanup  # Outputs: "Library cleanup\nMain script cleanup"
+hooks:do init     # Outputs: "Library initialized\nMain script initialized"
+hooks:do cleanup  # Outputs: "Library cleanup\nMain script cleanup"
 ```
 
 **Warning Output:**
@@ -447,7 +447,7 @@ Best for simple, inline implementations:
 
 ```bash
 source "$E_BASH/_hooks.sh"
-hooks:define begin end
+hooks:declare begin end
 
 hook:begin() {
   echo "Starting at $(date)"
@@ -459,9 +459,9 @@ hook:end() {
   echo "Completed in ${duration}s"
 }
 
-on:hook begin
+hooks:do begin
 # Main logic here
-on:hook end
+hooks:do end
 ```
 
 ### Script-Based Hooks
@@ -471,10 +471,10 @@ Best for complex, reusable implementations:
 ```bash
 # Main script
 source "$E_BASH/_hooks.sh"
-hooks:define validate process
+hooks:declare validate process
 
-on:hook validate || exit 1
-on:hook process
+hooks:do validate || exit 1
+hooks:do process
 ```
 
 ```bash
@@ -505,7 +505,7 @@ Combine both methods for flexibility:
 
 ```bash
 source "$E_BASH/_hooks.sh"
-hooks:define begin validate process end
+hooks:declare begin validate process end
 
 # Quick inline implementations
 hook:begin() { echo "Started"; }
@@ -515,10 +515,10 @@ hook:end() { echo "Finished"; }
 # .hooks/validate.sh - comprehensive validation
 # .hooks/process.sh - heavy processing logic
 
-on:hook begin
-on:hook validate || exit 1
-on:hook process "$@"
-on:hook end
+hooks:do begin
+hooks:do validate || exit 1
+hooks:do process "$@"
+hooks:do end
 ```
 
 ### Registered Functions
@@ -535,7 +535,7 @@ Register any Bash function as a hook implementation dynamically. This is perfect
 
 ```bash
 source "$E_BASH/_hooks.sh"
-hooks:define deploy
+hooks:declare deploy
 
 # Define functions to register
 track_metrics() {
@@ -549,11 +549,11 @@ notify_team() {
 }
 
 # Register functions with friendly names for sorting
-hook:register deploy "10-metrics" track_metrics
-hook:register deploy "20-notify" notify_team
+hooks:register deploy "10-metrics" track_metrics
+hooks:register deploy "20-notify" notify_team
 
 # Execute hook - all registered functions run in alphabetical order
-on:hook deploy
+hooks:do deploy
 # Output:
 #   📊 Tracking deployment metrics...
 #   📢 Notifying team...
@@ -571,11 +571,11 @@ forward_to_slack() {
   /usr/local/bin/slack-notify.sh "deployment" "$@"
 }
 
-hooks:define deploy
-hook:register deploy "50-datadog" forward_to_datadog
-hook:register deploy "60-slack" forward_to_slack
+hooks:declare deploy
+hooks:register deploy "50-datadog" forward_to_datadog
+hooks:register deploy "60-slack" forward_to_slack
 
-on:hook deploy "production" "v1.2.3"
+hooks:do deploy "production" "v1.2.3"
 # Calls: datadog-deploy.sh production v1.2.3
 # Calls: slack-notify.sh deployment production v1.2.3
 ```
@@ -592,16 +592,16 @@ add_observability() {
   eval "${timing_func}() {
     local start=\$SECONDS
     echo \"⏱️  Starting ${hook_name}\"
-    # Hook already executed by on:hook
+    # Hook already executed by hooks:do
     local duration=\$((SECONDS - start))
     echo \"✓ ${hook_name} completed in \${duration}s\"
   }"
 
   # Register timing function
-  hook:register "$hook_name" "99-timing" "$timing_func"
+  hooks:register "$hook_name" "99-timing" "$timing_func"
 }
 
-hooks:define build test deploy
+hooks:declare build test deploy
 add_observability build
 add_observability test
 add_observability deploy
@@ -611,10 +611,10 @@ add_observability deploy
 
 ```bash
 # Register a function
-hook:register build "metrics" track_build_metrics
+hooks:register build "metrics" track_build_metrics
 
 # Later, unregister it by friendly name
-hook:unregister build "metrics"
+hooks:unregister build "metrics"
 ```
 
 **Execution Order:**
@@ -640,7 +640,7 @@ hooks:list
 
 ## Best Practices
 
-1. **Always declare hooks upfront** using `hooks:define` to make them discoverable
+1. **Always declare hooks upfront** using `hooks:declare` to make them discoverable
 2. **Use descriptive hook names** that clearly indicate their purpose
 3. **Document expected parameters** for each hook in your script comments
 4. **Handle missing implementations gracefully** - hooks without implementations are silently skipped
@@ -722,7 +722,7 @@ export DEBUG="-"      # Force disable all logging
 ```
 
 **What Gets Logged (to stderr):**
-- Hook registration during `hooks:define`
+- Hook registration during `hooks:declare`
 - Hook execution start/completion
 - Function hook execution
 - Script discovery (count and names)
@@ -754,7 +754,7 @@ Executing hook: deploy
 
 ### Key Functions
 
-#### `hooks:define hook1 hook2 ...`
+#### `hooks:declare hook1 hook2 ...`
 
 Declares available hooks in the script.
 
@@ -767,10 +767,10 @@ Declares available hooks in the script.
 
 **Example:**
 ```bash
-hooks:define begin end decide error rollback
+hooks:declare begin end decide error rollback
 ```
 
-#### `on:hook hook_name [params...]`
+#### `hooks:do hook_name [params...]`
 
 Executes a hook if it's defined and has an implementation.
 
@@ -789,14 +789,14 @@ Executes a hook if it's defined and has an implementation.
 
 **Example:**
 ```bash
-on:hook begin
-on:hook error "Something failed" 1
-result=$(on:hook decide "Continue?")
+hooks:do begin
+hooks:do error "Something failed" 1
+result=$(hooks:do decide "Continue?")
 ```
 
 **Script Pattern Examples:**
 ```bash
-# These scripts will execute in this order for: on:hook deploy
+# These scripts will execute in this order for: hooks:do deploy
 ci-cd/deploy-backup.sh      # 1. Alphabetically first
 ci-cd/deploy-update.sh      # 2. Alphabetically second
 ci-cd/deploy_01_init.sh     # 3. Underscore pattern
@@ -821,7 +821,7 @@ hooks:list
 #   - decide: implemented (script)
 ```
 
-#### `hooks:is_defined hook_name`
+#### `hooks:known hook_name`
 
 Checks if a hook is defined.
 
@@ -834,12 +834,12 @@ Checks if a hook is defined.
 
 **Example:**
 ```bash
-if hooks:is_defined begin; then
+if hooks:known begin; then
   echo "begin hook is available"
 fi
 ```
 
-#### `hooks:has_implementation hook_name`
+#### `hooks:runnable hook_name`
 
 Checks if a hook has an implementation (function or script).
 
@@ -852,8 +852,8 @@ Checks if a hook has an implementation (function or script).
 
 **Example:**
 ```bash
-if hooks:has_implementation begin; then
-  on:hook begin
+if hooks:runnable begin; then
+  hooks:do begin
 else
   echo "Using default initialization"
 fi
@@ -868,7 +868,7 @@ fi
 source "$E_BASH/_hooks.sh"
 
 # Declare available hooks
-hooks:define begin end
+hooks:declare begin end
 
 # Implement hooks
 hook:begin() {
@@ -883,12 +883,12 @@ hook:end() {
 }
 
 # Main script
-on:hook begin
+hooks:do begin
 
 echo "Running main application logic..."
 sleep 2
 
-on:hook end
+hooks:do end
 ```
 
 ### Example 2: Decision Hook
@@ -897,7 +897,7 @@ on:hook end
 #!/usr/bin/env bash
 source "$E_BASH/_hooks.sh"
 
-hooks:define decide
+hooks:declare decide
 
 hook:decide() {
   local question="$1"
@@ -910,7 +910,7 @@ hook:decide() {
 }
 
 # Use the decision hook
-if [[ "$(on:hook decide "Delete old files?" "yes")" == "yes" ]]; then
+if [[ "$(hooks:do decide "Delete old files?" "yes")" == "yes" ]]; then
   echo "Deleting old files..."
   find /tmp -name "*.tmp" -mtime +7 -delete
 fi
@@ -922,7 +922,7 @@ fi
 #!/usr/bin/env bash
 source "$E_BASH/_hooks.sh"
 
-hooks:define error rollback
+hooks:declare error rollback
 
 hook:error() {
   local message="$1"
@@ -939,11 +939,11 @@ hook:rollback() {
 
 # Main logic with error handling
 mysql -e "START TRANSACTION;"
-trap 'on:hook error "Unexpected error" $?; on:hook rollback; exit 1' ERR
+trap 'hooks:do error "Unexpected error" $?; hooks:do rollback; exit 1' ERR
 
 mysql -e "INSERT INTO users VALUES (...);" || {
-  on:hook error "Failed to insert user" $?
-  on:hook rollback
+  hooks:do error "Failed to insert user" $?
+  hooks:do rollback
   exit 1
 }
 
@@ -958,13 +958,13 @@ echo "Transaction successful"
 #!/usr/bin/env bash
 source "$E_BASH/_hooks.sh"
 
-hooks:define pre_deploy deploy post_deploy verify
+hooks:declare pre_deploy deploy post_deploy verify
 
 echo "Starting deployment pipeline..."
-on:hook pre_deploy || { echo "Pre-deployment failed"; exit 1; }
-on:hook deploy || { echo "Deployment failed"; exit 1; }
-on:hook post_deploy || { echo "Post-deployment failed"; exit 1; }
-on:hook verify || { echo "Verification failed"; exit 1; }
+hooks:do pre_deploy || { echo "Pre-deployment failed"; exit 1; }
+hooks:do deploy || { echo "Deployment failed"; exit 1; }
+hooks:do post_deploy || { echo "Post-deployment failed"; exit 1; }
+hooks:do verify || { echo "Verification failed"; exit 1; }
 echo "Deployment complete!"
 ```
 
@@ -1036,19 +1036,19 @@ fi
 
 **Execution Flow:**
 ```
-on:hook pre_deploy
+hooks:do pre_deploy
   → pre_deploy_01_validate.sh  (alphabetically first)
   → pre_deploy_02_backup.sh
 
-on:hook deploy
+hooks:do deploy
   → deploy_01_stop.sh
   → deploy_02_update.sh
   → deploy_03_start.sh
 
-on:hook post_deploy
+hooks:do post_deploy
   → post_deploy-migrations.sh
 
-on:hook verify
+hooks:do verify
   → verify-health.sh
 ```
 

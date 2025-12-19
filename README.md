@@ -16,6 +16,7 @@
     - [UI: Selector](#ui-selector)
     - [UI: Ask for Password](#ui-ask-for-password)
     - [Dry-Run Wrapper System](#dry-run-wrapper-system)
+    - [Hooks](#hooks)
   - [Semver - Semantic Versioning](#semver---semantic-versioning)
   - [Git Semantic/Conventional commits](#git-semanticconventional-commits)
   - [Git Verify Commits Messages - Conventional Commits](#git-verify-commits-messages---conventional-commits)
@@ -339,6 +340,68 @@ rollback:func rollback_fn
 - ✅ Variable precedence: command-specific → global → default
 
 More details: [Dry-Run Wrapper System](docs/public/dryrun-wrapper.md), [Demo script](demos/demo.dryrun-modes.sh).
+
+### Hooks
+
+Add extension points to any bash script with minimal changes. Hook implementations live in external files - your script just declares and triggers them.
+
+**Before** (your existing script):
+```bash
+#!/bin/bash
+echo "Starting deployment..."
+deploy_application
+echo "Done."
+```
+
+**After** (4 lines added):
+```diff
+#!/bin/bash
++ export HOOKS_DIR=".hooks"  # Default is 'ci-cd'
++ source "$E_BASH/_hooks.sh"
++ hooks:declare begin deploy end
+
++ hooks:do begin
+echo "Starting deployment..."
+deploy_application
++ hooks:do deploy "$VERSION"
+echo "Done."
++ hooks:do end
+```
+
+Now add any functionality via external scripts in `.hooks/` folder following pattern in naming `{hook_name}-{purpose}.sh`:
+
+hook_name is one of the declared hooks: `begin`, `deploy`, `end`; purpose - is your user-friendly name for the hook.
+
+Hooks are executed in alphabetical order, and you can declare multiple hooks for the same hook point/name.
+
+**.hooks/begin-otel-trace.sh** - OpenTelemetry tracing:
+```bash
+#!/bin/bash
+export TRACE_ID=$(openssl rand -hex 16)
+curl -s "${OTEL_ENDPOINT}/v1/traces" -d "{...span data...}" &>/dev/null
+```
+
+**.hooks/deploy-slack-notify.sh** - Slack notifications:
+```bash
+#!/bin/bash
+curl -s "$SLACK_WEBHOOK" -d "{\"text\":\"Deploying $1\"}"
+```
+
+**.hooks/end-metrics.sh** - Metrics export:
+```bash
+#!/bin/bash
+echo "deployment.duration=$SECONDS" | nc -u metrics.local 8125
+```
+
+**Custom hooks directory per script:**
+```bash
+HOOKS_DIR=".hooks/$(basename "$0" .sh)"  # .hooks/my-script/
+source "$E_BASH/_hooks.sh"
+```
+
+More details: [Hooks Documentation](docs/public/hooks.md);
+
+Demos: [Intro](demos/demo.hooks.sh), [Multiple Hooks](demos/demo.hooks-registration.sh), [Nested Hooks](demos/demo.hooks-nested.sh), [Hooks with Logs](demos/demo.hooks-logging.sh)
 
 ## Semver - Semantic Versioning
 

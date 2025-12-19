@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -30,7 +30,7 @@ echo "${cl_cyan}${st_b}Example 1: Hook Definition and Execution Logging${st_no_b
 echo "----------------------------------------"
 echo ""
 
-hooks:define begin process end
+hooks:declare begin process end
 
 echo ""
 echo "${cl_grey}# Implementing function hooks${cl_reset}"
@@ -44,9 +44,9 @@ hook:end() {
 
 echo ""
 echo "${cl_grey}# Executing hooks${cl_reset}"
-on:hook begin
+hooks:do begin
 echo "  ${cl_green}[User Output] Main logic here...${cl_reset}"
-on:hook end
+hooks:do end
 
 echo ""
 
@@ -88,7 +88,7 @@ echo "${cl_grey}#  - Execution order (1/3, 2/3, 3/3)${cl_reset}"
 echo "${cl_grey}#  - Exit codes for each script${cl_reset}"
 echo ""
 
-on:hook process
+hooks:do process
 
 rm -rf "$DEMO_DIR"
 
@@ -105,7 +105,7 @@ export HOOKS_EXEC_MODE="source"
 echo "${cl_yellow}HOOKS_EXEC_MODE=\"source\"${cl_reset} - Scripts are sourced, not executed"
 echo ""
 
-hooks:define deploy
+hooks:declare deploy
 
 DEMO_SOURCE_DIR="/tmp/demo_hooks_source_$$"
 mkdir -p "$DEMO_SOURCE_DIR"
@@ -132,7 +132,7 @@ echo "${cl_grey}# Script contains hook:run function${cl_reset}"
 echo "${cl_grey}# Logging shows '(sourced mode)' indicator${cl_reset}"
 echo ""
 
-on:hook deploy "v1.2.3"
+hooks:do deploy "v1.2.3"
 
 echo ""
 echo "${cl_green}After sourced execution, variables are accessible:${cl_reset}"
@@ -152,7 +152,7 @@ echo "${cl_cyan}${st_b}Example 4: Failed Hook with Exit Code Logging${st_no_b}${
 echo "----------------------------------------"
 echo ""
 
-hooks:define validate
+hooks:declare validate
 
 DEMO_FAIL_DIR="/tmp/demo_hooks_fail_$$"
 mkdir -p "$DEMO_FAIL_DIR"
@@ -169,7 +169,7 @@ chmod +x "$DEMO_FAIL_DIR/validate-check.sh"
 echo "${cl_grey}# Exit code is logged for debugging${cl_reset}"
 echo ""
 
-if on:hook validate; then
+if hooks:do validate; then
   echo "  ${cl_green}Validation passed${cl_reset}"
 else
   EXIT_CODE=$?

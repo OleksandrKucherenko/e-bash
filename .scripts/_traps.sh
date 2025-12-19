@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -378,12 +378,15 @@ function trap:scope:end() {
 # This function is set as the actual trap handler
 #
 function Trap::dispatch() {
+  # CRITICAL: Capture exit code FIRST before ANY other commands
+  # Even 'local x=...' can reset $? in some bash versions
+  local exit_code=$?
   local signal="$1"
   local var_name="${__TRAP_PREFIX}${signal}"
   local legacy_var="${__TRAP_LEGACY_PREFIX}${signal}"
 
   # Debug trace
-  printf:Trap "Dispatching trap for ${cl_cyan}%s${cl_reset}\n" "$signal"
+  printf:Trap "Dispatching trap for ${cl_cyan}%s${cl_reset} (exit_code=%s)\n" "$signal" "$exit_code"
 
   # 1. Execute Legacy Trap (if any) - before our handlers
   if [[ -n "${!legacy_var+x}" ]]; then
@@ -395,18 +398,22 @@ function Trap::dispatch() {
   fi
 
   # 2. Execute Registered Handlers in order
+  # Handlers receive exit_code as first argument (for EXIT signal compatibility)
   if [[ -n "${!var_name+x}" ]]; then
     local -n handlers="$var_name"
 
     for handler in "${handlers[@]}"; do
       if declare -F "$handler" >/dev/null 2>&1; then
         printf:Trap "  ${cl_grey}→ Executing: ${cl_yellow}%s${cl_reset}\n" "$handler"
-        "$handler" || echo:Trap "${cl_red}✗${cl_reset} Handler failed: $handler (exit code: $?)"
+        "$handler" "$exit_code" || echo:Trap "${cl_red}✗${cl_reset} Handler failed: $handler (exit code: $?)"
       else
         echo:Trap "${cl_red}✗${cl_reset} Handler not found during execution: $handler"
       fi
     done
   fi
+
+  # Return the original exit code so script exits with correct status
+  return $exit_code
 }
 
 # -----------------------------------------------------------------------------

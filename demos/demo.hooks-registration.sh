@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-19
+## Version: 1.12.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -41,15 +41,15 @@ notification_sender() {
 }
 
 # Define hook and register functions
-hooks:define deploy
+hooks:declare deploy
 
 echo "Registering functions for 'deploy' hook..."
-hook:register deploy "10-metrics" metrics_tracker
-hook:register deploy "20-notify" notification_sender
+hooks:register deploy "10-metrics" metrics_tracker
+hooks:register deploy "20-notify" notification_sender
 echo
 
 echo "${cl_yellow}→ Executing deploy hook:${cl_reset}"
-on:hook deploy "production"
+hooks:do deploy "production"
 echo
 
 #
@@ -63,17 +63,17 @@ func_charlie() { echo "  → Charlie (30)"; }
 func_alpha() { echo "  → Alpha (10)"; }
 func_bravo() { echo "  → Bravo (20)"; }
 
-hooks:define test
+hooks:declare test
 
 # Register out of order
 echo "Registering: charlie (30), alpha (10), bravo (20)..."
-hook:register test "30-charlie" func_charlie
-hook:register test "10-alpha" func_alpha
-hook:register test "20-bravo" func_bravo
+hooks:register test "30-charlie" func_charlie
+hooks:register test "10-alpha" func_alpha
+hooks:register test "20-bravo" func_bravo
 echo
 
 echo "${cl_yellow}→ Execution order (alphabetical by friendly name):${cl_reset}"
-on:hook test
+hooks:do test
 echo
 
 #
@@ -106,15 +106,15 @@ forward_to_slack() {
   /tmp/slack-notify.sh "$@"
 }
 
-hooks:define notify
+hooks:declare notify
 
 echo "Registering external script forwarders..."
-hook:register notify "datadog" forward_to_datadog
-hook:register notify "slack" forward_to_slack
+hooks:register notify "datadog" forward_to_datadog
+hooks:register notify "slack" forward_to_slack
 echo
 
 echo "${cl_yellow}→ Executing notify hook with parameters:${cl_reset}"
-on:hook notify "deploy_success" "v1.2.3"
+hooks:do notify "deploy_success" "v1.2.3"
 echo
 
 #
@@ -137,9 +137,9 @@ post_build_metrics() {
   echo "  📊 [Registered] Collecting build metrics"
 }
 
-hooks:define build
-hook:register build "00-pre" pre_build_check
-hook:register build "99-post" post_build_metrics
+hooks:declare build
+hooks:register build "00-pre" pre_build_check
+hooks:register build "99-post" post_build_metrics
 
 echo "Execution order:"
 echo "  1. hook:build() function"
@@ -148,7 +148,7 @@ echo "  3. External scripts (if any)"
 echo
 
 echo "${cl_yellow}→ Executing build hook:${cl_reset}"
-on:hook build
+hooks:do build
 echo
 
 #
@@ -168,21 +168,21 @@ development_shortcuts() {
   echo "  ⚡ [Dev] Using dev credentials"
 }
 
-hooks:define validate
+hooks:declare validate
 
 # Register functions based on environment
 ENVIRONMENT="${ENVIRONMENT:-development}"
 echo "Current environment: ${ENVIRONMENT}"
 
 if [[ "$ENVIRONMENT" == "production" ]]; then
-  hook:register validate "prod-checks" production_checks
+  hooks:register validate "prod-checks" production_checks
 else
-  hook:register validate "dev-shortcuts" development_shortcuts
+  hooks:register validate "dev-shortcuts" development_shortcuts
 fi
 echo
 
 echo "${cl_yellow}→ Executing validate hook:${cl_reset}"
-on:hook validate
+hooks:do validate
 echo
 
 #
@@ -199,20 +199,20 @@ permanent_function() {
   echo "  ✓ [Permanent] This will always run"
 }
 
-hooks:define cleanup
-hook:register cleanup "temp" temporary_function
-hook:register cleanup "perm" permanent_function
+hooks:declare cleanup
+hooks:register cleanup "temp" temporary_function
+hooks:register cleanup "perm" permanent_function
 
 echo "Before unregister:"
-on:hook cleanup
+hooks:do cleanup
 echo
 
 echo "Unregistering 'temp' function..."
-hook:unregister cleanup "temp"
+hooks:unregister cleanup "temp"
 echo
 
 echo "After unregister:"
-on:hook cleanup
+hooks:do cleanup
 echo
 
 #
@@ -221,10 +221,10 @@ echo
 echo "${cl_green}Example 7: Listing Hooks with Registrations${cl_reset}"
 echo
 
-hooks:define final
-hook:register final "10-first" metrics_tracker
-hook:register final "20-second" notification_sender
-hook:register final "30-third" forward_to_datadog
+hooks:declare final
+hooks:register final "10-first" metrics_tracker
+hooks:register final "20-second" notification_sender
+hooks:register final "30-third" forward_to_datadog
 
 echo "${cl_yellow}→ Hooks list shows registration count:${cl_reset}"
 hooks:list
@@ -247,10 +247,10 @@ add_timing() {
   }"
 
   # Register it to run first (00- prefix)
-  hook:register "$hook_name" "00-timing" "$timing_func"
+  hooks:register "$hook_name" "00-timing" "$timing_func"
 }
 
-hooks:define process
+hooks:declare process
 add_timing process
 
 # Add main logic
@@ -264,7 +264,7 @@ echo "Added timing observability to 'process' hook"
 echo
 
 echo "${cl_yellow}→ Executing process hook with timing:${cl_reset}"
-on:hook process
+hooks:do process
 echo
 
 #
@@ -276,7 +276,7 @@ rm -f /tmp/datadog-notify.sh /tmp/slack-notify.sh
 echo "${cl_green}Demo complete!${cl_reset}"
 echo
 echo "Key Takeaways:"
-echo "  • hook:register <hook> <friendly_name> <function>"
+echo "  • hooks:register <hook> <friendly_name> <function>"
 echo "  • Functions execute in alphabetical order by friendly_name"
 echo "  • Perfect for metrics, logging, and external integrations"
 echo "  • Can be registered/unregistered dynamically"
