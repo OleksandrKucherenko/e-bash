@@ -47,8 +47,8 @@ Describe 'bin/install.e-bash.sh /'
   cleanup_temp_repo() { rm -rf "$TEST_DIR"; }
   cp_install() { cp "$SHELLSPEC_PROJECT_ROOT/$INSTALL_SCRIPT" ./; }
   git_init() { git init -q; }
-  git_config_user() { git config --local user.name "Test User"; }
-  git_config_email() { git config --local user.email "test@example.com"; }
+  git_config_user() { git config user.name "Test User" 2>/dev/null || git config --global user.name "Test User"; }
+  git_config_email() { git config user.email "test@example.com" 2>/dev/null || git config --global user.email "test@example.com"; }
   git_config() { git_config_user && git_config_email; }
   git_commit() { git commit -q -m "Initial commit"; }
   git_amend() { git commit --amend -q --no-edit; }
@@ -96,8 +96,8 @@ Describe 'bin/install.e-bash.sh /'
     cd "$temp_work_dir" || return 1
 
     git init -q
-    git config user.name "Test User"
-    git config user.email "test@example.com"
+    git config user.name "Test User" 2>/dev/null || git config --global user.name "Test User"
+    git config user.email "test@example.com" 2>/dev/null || git config --global user.email "test@example.com"
 
     # Copy e-bash scripts to .scripts directory
     mkdir -p .scripts
@@ -462,6 +462,10 @@ Describe 'bin/install.e-bash.sh /'
       mkdir -p "$temp_work_dir"
       cd "$temp_work_dir" || return 1
       git clone -q "$fake_remote_dir" . 2>/dev/null || true
+      
+      # Configure git user for this temporary repository
+      git config user.name "Test User" 2>/dev/null || git config --global user.name "Test User"
+      git config user.email "test@example.com" 2>/dev/null || git config --global user.email "test@example.com"
       
       # Create conflicting content in the remote
       echo "REMOTE CONFLICTING CONTENT THAT WILL CONFLICT" > .scripts/_colors.sh
