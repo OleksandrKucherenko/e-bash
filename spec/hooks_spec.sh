@@ -11,6 +11,9 @@
 
 eval "$(shellspec - -c) exit 1"
 
+# shellcheck disable=SC2288
+% TEST_HOOKS_DIR: "$SHELLSPEC_TMPBASE/test_hooks"
+
 export SCRIPT_DIR=".scripts"
 export E_BASH="$(pwd)/.scripts"
 
@@ -32,10 +35,21 @@ End
 no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' ' | sed 's/^ *//; s/ *$//'; }
 no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' ' | sed 's/^ *//; s/ *$//'; }
 
+# Test isolation helper functions
+setup_test_hooks_dir() {
+  mkdir -p "$TEST_HOOKS_DIR"
+  export HOOKS_DIR="$TEST_HOOKS_DIR"
+}
+
+cleanup_test_hooks_dir() {
+  rm -rf "$TEST_HOOKS_DIR"
+}
+
 Describe '_hooks.sh /'
   Include ".scripts/_hooks.sh"
 
   # Cleanup mechanism
+  AfterEach 'cleanup_test_hooks_dir'
   AfterAll 'hooks:cleanup'
 
   Context 'Hook definition /'
@@ -181,8 +195,8 @@ Describe '_hooks.sh /'
 
   Context 'Hook execution with scripts /'
     setup_hooks_dir() {
-      mkdir -p /tmp/test_hooks
-      export HOOKS_DIR=/tmp/test_hooks
+      setup_test_hooks_dir
+      
     }
 
     cleanup_hooks_dir() {
@@ -195,20 +209,18 @@ Describe '_hooks.sh /'
     It 'executes hook script when present'
       test_script_hook() {
         # Set up test environment
-        mkdir -p /tmp/test_hooks
-        export HOOKS_DIR=/tmp/test_hooks
+        setup_test_hooks_dir
         
         hooks:define script_hook
-        cat > /tmp/test_hooks/script_hook-test.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/script_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script hook executed"
 EOF
-        chmod +x /tmp/test_hooks/script_hook-test.sh
+        chmod +x "$TEST_HOOKS_DIR"/script_hook-test.sh
         
         on:hook script_hook
         
         # Clean up
-        rm -f /tmp/test_hooks/script_hook-test.sh
       }
 
       When call test_script_hook
@@ -222,20 +234,18 @@ EOF
     It 'passes parameters to hook script'
       test_script_params() {
         # Set up test environment
-        mkdir -p /tmp/test_hooks
-        export HOOKS_DIR=/tmp/test_hooks
+        setup_test_hooks_dir
         
         hooks:define script_hook
-        cat > /tmp/test_hooks/script_hook-test.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/script_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script params: $*"
 EOF
-        chmod +x /tmp/test_hooks/script_hook-test.sh
+        chmod +x "$TEST_HOOKS_DIR"/script_hook-test.sh
         
         on:hook script_hook arg1 arg2
         
         # Clean up
-        rm -f /tmp/test_hooks/script_hook-test.sh
       }
 
       When call test_script_params
@@ -248,22 +258,21 @@ EOF
     It 'propagates script exit code'
       test_script_exit_code() {
         # Set up test environment
-        mkdir -p /tmp/test_hooks
-        export HOOKS_DIR=/tmp/test_hooks
+        setup_test_hooks_dir
+        
         
         hooks:define fail_hook
-        cat > /tmp/test_hooks/fail_hook-test.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/fail_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 exit 13
 EOF
-        chmod +x /tmp/test_hooks/fail_hook-test.sh
+        chmod +x "$TEST_HOOKS_DIR"/fail_hook-test.sh
         
         # Execute hook and capture exit code
         on:hook fail_hook
         local exit_code=$?
         
         # Clean up
-        rm -f /tmp/test_hooks/fail_hook-test.sh
         
         # Return the captured exit code
         return $exit_code
@@ -278,23 +287,22 @@ EOF
     It 'executes function first, then scripts when both exist'
       test_priority_hook() {
         # Set up test environment
-        mkdir -p /tmp/test_hooks
-        export HOOKS_DIR=/tmp/test_hooks
+        setup_test_hooks_dir
+        
         
         hooks:define priority_hook
         hook:priority_hook() {
           echo "Function implementation"
         }
-        cat > /tmp/test_hooks/priority_hook-test.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/priority_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script implementation"
 EOF
-        chmod +x /tmp/test_hooks/priority_hook-test.sh
+        chmod +x "$TEST_HOOKS_DIR"/priority_hook-test.sh
         
         on:hook priority_hook
         
         # Clean up
-        rm -f /tmp/test_hooks/priority_hook-test.sh
       }
 
       When call test_priority_hook
@@ -309,11 +317,11 @@ EOF
     It 'skips non-executable script files'
       test_non_executable() {
         # Set up test environment
-        mkdir -p /tmp/test_hooks
-        export HOOKS_DIR=/tmp/test_hooks
+        setup_test_hooks_dir
+        
         
         hooks:define no_exec_hook
-        cat > /tmp/test_hooks/no_exec_hook-test.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/no_exec_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "This should not execute"
 EOF
@@ -322,7 +330,6 @@ EOF
         on:hook no_exec_hook
         
         # Clean up
-        rm -f /tmp/test_hooks/no_exec_hook-test.sh
       }
 
       When call test_non_executable
@@ -334,43 +341,30 @@ EOF
   End
 
   Context 'Multiple hook scripts with ci-cd pattern /'
-    setup_cicd_dir() {
-      mkdir -p /tmp/test_cicd
-      export HOOKS_DIR=/tmp/test_cicd
-    }
-
-    cleanup_cicd_dir() {
-      rm -rf /tmp/test_cicd
-    }
-
-    BeforeAll 'setup_cicd_dir'
-    AfterAll 'cleanup_cicd_dir'
 
     It 'executes multiple scripts in alphabetical order'
       test_multiple_scripts() {
         # Set up test environment
-        mkdir -p /tmp/test_cicd
-        export HOOKS_DIR=/tmp/test_cicd
+        setup_test_hooks_dir
         
         hooks:define deploy
-        cat > /tmp/test_cicd/deploy-backup.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/deploy-backup.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "1: Backup"
 EOF
-        cat > /tmp/test_cicd/deploy-update.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/deploy-update.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "2: Update"
 EOF
-        cat > /tmp/test_cicd/deploy-restart.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/deploy-restart.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "3: Restart"
 EOF
-        chmod +x /tmp/test_cicd/deploy-*.sh
+        chmod +x "$TEST_HOOKS_DIR"/deploy-*.sh
         
         on:hook deploy
         
         # Clean up
-        rm -f /tmp/test_cicd/deploy-*.sh
       }
 
       When call test_multiple_scripts
@@ -389,28 +383,27 @@ EOF
     It 'executes scripts with numbered pattern in order'
       test_numbered_scripts() {
         # Set up test environment
-        mkdir -p /tmp/test_cicd
-        export HOOKS_DIR=/tmp/test_cicd
+        setup_test_hooks_dir
+        
         
         hooks:define begin
-        cat > /tmp/test_cicd/begin_01_init.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/begin_01_init.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Step 1: Init"
 EOF
-        cat > /tmp/test_cicd/begin_02_validate.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/begin_02_validate.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Step 2: Validate"
 EOF
-        cat > /tmp/test_cicd/begin_10_finalize.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/begin_10_finalize.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Step 10: Finalize"
 EOF
-        chmod +x /tmp/test_cicd/begin_*.sh
+        chmod +x "$TEST_HOOKS_DIR"/begin_*.sh
         
         on:hook begin
         
         # Clean up
-        rm -f /tmp/test_cicd/begin_*.sh
       }
 
       When call test_numbered_scripts
@@ -425,16 +418,17 @@ EOF
 
     It 'passes parameters to all hook scripts'
       setup() {
+        setup_test_hooks_dir
         hooks:define process
-        cat > /tmp/test_cicd/process-validate.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/process-validate.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Validate: $1"
 EOF
-        cat > /tmp/test_cicd/process-execute.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/process-execute.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Execute: $1"
 EOF
-        chmod +x /tmp/test_cicd/process-*.sh
+        chmod +x "$TEST_HOOKS_DIR"/process-*.sh
       }
       BeforeCall 'setup'
 
@@ -449,18 +443,19 @@ EOF
 
     It 'returns exit code of last executed script'
       setup() {
+        setup_test_hooks_dir
         hooks:define test_hook
-        cat > /tmp/test_cicd/test_hook-first.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/test_hook-first.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "First"
 exit 0
 EOF
-        cat > /tmp/test_cicd/test_hook-second.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/test_hook-second.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Second"
 exit 42
 EOF
-        chmod +x /tmp/test_cicd/test_hook-*.sh
+        chmod +x "$TEST_HOOKS_DIR"/test_hook-*.sh
       }
       BeforeCall 'setup'
 
@@ -476,15 +471,16 @@ EOF
 
     It 'executes function before scripts'
       setup() {
+        setup_test_hooks_dir
         hooks:define mixed_hook
         hook:mixed_hook() {
           echo "Function executed"
         }
-        cat > /tmp/test_cicd/mixed_hook-script.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/mixed_hook-script.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script executed"
 EOF
-        chmod +x /tmp/test_cicd/mixed_hook-script.sh
+        chmod +x "$TEST_HOOKS_DIR"/mixed_hook-script.sh
       }
       BeforeCall 'setup'
 
@@ -500,16 +496,17 @@ EOF
 
     It 'skips non-matching script names'
       setup() {
+        setup_test_hooks_dir
         hooks:define specific_hook
-        cat > /tmp/test_cicd/specific_hook-valid.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/specific_hook-valid.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Valid script"
 EOF
-        cat > /tmp/test_cicd/other_hook-invalid.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/other_hook-invalid.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Should not execute"
 EOF
-        chmod +x /tmp/test_cicd/*.sh
+        chmod +x "$TEST_HOOKS_DIR"/*.sh
       }
       BeforeCall 'setup'
 
@@ -524,20 +521,21 @@ EOF
 
     It 'lists multiple script implementations'
       setup() {
+        setup_test_hooks_dir
         hooks:define multi_hook
-        cat > /tmp/test_cicd/multi_hook-a.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/multi_hook-a.sh" <<'EOF'
 #!/usr/bin/env bash
 :
 EOF
-        cat > /tmp/test_cicd/multi_hook-b.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/multi_hook-b.sh" <<'EOF'
 #!/usr/bin/env bash
 :
 EOF
-        cat > /tmp/test_cicd/multi_hook-c.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/multi_hook-c.sh" <<'EOF'
 #!/usr/bin/env bash
 :
 EOF
-        chmod +x /tmp/test_cicd/multi_hook-*.sh
+        chmod +x "$TEST_HOOKS_DIR"/multi_hook-*.sh
       }
       BeforeCall 'setup'
 
@@ -551,16 +549,17 @@ EOF
 
     It 'supports both dash and underscore patterns'
       setup() {
+        setup_test_hooks_dir
         hooks:define flexible
-        cat > /tmp/test_cicd/flexible-dash.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/flexible-dash.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Dash pattern"
 EOF
-        cat > /tmp/test_cicd/flexible_underscore.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/flexible_underscore.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Underscore pattern"
 EOF
-        chmod +x /tmp/test_cicd/flexible*.sh
+        chmod +x "$TEST_HOOKS_DIR"/flexible*.sh
       }
       BeforeCall 'setup'
 
@@ -643,20 +642,15 @@ EOF
 
     It 'checks if hook has implementation - script'
       setup() {
-        mkdir -p /tmp/test_hooks2
-        export HOOKS_DIR=/tmp/test_hooks2
+        setup_test_hooks_dir
         hooks:define impl_hook
-        cat > /tmp/test_hooks2/impl_hook-test.sh <<'EOF'
+        cat > "$TEST_HOOKS_DIR/impl_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 :
 EOF
-        chmod +x /tmp/test_hooks2/impl_hook-test.sh
-      }
-      cleanup() {
-        rm -rf /tmp/test_hooks2
+        chmod +x "$TEST_HOOKS_DIR/impl_hook-test.sh"
       }
       BeforeCall 'setup'
-      AfterCall 'cleanup'
 
       When call hooks:has_implementation impl_hook
 
@@ -1341,8 +1335,6 @@ EOF
       export HOOKS_EXEC_MODE="exec"
     }
 
-
-
     It 'executes scripts in source mode when pattern matches'
       test_pattern_source() {
         # Use the existing HOOKS_DIR (ci-cd)
@@ -1365,7 +1357,7 @@ function hook:run() {
   echo "Sourced via pattern"
 }
 EOF
-        chmod +x "$HOOKS_DIR/test_pattern-config.sh"
+        chmod +x "$HOOKS_DIR"/test_pattern-config.sh
         
         # Execute hook
         on:hook test_pattern
@@ -1397,7 +1389,7 @@ EOF
 #!/usr/bin/env bash
 echo "Executed as script"
 EOF
-        chmod +x "$HOOKS_DIR/test_exec-notify.sh"
+        chmod +x "$HOOKS_DIR"/test_exec-notify.sh
         
         # Execute hook
         on:hook test_exec
@@ -1433,7 +1425,7 @@ function hook:run() {
   echo "Pattern overrode global mode"
 }
 EOF
-        chmod +x "$HOOKS_DIR/override_test-config.sh"
+        chmod +x "$HOOKS_DIR"/override_test-config.sh
         
         # Execute hook
         on:hook override_test
@@ -1467,7 +1459,7 @@ EOF
 #!/usr/bin/env bash
 echo "Script pattern overrode global source mode"
 EOF
-        chmod +x "$HOOKS_DIR/script_override-notify.sh"
+        chmod +x "$HOOKS_DIR"/script_override-notify.sh
         
         # Execute hook
         on:hook script_override
@@ -1506,7 +1498,7 @@ EOF
 #!/usr/bin/env bash
 echo "Notify executed"
 EOF
-        chmod +x "$HOOKS_DIR/mixed_patterns-"*.sh
+        chmod +x "$HOOKS_DIR"/mixed_patterns-*.sh
         
         # Execute hook
         on:hook mixed_patterns

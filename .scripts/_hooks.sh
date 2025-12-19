@@ -694,7 +694,7 @@ function hooks:cleanup() {
   declare -g -A __HOOKS_REGISTERED
   
   # Re-declare as indexed arrays
-  declare -g -a __HOOKS_SOURCE_PATTERNS
+  declare -g -a __HOOKS_SOURCE_PATTERNS=()
   declare -g -a __HOOKS_SCRIPT_PATTERNS=()
   __HOOKS_SOURCE_PATTERNS=()
   
