@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 0.11.4
+## Version: 0.11.5
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -277,6 +277,8 @@ Describe 'Self-Update Version Management /'
       The status should be success
       # Should create a backup file with pattern test.sh.~1~
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~" should be file
+      # Verify logger output
+      The result of function no_colors_stderr should include "e-bash binding: test.sh ~>"
     End
 
     It 'skips binding if already bound to same version'
@@ -329,7 +331,10 @@ Describe 'Self-Update Version Management /'
     It 'creates .sha1 cache file for version file'
       When call self-update:version:hash "$TEMP_PROJECT_DIR/.scripts/test.sh" "$TEST_HASH_VERSION"
       The status should be success
+      The stdout should satisfy is_sha1
       The path "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION}/.scripts/test.sh.sha1" should be file
+      # Verify logger output
+      The result of function no_colors_stderr should include "hash versioned file:"
     End
 
     It 'returns different hash for different content'
@@ -339,8 +344,8 @@ Describe 'Self-Update Version Management /'
       echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION2}/.scripts/test.sh"
       echo "# version 2.0.0 content - different" >> "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION2}/.scripts/test.sh"
 
-      hash1=$(self-update:version:hash "$TEMP_PROJECT_DIR/.scripts/test.sh" "$TEST_HASH_VERSION")
-      hash2=$(self-update:version:hash "$TEMP_PROJECT_DIR/.scripts/test.sh" "$TEST_HASH_VERSION2")
+      hash1=$(self-update:version:hash "$TEMP_PROJECT_DIR/.scripts/test.sh" "$TEST_HASH_VERSION" 2>/dev/null)
+      hash2=$(self-update:version:hash "$TEMP_PROJECT_DIR/.scripts/test.sh" "$TEST_HASH_VERSION2" 2>/dev/null)
 
       The variable hash1 should not equal "$hash2"
 
