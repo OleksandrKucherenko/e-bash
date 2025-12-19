@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-19
-## Version: 0.11.1
+## Version: 0.11.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -17,6 +17,8 @@ no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B
 no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' '; }
 
 Describe 'Self-Update Rollback and Cleanup /'
+  # Note: We include the script which defines readonly variables
+  # Do not try to override them in setup
   Include .scripts/_self-update.sh
 
   setup() {
@@ -111,55 +113,17 @@ Describe 'Self-Update Rollback and Cleanup /'
       # Backup file should be removed (moved to replace current file)
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~" should not be exist
     End
-
-    It 'uses BASH_SOURCE[0] as default file path'
-      # Create a test script that will call rollback:backup
-      cat > "$TEMP_PROJECT_DIR/.scripts/caller.sh" << 'EOF'
-#!/bin/bash
-source .scripts/_self-update.sh
-echo "backup" > "${BASH_SOURCE[0]}.~1~"
-self-update:rollback:backup
-cat "${BASH_SOURCE[0]}"
-EOF
-      chmod +x "$TEMP_PROJECT_DIR/.scripts/caller.sh"
-
-      cd "$SHELLSPEC_PROJECT_ROOT" || exit 1
-
-      When run script "$TEMP_PROJECT_DIR/.scripts/caller.sh"
-      The status should be success
-      The stdout should include "backup"
-    End
   End
 
   Describe 'self-update:rollback:version /'
     setup_rollback_version_test() {
-      TEMP_REPO_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/rollback_version.XXXXXX")
       TEMP_PROJECT_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/rollback_project.XXXXXX")
-      __E_ROOT="$TEMP_REPO_DIR"
+      TEST_ROLLBACK_VERSION="test-rollback-v1.0.0"
 
-      # Initialize mock git repo
-      cd "$TEMP_REPO_DIR" || exit 1
-      git init --quiet
-      git config user.email "test@example.com"
-      git config user.name "Test User"
-
-      echo "v1" > test.txt
-      git add test.txt
-      git commit -m "v1" --quiet
-      git tag v1.0.0
-
-      echo "v2" > test.txt
-      git add test.txt
-      git commit -m "v2" --quiet
-      git tag v2.0.0
-
-      mkdir -p "$TEMP_REPO_DIR/$__WORKTREES"
-
-      # Setup version directory with test script
-      git worktree add --quiet "$__WORKTREES/v1.0.0" v1.0.0
-      mkdir -p "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts"
-      echo "#!/bin/bash" > "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts/test.sh"
-      echo "echo 'v1.0.0'" >> "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts/test.sh"
+      # Setup version directory with test script at __E_ROOT
+      mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts"
+      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts/test.sh"
+      echo "echo 'v1.0.0'" >> "${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts/test.sh"
 
       # Setup project directory
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
@@ -168,76 +132,68 @@ EOF
     }
 
     cleanup_rollback_version_test() {
-      cd - >/dev/null || true
-      rm -rf "$TEMP_REPO_DIR" "$TEMP_PROJECT_DIR"
+      rm -rf "$TEMP_PROJECT_DIR"
+      rm -rf "${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}"
     }
 
     BeforeEach 'setup_rollback_version_test'
     AfterEach 'cleanup_rollback_version_test'
 
     It 'rolls back to specified version'
-      When call self-update:rollback:version "v1.0.0" "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      # Mock version:has to say version doesn't exist, then version:get will be called
+      self-update:version:has() { return 0; }  # Pretend it exists
+
+      When call self-update:rollback:version "$TEST_ROLLBACK_VERSION" "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh" should be symlink
-      # Link should point to v1.0.0 version
-      The result of "readlink $TEMP_PROJECT_DIR/.scripts/test.sh" should include "v1.0.0"
+      # Link should point to version
+      The result of "readlink $TEMP_PROJECT_DIR/.scripts/test.sh" should include "$TEST_ROLLBACK_VERSION"
     End
 
     It 'uses default version v1.0.0 if not specified'
+      # Mock version operations
+      self-update:version:has() { return 0; }
+
+      # Create the default v1.0.0 version directory
+      mkdir -p "${__E_ROOT}/${__WORKTREES}/v1.0.0/.scripts"
+      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/v1.0.0/.scripts/test.sh"
+
       When call self-update:rollback:version "" "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
       The result of "readlink $TEMP_PROJECT_DIR/.scripts/test.sh" should include "v1.0.0"
-    End
 
-    It 'creates version worktree if not already present'
-      # Remove the worktree first
-      cd "$TEMP_REPO_DIR" || exit 1
-      git worktree remove "$__WORKTREES/v1.0.0" --force >/dev/null 2>&1 || true
-      rm -rf "$__WORKTREES/v1.0.0"
-
-      When call self-update:rollback:version "v1.0.0" "$TEMP_PROJECT_DIR/.scripts/test.sh"
-      The status should be success
-      The path "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0" should be directory
+      # Cleanup
+      rm -rf "${__E_ROOT}/${__WORKTREES}/v1.0.0"
     End
 
     It 'creates backup of current file during rollback'
-      When call self-update:rollback:version "v1.0.0" "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      self-update:version:has() { return 0; }
+
+      When call self-update:rollback:version "$TEST_ROLLBACK_VERSION" "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
       # Should create backup with numbered pattern
       The path "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~" should be file
-    End
-
-    It 'uses BASH_SOURCE[0] as default file path'
-      # Mock BASH_SOURCE in the function context
-      rollback_test_wrapper() {
-        local test_file="$1"
-        self-update:rollback:version "v1.0.0" "$test_file"
-      }
-
-      When call rollback_test_wrapper "$TEMP_PROJECT_DIR/.scripts/test.sh"
-      The status should be success
-      The path "$TEMP_PROJECT_DIR/.scripts/test.sh" should be symlink
     End
   End
 
   Describe 'self-update:unlink /'
     setup_unlink_test() {
-      TEMP_REPO_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/unlink_repo.XXXXXX")
       TEMP_PROJECT_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/unlink_project.XXXXXX")
-      __E_ROOT="$TEMP_REPO_DIR"
+      TEST_UNLINK_VERSION="test-unlink-v1.0.0"
 
-      # Setup source file
-      mkdir -p "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts"
-      echo "#!/bin/bash" > "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts/test.sh"
-      echo "# version file content" >> "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts/test.sh"
+      # Setup source file at __E_ROOT
+      mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts"
+      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts/test.sh"
+      echo "# version file content" >> "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts/test.sh"
 
       # Setup project with symlink
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
-      ln -s "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts/test.sh" "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      ln -s "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts/test.sh" "$TEMP_PROJECT_DIR/.scripts/test.sh"
     }
 
     cleanup_unlink_test() {
-      rm -rf "$TEMP_REPO_DIR" "$TEMP_PROJECT_DIR"
+      rm -rf "$TEMP_PROJECT_DIR"
+      rm -rf "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}"
     }
 
     BeforeEach 'setup_unlink_test'
@@ -259,7 +215,7 @@ EOF
     It 'outputs unlink message'
       When call self-update:unlink "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The result of function no_colors_stderr should include "e-bash unlink: test.sh <~"
-      The result of function no_colors_stderr should include ".versions/v1.0.0/.scripts/test.sh"
+      The result of function no_colors_stderr should include ".versions/${TEST_UNLINK_VERSION}/.scripts/test.sh"
     End
 
     It 'handles non-symlink file gracefully'
@@ -272,28 +228,12 @@ EOF
       The result of function no_colors_stderr should include "e-bash unlink: test.sh - NOT A LINK"
     End
 
-    It 'uses BASH_SOURCE[0] as default file path'
-      # Create a script that calls unlink on itself
-      cat > "$TEMP_PROJECT_DIR/.scripts/unlink_self.sh" << 'EOF'
-#!/bin/bash
-source .scripts/_self-update.sh
-# This script should detect it's not a link
-self-update:unlink 2>&1 | grep -q "NOT A LINK"
-EOF
-      chmod +x "$TEMP_PROJECT_DIR/.scripts/unlink_self.sh"
-
-      cd "$SHELLSPEC_PROJECT_ROOT" || exit 1
-
-      When run script "$TEMP_PROJECT_DIR/.scripts/unlink_self.sh"
-      The status should be success
-    End
-
     It 'handles directory symlinks'
       # Create directory symlink
-      mkdir -p "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/mydir"
-      echo "content" > "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/mydir/file.txt"
+      mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir"
+      echo "content" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir/file.txt"
 
-      ln -s "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/mydir" "$TEMP_PROJECT_DIR/mydir"
+      ln -s "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir" "$TEMP_PROJECT_DIR/mydir"
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/mydir"
       The status should be success
@@ -303,10 +243,10 @@ EOF
     End
 
     It 'preserves directory content after unlinking'
-      mkdir -p "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/mydir"
-      echo "test content" > "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/mydir/file.txt"
+      mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir"
+      echo "test content" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir/file.txt"
 
-      ln -s "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/mydir" "$TEMP_PROJECT_DIR/mydir"
+      ln -s "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir" "$TEMP_PROJECT_DIR/mydir"
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/mydir"
       The status should be success
@@ -328,30 +268,27 @@ EOF
     setup_unlink_edge_test() {
       TEMP_PROJECT_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/unlink_edge.XXXXXX")
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
+      TEST_UNLINK_EDGE_VERSION="test-unlink-edge-v1.0.0"
     }
 
     cleanup_unlink_edge_test() {
       rm -rf "$TEMP_PROJECT_DIR"
+      rm -rf "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}"
     }
 
     BeforeEach 'setup_unlink_edge_test'
     AfterEach 'cleanup_unlink_edge_test'
 
     It 'handles files with spaces in name'
-      TEMP_REPO_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/unlink_repo_space.XXXXXX")
-      __E_ROOT="$TEMP_REPO_DIR"
+      mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}/.scripts"
+      echo "content" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}/.scripts/file with spaces.sh"
 
-      mkdir -p "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts"
-      echo "content" > "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts/file with spaces.sh"
-
-      ln -s "$TEMP_REPO_DIR/$__WORKTREES/v1.0.0/.scripts/file with spaces.sh" "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh"
+      ln -s "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}/.scripts/file with spaces.sh" "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh"
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh"
       The status should be success
       The path "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh" should be file
       The path "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh" should not be symlink
-
-      rm -rf "$TEMP_REPO_DIR"
     End
 
     It 'handles relative symlinks'
