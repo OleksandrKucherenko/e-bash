@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-20
-## Version: 0.11.19
+## Version: 0.11.20
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -89,6 +89,28 @@ Describe 'Self-Update Version Management /'
       # This test ensures the hardcoded regex in self-update:version:bind
       # stays in sync with the __WORKTREES constant value
       The variable __WORKTREES should equal ".versions"
+    End
+  End
+
+  Describe 'self-update:dependencies /'
+    It 'checks required dependencies'
+      # Mock the dependency function to avoid actual version checks
+      dependency() {
+        local cmd="$1"
+        local version="$2"
+        echo "Checking dependency: $cmd >= $version" >&2
+        return 0
+      }
+
+      When call self-update:dependencies
+      The status should be success
+      # Verify it checks for required tools
+      The result of function no_colors_stderr should include "Checking dependency: bash"
+      The result of function no_colors_stderr should include "Checking dependency: git"
+      The result of function no_colors_stderr should include "Checking dependency: gln"
+
+      # Cleanup mock
+      unset -f dependency
     End
   End
 
