@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-20
-## Version: 0.11.10
+## Version: 0.11.14
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -375,7 +375,7 @@ Describe 'Self-Update Version Management /'
 
     It 'extracts version tags from git repo'
       # Skip if git repo not initialized
-      [[ -d "${__E_ROOT}/.git" ]] || Skip "Git repo not initialized at __E_ROOT"
+      [ ! -d "${__E_ROOT}/.git" ] && Skip "Git repo not initialized at __E_ROOT"
 
       When call self-update:version:tags
       The status should be success
@@ -385,12 +385,12 @@ Describe 'Self-Update Version Management /'
 
     It 'creates version-to-tag mapping'
       # Skip if git repo not initialized
-      [[ -d "${__E_ROOT}/.git" ]] || Skip "Git repo not initialized at __E_ROOT"
+      [ ! -d "${__E_ROOT}/.git" ] && Skip "Git repo not initialized at __E_ROOT"
 
       self-update:version:tags
 
       # Skip if no version tags found
-      [[ "${#__REPO_VERSIONS[@]}" -gt 0 ]] || Skip "No version tags found in repo"
+      [ "${#__REPO_VERSIONS[@]}" -eq 0 ] && Skip "No version tags found in repo"
 
       # Check that mapping exists for first version
       first_version="${__REPO_VERSIONS[0]}"
@@ -399,12 +399,12 @@ Describe 'Self-Update Version Management /'
 
     It 'sorts versions in ascending order'
       # Skip if git repo not initialized
-      [[ -d "${__E_ROOT}/.git" ]] || Skip "Git repo not initialized at __E_ROOT"
+      [ ! -d "${__E_ROOT}/.git" ] && Skip "Git repo not initialized at __E_ROOT"
 
       self-update:version:tags
 
       # Skip if insufficient versions
-      [[ "${#__REPO_VERSIONS[@]}" -ge 2 ]] || Skip "Need at least 2 versions"
+      [ "${#__REPO_VERSIONS[@]}" -lt 2 ] && Skip "Need at least 2 versions"
 
       # Compare first two versions - first should be less than second
       v1="${__REPO_VERSIONS[0]}"
