@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-20
-## Version: 0.11.20
+## Version: 0.11.21
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -406,6 +406,9 @@ Describe 'Self-Update Version Management /'
   Describe 'self-update:version:tags integration /'
     setup_tags_integration_test() {
       ORIGINAL_DIR="$PWD"
+      # Save and disable semver DEBUG to suppress comparison output
+      SAVED_DEBUG="$DEBUG"
+      export DEBUG="version,git,loader"
 
       # Create a test git repo at __E_ROOT if it doesn't exist
       if [ ! -d "${__E_ROOT}/.git" ]; then
@@ -434,6 +437,8 @@ Describe 'Self-Update Version Management /'
 
     cleanup_tags_integration_test() {
       cd "$ORIGINAL_DIR" || true
+      # Restore DEBUG
+      export DEBUG="$SAVED_DEBUG"
       # Clean up test repo if we created it
       if [ -d "${__E_ROOT}/.git" ]; then
         # Only remove if it's our test repo (has our test tags)
