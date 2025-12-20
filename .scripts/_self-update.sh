@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-20
-## Version: 0.11.9
+## Version: 0.11.12
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 ##
@@ -459,7 +459,8 @@ function self-update:rollback:backup() {
   local script_folder="$(cd "$(dirname "${file}")" && pwd)"
 
   # find the latest backup file by pattern ${script_file}.~([0-9]+)~
-  local backup_file=$(find "${script_folder}" -maxdepth 1 -name "${script_file}.~*~" | sort -V | tail -n1)
+  # Use numeric sort (-n) with tilde delimiter to work on both BSD and GNU sort
+  local backup_file=$(find "${script_folder}" -maxdepth 1 -name "${script_file}.~*~" | sort -t~ -k2 -n | tail -n1)
   echo:Version "Found backup file: ${cl_yellow}${backup_file:-"<none>"}${cl_reset}"
 
   # restore script file from backup file, use move command for recovering
