@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-20
-## Version: 0.11.15
+## Version: 0.11.18
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -364,35 +364,71 @@ Describe 'Self-Update Version Management /'
   Describe 'self-update:version:tags integration /'
     setup_tags_integration_test() {
       ORIGINAL_DIR="$PWD"
+
+      # Create a test git repo at __E_ROOT if it doesn't exist
+      if [ ! -d "${__E_ROOT}/.git" ]; then
+        mkdir -p "${__E_ROOT}"
+        cd "${__E_ROOT}" || return 1
+
+        # Initialize git repo
+        git init -q
+        git config user.email "test@example.com"
+        git config user.name "Test User"
+
+        # Create initial commit
+        echo "test" > README.md
+        git add README.md
+        git commit -q -m "Initial commit"
+
+        # Create some version tags for testing
+        git tag v1.0.0
+        git tag v1.1.0
+        git tag v1.2.0
+        git tag v2.0.0
+
+        cd "$ORIGINAL_DIR" || return 1
+      fi
     }
 
     cleanup_tags_integration_test() {
       cd "$ORIGINAL_DIR" || true
+      # Clean up test repo if we created it
+      if [ -d "${__E_ROOT}/.git" ]; then
+        # Only remove if it's our test repo (has our test tags)
+        cd "${__E_ROOT}" || true
+        if git tag | grep -q "^v1.0.0$"; then
+          cd "$ORIGINAL_DIR" || true
+          rm -rf "${__E_ROOT}"
+        fi
+      fi
     }
 
     BeforeEach 'setup_tags_integration_test'
     AfterEach 'cleanup_tags_integration_test'
 
-    xIt 'extracts version tags from git repo'
-      # Skipped: Requires git repo at __E_ROOT which may not exist in CI
+    It 'extracts version tags from git repo'
       When call self-update:version:tags
       The status should be success
-      # Should populate arrays
+      # Should populate arrays with our test tags
       The variable __REPO_VERSIONS[@] should not be blank
     End
 
-    xIt 'creates version-to-tag mapping'
-      # Skipped: Requires git repo at __E_ROOT which may not exist in CI
+    It 'creates version-to-tag mapping'
       self-update:version:tags
+
+      # Should have our test versions
+      [ "${#__REPO_VERSIONS[@]}" -gt 0 ] || Skip "No version tags found"
 
       # Check that mapping exists for first version
       first_version="${__REPO_VERSIONS[0]}"
       The variable __REPO_MAPPING[$first_version] should not be blank
     End
 
-    xIt 'sorts versions in ascending order'
-      # Skipped: Requires git repo at __E_ROOT which may not exist in CI
+    It 'sorts versions in ascending order'
       self-update:version:tags
+
+      # Should have at least 2 versions from our test tags
+      [ "${#__REPO_VERSIONS[@]}" -ge 2 ] || Skip "Need at least 2 versions"
 
       # Compare first two versions - first should be less than second
       v1="${__REPO_VERSIONS[0]}"
