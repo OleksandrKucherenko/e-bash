@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, master]
 
+# Cancel in-progress runs when new commits are pushed to the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   SHELLSPEC_VERSION: 0.28.1
   TERM: xterm-256color
