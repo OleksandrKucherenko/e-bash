@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-20
+## Version: 0.11.15
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 ##
@@ -327,7 +327,13 @@ function self-update:version:bind() {
   # check is script filepath is already bind to the version or not
   if [[ -L "${full_path}" ]]; then
     local link=$(readlink "${full_path}")
-    local bind_version=$(echo "$link" | sed -E "s/.*\/${__WORKTREES}$\/(.*)\/.*/\1/")
+    # Expand ~ to $HOME for consistent path matching
+    link="${link/#\~/$HOME}"
+    # NOTE: Hardcoded ".versions" with escaped dot for proper regex matching.
+    # If __WORKTREES value changes, update this pattern and the test in
+    # spec/self_update_version_spec.sh will fail to alert about the mismatch.
+    # Extract version: match everything between /.versions/ and the next /
+    local bind_version=$(echo "$link" | sed -E 's|.*/\.versions/([^/]+)/.*|\1|')
 
     if [[ "${bind_version}" == "${version}" ]]; then
       echo:Version "e-bash binding: ${cl_yellow}skip${cl_reset} ${cl_blue}${file_name}${cl_reset} same version"
@@ -456,7 +462,8 @@ function self-update:rollback:backup() {
   local script_folder="$(cd "$(dirname "${file}")" && pwd)"
 
   # find the latest backup file by pattern ${script_file}.~([0-9]+)~
-  local backup_file=$(find "${script_folder}" -maxdepth 1 -name "${script_file}.~*~" | sort -V | tail -n1)
+  # Use numeric sort (-n) with tilde delimiter to work on both BSD and GNU sort
+  local backup_file=$(find "${script_folder}" -maxdepth 1 -name "${script_file}.~*~" | sort -t~ -k2 -n | tail -n1)
   echo:Version "Found backup file: ${cl_yellow}${backup_file:-"<none>"}${cl_reset}"
 
   # restore script file from backup file, use move command for recovering

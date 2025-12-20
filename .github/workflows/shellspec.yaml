@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main, master]
 
+# Cancel in-progress runs when new commits are pushed to the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   SHELLSPEC_VERSION: 0.28.1
   TERM: xterm-256color
@@ -425,6 +430,10 @@ jobs:
       - name: Generate coverage summary
         if: always()
         run: |
+          # Debug: List coverage files
+          echo "=== Coverage directory contents ==="
+          ls -laR coverage/ || echo "No coverage directory found"
+
           # Extract coverage percentage from cobertura.xml
           if [ -f coverage/cobertura.xml ]; then
             coverage=$(grep -oP 'line-rate="\K[0-9.]+' coverage/cobertura.xml | head -1 | awk '{printf "%.1f%%", $1*100}')
@@ -436,20 +445,26 @@ jobs:
             echo "ℹ️ Complete coverage shown in Codecov after all chunks complete" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ Coverage report not generated for chunk ${{ matrix.chunk }}" >> $GITHUB_STEP_SUMMARY
+            echo "Coverage file expected at: coverage/cobertura.xml" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload coverage to Codecov
         if: always()
         uses: codecov/codecov-action@v4
         with:
+          # Try directory mode first, then fall back to file mode
+          directory: ./coverage
           files: ./coverage/cobertura.xml
-          flags: shellspec-ubuntu,chunk-${{ matrix.chunk }}
-          name: shellspec-ubuntu-22.04-chunk-${{ matrix.chunk }}
+          # Use consistent flag for all chunks to enable merging
+          flags: shellspec-ubuntu
+          name: ubuntu-chunk-${{ matrix.chunk }}
           fail_ci_if_error: false
           verbose: true
-          # Override branch detection for master branch pushes
+          disable_search: false
+          # Ensure proper merging of parallel uploads
           override_branch: ${{ github.ref_name }}
           override_commit: ${{ github.sha }}
+          override_build: ${{ github.run_id }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
