@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 0.11.5
+## Last revisit: 2025-12-20
+## Version: 0.11.8
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 ##
@@ -327,7 +327,8 @@ function self-update:version:bind() {
   # check is script filepath is already bind to the version or not
   if [[ -L "${full_path}" ]]; then
     local link=$(readlink "${full_path}")
-    local bind_version=$(echo "$link" | sed -E "s/.*\/${__WORKTREES}\/(.*)\/.*/\1/")
+    # Escape dots in __WORKTREES for regex matching
+    local bind_version=$(echo "$link" | sed -E "s/.*\/\.versions\/(.*)\/.*/\1/")
 
     if [[ "${bind_version}" == "${version}" ]]; then
       echo:Version "e-bash binding: ${cl_yellow}skip${cl_reset} ${cl_blue}${file_name}${cl_reset} same version"
