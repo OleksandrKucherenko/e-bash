@@ -4,8 +4,8 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 0.11.4
+## Last revisit: 2025-12-20
+## Version: 0.11.7
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -211,7 +211,7 @@ Describe 'Self-Update Initialization /'
 
       When call self-update:initialize
       The status should be success
-      The contents of file "${__E_ROOT}/.gitignore" should include "# exclude .versions worktree folder from git"
+      The contents of file "${__E_ROOT}/.gitignore" should include "# self-update .versions folder"
 
       # Verify initialization via logger
       The result of function no_colors_stderr should include "e-bash repo initialized in ~/.e-bash"
