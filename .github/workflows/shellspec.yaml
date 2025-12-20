@@ -455,14 +455,16 @@ jobs:
           # Try directory mode first, then fall back to file mode
           directory: ./coverage
           files: ./coverage/cobertura.xml
-          flags: shellspec-ubuntu,chunk-${{ matrix.chunk }}
-          name: shellspec-ubuntu-22.04-chunk-${{ matrix.chunk }}
+          # Use consistent flag for all chunks to enable merging
+          flags: shellspec-ubuntu
+          name: ubuntu-chunk-${{ matrix.chunk }}
           fail_ci_if_error: false
           verbose: true
           disable_search: false
-          # Override branch detection for master branch pushes
+          # Ensure proper merging of parallel uploads
           override_branch: ${{ github.ref_name }}
           override_commit: ${{ github.sha }}
+          override_build: ${{ github.run_id }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 

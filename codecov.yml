@@ -1,70 +1,50 @@
-# Codecov Configuration
+# Codecov configuration for e-bash project
 # https://docs.codecov.com/docs/codecov-yaml
 
+# Coverage targets
 coverage:
   precision: 2
   round: down
-  range: "70..100"
+  range: "70...100"
+
   status:
+    # Overall project coverage
     project:
       default:
         target: auto
         threshold: 1%
-        informational: true  # Don't fail CI based on coverage
-        if_ci_failed: error  # Don't process if CI failed
-    patch:
-      default:
-        target: auto
-        threshold: 1%
-        informational: true
         if_ci_failed: error
 
+    # Patch coverage (new code in PR)
+    patch:
+      default:
+        target: 80%
+        threshold: 5%
+        if_ci_failed: error
+
+# Flag configuration for parallel uploads
+flags:
+  shellspec-ubuntu:
+    # All 4 chunks upload with this flag
+    carryforward: true
+
+  shellspec-macos:
+    # MacOS chunks (if applicable)
+    carryforward: true
+
+# Comment configuration for PRs
 comment:
   layout: "reach,diff,flags,tree,footer"
-  behavior: default  # Post new comment for each commit
-  require_changes: false  # Always comment, even if coverage unchanged
-  require_base: true  # Only comment when base commit is found
-  require_head: true  # Only comment when head commit is found
+  behavior: default
+  require_changes: false
+  require_base: no
+  require_head: yes
 
-codecov:
-  notify:
-    wait_for_ci: false  # Don't wait for other CI checks
-  branch: master  # Explicitly set the default branch
-  max_report_age: 24h  # Accept reports up to 24 hours old
-  require_ci_to_pass: false  # Don't require CI to pass before processing
-  
-# Note: Branch processing is handled automatically by Codecov
-# No need for explicit branches configuration
-
-# Ignore test files and demos in coverage calculations
+# Ignore paths
 ignore:
-  - "spec/**/*"
-  - "demos/**/*"
-  - ".shellspec"
-  - "coverage/**/*"
+  - "spec/**"
+  - "demos/**"
+  - "coverage/**"
+  - "report/**"
+  - ".github/**"
   - "*.md"
-  - "docs/**/*"
-  - "LICENSE"
-  - "COPYRIGHT"
-  - "Makefile"
-
-# Parser configurations for better coverage processing
-parsers:
-  v1:
-    include_full_missed_files: true  # Include files with no coverage data
-
-# Component-based coverage (optional, for detailed reports)
-component_management:
-  individual_components:
-    - component_id: "bin"
-      name: "Binary Scripts"
-      paths:
-        - "bin/**/*.sh"
-    - component_id: "demos"
-      name: "Demo Scripts"
-      paths:
-        - "demos/**/*.sh"
-    - component_id: "core"
-      name: "Core of the Library"
-      paths:
-        - ".scripts/*.sh"
