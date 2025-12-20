@@ -64,11 +64,11 @@ Mock printf:Regex
 End
 
 Mock echo:Simple
-  echo "$@" >&2
+  :  # Suppress debug output from semver comparison
 End
 
 Mock printf:Simple
-  printf "$@" >&2
+  :  # Suppress debug output from semver comparison
 End
 
 Describe 'Self-Update Version Management /'
