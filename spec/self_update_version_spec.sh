@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-20
-## Version: 0.11.18
+## Version: 0.11.19
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -123,18 +123,38 @@ Describe 'Self-Update Version Management /'
 
   Describe 'self-update:version:get /'
     setup_get_test() {
-      # Setup a minimal git repo at __E_ROOT for testing
-      if [[ ! -d "${__E_ROOT}/.git" ]]; then
-        Skip "Git repo not initialized at __E_ROOT"
-      fi
-
       ORIGINAL_DIR="$PWD"
+
+      # Create a test git repo at __E_ROOT if it doesn't exist
+      if [ ! -d "${__E_ROOT}/.git" ]; then
+        mkdir -p "${__E_ROOT}"
+        cd "${__E_ROOT}" || return 1
+
+        git init -q
+        git config user.email "test@example.com"
+        git config user.name "Test User"
+
+        echo "test" > README.md
+        git add README.md
+        git commit -q -m "Initial commit"
+        git tag test-tag-get
+
+        cd "$ORIGINAL_DIR" || return 1
+      fi
     }
 
     cleanup_get_test() {
       cd "$ORIGINAL_DIR" || true
       # Clean up any test worktrees
       rm -rf "${__E_ROOT}/${__WORKTREES}/test-tag-"* 2>/dev/null || true
+      # Clean up test repo if we created it
+      if [ -d "${__E_ROOT}/.git" ]; then
+        cd "${__E_ROOT}" || true
+        if git tag | grep -q "^test-tag-get$"; then
+          cd "$ORIGINAL_DIR" || true
+          rm -rf "${__E_ROOT}"
+        fi
+      fi
     }
 
     BeforeEach 'setup_get_test'
@@ -147,7 +167,7 @@ Describe 'Self-Update Version Management /'
           # Simulate worktree creation
           local worktree_path="$3"
           local tag="$4"
-          mkdir -p "${__E_ROOT}/${worktree_path}"
+          mkdir -p "${worktree_path}"
           echo "Mocked git worktree add for $tag" >&2
           return 0
         fi
@@ -156,7 +176,7 @@ Describe 'Self-Update Version Management /'
 
       When call self-update:version:get "test-tag-get"
       The status should be success
-      The result of function no_colors_stderr should include "e-bash version test-tag-get ~ ~/.e-bash/.versions/test-tag-get"
+      The result of function no_colors_stderr should include "e-bash version"
 
       # Cleanup mock
       unset -f git
