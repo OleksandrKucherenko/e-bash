@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-20
-## Version: 0.11.8
+## Version: 0.11.9
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 ##
@@ -327,7 +327,9 @@ function self-update:version:bind() {
   # check is script filepath is already bind to the version or not
   if [[ -L "${full_path}" ]]; then
     local link=$(readlink "${full_path}")
-    # Escape dots in __WORKTREES for regex matching
+    # NOTE: Hardcoded ".versions" with escaped dot for proper regex matching.
+    # If __WORKTREES value changes, update this pattern and the test in
+    # spec/self_update_version_spec.sh will fail to alert about the mismatch.
     local bind_version=$(echo "$link" | sed -E "s/.*\/\.versions\/(.*)\/.*/\1/")
 
     if [[ "${bind_version}" == "${version}" ]]; then

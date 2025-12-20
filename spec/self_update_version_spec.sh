@@ -4,8 +4,8 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 0.11.5
+## Last revisit: 2025-12-20
+## Version: 0.11.9
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -83,6 +83,14 @@ Describe 'Self-Update Version Management /'
   }
 
   AfterEach 'cleanup'
+
+  Describe 'Constants and default values /'
+    It 'verifies __WORKTREES constant value'
+      # This test ensures the hardcoded regex in self-update:version:bind
+      # stays in sync with the __WORKTREES constant value
+      The variable __WORKTREES should equal ".versions"
+    End
+  End
 
   Describe 'self-update:version:has /'
     It 'returns success when version directory exists'
