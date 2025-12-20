@@ -430,6 +430,10 @@ jobs:
       - name: Generate coverage summary
         if: always()
         run: |
+          # Debug: List coverage files
+          echo "=== Coverage directory contents ==="
+          ls -laR coverage/ || echo "No coverage directory found"
+
           # Extract coverage percentage from cobertura.xml
           if [ -f coverage/cobertura.xml ]; then
             coverage=$(grep -oP 'line-rate="\K[0-9.]+' coverage/cobertura.xml | head -1 | awk '{printf "%.1f%%", $1*100}')
@@ -441,17 +445,21 @@ jobs:
             echo "ℹ️ Complete coverage shown in Codecov after all chunks complete" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ Coverage report not generated for chunk ${{ matrix.chunk }}" >> $GITHUB_STEP_SUMMARY
+            echo "Coverage file expected at: coverage/cobertura.xml" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Upload coverage to Codecov
         if: always()
         uses: codecov/codecov-action@v4
         with:
+          # Try directory mode first, then fall back to file mode
+          directory: ./coverage
           files: ./coverage/cobertura.xml
           flags: shellspec-ubuntu,chunk-${{ matrix.chunk }}
           name: shellspec-ubuntu-22.04-chunk-${{ matrix.chunk }}
           fail_ci_if_error: false
           verbose: true
+          disable_search: false
           # Override branch detection for master branch pushes
           override_branch: ${{ github.ref_name }}
           override_commit: ${{ github.sha }}
