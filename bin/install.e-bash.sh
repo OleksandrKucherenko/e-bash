@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-12
-## Version: 1.0.0
+## Last revisit: 2025-12-22
+## Version: 1.16.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -336,7 +336,7 @@ function repo_uninstall() {
         echo -e "${CYAN}dry run: clean .envrc configuration${NC}"
       else
         # Remove E_BASH related lines
-        sed -i.bak '/E_BASH/d; /PATH_add.*\.scripts/d; /_setup_gnu_symbolic_links/d' ".envrc"
+        sed -i.bak '/E_BASH/d; /PATH_add.*\.scripts/d; /_gnu\.sh/d' ".envrc"
         rm -f ".envrc.bak"
         echo -e "${GREEN}Cleaned .envrc configuration${NC}"
       fi
@@ -1094,7 +1094,7 @@ function update_envrc_configuration() {
     sed -i.bak "s|PATH_add \"\$PWD/${current_path}\"|PATH_add \"\$PWD/${SCRIPTS_DIR}\"|g" ".envrc"
 
     # Update source path for setup script
-    sed -i.bak "s|source \"\$PWD/${current_path}/_setup_gnu_symbolic_links.sh\"|source \"\$PWD/${SCRIPTS_DIR}/_setup_gnu_symbolic_links.sh\"|g" ".envrc"
+    sed -i.bak "s|source \"\$PWD/${current_path}/_gnu.sh\"|source \"\$PWD/${SCRIPTS_DIR}/_gnu.sh\"|g" ".envrc"
 
     rm -f ".envrc.bak"
     echo -e "${GREEN}Updated e-bash configuration in ${YELLOW}${PWD}/.envrc${NC}"
@@ -1119,8 +1119,8 @@ function update_envrc_configuration() {
     echo "if [[ \"\$(uname -s)\" == \"Linux\" ]]; then"
     # FIXME: This source command assumes the script exists but doesn't check.
     #   We rely on sequence of actions, assuming that its a post-installation step.
-    echo "  source \"\$PWD/${SCRIPTS_DIR}/_setup_gnu_symbolic_links.sh\""
-    # `bin` folder may not exist, but _setup_gnu_symbolic_links.sh will create it
+    echo "  source \"\$PWD/${SCRIPTS_DIR}/_gnu.sh\""
+    # `bin` folder may not exist, but _gnu.sh will create it
     echo "  PATH_add \"\$PWD/bin/gnubin\""
     echo "fi"
   } >>".envrc"

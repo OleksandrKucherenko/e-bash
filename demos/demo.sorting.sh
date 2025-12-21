@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-10
-## Version: 1.0.0
+## Last revisit: 2025-12-22
+## Version: 1.16.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -35,13 +35,29 @@ function compare:strings() {
 }
 
 # Quick-Sort implementation
+# Sorts an array of strings using the given comparison function.
+#
+# The first argument should be a function name that takes two arguments and
+# returns 0 if the first argument is less than or equal to the second,
+# and 1 otherwise.
+#
+# The rest of the arguments should be the elements of the array to be sorted.
+#
+# The function will print the sorted array to stdout.
+#
+# Example:
+#   array:qsort compare:versions 1.0.0-beta 1.0.0-beta.11 1.0.0-beta.2
 function array:qsort() {
   local compare=$1 && shift
   local array=("$@")
   local length=${#array[@]}
 
-  if ((length <= 1)); then
-    echo "${array[@]}"
+  if ((length == 0)); then
+    return
+  fi
+
+  if ((length == 1)); then
+    echo "${array[0]}"
     return
   fi
 

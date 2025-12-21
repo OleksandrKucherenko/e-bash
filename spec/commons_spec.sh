@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
-## Version: 1.0.0
+## Last revisit: 2025-12-23
+## Version: 1.16.4
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -851,6 +851,405 @@ Describe "_commons.sh /"
       The status should be success
       The output should eq "2"
       The error should eq ''
+    End
+  End
+
+  Describe "time:diff /"
+    # Mock time:now to return fixed timestamp
+    Mock time:now
+      echo "1609459200.500000"
+    End
+
+    It "calculates time difference correctly"
+      When call time:diff "1609459199.000000"
+      The output should eq "1.500000"
+      The status should be success
+    End
+
+    It "handles same timestamps"
+      When call time:diff "1609459200.500000"
+      The output should eq "0"
+      The status should be success
+    End
+
+    It "handles negative difference (earlier time)"
+      When call time:diff "1609459201.000000"
+      The output should eq "-.500000"
+      The status should be success
+    End
+
+    It "handles zero start time"
+      When call time:diff "0"
+      The output should eq "1609459200.500000"
+      The status should be success
+    End
+
+    It "handles decimal precision"
+      When call time:diff "1609459200.123456"
+      The output should eq ".376544"
+      The status should be success
+    End
+  End
+
+  Describe "confirm:by:input /"
+    It "uses top priority value when provided"
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      # Args: hint, variable, fallback, top, second, third, masked
+      When call confirm:by:input "Prompt:" "result" "fallback" "top_value" "" "" ""
+
+      The status should be success
+      The variable RESULT should eq "top_value"
+      The output should include "Prompt:"
+      The output should include "top_value"
+    End
+
+    It "uses second priority value when top is empty"
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call confirm:by:input "Prompt:" "result" "fallback" "" "second_value" "" ""
+
+      The status should be success
+      The variable RESULT should eq "second_value"
+      The output should include "second_value"
+    End
+
+    It "uses third priority (fallback) when top and second are empty"
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call confirm:by:input "Prompt:" "result" "fallback" "" "" "third_value" ""
+
+      The status should be success
+      The variable RESULT should eq "fallback"
+      The output should include "fallback"
+    End
+
+    It "calls validate:input when no values provided (tests conditional logic)"
+      # Mock validate:input to avoid interactive input
+      validate:input() {
+        eval "$1='validated_value'"
+      }
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call confirm:by:input "Prompt:" "result" "fallback" "" "" "" ""
+
+      The status should be success
+      The variable RESULT should eq "validated_value"
+    End
+
+    It "calls validate:input:masked when masked flag is set (tests conditional logic)"
+      # Mock validate:input:masked to avoid interactive input
+      validate:input:masked() {
+        eval "$1='masked_value'"
+      }
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      # masked="true" (last param)
+      When call confirm:by:input "Prompt:" "result" "fallback" "" "" "" "true"
+
+      The status should be success
+      The variable RESULT should eq "masked_value"
+    End
+
+    It "displays masked value in confirmation when masked flag set"
+      When call confirm:by:input "Prompt:" "result" "fallback" "secret" "" "" "****"
+
+      The status should be success
+      The output should include "****"
+      The output should not include "secret"
+    End
+
+    It "displays actual value when no masked flag"
+      When call confirm:by:input "Prompt:" "result" "fallback" "actual_value" "" "" ""
+
+      The status should be success
+      The output should include "actual_value"
+    End
+  End
+
+  Describe "validate:input:yn /"
+    # macOS uses read -p which writes to terminal, not stdout (not captured by ShellSpec)
+    is_macos() { [[ "$OSTYPE" == "darwin"* ]]; }
+    Skip if "macOS read -p output not captured" is_macos
+
+    It "returns true for 'y' input"
+      Data
+        #|y
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "y" "Continue?"
+      The status should be success
+      The variable RESULT should eq "true"
+      The output should include "Continue?"
+    End
+
+    It "returns true for 'Y' input (uppercase)"
+      Data
+        #|Y
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "y" "Continue?"
+      The status should be success
+      The variable RESULT should eq "true"
+      The output should include "Continue?"
+    End
+
+    It "returns true for 'yes' input"
+      Data
+        #|yes
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "y" "Continue?"
+      The status should be success
+      The variable RESULT should eq "true"
+      The output should include "Continue?"
+    End
+
+    It "returns true for 'YES' input (uppercase)"
+      Data
+        #|YES
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "y" "Continue?"
+      The status should be success
+      The variable RESULT should eq "true"
+      The output should include "Continue?"
+    End
+
+    It "returns false for 'n' input"
+      Data
+        #|n
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "n" "Continue?"
+      The status should be success
+      The variable RESULT should eq "false"
+      The output should include "Continue?"
+    End
+
+    It "returns false for 'no' input"
+      Data
+        #|no
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "n" "Continue?"
+      The status should be success
+      The variable RESULT should eq "false"
+      The output should include "Continue?"
+    End
+
+    It "returns false for any other input"
+      Data
+        #|maybe
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "" "Continue?"
+      The status should be success
+      The variable RESULT should eq "false"
+      The output should include "Continue?"
+    End
+
+    It "returns false for empty input"
+      Data
+        #|
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "" "Continue?"
+      The status should be success
+      The variable RESULT should eq "false"
+      The output should include "Continue?"
+    End
+
+    It "handles special characters in hint"
+      Data
+        #|y
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input:yn "result" "y" "Do you want to continue? (y/n)"
+      The status should be success
+      The variable RESULT should eq "true"
+      The output should include "Do you want to continue? (y/n)"
+    End
+  End
+
+  Describe "validate:input /"
+    # macOS uses read -p which writes to terminal, not stdout (not captured by ShellSpec)
+    is_macos() { [[ "$OSTYPE" == "darwin"* ]]; }
+    Skip if "macOS read -p output not captured" is_macos
+
+    It "reads and stores valid input"
+      Data
+        #|test_input
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter value:"
+      The status should be success
+      The variable RESULT should eq "test_input"
+      The output should include "Enter value:"
+    End
+
+    It "accepts input with spaces"
+      Data
+        #|value with spaces
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter value:"
+      The status should be success
+      The variable RESULT should eq "value with spaces"
+      The output should include "Enter value:"
+    End
+
+    It "accepts input with special characters"
+      Data
+        #|test@value#123
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter value:"
+      The status should be success
+      The variable RESULT should eq "test@value#123"
+      The output should include "Enter value:"
+    End
+
+    It "loops until non-empty input (simulate empty then valid)"
+      Data
+        #|
+        #|valid_input
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter value:"
+      The status should be success
+      The variable RESULT should eq "valid_input"
+      The output should include "Enter value:"
+    End
+
+    It "rejects whitespace-only input and loops"
+      Data
+        #|   
+        #|valid
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter value:"
+      The status should be success
+      The variable RESULT should eq "valid"
+      The output should include "Enter value:"
+    End
+
+    It "displays hint when provided"
+      Data
+        #|test
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Please enter a value:"
+      The status should be success
+      The variable RESULT should eq "test"
+      The output should include "Please enter a value:"
+    End
+
+    It "handles empty hint"
+      Data
+        #|test
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" ""
+      The status should be success
+      The variable RESULT should eq "test"
+    End
+
+    It "handles numeric input"
+      Data
+        #|12345
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter number:"
+      The status should be success
+      The variable RESULT should eq "12345"
+      The output should include "Enter number:"
+    End
+
+    It "handles paths with slashes"
+      Data
+        #|/path/to/file.txt
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter path:"
+      The status should be success
+      The variable RESULT should eq "/path/to/file.txt"
+      The output should include "Enter path:"
+    End
+
+    It "handles quoted strings"
+      Data
+        #|"quoted value"
+      End
+
+      preserve() { %preserve result:RESULT; }
+      AfterCall preserve
+
+      When call validate:input "result" "default" "Enter value:"
+      The status should be success
+      The variable RESULT should eq '"quoted value"'
+      The output should include "Enter value:"
     End
   End
 

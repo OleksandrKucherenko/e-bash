@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-18
-## Version: 1.0.0
+## Last revisit: 2025-12-22
+## Version: 1.16.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -109,9 +109,12 @@ function semver:grep() {
   echo "${v_valid_semver}"
 
   # debug output
-  if type echo:Regex &>/dev/null; then
+  if declare -F "echo:Regex" >/dev/null; then 
     echo:Regex "${v_valid_semver}" >&2
   fi
+  # if type echo:Regex &>/dev/null; then
+  #  echo:Regex "${v_valid_semver}" >&2
+  # fi
 }
 
 # create version from parsed results
@@ -139,39 +142,41 @@ function semver:recompose() {
 function semver:parse() {
   local version="$1"
   local output_variable="${2:-"__semver_parse_result"}"
-  local SEMVER_REGEX="$(semver:grep)"
+  #local SEMVER_REGEX="$(semver:grep)"
+  local SEMVER_REGEX="$SEMVER"
   declare -A parsed=(["version"]="" ["version-core"]="" ["pre-release"]="" ["build"]="")
-  local i=0 # make $i local to avoid conflicts
+  local iSeq=0 # make $iSeq local to avoid conflicts
 
   if [[ "$version" =~ $SEMVER_REGEX ]]; then
-    # debug output
-    for i in "${!BASH_REMATCH[@]}"; do echo:Regex "$i: ${BASH_REMATCH[$i]}" >&2; done
+    # debug output (disabled: noisy and slow during profiling)
+    # for iSeq in "${!BASH_REMATCH[@]}"; do echo:Regex "$iSeq: ${BASH_REMATCH[$iSeq]}" >&2; done
 
     # iterate all matches and assign to associative array found parts
     # 0,1 - full match; 2 - version core; `-` start prefix - pre-release; `+` start prefix - build
-    for i in "${!BASH_REMATCH[@]}"; do
-      case "$i" in
-      0) parsed["version"]="${BASH_REMATCH[$i]}" ;;
-      2) parsed["version-core"]="${BASH_REMATCH[$i]}" ;;
-      3) parsed["major"]="${BASH_REMATCH[$i]}" ;;
-      7) parsed["minor"]="${BASH_REMATCH[$i]}" ;;
-      11) parsed["patch"]="${BASH_REMATCH[$i]}" ;;
-      37) parsed[".pre-release"]="${BASH_REMATCH[$i]}" ;;
-      79) parsed[".build"]="${BASH_REMATCH[$i]}" ;;
+    for iSeq in "${!BASH_REMATCH[@]}"; do
+      case "$iSeq" in
+      0) parsed["version"]="${BASH_REMATCH[$iSeq]}" ;;
+      2) parsed["version-core"]="${BASH_REMATCH[$iSeq]}" ;;
+      3) parsed["major"]="${BASH_REMATCH[$iSeq]}" ;;
+      7) parsed["minor"]="${BASH_REMATCH[$iSeq]}" ;;
+      11) parsed["patch"]="${BASH_REMATCH[$iSeq]}" ;;
+      37) parsed[".pre-release"]="${BASH_REMATCH[$iSeq]}" ;;
+      79) parsed[".build"]="${BASH_REMATCH[$iSeq]}" ;;
       *)
-        if [[ "${BASH_REMATCH[$i]:0:1}" == "-" ]]; then # index=15
-          parsed["pre-release"]="${BASH_REMATCH[$i]}"
-        elif [[ "${BASH_REMATCH[$i]:0:1}" == "+" ]]; then # index=57
-          parsed["build"]="${BASH_REMATCH[$i]}"
+        if [[ "${BASH_REMATCH[$iSeq]:0:1}" == "-" ]]; then # index=15
+          parsed["pre-release"]="${BASH_REMATCH[$iSeq]}"
+        elif [[ "${BASH_REMATCH[$iSeq]:0:1}" == "+" ]]; then # index=57
+          parsed["build"]="${BASH_REMATCH[$iSeq]}"
         fi
         ;;
       esac
     done
 
-    # print associative array as key-value pairs
-    eval "declare -g -A ${output_variable}" ## declare global associative array
+    # copy local associative array to global without eval
+    declare -g -A "$output_variable"
+    local -n out="$output_variable"
     for key in "${!parsed[@]}"; do
-      eval "${output_variable}[${key}]=\"${parsed[$key]}\"" ## copy local associative array to global
+      out["$key"]="${parsed[$key]}"
     done
   else
     echo:Semver "Invalid semver: $version" >&2
@@ -242,14 +247,15 @@ function semver:increase:patch() {
 function semver:compare() {
   local version1="$1"
   local version2="$2"
-  local i=0 # make $i local to avoid conflicts
+  local iParts=0 # make $iParts local to avoid conflicts
+  local LC_ALL=C
 
   # quick check for equality
   if [[ "$version1" == "$version2" ]]; then return 0; fi
 
   # parse versions
-  semver:parse "$version1" "__semver_compare_v1"
-  semver:parse "$version2" "__semver_compare_v2"
+  semver:parse "$version1" "__semver_compare_v1" || return 3
+  semver:parse "$version2" "__semver_compare_v2" || return 3
 
   # "build" parts of the versions are ignored during comparison
   local major1=${__semver_compare_v1["major"]} major2=${__semver_compare_v2["major"]}
@@ -272,9 +278,12 @@ function semver:compare() {
 
   # compare pre-release parts as an array of identifiers.
   # We should split pre-release by '.' and compare each part (identifier) separately
+  # Keep hyphens inside identifiers per semver item #11.
   local parts1=() parts2=()
-  IFS='.' read -ra parts1 <<<"${pre_release1//\-/}"
-  IFS='.' read -ra parts2 <<<"${pre_release2//\-/}"
+  local pre_release1_clean="${pre_release1#-}"
+  local pre_release2_clean="${pre_release2#-}"
+  IFS='.' read -ra parts1 <<<"${pre_release1_clean}"
+  IFS='.' read -ra parts2 <<<"${pre_release2_clean}"
 
   # find the longest array size
   local maxSize=$((${#parts1[@]} > ${#parts2[@]} ? ${#parts1[@]} : ${#parts2[@]}))
@@ -283,9 +292,9 @@ function semver:compare() {
   if [[ "$maxSize" -ge 0 ]]; then
     # if identifier is a number, then compare as a number, otherwise as a string
     # number is always less than string
-    for i in $(seq 0 $maxSize); do
-      local part1="${parts1[$i]}"
-      local part2="${parts2[$i]}"
+    for ((iParts = 0; iParts <= maxSize; iParts++)); do
+      local part1="${parts1[$iParts]}"
+      local part2="${parts2[$iParts]}"
 
       # if one of the parts is empty, then it is less than the other
       if [[ -z "$part1" && -n "$part2" ]]; then return 2; fi
@@ -295,6 +304,11 @@ function semver:compare() {
       if [[ "$part1" =~ ^[0-9]+$ && "$part2" =~ ^[0-9]+$ ]]; then
         if [[ "$part1" -gt "$part2" ]]; then return 1; fi
         if [[ "$part1" -lt "$part2" ]]; then return 2; fi
+      elif [[ "$part1" =~ ^[0-9]+$ ]]; then
+        # Numeric identifiers have lower precedence than non-numeric
+        return 2
+      elif [[ "$part2" =~ ^[0-9]+$ ]]; then
+        return 1
       else
         if [[ "$part1" > "$part2" ]]; then return 1; fi
         if [[ "$part1" < "$part2" ]]; then return 2; fi
@@ -307,10 +321,10 @@ function semver:compare() {
     if [[ "${#parts1[@]}" -lt "${#parts2[@]}" ]]; then return 2; fi
 
     # numbers are equal? but how? Only META left un-compared
-    echo:Semver "Warning: verify versions, are is META an only difference: $version1 $version2"
+    # echo:Semver "Warning: verify versions, are is META an only difference: $version1 $version2"
     return 0
   else
-    echo:Semver "Warning: No pre-release part in versions: $version1 $version2"
+    # echo:Semver "Warning: No pre-release part in versions: $version1 $version2"
 
     # Build metadata MUST be ignored when determining version precedence. (Rule #10)
     # So versions are equal during the comparison!

@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 1.12.1
+## Last revisit: 2025-12-22
+## Version: 1.16.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -15,9 +15,19 @@ if type hooks:declare 2>/dev/null | grep -q "is a function"; then return 0; fi
 
 # shellcheck disable=SC1090 source=./_colors.sh
 source "$E_BASH/_colors.sh"
-
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
+# shellcheck disable=SC1090 source=./_commons.sh
+source "$E_BASH/_commons.sh"
+# shellcheck disable=SC1090 source=./_traps.sh
+source "$E_BASH/_traps.sh"
+
+# keep error logging enabled by default
+if [[ -z ${DEBUG+x} || -z "$DEBUG" ]]; then
+  export DEBUG="error"
+elif [[ "$DEBUG" != *"error"* && "$DEBUG" != *"*"* && "$DEBUG" != *"-error"* ]]; then
+  export DEBUG="${DEBUG},error"
+fi
 
 # declare global associative array for hooks tracking (internal)
 # stores hook_name -> "1" for quick existence check
@@ -31,9 +41,17 @@ if [[ -z ${__HOOKS_CONTEXTS+x} ]]; then declare -g -A __HOOKS_CONTEXTS; fi
 # stores hook_name -> "friendly1:func1|friendly2:func2" pipe-separated list
 if [[ -z ${__HOOKS_REGISTERED+x} ]]; then declare -g -A __HOOKS_REGISTERED; fi
 
+# declare global associative array for middleware functions (internal)
+# stores hook_name -> middleware function name
+if [[ -z ${__HOOKS_MIDDLEWARE+x} ]]; then declare -g -A __HOOKS_MIDDLEWARE; fi
+
 # declare global arrays for execution mode pattern registration (internal)
 if [[ -z ${__HOOKS_SOURCE_PATTERNS+x} ]]; then declare -g -a __HOOKS_SOURCE_PATTERNS=(); fi
 if [[ -z ${__HOOKS_SCRIPT_PATTERNS+x} ]]; then declare -g -a __HOOKS_SCRIPT_PATTERNS=(); fi
+
+# declare sequence counter for capture arrays (internal)
+if [[ -z ${__HOOKS_CAPTURE_SEQ+x} ]]; then declare -g __HOOKS_CAPTURE_SEQ=0; fi
+if [[ -z ${__HOOKS_END_TRAP_INSTALLED+x} ]]; then declare -g __HOOKS_END_TRAP_INSTALLED="false"; fi
 
 # default hooks directory (can be overridden)
 if [[ -z ${HOOKS_DIR+x} ]]; then declare -g HOOKS_DIR="ci-cd"; fi
@@ -45,6 +63,7 @@ if [[ -z ${HOOKS_PREFIX+x} ]]; then declare -g HOOKS_PREFIX="hook:"; fi
 # exec - execute script directly (default, runs in subprocess)
 # source - source script and call hook:run function (runs in current shell)
 if [[ -z ${HOOKS_EXEC_MODE+x} ]]; then declare -g HOOKS_EXEC_MODE="exec"; fi
+if [[ -z ${HOOKS_AUTO_TRAP+x} ]]; then declare -g HOOKS_AUTO_TRAP="true"; fi
 
 # Define available hooks in the script
 #
@@ -78,7 +97,7 @@ function hooks:declare() {
   for hook_name in "$@"; do
     # validate hook name (alphanumeric, underscore, dash only)
     if ! [[ "$hook_name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-      echo "Error: Invalid hook name '$hook_name'. Only alphanumeric, underscore, and dash allowed." >&2
+      echo:Error "invalid hook name '$hook_name'. Only alphanumeric, underscore, and dash allowed."
       return 1
     fi
 
@@ -109,8 +128,51 @@ function hooks:declare() {
 
     # register the hook
     __HOOKS_DEFINED[$hook_name]=1
-    echo:Hooks "  ✓ Registered hook: $hook_name (context: $caller_context)"
+    echo:Hooks "  🟢 Registered hook: $hook_name (context: $caller_context)"
   done
+
+  return 0
+}
+
+#
+# Bootstrap default hooks and exit trap
+#
+# Usage:
+#   hooks:bootstrap
+#
+# Behavior:
+#   - declares begin/end hooks if missing
+#   - installs an EXIT trap to execute end hook (unless HOOKS_AUTO_TRAP=false)
+#
+function hooks:bootstrap() {
+  hooks:declare begin end
+
+  if [[ "${HOOKS_AUTO_TRAP:-true}" == "true" ]]; then
+    _hooks:trap:end
+  fi
+
+  return 0
+}
+
+#
+# Exit handler for end hook
+#
+function _hooks:on_exit() {
+  local exit_code=$?
+  hooks:do end "$exit_code"
+  return "$exit_code"
+}
+
+#
+# Install EXIT trap for end hook (idempotent)
+#
+function _hooks:trap:end() {
+  if [[ "${__HOOKS_END_TRAP_INSTALLED:-}" == "true" ]]; then
+    return 0
+  fi
+
+  __HOOKS_END_TRAP_INSTALLED="true"
+  trap:on _hooks:on_exit EXIT
 
   return 0
 }
@@ -192,13 +254,13 @@ function hooks:register() {
 
   # Validate parameters
   if [[ -z "$hook_name" || -z "$friendly_name" || -z "$function_name" ]]; then
-    echo "Error: hooks:register requires three parameters: <hook_name> <friendly_name> <function_name>" >&2
+    echo:Error "hooks:register requires three parameters: <hook_name> <friendly_name> <function_name>"
     return 1
   fi
 
   # Validate function exists
   if ! declare -F "$function_name" >/dev/null 2>&1; then
-    echo "Error: Function '$function_name' does not exist" >&2
+    echo:Error "function '$function_name' does not exist"
     return 1
   fi
 
@@ -212,7 +274,7 @@ function hooks:register() {
 
   # Check if friendly name already exists for this hook
   if [[ -n "$existing" && "|${existing}|" == *"|${friendly_name}:"* ]]; then
-    echo "Error: Friendly name '$friendly_name' already registered for hook '$hook_name'" >&2
+    echo:Error "friendly name '$friendly_name' already registered for hook '$hook_name'"
     return 1
   fi
 
@@ -224,6 +286,46 @@ function hooks:register() {
   fi
 
   echo:Hooks "Registered function '${function_name}' as '${friendly_name}' for hook '${hook_name}'"
+  return 0
+}
+
+#
+# Register middleware for a hook
+#
+# Usage:
+#   hooks:middleware begin my_middleware
+#   hooks:middleware begin          # reset to default
+#
+# Parameters:
+#   $1 - Hook name
+#   $2 - Middleware function name (optional)
+#
+# Returns:
+#   0 - Success
+#   1 - Invalid parameters or function doesn't exist
+#
+function hooks:middleware() {
+  local hook_name="$1"
+  local middleware_fn="${2:-}"
+
+  if [[ -z "$hook_name" ]]; then
+    echo:Error "hooks:middleware requires <hook> [function]"
+    return 1
+  fi
+
+  if [[ -z "$middleware_fn" ]]; then
+    unset "__HOOKS_MIDDLEWARE[$hook_name]"
+    echo:Hooks "Reset middleware for hook '$hook_name' to default"
+    return 0
+  fi
+
+  if ! declare -F "$middleware_fn" >/dev/null 2>&1; then
+    echo:Error "middleware function '$middleware_fn' does not exist"
+    return 1
+  fi
+
+  __HOOKS_MIDDLEWARE["$hook_name"]="$middleware_fn"
+  echo:Hooks "Registered middleware '${middleware_fn}' for hook '${hook_name}'"
   return 0
 }
 
@@ -248,7 +350,7 @@ function hooks:unregister() {
 
   # Validate parameters
   if [[ -z "$hook_name" || -z "$friendly_name" ]]; then
-    echo "Error: hooks:unregister requires two parameters: <hook_name> <friendly_name>" >&2
+    echo:Error "hooks:unregister requires two parameters: <hook_name> <friendly_name>"
     return 1
   fi
 
@@ -256,13 +358,13 @@ function hooks:unregister() {
   local existing="${__HOOKS_REGISTERED[$hook_name]}"
 
   if [[ -z "$existing" ]]; then
-    echo "Error: No registrations found for hook '$hook_name'" >&2
+    echo:Error "no registrations found for hook '$hook_name'"
     return 1
   fi
 
   # Check if friendly name exists
   if [[ "|${existing}|" != *"|${friendly_name}:"* ]]; then
-    echo "Error: Registration '$friendly_name' not found for hook '$hook_name'" >&2
+    echo:Error "registration '$friendly_name' not found for hook '$hook_name'"
     return 1
   fi
 
@@ -329,6 +431,288 @@ function hooks:exec:mode() {
 }
 
 #
+# Execute hook implementation with stdout/stderr capture (internal)
+#
+# Usage:
+#   _hooks:capture:run hook_name capture_var command args...
+#
+# Parameters:
+#   $1 - Hook name
+#   $2 - Variable name to store capture array name
+#   $@ - Command and arguments to execute
+#
+# Returns:
+#   Exit code from the executed command
+#
+function _hooks:capture:run() {
+  local hook_name="$1"
+  local capture_var_name="$2"
+  shift 2
+
+  local hook_slug
+  hook_slug="$(to:slug "$hook_name" "_" 40)"
+  __HOOKS_CAPTURE_SEQ=$((__HOOKS_CAPTURE_SEQ + 1))
+  local capture_name="__${hook_slug}_${__HOOKS_CAPTURE_SEQ}"
+
+  local capture_file
+  capture_file="$(mktemp)" || {
+    echo:Error "failed to create temp file for hook capture"
+    return 1
+  }
+
+  local stdout_fifo
+  local stderr_fifo
+  stdout_fifo="$(mktemp)" && rm -f "$stdout_fifo" && mkfifo "$stdout_fifo" || {
+    echo:Error "failed to create stdout FIFO"
+    rm -f "$capture_file"
+    return 1
+  }
+  stderr_fifo="$(mktemp)" && rm -f "$stderr_fifo" && mkfifo "$stderr_fifo" || {
+    echo:Error "failed to create stderr FIFO"
+    rm -f "$capture_file" "$stdout_fifo"
+    return 1
+  }
+
+  sed 's/^/1: /' < "$stdout_fifo" >> "$capture_file" &
+  local stdout_pid=$!
+  sed 's/^/2: /' < "$stderr_fifo" >> "$capture_file" &
+  local stderr_pid=$!
+
+  "$@" > "$stdout_fifo" 2> "$stderr_fifo"
+  local exit_code=$?
+
+  wait "$stdout_pid" "$stderr_pid" || {
+    echo:Error "warning: capture background processes failed"
+  }
+  rm -f "$stdout_fifo" "$stderr_fifo"
+
+  declare -g -a "$capture_name"
+  local -n capture_ref="$capture_name"
+  capture_ref=()
+  mapfile -t capture_ref < "$capture_file"
+  rm -f "$capture_file"
+
+  printf -v "$capture_var_name" '%s' "$capture_name"
+  return "$exit_code"
+}
+
+#
+# Default middleware for hook implementations (internal)
+#
+# Usage:
+#   _hooks:middleware:default <hook_name> <exit_code> <capture_var> -- <hook_args...>
+#
+# Returns:
+#   Exit code from implementation
+#
+function _hooks:middleware:default() {
+  local hook_name="$1"
+  local exit_code="$2"
+  local capture_var="$3"
+  shift 3
+
+  if [[ "${1:-}" != "--" ]]; then
+    echo:Error "hooks middleware expects '--' separator"
+    return 1
+  fi
+  shift
+
+  local -n capture_ref="$capture_var"
+  local line
+  for line in "${capture_ref[@]}"; do
+    case "$line" in
+      "1: "*) printf '%s\n' "${line#1: }" ;;
+      "2: "*) printf '%s\n' "${line#2: }" >&2 ;;
+      *) printf '%s\n' "$line" ;;
+    esac
+  done
+
+  return "$exit_code"
+}
+
+#
+# Apply contract env directive
+#
+# Supported forms:
+#   NAME=VALUE
+#   NAME+=VALUE (append)
+#   NAME^=VALUE (prepend)
+#   NAME-=VALUE (remove segment)
+#
+function _hooks:env:apply() {
+  local expr="$1"
+  local name op value
+
+  if [[ "$expr" == *"+="* ]]; then
+    name="${expr%%+=*}"
+    value="${expr#*+=}"
+    op="+="
+  elif [[ "$expr" == *"^="* ]]; then
+    name="${expr%%^=*}"
+    value="${expr#*^=}"
+    op="^="
+  elif [[ "$expr" == *"-="* ]]; then
+    name="${expr%%-=*}"
+    value="${expr#*-=}"
+    op="-="
+  elif [[ "$expr" == *"="* ]]; then
+    name="${expr%%=*}"
+    value="${expr#*=}"
+    op="="
+  else
+    echo:Error "invalid contract env directive '${expr}'"
+    return 1
+  fi
+
+  if ! [[ "$name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+    echo:Error "invalid env var name '${name}' in contract"
+    return 1
+  fi
+
+  local current="${!name-}"
+  local next=""
+
+  case "$op" in
+    "=")
+      next="$value"
+      ;;
+    "+=")
+      if [[ -z "$current" ]]; then
+        next="$value"
+      else
+        next="${current}:$value"
+      fi
+      ;;
+    "^=")
+      if [[ -z "$current" ]]; then
+        next="$value"
+      else
+        next="${value}:$current"
+      fi
+      ;;
+    "-=")
+      if [[ -z "$current" ]]; then
+        next=""
+      else
+        local filtered=""
+        local part
+        local -a _hooks_parts=()
+        IFS=':' read -r -a _hooks_parts <<< "$current"
+        for part in "${_hooks_parts[@]}"; do
+          [[ "$part" == "$value" ]] && continue
+          if [[ -z "$filtered" ]]; then
+            filtered="$part"
+          else
+            filtered="${filtered}:$part"
+          fi
+        done
+        next="$filtered"
+      fi
+      ;;
+  esac
+
+  export "${name}=${next}"
+
+  if [[ "$name" == "DEBUG" ]]; then
+    _hooks:logger:refresh
+  fi
+
+  return 0
+}
+
+#
+# Refresh logger tags after DEBUG changes
+#
+function _hooks:logger:refresh() {
+  local tag
+  for tag in "${!TAGS[@]}"; do
+    local suffix="${tag^}"
+    if declare -F "config:logger:${suffix}" >/dev/null 2>&1; then
+      "config:logger:${suffix}" 2>/dev/null
+    fi
+  done
+}
+
+#
+# Middleware: contract-based modes and flow directives (internal)
+#
+# Usage:
+#   _hooks:middleware:modes <hook_name> <exit_code> <capture_var> -- <hook_args...>
+#
+function _hooks:middleware:modes() {
+  local hook_name="$1"
+  local exit_code="$2"
+  local capture_var="$3"
+  
+  # we ignore all other arguments, they are not used
+  echo:Hooks "middleware is processing hook: '${hook_name}'"
+
+  # shellcheck disable=SC2178
+  local -n capture_ref="$capture_var"
+  echo:Hooks "total captured lines for '${hook_name}': ${#capture_ref[@]}"
+
+  local line payload
+  for line in "${capture_ref[@]}"; do
+    payload=""
+    case "$line" in
+      "1: "*)
+        # payload allowed only from STDOUT stream
+        payload="${line#1: }"
+        printf '%s\n' "$payload"
+        ;;
+      # stderr we just re-print as is, just remove the prefix `2: `
+      "2: "*) printf '%s\n' "${line#2: }" >&2 ;;
+    esac
+
+    if [[ "$payload" == contract:* ]]; then
+      case "$payload" in
+        # modify env variable one per line
+        contract:env:*)
+          _hooks:env:apply "${payload#contract:env:}"
+          ;;
+        # route execution to another script
+        contract:route:*)
+          export __HOOKS_FLOW_ROUTE="${payload#contract:route:}"
+          export __HOOKS_FLOW_TERMINATE="true"
+          ;;
+        # exit with specified code
+        contract:exit:*)
+          export __HOOKS_FLOW_EXIT_CODE="${payload#contract:exit:}"
+          export __HOOKS_FLOW_TERMINATE="true"
+          ;;
+        # unknown directive, show error for user
+        *)
+          echo:Error "unknown contract directive '${payload}'"
+          ;;
+      esac
+    fi
+  done
+
+  return "$exit_code"
+}
+
+#
+# Apply flow directives from middleware (public)
+#
+# Usage:
+#   hooks:flow:apply
+#
+function hooks:flow:apply() {
+  if [[ "${__HOOKS_FLOW_TERMINATE:-}" != "true" ]]; then
+    return 0
+  fi
+
+  if [[ -n "${__HOOKS_FLOW_ROUTE:-}" ]]; then
+    # TODO: should it be source or script run mode?
+
+    # shellcheck disable=SC1090
+    source "${__HOOKS_FLOW_ROUTE}"
+  fi
+
+  exit "${__HOOKS_FLOW_EXIT_CODE:-0}"
+}
+
+#
 # Execute a hook if it's defined and has an implementation
 #
 # Usage:
@@ -380,111 +764,131 @@ function hooks:do() {
   fi
 
   echo:Hooks "Executing hook: $hook_name"
+  local middleware_fn="${__HOOKS_MIDDLEWARE[$hook_name]:-_hooks:middleware:default}"
+  echo:Hooks "  Using middleware: $middleware_fn"
 
   # execute function implementation first: hook:{name}
   local func_name="${HOOKS_PREFIX}${hook_name}"
   if declare -F "$func_name" >/dev/null 2>&1; then
     echo:Hooks "  → [function] ${func_name}"
-    "$func_name" "$@"
+    local capture_var=""
+    _hooks:capture:run "$hook_name" capture_var "$func_name" "$@"
+    local capture_exit=$?
+    "$middleware_fn" "$hook_name" "$capture_exit" "$capture_var" -- "$@"
     last_exit_code=$?
     echo:Hooks "    ↳ exit code: $last_exit_code"
     ((impl_count++))
   fi
 
-  # TODO: registered functions and script files should make one sequence and be executed in alphabetical order
-
-  # execute registered functions in alphabetical order by friendly name
+  # execute registered functions and scripts in a single alphabetical sequence
   local registered="${__HOOKS_REGISTERED[$hook_name]}"
+  local -a merged_impls=()
+  local reg_count=0
+  local script_count=0
+
   if [[ -n "$registered" ]]; then
-    # Split registrations and sort by friendly name
-    local -a sorted_registrations=()
     local entry
     IFS='|' read -ra entries <<< "$registered"
-
-    # Sort entries by friendly name (part before colon)
-    IFS=$'\n' sorted_registrations=($(sort <<<"${entries[*]}"))
-    unset IFS
-
-    local reg_count=${#sorted_registrations[@]}
+    reg_count=${#entries[@]}
     echo:Hooks "  Found ${reg_count} registered function(s) for hook '$hook_name'"
-
-    local reg_num=0
-    for entry in "${sorted_registrations[@]}"; do
-      ((reg_num++))
+    for entry in "${entries[@]}"; do
       local friendly="${entry%%:*}"
       local func="${entry#*:}"
-
-      # Verify function still exists
-      if declare -F "$func" >/dev/null 2>&1; then
-        echo:Hooks "  → [registered $reg_num/$reg_count] ${friendly} → ${func}()"
-        "$func" "$@"
-        last_exit_code=$?
-        echo:Hooks "    ↳ exit code: $last_exit_code"
-        ((impl_count++))
-      else
-        echo:Hooks "  ⚠ [registered $reg_num/$reg_count] ${friendly} → function ${func}() not found, skipping"
-      fi
+      merged_impls+=("${friendly}|registered|${func}|${friendly}")
     done
   fi
 
-  # find and execute all matching script implementations
-  # patterns: {hook_name}-*.sh or {hook_name}_*.sh
   if [[ -d "$HOOKS_DIR" ]]; then
     local -a hook_scripts=()
 
-    # find scripts matching the patterns
     while IFS= read -r -d '' script; do
       if [[ -x "$script" ]]; then
         hook_scripts+=("$script")
       fi
     done < <(find "$HOOKS_DIR" -maxdepth 1 \( -name "${hook_name}-*.sh" -o -name "${hook_name}_*.sh" \) -type f -print0 2>/dev/null | sort -z)
 
-    # log discovered scripts
-    if [[ ${#hook_scripts[@]} -gt 0 ]]; then
-      echo:Hooks "  Found ${#hook_scripts[@]} script(s) for hook '$hook_name'"
+    script_count=${#hook_scripts[@]}
+    if [[ $script_count -gt 0 ]]; then
+      echo:Hooks "  Found ${script_count} script(s) for hook '$hook_name'"
+      for script in "${hook_scripts[@]}"; do
+        local script_name
+        local sort_key
+        script_name=$(basename "$script")
+        sort_key="$script_name"
+        if [[ "$script_name" == "${hook_name}-"* ]]; then
+          sort_key="${script_name#${hook_name}-}"
+        elif [[ "$script_name" == "${hook_name}_"* ]]; then
+          sort_key="${script_name#${hook_name}_}"
+        fi
+        sort_key="${sort_key%.sh}"
+        merged_impls+=("${sort_key}|script|${script}|${script_name}")
+      done
     fi
+  fi
 
-    # execute each script in alphabetical order
+  if [[ ${#merged_impls[@]} -gt 0 ]]; then
+    IFS=$'\n' merged_impls=($(sort <<<"${merged_impls[*]}"))
+    unset IFS
+
+    local reg_num=0
     local script_num=0
-    for script in "${hook_scripts[@]}"; do
+    for entry in "${merged_impls[@]}"; do
+      local sort_key
+      local impl_type
+      local target
+      local label
+      IFS='|' read -r sort_key impl_type target label <<< "$entry"
+
+      if [[ "$impl_type" == "registered" ]]; then
+        ((reg_num++))
+        if declare -F "$target" >/dev/null 2>&1; then
+          echo:Hooks "  → [registered $reg_num/$reg_count] ${label} → ${target}()"
+          local capture_var=""
+          _hooks:capture:run "$hook_name" capture_var "$target" "$@"
+          local capture_exit=$?
+          "$middleware_fn" "$hook_name" "$capture_exit" "$capture_var" -- "$@"
+          last_exit_code=$?
+          echo:Hooks "    ↳ exit code: $last_exit_code"
+          ((impl_count++))
+        else
+          echo:Hooks "  ⚠ [registered $reg_num/$reg_count] ${label} → function ${target}() not found, skipping"
+        fi
+        continue
+      fi
+
       ((script_num++))
-      local script_name=$(basename "$script")
-      local exec_mode=$(hooks:exec:mode "$script_name")
+      local exec_mode
+      exec_mode=$(hooks:exec:mode "$label")
 
       if [[ "$exec_mode" == "source" ]]; then
-        echo:Hooks "  → [script $script_num/$((${#hook_scripts[@]}))] ${script_name} (sourced mode)"
-        # Source the script and call hook:run function if it exists
+        echo:Hooks "  → [script $script_num/${script_count}] ${label} (sourced mode)"
         # shellcheck disable=SC1090
-        source "$script"
+        source "$target"
         if declare -F "hook:run" >/dev/null 2>&1; then
           hook:run "$@"
           last_exit_code=$?
         else
-          echo:Hooks "    ⚠ No hook:run function found in ${script_name}, skipping"
+          echo:Hooks "    ⚠ No hook:run function found in ${label}, skipping"
           last_exit_code=0
         fi
       else
-        echo:Hooks "  → [script $script_num/${#hook_scripts[@]}] ${script_name} (exec mode)"
-        "$script" "$@"
+        echo:Hooks "  → [script $script_num/${script_count}] ${label} (exec mode)"
+        local capture_var=""
+        _hooks:capture:run "$hook_name" capture_var "$target" "$@"
+        local capture_exit=$?
+        "$middleware_fn" "$hook_name" "$capture_exit" "$capture_var" -- "$@"
         last_exit_code=$?
       fi
 
       echo:Hooks "    ↳ exit code: $last_exit_code"
       ((impl_count++))
-
-      # optionally stop on first failure (uncomment if needed)
-      # if [[ $last_exit_code -ne 0 ]]; then
-      #   echo:Hooks "  ✗ Hook failed, stopping execution"
-      #   return $last_exit_code
-      # fi
     done
   fi
 
   if [[ $impl_count -eq 0 ]]; then
-    # TODO: its not a warning, its 99% of the usages. so message should INFO, not WARNING
-    echo:Hooks "  ⚠ No implementations found for hook '$hook_name'"
+    echo:Hooks "  ⚪ No implementations found for hook '$hook_name'"
   else
-    echo:Hooks "  ✓ Completed hook '$hook_name' (${impl_count} implementation(s), final exit code: $last_exit_code)"
+    echo:Hooks "  🟢 Completed hook '$hook_name' (${impl_count} implementation(s), final exit code: $last_exit_code)"
   fi
 
   return $last_exit_code
@@ -687,13 +1091,19 @@ function hooks:reset() {
   unset __HOOKS_DEFINED
   unset __HOOKS_CONTEXTS
   unset __HOOKS_REGISTERED
+  unset __HOOKS_MIDDLEWARE
   unset __HOOKS_SOURCE_PATTERNS
   unset __HOOKS_SCRIPT_PATTERNS
+  unset __HOOKS_CAPTURE_SEQ
+  unset __HOOKS_END_TRAP_INSTALLED
   
   # Re-declare as associative arrays
   declare -g -A __HOOKS_DEFINED
   declare -g -A __HOOKS_CONTEXTS
   declare -g -A __HOOKS_REGISTERED
+  declare -g -A __HOOKS_MIDDLEWARE
+  declare -g __HOOKS_CAPTURE_SEQ=0
+  declare -g __HOOKS_END_TRAP_INSTALLED="false"
   
   # Re-declare as indexed arrays
   declare -g -a __HOOKS_SOURCE_PATTERNS=()
@@ -703,6 +1113,7 @@ function hooks:reset() {
   HOOKS_DIR="ci-cd"
   HOOKS_PREFIX="hook:"
   HOOKS_EXEC_MODE="exec"
+  HOOKS_AUTO_TRAP="true"
 }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
@@ -713,6 +1124,14 @@ ${__SOURCED__:+return}
 # Initialize logger for hooks (disabled by default, enable with DEBUG=hooks or DEBUG=*)
 # Output to stderr for traceability (user output goes to stdout, logging to stderr)
 logger:init hooks "${cl_grey}[hooks]${cl_reset} " ">&2"
+
+# Initialize logger for modes (disabled by default, enable with DEBUG=modes or DEBUG=*)
+logger:init modes "${cl_yellow}[modes]${cl_reset} " ">&2"
+
+# initialize error logger early (used by error paths)
+logger:init error "${cl_red}[error]${cl_reset} " ">&2"
+
+hooks:bootstrap
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
