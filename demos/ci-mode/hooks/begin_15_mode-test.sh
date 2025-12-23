@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 1.12.1
+## Last revisit: 2025-12-23
+## Version: 1.12.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -11,11 +11,11 @@
 
 function hook:run() {
   # Check if mode is a file path (TEST mode)
-  [[ ! -f "${__CI_SCRIPT_MODE}" ]] && return 0
+  [[ ! -f "${__HOOKS_FLOW_MODE}" ]] && return 0
 
-  echo "[mode] TEST: sourcing ${__CI_SCRIPT_MODE}" >&2
+  echo "[modes] TEST: sourcing ${__HOOKS_FLOW_MODE}" >&2
   # shellcheck disable=SC1090
-  source "${__CI_SCRIPT_MODE}"
-  export __CI_MODE_EXIT="${__CI_MODE_EXIT_CODE:-0}"
-  export __CI_MODE_TERMINATE=true
+  source "${__HOOKS_FLOW_MODE}"
+  export __HOOKS_FLOW_EXIT_CODE="${__HOOKS_FLOW_EXIT_CODE:-0}"
+  export __HOOKS_FLOW_TERMINATE=true
 }

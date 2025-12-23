@@ -1,6 +1,7 @@
 --require spec_helper
 --shell bash
 --format t
+--profile
 --skip-message quiet
 --pending-message quiet
 --output junit

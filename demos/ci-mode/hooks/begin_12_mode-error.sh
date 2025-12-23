@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 1.12.1
+## Last revisit: 2025-12-23
+## Version: 1.12.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -10,10 +10,10 @@
 ## Purpose: Handle ERROR mode - exit parent with specified error code
 
 function hook:run() {
-  [[ "${__CI_SCRIPT_MODE}" != "ERROR" ]] && return 0
+  [[ "${__HOOKS_FLOW_MODE}" != "ERROR" ]] && return 0
 
-  local error_code="${CI_SCRIPT_ERROR_CODE:-1}"
-  echo "[mode] ERROR: exiting with code ${error_code}" >&2
-  export __CI_MODE_EXIT="${error_code}"
-  export __CI_MODE_TERMINATE=true
+  local error_code="${HOOKS_FLOW_ERROR_CODE:-1}"
+  echo "[modes] ERROR: exiting with code ${error_code}" >&2
+  export __HOOKS_FLOW_EXIT_CODE="${error_code}"
+  export __HOOKS_FLOW_TERMINATE=true
 }

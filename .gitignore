@@ -51,9 +51,6 @@ bin/bitbucket
 # symbolic links (for Linux only)
 bin/gnubin
 
-# patches
-patches/
-
 # legacy/ archived scripts or demos
 legacy/
 
@@ -71,5 +68,7 @@ mise.toml
 .mcp.json
 .env.secrets.json
 
-# BUN/Typescript helpers
+# BUN/NodeJs/Typescript helpers
 bun.lock*
+package-lock.json
+yarn.lock

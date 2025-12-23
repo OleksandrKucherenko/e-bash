@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-06
-## Version: 1.0.0
+## Last revisit: 2025-12-22
+## Version: 1.16.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -18,7 +18,7 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   # Create bin directory if it doesn't exist
   mkdir -p "$BIN_DIR"
 
-  TOOLS=("grep" "sed" "find" "awk" "mv" "cp" "ln" "readlink")
+  TOOLS=("grep" "sed" "find" "awk" "mv" "cp" "ln" "readlink" "date")
 
   for tool in "${TOOLS[@]}"; do
     # Create symbolic link for g${tool} if it doesn't exist

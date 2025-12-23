@@ -18,20 +18,39 @@
     - [Error Handling Hooks](#error-handling-hooks)
     - [Lifecycle Hooks](#lifecycle-hooks)
     - [Custom Hooks](#custom-hooks)
+    - [Nested Hooks (Composability)](#nested-hooks-composability)
+  - [Execution Modes](#execution-modes)
+    - [Exec Mode (Default)](#exec-mode-default)
+    - [Source Mode](#source-mode)
+  - [Hooks Middleware (Contract)](#hooks-middleware-contract)
+    - [Register Middleware](#register-middleware)
+    - [Middleware Signature](#middleware-signature)
+    - [Capture Format](#capture-format)
+    - [Default Behavior](#default-behavior)
+    - [Side Effects and Source Mode](#side-effects-and-source-mode)
   - [Implementation Patterns](#implementation-patterns)
     - [Function-Based Hooks](#function-based-hooks)
     - [Script-Based Hooks](#script-based-hooks)
     - [Hybrid Approach](#hybrid-approach)
+    - [Registered Functions](#registered-functions)
   - [Best Practices](#best-practices)
+    - [CI/CD Hook Scripting Best Practices](#cicd-hook-scripting-best-practices)
+    - [Logging and Debugging Best Practices](#logging-and-debugging-best-practices)
   - [Reference](#reference)
     - [Environment Variables](#environment-variables)
+    - [Logging](#logging)
     - [Global Arrays](#global-arrays)
     - [Key Functions](#key-functions)
+      - [`hooks:declare hook1 hook2 ...`](#hooksdeclare-hook1-hook2-)
+      - [`hooks:do hook_name [params...]`](#hooksdo-hook_name-params)
+      - [`hooks:list`](#hookslist)
+      - [`hooks:known hook_name`](#hooksknown-hook_name)
+      - [`hooks:runnable hook_name`](#hooksrunnable-hook_name)
   - [Examples](#examples)
     - [Example 1: Basic Lifecycle Hooks](#example-1-basic-lifecycle-hooks)
     - [Example 2: Decision Hook](#example-2-decision-hook)
     - [Example 3: Error Recovery](#example-3-error-recovery)
-    - [Example 4: Script-Based Hooks](#example-4-script-based-hooks)
+    - [Example 4: CI/CD Pipeline with Multiple Hook Scripts](#example-4-cicd-pipeline-with-multiple-hook-scripts)
 
 <!-- /TOC -->
 
@@ -59,6 +78,7 @@ hooks:do end
 You can implement hooks in two ways:
 
 **Method 1: Function-based (in the same script)**
+
 ```bash
 # Define the hook function
 hook:begin() {
@@ -69,6 +89,7 @@ hook:begin() {
 ```
 
 **Method 2: Script-based (external files in ci-cd folder)**
+
 ```bash
 # Create ci-cd/begin-init.sh
 mkdir -p ci-cd
@@ -146,6 +167,7 @@ fi
 **Execution Order**: Function implementations execute first, then all matching scripts in alphabetical order.
 
 1. **Function Implementation** (`hook:{name}`)
+
    ```bash
    hook:begin() {
      echo "Function-based hook"
@@ -303,6 +325,7 @@ hooks:declare extract transform validate load index notify
 The hooks system supports nested/composed scripts where multiple scripts can define the same hook names. This is essential when your script sources libraries or helper scripts that also use hooks.
 
 **How It Works:**
+
 - Each `hooks:declare` call tracks which script/context defined the hook
 - The same hook name can be defined from multiple contexts
 - When a hook is defined from multiple contexts, a warning is issued
@@ -351,7 +374,7 @@ hooks:do cleanup  # Outputs: "Library cleanup\nMain script cleanup"
 
 When the same hook is defined from multiple contexts, you'll see:
 
-```
+```text
 ⚠ Warning: Hook 'init' is being defined from multiple contexts:
     Existing: /path/to/library.sh
     New:      /path/to/main.sh
@@ -359,6 +382,7 @@ When the same hook is defined from multiple contexts, you'll see:
 ```
 
 **Best Practices:**
+
 - Use unique hook names in libraries when possible to avoid conflicts
 - Document when libraries define standard hooks (init, cleanup, etc.)
 - Verify warnings are intentional when composing scripts
@@ -392,6 +416,7 @@ source "$E_BASH/_hooks.sh"
 ```
 
 **Use exec mode when:**
+
 - Scripts should be isolated
 - Scripts shouldn't modify parent environment
 - Standard subprocess behavior is desired
@@ -410,6 +435,7 @@ source "$E_BASH/_hooks.sh"
 ```
 
 **Hook script example for source mode:**
+
 ```bash
 #!/usr/bin/env bash
 
@@ -431,6 +457,7 @@ function hook:run() {
 ```
 
 **Use source mode when:**
+
 - Hooks need to modify parent shell environment
 - Setting environment variables for subsequent hooks
 - Changing current directory
@@ -438,6 +465,77 @@ function hook:run() {
 - Maintaining state across hook executions
 
 **Note**: In source mode, if a script doesn't define `hook:run`, it will be skipped with a warning (visible with `DEBUG=hooks`).
+
+## Hooks Middleware (Contract)
+
+Hooks can register per-hook middleware to interpret a contract between hook implementations and the main script. Middleware runs only for exec-mode implementations (hook functions, registered functions, exec-mode scripts). Source-mode scripts bypass middleware.
+
+### Register Middleware
+
+```bash
+# Register middleware for a hook
+hooks:middleware begin my_middleware
+
+# Reset to default middleware
+hooks:middleware begin
+```
+
+### Built-in Modes Middleware
+
+```bash
+hooks:middleware begin _hooks:middleware:modes
+hooks:do begin "$SCRIPT_NAME"
+hooks:flow:apply
+```
+
+This middleware understands a small contract for exec-mode hooks:
+
+- `contract:env:NAME=VALUE`
+- `contract:env:NAME+=VALUE` (append)
+- `contract:env:NAME^=VALUE` (prepend)
+- `contract:env:NAME-=VALUE` (remove segment)
+- `contract:route:/path/to/script`
+- `contract:exit:CODE`
+
+Use `hooks:flow:apply` to perform route/exit directives in the parent shell.
+
+### Middleware Signature
+
+```bash
+my_middleware() {
+  local hook_name="$1"
+  local exit_code="$2"
+  local capture_var="$3"
+  shift 3
+
+  # First arg after the capture var must be "--"
+  [[ "$1" == "--" ]] && shift
+
+  # Access captured output
+  local -n capture_ref="$capture_var"
+  for line in "${capture_ref[@]}"; do
+    # Custom contract parsing here
+    :
+  done
+
+  return "$exit_code"
+}
+```
+
+### Capture Format
+
+Each implementation is executed through a capture harness. Output is stored as a timeline array with prefixed lines:
+
+- `1: ` prefix for stdout lines
+- `2: ` prefix for stderr lines
+
+### Default Behavior
+
+If no middleware is registered, the default middleware replays stdout/stderr unchanged and returns the original exit code. Output is buffered until the implementation completes.
+
+### Side Effects and Source Mode
+
+Exec-mode implementations run in a subshell, so direct variable changes do not persist in the parent shell. Use middleware to apply side effects, or use source mode when you need direct access to parent shell state.
 
 ## Implementation Patterns
 
@@ -526,6 +624,7 @@ hooks:do end
 Register any Bash function as a hook implementation dynamically. This is perfect for adding observability, metrics, or forwarding to external scripts.
 
 **Key Features:**
+
 - Register multiple functions per hook
 - Functions execute in alphabetical order by friendly name
 - Functions can be registered and unregistered at runtime
@@ -618,11 +717,13 @@ hooks:unregister build "metrics"
 ```
 
 **Execution Order:**
+
 1. `hook:{name}()` function (if exists)
 2. Registered functions (alphabetical by friendly name)
 3. External scripts (alphabetical by filename)
 
 **Use Cases:**
+
 1. **Metrics & Observability**: Track execution time, success rates, resource usage
 2. **External Tool Integration**: Forward to Datadog, Slack, PagerDuty, etc.
 3. **Conditional Logic**: Register different functions based on environment
@@ -641,15 +742,21 @@ hooks:list
 ## Best Practices
 
 1. **Always declare hooks upfront** using `hooks:declare` to make them discoverable
-2. **Use descriptive hook names** that clearly indicate their purpose
-3. **Document expected parameters** for each hook in your script comments
-4. **Handle missing implementations gracefully** - hooks without implementations are silently skipped
-5. **Return meaningful exit codes** from hook implementations
-6. **Keep hook implementations focused** - each hook should do one thing well
-7. **Use function hooks for simple logic**, script hooks for complex operations
-8. **Test hook implementations independently** before integrating
-9. **Consider hook execution order** when defining multiple hooks
-10. **Make external hook scripts executable**: `chmod +x ci-cd/*.sh`
+2. **Begin/end are auto-declared** when `_hooks.sh` is sourced; declare custom hooks explicitly
+3. **Use descriptive hook names** that clearly indicate their purpose
+4. **Document expected parameters** for each hook in your script comments
+5. **Handle missing implementations gracefully** - hooks without implementations are silently skipped
+6. **Return meaningful exit codes** from hook implementations
+7. **Keep hook implementations focused** - each hook should do one thing well
+8. **Use function hooks for simple logic**, script hooks for complex operations
+9. **Test hook implementations independently** before integrating
+10. **Consider hook execution order** when defining multiple hooks
+11. **Make external hook scripts executable**: `chmod +x ci-cd/*.sh`
+
+### Fail-fast and Graceful Exit
+
+- **Fail fast by default**: treat non-zero hook exit codes as immediate failure in the caller
+- **Use traps for graceful shutdown**: source `_traps.sh` and register an `EXIT` handler to run cleanup or `end` hooks even on failure
 
 ### CI/CD Hook Scripting Best Practices
 
@@ -684,9 +791,11 @@ hooks:list
 | `HOOKS_DIR` | `ci-cd` | Directory containing hook scripts |
 | `HOOKS_PREFIX` | `hook:` | Prefix for hook function names |
 | `HOOKS_EXEC_MODE` | `exec` | Execution mode: `exec` (subprocess) or `source` (current shell) |
+| `HOOKS_AUTO_TRAP` | `true` | Auto-install EXIT trap to run `end` hooks |
 | `DEBUG` | (unset) | Enable logging: `hooks` for hooks only, `*` for all modules |
 
 **Configuration Examples:**
+
 ```bash
 # Use custom directory
 export HOOKS_DIR="my-hooks"
@@ -709,6 +818,7 @@ source "$E_BASH/_hooks.sh"
 The hooks system provides comprehensive logging for traceability and debugging.
 
 **Enable Logging:**
+
 ```bash
 # Respect existing DEBUG value, or set default
 export DEBUG=${DEBUG:-"hooks"}  # Enable hooks logging only (respects user's DEBUG)
@@ -722,6 +832,7 @@ export DEBUG="-"      # Force disable all logging
 ```
 
 **What Gets Logged (to stderr):**
+
 - Hook registration during `hooks:declare`
 - Hook execution start/completion
 - Function hook execution
@@ -732,9 +843,10 @@ export DEBUG="-"      # Force disable all logging
 - Warnings for missing implementations or functions
 
 **Log Output Example:**
-```
+
+```text
 Defining hooks: deploy
-  ✓ Registered hook: deploy
+  🟢 Registered hook: deploy
 Executing hook: deploy
   Found 3 script(s) for hook 'deploy'
   → [script 1/3] deploy_01_backup.sh (exec mode)
@@ -743,7 +855,7 @@ Executing hook: deploy
     ↳ exit code: 0
   → [script 3/3] deploy_03_verify.sh (exec mode)
     ↳ exit code: 0
-  ✓ Completed hook 'deploy' (3 implementation(s), final exit code: 0)
+  🟢 Completed hook 'deploy' (3 implementation(s), final exit code: 0)
 ```
 
 ### Global Arrays
@@ -759,13 +871,16 @@ Executing hook: deploy
 Declares available hooks in the script.
 
 **Parameters:**
+
 - `$@` - List of hook names to define
 
 **Returns:**
+
 - `0` - Success
 - `1` - Invalid hook name
 
 **Example:**
+
 ```bash
 hooks:declare begin end decide error rollback
 ```
@@ -775,19 +890,23 @@ hooks:declare begin end decide error rollback
 Executes a hook if it's defined and has an implementation.
 
 **Execution Order:**
+
 1. Function `hook:{name}` (if exists)
 2. All scripts matching `ci-cd/{hook_name}-*.sh` (alphabetically)
 3. All scripts matching `ci-cd/{hook_name}_*.sh` (alphabetically)
 
 **Parameters:**
+
 - `$1` - Hook name
 - `$@` - Additional parameters passed to the hook (and all scripts)
 
 **Returns:**
+
 - Exit code of the last executed hook/script, or `0` if not implemented
 - All hooks' stdout is passed through
 
 **Example:**
+
 ```bash
 hooks:do begin
 hooks:do error "Something failed" 1
@@ -795,6 +914,7 @@ result=$(hooks:do decide "Continue?")
 ```
 
 **Script Pattern Examples:**
+
 ```bash
 # These scripts will execute in this order for: hooks:do deploy
 ci-cd/deploy-backup.sh      # 1. Alphabetically first
@@ -808,10 +928,12 @@ ci-cd/deploy_02_verify.sh   # 4. Underscore pattern
 Lists all defined hooks with their implementation status.
 
 **Returns:**
+
 - `0` - Success
 - Prints list of hooks to stdout
 
 **Example:**
+
 ```bash
 hooks:list
 # Output:
@@ -826,13 +948,16 @@ hooks:list
 Checks if a hook is defined.
 
 **Parameters:**
+
 - `$1` - Hook name
 
 **Returns:**
+
 - `0` - Hook is defined
 - `1` - Hook is not defined
 
 **Example:**
+
 ```bash
 if hooks:known begin; then
   echo "begin hook is available"
@@ -844,13 +969,16 @@ fi
 Checks if a hook has an implementation (function or script).
 
 **Parameters:**
+
 - `$1` - Hook name
 
 **Returns:**
+
 - `0` - Hook has implementation
 - `1` - Hook has no implementation
 
 **Example:**
+
 ```bash
 if hooks:runnable begin; then
   hooks:do begin
@@ -954,6 +1082,7 @@ echo "Transaction successful"
 ### Example 4: CI/CD Pipeline with Multiple Hook Scripts
 
 **Main deployment script:**
+
 ```bash
 #!/usr/bin/env bash
 source "$E_BASH/_hooks.sh"
@@ -969,6 +1098,7 @@ echo "Deployment complete!"
 ```
 
 **ci-cd/pre_deploy_01_validate.sh:**
+
 ```bash
 #!/usr/bin/env bash
 echo "[01] Validating environment..."
@@ -978,6 +1108,7 @@ echo "✓ Validation passed"
 ```
 
 **ci-cd/pre_deploy_02_backup.sh:**
+
 ```bash
 #!/usr/bin/env bash
 backup_dir="/backups/$(date +%Y%m%d_%H%M%S)"
@@ -988,6 +1119,7 @@ echo "✓ Backup complete"
 ```
 
 **ci-cd/deploy_01_stop.sh:**
+
 ```bash
 #!/usr/bin/env bash
 echo "[Deploy 01] Stopping application service..."
@@ -996,6 +1128,7 @@ echo "✓ Service stopped"
 ```
 
 **ci-cd/deploy_02_update.sh:**
+
 ```bash
 #!/usr/bin/env bash
 echo "[Deploy 02] Deploying new version..."
@@ -1004,6 +1137,7 @@ echo "✓ Files updated"
 ```
 
 **ci-cd/deploy_03_start.sh:**
+
 ```bash
 #!/usr/bin/env bash
 echo "[Deploy 03] Starting application service..."
@@ -1013,6 +1147,7 @@ echo "✓ Service started"
 ```
 
 **ci-cd/post_deploy-migrations.sh:**
+
 ```bash
 #!/usr/bin/env bash
 echo "[Post] Running database migrations..."
@@ -1021,6 +1156,7 @@ echo "✓ Migrations complete"
 ```
 
 **ci-cd/verify-health.sh:**
+
 ```bash
 #!/usr/bin/env bash
 echo "[Verify] Checking application health..."
@@ -1035,7 +1171,8 @@ fi
 ```
 
 **Execution Flow:**
-```
+
+```text
 hooks:do pre_deploy
   → pre_deploy_01_validate.sh  (alphabetically first)
   → pre_deploy_02_backup.sh
@@ -1055,6 +1192,7 @@ hooks:do verify
 ---
 
 For more information on e-bash modules, see:
+
 - [Logger Documentation](./logger.md)
 - [Arguments Documentation](./arguments.md)
 - [Traps Documentation](./traps.md)

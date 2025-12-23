@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-04-22
-## Version: 1.0.0
+## Last revisit: 2025-12-22
+## Version: 1.16.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -106,7 +106,8 @@ function logger() {
   local suffix=${1^} # capitalize first letter
 
   # check if logger already exists, then skip
-  if type "echo:${suffix}" &>/dev/null; then return 0; fi
+  # if type "echo:${suffix}" &>/dev/null; then return 0; fi
+  if declare -F "echo:${suffix}" >/dev/null; then return 0; fi
 
   # keep it disabled by default
   TAGS+=([$tag]=0)

@@ -150,6 +150,19 @@ jobs:
           echo "Dependencies loaded via DIRENV with CI auto-install mode"
           brew cleanup
 
+      - name: Apply ShellSpec Timeout Patch
+        run: |
+          # Apply the timeout feature patch to ShellSpec if not already applied
+          if ! shellspec --help 2>/dev/null | grep -q -- '--timeout'; then
+            echo "Applying ShellSpec timeout patch..."
+            chmod +x patches/apply.sh
+            ./patches/apply.sh
+          else
+            echo "ShellSpec timeout patch already applied"
+          fi
+          # Verify patch is applied
+          shellspec --help | grep -A 2 timeout
+
       - name: Run shellspec Tests (chunk ${{ matrix.chunk }})
         timeout-minutes: 10
         run: |
@@ -367,6 +380,19 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
           echo "Dependencies loaded via DIRENV with CI auto-install mode"
           brew cleanup
+
+      - name: Apply ShellSpec Timeout Patch
+        run: |
+          # Apply the timeout feature patch to ShellSpec if not already applied
+          if ! shellspec --help 2>/dev/null | grep -q -- '--timeout'; then
+            echo "Applying ShellSpec timeout patch..."
+            chmod +x patches/apply.sh
+            ./patches/apply.sh
+          else
+            echo "ShellSpec timeout patch already applied"
+          fi
+          # Verify patch is applied
+          shellspec --help | grep -A 2 timeout
 
       - name: Run shellspec tests with coverage (chunk ${{ matrix.chunk }})
         timeout-minutes: 10

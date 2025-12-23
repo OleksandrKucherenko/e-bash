@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 1.12.1
+## Last revisit: 2025-12-21
+## Version: 1.16.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -27,7 +27,7 @@ echo "----------------------------------------"
 # Define available hooks
 hooks:declare begin end
 
-echo "✓ Defined hooks: begin, end"
+echo "🟢 Defined hooks: begin, end"
 echo ""
 
 # Implement hooks as functions
@@ -83,7 +83,7 @@ hook:decide() {
 
 echo "Using decision hook:"
 if [[ "$(hooks:do decide "Should we continue?")" == "yes" ]]; then
-  echo "  ${cl_green}✓ Decision was YES - proceeding${cl_reset}"
+  echo "  ${cl_green}🟢 Decision was YES - proceeding${cl_reset}"
 else
   echo "  ${cl_red}✗ Decision was NO - stopping${cl_reset}"
 fi
@@ -106,7 +106,7 @@ hook:error() {
 
 hook:rollback() {
   echo "  ${cl_yellow}↺ Rolling back changes...${cl_reset}"
-  echo "  ${cl_green}✓ Rollback complete${cl_reset}"
+  echo "  ${cl_green}🟢 Rollback complete${cl_reset}"
 }
 
 echo "Simulating error scenario:"
@@ -135,11 +135,11 @@ echo ""
 
 echo "Checking specific hooks:"
 if hooks:known implemented; then
-  echo "  ${cl_green}✓ 'implemented' hook is defined${cl_reset}"
+  echo "  ${cl_green}🟢 'implemented' hook is defined${cl_reset}"
 fi
 
 if hooks:runnable implemented; then
-  echo "  ${cl_green}✓ 'implemented' hook has an implementation${cl_reset}"
+  echo "  ${cl_green}🟢 'implemented' hook has an implementation${cl_reset}"
 fi
 
 if ! hooks:runnable not_implemented; then
@@ -156,13 +156,13 @@ echo "----------------------------------------"
 
 echo "Calling undefined hook (silently skipped):"
 hooks:do undefined_hook "param1" "param2"
-echo "  ${cl_green}✓ Script continued without error${cl_reset}"
+echo "  ${cl_green}🟢 Script continued without error${cl_reset}"
 
 echo ""
 
 echo "Calling defined but not implemented hook:"
 hooks:do not_implemented
-echo "  ${cl_green}✓ Script continued without error${cl_reset}"
+echo "  ${cl_green}🟢 Script continued without error${cl_reset}"
 
 echo ""
 
@@ -202,11 +202,11 @@ hook:post_process() {
 
 echo "Executing lifecycle hooks:"
 hooks:do pre_validate
-hooks:do validate && echo "  ${cl_green}✓ Validation passed${cl_reset}"
+hooks:do validate && echo "  ${cl_green}🟢 Validation passed${cl_reset}"
 hooks:do post_validate
 
 hooks:do pre_process
-hooks:do process && echo "  ${cl_green}✓ Processing complete${cl_reset}"
+hooks:do process && echo "  ${cl_green}🟢 Processing complete${cl_reset}"
 hooks:do post_process
 
 echo ""

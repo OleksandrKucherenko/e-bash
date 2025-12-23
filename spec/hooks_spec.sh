@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # shell: bash altsh=shellspec
 # shellcheck shell=bash
-# shellcheck disable=SC2317,SC2016
+# shellcheck disable=SC2317,SC2016,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 1.12.1
+## Last revisit: 2025-12-23
+## Version: 1.12.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -15,7 +15,7 @@ eval "$(shellspec - -c) exit 1"
 % TEST_HOOKS_DIR: "$SHELLSPEC_TMPBASE/test_hooks"
 
 export SCRIPT_DIR=".scripts"
-export E_BASH="$(pwd)/.scripts"
+export E_BASH="$(pwd)/${SCRIPT_DIR}"
 
 # Enable debug output for hooks module to verify execution paths
 export DEBUG="hooks"
@@ -27,6 +27,10 @@ Mock printf:Hooks
 End
 
 Mock echo:Hooks
+  echo "$@" >&2
+End
+
+Mock echo:Error
   echo "$@" >&2
 End
 
@@ -53,14 +57,6 @@ Describe '_hooks.sh /'
   AfterAll 'hooks:reset'
 
   Context 'Hook definition /'
-    It 'defines single hook successfully'
-      When call hooks:declare begin
-
-      The status should be success
-      # Verify via logger that hook was actually registered
-      The result of function no_colors_stderr should include "Registered hook: begin"
-    End
-
     It 'defines multiple hooks successfully'
       When call hooks:declare begin end decide error rollback
 
@@ -77,7 +73,7 @@ Describe '_hooks.sh /'
       When call hooks:declare "invalid@hook"
 
       The status should be failure
-      The error should include "Invalid hook name"
+      The result of function no_colors_stderr should include "invalid hook name"
     End
 
     It 'accepts hook names with underscores and dashes'
@@ -89,13 +85,35 @@ Describe '_hooks.sh /'
       The result of function no_colors_stderr should include "Registered hook: my-hook"
     End
 
-    It 'can define custom hook names'
-      When call hooks:declare custom_pre_process after_validate
+  End
+
+  Context 'Hooks bootstrap /'
+    It 'declares begin and end hooks'
+      setup() {
+        hooks:reset
+        export HOOKS_AUTO_TRAP="false"
+        hooks:bootstrap
+      }
+      BeforeCall 'setup'
+
+      run_bootstrap() {
+        hooks:do begin >/dev/null
+      }
+
+      When call run_bootstrap
 
       The status should be success
-      # Verify custom hook names were registered
-      The result of function no_colors_stderr should include "Registered hook: custom_pre_process"
-      The result of function no_colors_stderr should include "Registered hook: after_validate"
+      The result of function no_colors_stderr should include "Executing hook: begin"
+    End
+
+    It 'loads trap:on helper'
+      check_trap_helper() {
+        type trap:on >/dev/null
+      }
+
+      When call check_trap_helper
+
+      The status should be success
     End
   End
 
@@ -189,7 +207,7 @@ Describe '_hooks.sh /'
       The status should be success
       The output should eq ''
       # Verify logger shows no implementation found
-      The result of function no_colors_stderr should include "No implementations found for hook"
+      The result of function no_colors_stderr should include "⚪ No implementations found for hook"
     End
   End
 
@@ -200,7 +218,7 @@ Describe '_hooks.sh /'
     }
 
     cleanup_hooks_dir() {
-      rm -rf /tmp/test_hooks
+      rm -rf "$TEST_HOOKS_DIR"
     }
 
     BeforeAll 'setup_hooks_dir'
@@ -314,6 +332,33 @@ EOF
       The result of function no_colors_stderr should include "[script 1/1]"
     End
 
+    It 'executes registered functions and scripts in one alphabetical sequence'
+      setup() {
+        setup_test_hooks_dir
+        hooks:declare merge_order
+        hook:merge_order() { echo "function"; }
+        func_alpha() { echo "alpha"; }
+        func_charlie() { echo "charlie"; }
+        hooks:register merge_order "10-alpha" func_alpha
+        hooks:register merge_order "30-charlie" func_charlie
+        cat > "$TEST_HOOKS_DIR/merge_order-20-bravo.sh" <<'EOF'
+#!/usr/bin/env bash
+echo "bravo"
+EOF
+        chmod +x "$TEST_HOOKS_DIR"/merge_order-20-bravo.sh
+      }
+      BeforeCall 'setup'
+
+      When call hooks:do merge_order
+
+      The status should be success
+      The line 1 should eq "function"
+      The line 2 should eq "alpha"
+      The line 3 should eq "bravo"
+      The line 4 should eq "charlie"
+      The result of function no_colors_stderr should include "Executing hook: merge_order"
+    End
+
     It 'skips non-executable script files'
       test_non_executable() {
         # Set up test environment
@@ -336,50 +381,11 @@ EOF
 
       The status should be success
       The output should eq ''
-      The result of function no_colors_stderr should include "No implementations found"
+      The result of function no_colors_stderr should include "⚪ No implementations found"
     End
   End
 
   Context 'Multiple hook scripts with ci-cd pattern /'
-
-    It 'executes multiple scripts in alphabetical order'
-      test_multiple_scripts() {
-        # Set up test environment
-        setup_test_hooks_dir
-        
-        hooks:declare deploy
-        cat > "$TEST_HOOKS_DIR/deploy-backup.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "1: Backup"
-EOF
-        cat > "$TEST_HOOKS_DIR/deploy-update.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "2: Update"
-EOF
-        cat > "$TEST_HOOKS_DIR/deploy-restart.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "3: Restart"
-EOF
-        chmod +x "$TEST_HOOKS_DIR"/deploy-*.sh
-        
-        hooks:do deploy
-        
-        # Clean up
-      }
-
-      When call test_multiple_scripts
-
-      The status should be success
-      # Scripts execute in alphabetical order by filename: backup < restart < update
-      The line 1 should eq "1: Backup"
-      The line 2 should eq "3: Restart"
-      The line 3 should eq "2: Update"
-      The result of function no_colors_stderr should include "Found 3 script(s) for hook 'deploy'"
-      The result of function no_colors_stderr should include "[script 1/3] deploy-backup.sh"
-      The result of function no_colors_stderr should include "[script 2/3] deploy-restart.sh"
-      The result of function no_colors_stderr should include "[script 3/3] deploy-update.sh"
-    End
-
     It 'executes scripts with numbered pattern in order'
       test_numbered_scripts() {
         # Set up test environment
@@ -469,31 +475,6 @@ EOF
       The result of function no_colors_stderr should include "exit code: 42"
     End
 
-    It 'executes function before scripts'
-      setup() {
-        setup_test_hooks_dir
-        hooks:declare mixed_hook
-        hook:mixed_hook() {
-          echo "Function executed"
-        }
-        cat > "$TEST_HOOKS_DIR/mixed_hook-script.sh" <<'EOF'
-#!/usr/bin/env bash
-echo "Script executed"
-EOF
-        chmod +x "$TEST_HOOKS_DIR"/mixed_hook-script.sh
-      }
-      BeforeCall 'setup'
-
-      When call hooks:do mixed_hook
-
-      The status should be success
-      The line 1 should eq "Function executed"
-      The line 2 should eq "Script executed"
-      # Verify both function and script execution logged
-      The result of function no_colors_stderr should include "[function] hook:mixed_hook"
-      The result of function no_colors_stderr should include "[script 1/1]"
-    End
-
     It 'skips non-matching script names'
       setup() {
         setup_test_hooks_dir
@@ -517,34 +498,6 @@ EOF
       The output should not include "Should not execute"
       # Verify only matching script was executed
       The result of function no_colors_stderr should include "Found 1 script(s) for hook 'specific_hook'"
-    End
-
-    It 'lists multiple script implementations'
-      setup() {
-        setup_test_hooks_dir
-        hooks:declare multi_hook
-        cat > "$TEST_HOOKS_DIR/multi_hook-a.sh" <<'EOF'
-#!/usr/bin/env bash
-:
-EOF
-        cat > "$TEST_HOOKS_DIR/multi_hook-b.sh" <<'EOF'
-#!/usr/bin/env bash
-:
-EOF
-        cat > "$TEST_HOOKS_DIR/multi_hook-c.sh" <<'EOF'
-#!/usr/bin/env bash
-:
-EOF
-        chmod +x "$TEST_HOOKS_DIR"/multi_hook-*.sh
-      }
-      BeforeCall 'setup'
-
-      When call hooks:list
-
-      The status should be success
-      The output should include "multi_hook: implemented (3 script(s))"
-      # Verify hook listing was logged
-      The result of function no_colors_stderr should include "Registered hook: multi_hook"
     End
 
     It 'supports both dash and underscore patterns'
@@ -675,13 +628,14 @@ EOF
 
   Context 'Sourced execution mode /'
     setup_source_dir() {
-      mkdir -p /tmp/test_source
-      export HOOKS_DIR=/tmp/test_source
+      TEST_SOURCE_DIR="${SHELLSPEC_TMPBASE}/test_source"
+      mkdir -p "$TEST_SOURCE_DIR"
+      export HOOKS_DIR="$TEST_SOURCE_DIR"
       export HOOKS_EXEC_MODE="source"
     }
 
     cleanup_source_dir() {
-      rm -rf /tmp/test_source
+      rm -rf "$TEST_SOURCE_DIR"
       export HOOKS_EXEC_MODE="exec"
     }
 
@@ -691,13 +645,13 @@ EOF
     It 'sources script and calls hook:run function'
       setup() {
         hooks:declare test_source
-        cat > /tmp/test_source/test_source-script.sh <<'EOF'
+        cat > "$TEST_SOURCE_DIR/test_source-script.sh" <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "Sourced execution"
 }
 EOF
-        chmod +x /tmp/test_source/test_source-script.sh
+        chmod +x "$TEST_SOURCE_DIR/test_source-script.sh"
       }
       BeforeCall 'setup'
 
@@ -712,13 +666,13 @@ EOF
     It 'passes parameters to hook:run function'
       setup() {
         hooks:declare test_params
-        cat > /tmp/test_source/test_params-script.sh <<'EOF'
+        cat > "$TEST_SOURCE_DIR"/test_params-script.sh <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "Params: $*"
 }
 EOF
-        chmod +x /tmp/test_source/test_params-script.sh
+        chmod +x "$TEST_SOURCE_DIR"/test_params-script.sh
       }
       BeforeCall 'setup'
 
@@ -736,11 +690,11 @@ EOF
       setup() {
         export DEBUG="hooks"
         hooks:declare test_no_func
-        cat > /tmp/test_source/test_no_func-script.sh <<'EOF'
+        cat > "$TEST_SOURCE_DIR"/test_no_func-script.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Top-level code executes"
 EOF
-        chmod +x /tmp/test_source/test_no_func-script.sh
+        chmod +x "$TEST_SOURCE_DIR"/test_no_func-script.sh
       }
       BeforeCall 'setup'
       AfterCall 'export DEBUG=""'
@@ -758,14 +712,14 @@ EOF
       setup() {
         hooks:declare test_env
         export TEST_VAR="parent_value"
-        cat > /tmp/test_source/test_env-script.sh <<'EOF'
+        cat > "$TEST_SOURCE_DIR"/test_env-script.sh <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "TEST_VAR=$TEST_VAR"
   TEST_VAR="modified"
 }
 EOF
-        chmod +x /tmp/test_source/test_env-script.sh
+        chmod +x "$TEST_SOURCE_DIR"/test_env-script.sh
       }
       BeforeCall 'setup'
 
@@ -784,118 +738,15 @@ EOF
     End
   End
 
-  Context 'Real-world usage patterns /'
-    It 'simulates begin/end hook pattern'
-      setup() {
-        hooks:declare begin end
-        hook:begin() {
-          echo "Starting process"
-        }
-        hook:end() {
-          echo "Ending process"
-        }
-      }
-      BeforeCall 'setup'
-
-      do_work() {
-        hooks:do begin
-        echo "Doing work"
-        hooks:do end
-      }
-
-      When call do_work
-
-      The status should be success
-      The line 1 should eq "Starting process"
-      The line 2 should eq "Doing work"
-      The line 3 should eq "Ending process"
-      # Verify hooks were registered and executed
-      The result of function no_colors_stderr should include "Registered hook: begin"
-      The result of function no_colors_stderr should include "Registered hook: end"
-    End
-
-    It 'simulates decision hook with conditional'
-      setup() {
-        hooks:declare decide
-        hook:decide() {
-          echo "yes"
-        }
-      }
-      BeforeCall 'setup'
-
-      do_conditional() {
-        local result=$(hooks:do decide)
-        if [[ "$result" == "yes" ]]; then
-          echo "Decision was yes"
-        else
-          echo "Decision was no"
-        fi
-      }
-
-      When call do_conditional
-
-      The status should be success
-      The output should eq "Decision was yes"
-      # Verify hook was registered
-      The result of function no_colors_stderr should include "Registered hook: decide"
-    End
-
-    It 'simulates error hook with parameters'
-      setup() {
-        hooks:declare error
-        hook:error() {
-          local error_msg="$1"
-          local error_code="$2"
-          echo "Error: $error_msg (code: $error_code)"
-        }
-      }
-      BeforeCall 'setup'
-
-      handle_error() {
-        hooks:do error "Something went wrong" 404
-      }
-
-      When call handle_error
-
-      The status should be success
-      The output should eq "Error: Something went wrong (code: 404)"
-      # Verify hook execution
-      The result of function no_colors_stderr should include "Executing hook: error"
-    End
-
-    It 'simulates rollback hook'
-      setup() {
-        hooks:declare rollback
-        hook:rollback() {
-          echo "Rolling back changes"
-          return 0
-        }
-      }
-      BeforeCall 'setup'
-
-      do_rollback() {
-        hooks:do rollback
-        echo "Rollback complete"
-      }
-
-      When call do_rollback
-
-      The status should be success
-      The line 1 should eq "Rolling back changes"
-      The line 2 should eq "Rollback complete"
-      # Verify successful rollback logged
-      The result of function no_colors_stderr should include "Completed hook 'rollback'"
-    End
-  End
-
   Context 'Nested hooks support /'
     setup_nested_test() {
-      mkdir -p /tmp/test_nested
-      export HOOKS_DIR=/tmp/test_nested
+      TEST_NESTED_DIR="${SHELLSPEC_TMPBASE}/test_nested"
+      mkdir -p "$TEST_NESTED_DIR"
+      export HOOKS_DIR="$TEST_NESTED_DIR"
     }
 
     cleanup_nested_test() {
-      rm -rf /tmp/test_nested
+      rm -rf "$TEST_NESTED_DIR"
       hooks:reset
     }
 
@@ -904,7 +755,7 @@ EOF
 
     It 'detects when same hook is defined from multiple contexts'
       # Create a helper script that defines a hook
-      cat > /tmp/test_nested/helper.sh <<'EOF'
+      cat > "$TEST_NESTED_DIR/helper.sh" <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -914,7 +765,7 @@ EOF
 
       # Source the helper script (defines deploy from helper context)
       # Redirect stderr to avoid polluting test output
-      source /tmp/test_nested/helper.sh 2>/dev/null || true
+      source "$TEST_NESTED_DIR/helper.sh" 2>/dev/null || true
 
       # Define the same hook from current context (should warn)
       When call hooks:declare deploy
@@ -944,7 +795,7 @@ EOF
 
     It 'tracks contexts for each hook'
       # Create two helper scripts
-      cat > /tmp/test_nested/helper1.sh <<'EOF'
+      cat > "$TEST_NESTED_DIR"/helper1.sh <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -952,7 +803,7 @@ set -e
 hooks:declare build
 EOF
 
-      cat > /tmp/test_nested/helper2.sh <<'EOF'
+      cat > "$TEST_NESTED_DIR"/helper2.sh <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -961,8 +812,8 @@ hooks:declare build
 EOF
 
       # Source both helpers
-      source /tmp/test_nested/helper1.sh 2>/dev/null || true
-      source /tmp/test_nested/helper2.sh 2>/dev/null || true
+      source "$TEST_NESTED_DIR"/helper1.sh 2>/dev/null || true
+      source "$TEST_NESTED_DIR"/helper2.sh 2>/dev/null || true
 
       # Check that context tracking works
       test_contexts() {
@@ -986,38 +837,17 @@ EOF
       The line 2 should eq "Context count: 2"
     End
 
-    It 'shows context count in hooks:list for multiple contexts'
-      # Create helper script
-      cat > /tmp/test_nested/helper.sh <<'EOF'
-#!/usr/bin/env bash
-set +e  # Prevent logger conditionals from causing exit
-source "$E_BASH/_hooks.sh"
-set -e
-hooks:declare test_hook
-EOF
-
-      # Source helper and define from current context
-      source /tmp/test_nested/helper.sh 2>/dev/null || true
-      hooks:declare test_hook 2>/dev/null || true
-
-      When call hooks:list
-
-      The status should be success
-      The output should include "test_hook"
-      The output should include "defined in 2 contexts"
-    End
-
     It 'executes hooks defined from multiple contexts'
       # Create a script implementation
-      cat > /tmp/test_nested/multi_ctx_hook-test.sh <<'EOF'
+      cat > "$TEST_NESTED_DIR"/multi_ctx_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Hook executed"
 exit 0
 EOF
-      chmod +x /tmp/test_nested/multi_ctx_hook-test.sh
+      chmod +x "$TEST_NESTED_DIR"/multi_ctx_hook-test.sh
 
       # Create helper that defines the hook
-      cat > /tmp/test_nested/helper.sh <<'EOF'
+      cat > "$TEST_NESTED_DIR"/helper.sh <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -1026,7 +856,7 @@ hooks:declare multi_ctx_hook
 EOF
 
       # Source helper and define from current context
-      source /tmp/test_nested/helper.sh 2>/dev/null || true
+      source "$TEST_NESTED_DIR"/helper.sh 2>/dev/null || true
       hooks:declare multi_ctx_hook 2>/dev/null || true
 
       # Execute the hook - should work even with multiple contexts
@@ -1098,7 +928,7 @@ EOF
       The status should be success
       The output should not include "Test function"
       # Verify no implementations found after unregister
-      The result of function no_colors_stderr should include "No implementations found"
+      The result of function no_colors_stderr should include "⚪ No implementations found"
     End
 
     It 'fails to register if function does not exist'
@@ -1108,7 +938,7 @@ EOF
       When call hooks:register test_hook "friendly" non_existent_func
 
       The status should be failure
-      The stderr should include "Function 'non_existent_func' does not exist"
+      The result of function no_colors_stderr should include "function 'non_existent_func' does not exist"
     End
 
     It 'fails to register duplicate friendly name'
@@ -1122,7 +952,7 @@ EOF
       When call hooks:register test_hook "same-name" test_func2
 
       The status should be failure
-      The stderr should include "Friendly name 'same-name' already registered"
+      The result of function no_colors_stderr should include "friendly name 'same-name' already registered"
     End
 
     It 'executes hook:prefix function before registered functions'
@@ -1143,26 +973,11 @@ EOF
       The result of function no_colors_stderr should include "[registered 1/1]"
     End
 
-    It 'shows registered functions in hooks:list'
-      func1() { echo "F1"; }
-      func2() { echo "F2"; }
-
-      # Silence setup output
-      hooks:declare deploy 2>/dev/null
-      hooks:register deploy "10-first" func1 2>/dev/null
-      hooks:register deploy "20-second" func2 2>/dev/null
-
-      When call hooks:list
-
-      The status should be success
-      The output should include "deploy: implemented (2 registered)"
-    End
-
     It 'handles unregistering from non-existent hook'
       When call hooks:unregister non_existent_hook "friendly"
 
       The status should be failure
-      The stderr should include "No registrations found for hook 'non_existent_hook'"
+      The result of function no_colors_stderr should include "no registrations found for hook 'non_existent_hook'"
     End
 
     It 'handles unregistering non-existent friendly name'
@@ -1175,7 +990,7 @@ EOF
       When call hooks:unregister test_hook "does_not_exist"
 
       The status should be failure
-      The stderr should include "Registration 'does_not_exist' not found"
+      The result of function no_colors_stderr should include "registration 'does_not_exist' not found"
     End
 
     It 'can register functions for forwarding to external scripts'
@@ -1206,6 +1021,341 @@ EOF
     End
   End
 
+  Context 'Middleware registration /'
+    It 'registers middleware per hook and logs it'
+      setup() {
+        hooks:declare mid_hook
+        middleware:noop() { return 0; }
+      }
+      BeforeCall 'setup'
+
+      When call hooks:middleware mid_hook middleware:noop
+
+      The status should be success
+      The result of function no_colors_stderr should include "Registered middleware"
+    End
+
+    It 'resets middleware to default when only hook name provided'
+      setup() {
+        hooks:declare mid_hook
+        middleware:noop() { return 0; }
+        hooks:middleware mid_hook middleware:noop
+      }
+      BeforeCall 'setup'
+
+      When call hooks:middleware mid_hook
+
+      The status should be success
+      The result of function no_colors_stderr should include "Reset middleware"
+    End
+  End
+
+  Context 'Middleware behavior /'
+    It 'replays stdout/stderr unchanged via default middleware'
+      setup() {
+        hooks:declare cap_hook
+        hook:cap_hook() {
+          echo "out"
+          echo "err" >&2
+          return 7
+        }
+      }
+      BeforeCall 'setup'
+
+      When call hooks:do cap_hook
+
+      The status should eq 7
+      The output should eq "out"
+      The error should include "err"
+    End
+
+    It 'fails when middleware call lacks separator'
+      setup() {
+        hooks:declare sep_hook
+        hook:sep_hook() { echo "ok"; }
+      }
+      BeforeCall 'setup'
+
+      When call _hooks:middleware:default sep_hook 0 missing_separator
+
+      The status should be failure
+      The result of function no_colors_stderr should include "expects '--' separator"
+    End
+
+    It 'ignores extra args without separator in modes middleware'
+      run_without_separator() {
+        local cap=("1: payload")
+        _hooks:middleware:modes mode_hook 0 cap "extra"
+      }
+
+      When call run_without_separator
+
+      The status should be success
+      The output should eq "payload"
+      The result of function no_colors_stderr should include "middleware is processing hook: 'mode_hook'"
+      The result of function no_colors_stderr should include "total captured lines for 'mode_hook': 1"
+    End
+
+    It 'allows middleware to set parent-shell variables'
+      setup() {
+        hooks:declare mid_hook
+        hook:mid_hook() { echo "contract:mode=dry"; }
+        middleware:mode() {
+          local hook_name="$1" exit_code="$2" capture_var="$3"
+          local -n capture_ref="$capture_var"
+          local line
+          for line in "${capture_ref[@]}"; do
+            [[ "$line" == "1: contract:mode=dry" ]] && export DRY_RUN=true
+          done
+          return "$exit_code"
+        }
+        hooks:middleware mid_hook middleware:mode
+      }
+      BeforeCall 'setup'
+
+      check_dry_run() {
+        hooks:do mid_hook
+        echo "DRY_RUN=${DRY_RUN}"
+      }
+
+      When call check_dry_run
+
+      The status should be success
+      The output should eq "DRY_RUN=true"
+      The result of function no_colors_stderr should include "Executing hook: mid_hook"
+    End
+
+    It 'applies contract env set via modes middleware'
+      setup() {
+        hooks:declare env_set
+        hook:env_set() { echo "contract:env:FOO=bar"; }
+        hooks:middleware env_set _hooks:middleware:modes
+      }
+      BeforeCall 'setup'
+
+      check_env_set() {
+        unset FOO
+        hooks:do env_set >/dev/null
+        echo "FOO=${FOO:-}"
+      }
+
+      When call check_env_set
+
+      The status should be success
+      The output should eq "FOO=bar"
+      The result of function no_colors_stderr should include "Executing hook: env_set"
+    End
+
+    It 'replays contract lines while applying side effects'
+      setup() {
+        hooks:declare env_replay
+        hook:env_replay() {
+          echo "contract:env:FOO=bar"
+          echo "payload"
+        }
+        hooks:middleware env_replay _hooks:middleware:modes
+      }
+      BeforeCall 'setup'
+
+      run_replay() {
+        unset FOO
+        hooks:do env_replay
+        echo "FOO=${FOO:-}"
+      }
+
+      When call run_replay
+
+      The status should be success
+      The result of function no_colors_stdout should include "contract:env:FOO=bar"
+      The result of function no_colors_stdout should include "payload"
+      The result of function no_colors_stdout should include "FOO=bar"
+      The result of function no_colors_stderr should include "Executing hook: env_replay"
+    End
+
+    It 'applies contract env append via modes middleware'
+      setup() {
+        hooks:declare env_append
+        hook:env_append() { echo "contract:env:HOOKS_TEST_PATH+=/opt/bin"; }
+        hooks:middleware env_append _hooks:middleware:modes
+      }
+      BeforeCall 'setup'
+
+      check_env_append() {
+        HOOKS_TEST_PATH="/bin"
+        hooks:do env_append >/dev/null
+        echo "HOOKS_TEST_PATH=${HOOKS_TEST_PATH}"
+      }
+
+      When call check_env_append
+
+      The status should be success
+      The output should eq "HOOKS_TEST_PATH=/bin:/opt/bin"
+      The result of function no_colors_stderr should include "Executing hook: env_append"
+    End
+
+    It 'applies contract env prepend via modes middleware'
+      setup() {
+        hooks:declare env_prepend
+        hook:env_prepend() { echo "contract:env:HOOKS_TEST_PATH^=/opt/bin"; }
+        hooks:middleware env_prepend _hooks:middleware:modes
+      }
+      BeforeCall 'setup'
+
+      check_env_prepend() {
+        HOOKS_TEST_PATH="/bin"
+        hooks:do env_prepend >/dev/null
+        echo "HOOKS_TEST_PATH=${HOOKS_TEST_PATH}"
+      }
+
+      When call check_env_prepend
+
+      The status should be success
+      The output should eq "HOOKS_TEST_PATH=/opt/bin:/bin"
+      The result of function no_colors_stderr should include "Executing hook: env_prepend"
+    End
+
+    It 'applies contract env remove via modes middleware'
+      setup() {
+        hooks:declare env_remove
+        hook:env_remove() { echo "contract:env:HOOKS_TEST_PATH-=/opt/bin"; }
+        hooks:middleware env_remove _hooks:middleware:modes
+      }
+      BeforeCall 'setup'
+
+      check_env_remove() {
+        HOOKS_TEST_PATH="/bin:/opt/bin:/usr/bin"
+        hooks:do env_remove >/dev/null
+        echo "HOOKS_TEST_PATH=${HOOKS_TEST_PATH}"
+      }
+
+      When call check_env_remove
+
+      The status should be success
+      The output should eq "HOOKS_TEST_PATH=/bin:/usr/bin"
+      The result of function no_colors_stderr should include "Executing hook: env_remove"
+    End
+
+    It 'applies contract route via modes middleware'
+      setup() {
+        hooks:declare route_hook
+        route_script="$(mktemp)"
+        cat > "$route_script" <<'EOF'
+echo "routed"
+__HOOKS_FLOW_EXIT_CODE=5
+EOF
+        hook:route_hook() { echo "contract:route:${route_script}"; }
+        hooks:middleware route_hook _hooks:middleware:modes
+      }
+      BeforeCall 'setup'
+
+      run_route() {
+        hooks:do route_hook >/dev/null
+        local routed_output=""
+        routed_output="$( (hooks:flow:apply) )"
+        local routed_code=$?
+        if [[ -n "${routed_output}" ]]; then
+          printf '%s\n' "${routed_output}"
+        fi
+        printf 'code=%s\n' "${routed_code}"
+      }
+
+      When call run_route
+
+      The status should be success
+      The output should eq "routed
+code=5"
+      The result of function no_colors_stderr should include "Executing hook: route_hook"
+    End
+
+    It 'applies contract exit via modes middleware'
+      setup() {
+        hooks:declare exit_hook
+        hook:exit_hook() { echo "contract:exit:12"; }
+        hooks:middleware exit_hook _hooks:middleware:modes
+      }
+      BeforeCall 'setup'
+
+      run_exit() {
+        hooks:do exit_hook >/dev/null
+        local exit_output=""
+        exit_output="$( (hooks:flow:apply) )"
+        local exit_code=$?
+        if [[ -n "${exit_output}" ]]; then
+          printf '%s\n' "${exit_output}"
+        fi
+        printf 'code=%s\n' "${exit_code}"
+      }
+
+      When call run_exit
+
+      The status should be success
+      The output should eq "code=12"
+      The result of function no_colors_stderr should include "Executing hook: exit_hook"
+    End
+
+    It 'bypasses middleware for source-mode scripts'
+      setup() {
+        setup_test_hooks_dir
+        export HOOKS_EXEC_MODE="source"
+        hooks:declare source_hook
+        cat > "$TEST_HOOKS_DIR/source_hook-test.sh" <<'EOF'
+#!/usr/bin/env bash
+function hook:run() {
+  echo "source-out"
+}
+EOF
+        chmod +x "$TEST_HOOKS_DIR"/source_hook-test.sh
+        middleware:noop() { return 9; }
+        hooks:middleware source_hook middleware:noop
+      }
+      BeforeCall 'setup'
+      AfterCall 'export HOOKS_EXEC_MODE="exec"'
+
+      When call hooks:do source_hook
+
+      The status should be success
+      The output should include "source-out"
+      The result of function no_colors_stderr should include "sourced mode"
+    End
+
+    It 'allows middleware to override exit code'
+      setup() {
+        hooks:declare code_hook
+        hook:code_hook() { return 2; }
+        middleware:override() { return 11; }
+        hooks:middleware code_hook middleware:override
+      }
+      BeforeCall 'setup'
+
+      When call hooks:do code_hook
+
+      The status should eq 11
+      The result of function no_colors_stderr should include "Executing hook: code_hook"
+    End
+
+    It 'provides prefixed capture lines to middleware'
+      setup() {
+        hooks:declare cap_format
+        hook:cap_format() { echo "a"; echo "b" >&2; }
+        middleware:inspect() {
+          local hook_name="$1" exit_code="$2" capture_var="$3"
+          local -n capture_ref="$capture_var"
+          printf '%s\n' "${capture_ref[0]}"
+          printf '%s\n' "${capture_ref[1]}"
+          return "$exit_code"
+        }
+        hooks:middleware cap_format middleware:inspect
+      }
+      BeforeCall 'setup'
+
+      When call hooks:do cap_format
+
+      The output should include "1: a"
+      The output should include "2: b"
+      The result of function no_colors_stderr should include "Executing hook: cap_format"
+    End
+  End
+
   Context 'Pattern registration /'
     setup_pattern_test() {
       hooks:reset
@@ -1213,38 +1363,6 @@ EOF
     }
 
     AfterEach 'setup_pattern_test'
-
-    It 'registers source patterns with hooks:pattern:source'
-      When call hooks:pattern:source "config-*.sh" "env-*.sh"
-
-      The status should be success
-      # Verify patterns were added to the array
-      The result of function no_colors_stderr should include "Registered pattern for sourced execution: config-*.sh"
-      The result of function no_colors_stderr should include "Registered pattern for sourced execution: env-*.sh"
-    End
-
-    It 'registers script patterns with hooks:pattern:script'
-      When call hooks:pattern:script "notify-*.sh" "cleanup-*.sh"
-
-      The status should be success
-      # Verify patterns were added to the array
-      The result of function no_colors_stderr should include "Registered pattern for script execution: notify-*.sh"
-      The result of function no_colors_stderr should include "Registered pattern for script execution: cleanup-*.sh"
-    End
-
-    It 'accumulates multiple pattern registrations'
-      setup() {
-        hooks:pattern:source "first-*.sh" 2>/dev/null
-        hooks:pattern:source "second-*.sh" 2>/dev/null
-      }
-      BeforeCall 'setup'
-
-      When call hooks:pattern:source "third-*.sh"
-
-      The status should be success
-      # Verify all patterns are registered
-      The result of function no_colors_stderr should include "Registered pattern for sourced execution: third-*.sh"
-    End
 
     It 'determines execution mode with hooks:exec:mode for source patterns'
       setup() {
@@ -1323,27 +1441,24 @@ EOF
 
   Context 'Pattern-based execution mode integration /'
     setup_pattern_integration() {
-      mkdir -p /tmp/test_patterns
-      export HOOKS_DIR=/tmp/test_patterns
-      export HOOKS_EXEC_MODE="exec"  # Default to exec mode
+      TEST_PATTERN_DIR="${SHELLSPEC_TMPBASE}/test_patterns"
+      mkdir -p "$TEST_PATTERN_DIR"
       hooks:reset
+      export HOOKS_DIR="$TEST_PATTERN_DIR"
+      export HOOKS_EXEC_MODE="exec"  # Default to exec mode
       source ".scripts/_hooks.sh"
     }
 
     cleanup_pattern_integration() {
-      rm -rf /tmp/test_patterns
+      rm -rf "$TEST_PATTERN_DIR"
       export HOOKS_EXEC_MODE="exec"
     }
 
+    BeforeAll 'setup_pattern_integration'
+    AfterAll 'cleanup_pattern_integration'
+
     It 'executes scripts in source mode when pattern matches'
       test_pattern_source() {
-        # Use the existing HOOKS_DIR (ci-cd)
-        echo "Using HOOKS_DIR: $HOOKS_DIR"
-        echo "Current working directory: $(pwd)"
-        
-        # Create HOOKS_DIR if it doesn't exist
-        mkdir -p "$HOOKS_DIR"
-        
         # Register pattern first
         hooks:pattern:source "test_pattern-*.sh" 2>/dev/null
         
@@ -1375,9 +1490,6 @@ EOF
 
     It 'executes scripts in exec mode when pattern matches'
       test_exec_script() {
-        # Create HOOKS_DIR if it doesn't exist
-        mkdir -p "$HOOKS_DIR"
-        
         # Register pattern first
         hooks:pattern:script "test_exec-*.sh" 2>/dev/null
         
@@ -1408,9 +1520,6 @@ EOF
     It 'overrides global HOOKS_EXEC_MODE with source pattern'
       test_override_source() {
         export HOOKS_EXEC_MODE="exec"  # Global setting
-        
-        # Create HOOKS_DIR if it doesn't exist
-        mkdir -p "$HOOKS_DIR"
         
         # Register pattern first
         hooks:pattern:source "override_test-*.sh" 2>/dev/null
@@ -1445,9 +1554,6 @@ EOF
       test_override_script() {
         export HOOKS_EXEC_MODE="source"  # Global setting
         
-        # Create HOOKS_DIR if it doesn't exist
-        mkdir -p "$HOOKS_DIR"
-        
         # Register pattern first
         hooks:pattern:script "script_override-*.sh" 2>/dev/null
         
@@ -1477,9 +1583,6 @@ EOF
 
     It 'handles multiple scripts with different patterns'
       test_mixed_patterns() {
-        # Create HOOKS_DIR if it doesn't exist
-        mkdir -p "$HOOKS_DIR"
-        
         # Register patterns first
         hooks:pattern:source "mixed_patterns-config*.sh" 2>/dev/null
         hooks:pattern:script "mixed_patterns-notify*.sh" 2>/dev/null

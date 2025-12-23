@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 1.12.1
+## Last revisit: 2025-12-22
+## Version: 1.16.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -18,16 +18,16 @@
 export DEBUG="${DEBUG:-hooks,exec,dry,ci}"
 
 # Source e-bash modules
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090 source=../../.scripts/_colors.sh
 source "$E_BASH/_colors.sh"
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090 source=../../.scripts/_logger.sh
 source "$E_BASH/_logger.sh"
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090 source=../../.scripts/_dryrun.sh
 source "$E_BASH/_dryrun.sh"
-# shellcheck disable=SC1090
-source "$E_BASH/_hooks.sh"
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090 source=../../.scripts/_traps.sh
 source "$E_BASH/_traps.sh"
+# shellcheck disable=SC1090 source=../../.scripts/_hooks.sh
+source "$E_BASH/_hooks.sh"
 
 # Initialize CI logger using e-bash logger module
 logger:init ci "${cl_blue}[ci-10]${cl_reset} " ">&2"
@@ -43,19 +43,16 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export HOOKS_EXEC_MODE="source"
 export HOOKS_DIR="${SCRIPT_DIR}/hooks"
 
-# Define hooks: begin, end are mandatory; decide, rollback are optional
-hooks:declare begin end decide rollback
+# Define optional hooks (begin/end are auto-declared by _hooks)
+hooks:declare decide rollback
 
-# Register end hook via trap to ensure it runs even on crash/early exit
-# Note: trap:on passes exit_code as first argument to handlers
-__ci_on_exit() {
-  local exit_code="${1:-$?}"  # Receive from trap:on or fallback to $?
-  hooks:do end "${exit_code}"
+# End hook runs via hooks auto-trap
+hook:end() {
+  local exit_code="${1:-$?}"
   local status="$([[ $exit_code -ne 0 ]] && echo "${cl_red}✗ " || echo "${cl_green}✓ ")"
   echo:Ci -e "\n${status}${SCRIPT_NAME:-script} finished, exit code: ${exit_code}${cl_reset}\n"
   return $exit_code
 }
-trap:on __ci_on_exit EXIT
 
 
 # Create dry-run wrappers for commands we'll use
@@ -77,9 +74,9 @@ echo:Ci ""
 hooks:do begin "${SCRIPT_NAME}"
 
 # Check if mode hooks requested termination (OK, SKIP, ERROR, TEST modes)
-if [[ "${__CI_MODE_TERMINATE:-}" == "true" ]]; then
-  echo:Ci "Mode requested early termination (exit: ${__CI_MODE_EXIT:-0})"
-  exit "${__CI_MODE_EXIT:-0}"
+if [[ "${__HOOKS_FLOW_TERMINATE:-}" == "true" ]]; then
+  echo:Ci "Mode requested early termination (exit: ${__HOOKS_FLOW_EXIT_CODE:-0})"
+  exit "${__HOOKS_FLOW_EXIT_CODE:-0}"
 fi
 #endregion
 

@@ -1,4 +1,4 @@
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/OleksandrKucherenko/e-bash) ![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/OleksandrKucherenko/e-bash?utm_source=oss&utm_medium=github&utm_campaign=OleksandrKucherenko%2Fe-bash&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews) [![codecov](https://codecov.io/gh/OleksandrKucherenko/e-bash/branch/master/graph/badge.svg)](https://codecov.io/gh/OleksandrKucherenko/e-bash)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/OleksandrKucherenko/e-bash) [![codecov](https://codecov.io/gh/OleksandrKucherenko/e-bash/branch/master/graph/badge.svg)](https://codecov.io/gh/OleksandrKucherenko/e-bash)
 
 # Enhanced BASH Scripts
 
@@ -44,13 +44,13 @@ Conventions and folder structure: [docs/public/conventions.md](docs/public/conve
 
 ## Local Dev Environment - Requirements
 
-- DirEnv - https://github.com/direnv/direnv
-- ShellFormat - https://github.com/mvdan/sh
-- ShellCheck - https://github.com/koalaman/shellcheck
-- KCov - https://github.com/SimonKagstrom/kcov
-- ShellSpec - https://github.com/shellspec/shellspec
+- [DirEnv](https://github.com/direnv/direnv)
+- [ShellFormat](https://github.com/mvdan/sh)
+- [ShellCheck](https://github.com/koalaman/shellcheck)
+- [KCov](https://github.com/SimonKagstrom/kcov)
+- [ShellSpec](https://github.com/shellspec/shellspec)
 
-> Note: alternative Unit Test Frameworks, Bats - https://github.com/bats-core/bats-core
+> Note: alternative Unit Test Frameworks, Bats - [BATS core](https://github.com/bats-core/bats-core)
 
 ```bash
 brew install direnv
@@ -135,10 +135,10 @@ git subtree pull --prefix .scripts e-bash-scripts --squash
 
 refs:
 
-- https://gist.github.com/SKempin/b7857a6ff6bddb05717cc17a44091202
-- https://github.com/epcim/git-cross
-- https://github.com/ingydotnet/git-subrepo
-- https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3 [article](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
+- [Git Subtree Basics](https://gist.github.com/SKempin/b7857a6ff6bddb05717cc17a44091202)
+- [git-cross](https://github.com/epcim/git-cross)
+- [git-subrepo](https://github.com/ingydotnet/git-subrepo)
+- [github repo for article](https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3), [article itself](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
 
 ### Colors
 
@@ -180,6 +180,7 @@ echo "$wHead" | grep 'Error' &>/dev/null && echo "$wStab" || echo "$wHead"
 [Quick Start Guide](docs/public/logger.md)
 
 Requirements:
+
 - [x] zero dependencies, pure BASH (optional: _colors.sh)
 - [x] prefix for all logger messages
 - [x] work in pipe mode (forward logs to the named pipe)
@@ -189,8 +190,8 @@ Requirements:
 - [x] support prefix for each log message
 - [x] listen to DEBUG environment variable for enabling/disabling logs
   - [x] enable/disable log by tag name or tag name prefix (support wildcards)
-- [*] execute command with logging the command and it parameters first (ref: https://bpkg.sh/pkg/echo-eval)
-  - [x] can be easily self-made (ref: https://github.com/kj4ezj/echo-eval/blob/main/ee.sh)
+- [x] execute command with logging the command and it parameters first, ref: [echo-eval](https://bpkg.sh/pkg/echo-eval) - use DRYRUN functionality for that
+  - [x] can be easily self-made, ref: [echo-eval, ee](https://github.com/kj4ezj/echo-eval/blob/main/ee.sh)
 
 ```bash
 source ".scripts/_logger.sh"
@@ -333,6 +334,7 @@ rollback:func rollback_fn
 | Undo    | false   | true     | Dry-run         | **Execute**       |
 
 **Features:**
+
 - ✅ Color-coded logging with exit status (`execute:`, `dry run:`, `undoing:`)
 - ✅ Command-specific overrides (`DRY_RUN_GIT=false`, pattern: `DRY_RUN_*`)
 - ✅ Silent mode support (`SILENT_GIT=true`, pattern: `SILENT_*`)
@@ -346,6 +348,7 @@ More details: [Dry-Run Wrapper System](docs/public/dryrun-wrapper.md), [Demo scr
 Add extension points to any bash script with minimal changes. Hook implementations live in external files - your script just declares and triggers them.
 
 **Before** (your existing script):
+
 ```bash
 #!/bin/bash
 echo "Starting deployment..."
@@ -353,7 +356,8 @@ deploy_application
 echo "Done."
 ```
 
-**After** (4 lines added):
+**After** (several lines added):
+
 ```diff
 #!/bin/bash
 + export HOOKS_DIR=".hooks"  # Default is 'ci-cd'
@@ -375,6 +379,7 @@ hook_name is one of the declared hooks: `begin`, `deploy`, `end`; purpose - is y
 Hooks are executed in alphabetical order, and you can declare multiple hooks for the same hook point/name.
 
 **.hooks/begin-otel-trace.sh** - OpenTelemetry tracing:
+
 ```bash
 #!/bin/bash
 export TRACE_ID=$(openssl rand -hex 16)
@@ -382,18 +387,21 @@ curl -s "${OTEL_ENDPOINT}/v1/traces" -d "{...span data...}" &>/dev/null
 ```
 
 **.hooks/deploy-slack-notify.sh** - Slack notifications:
+
 ```bash
 #!/bin/bash
 curl -s "$SLACK_WEBHOOK" -d "{\"text\":\"Deploying $1\"}"
 ```
 
 **.hooks/end-metrics.sh** - Metrics export:
+
 ```bash
 #!/bin/bash
 echo "deployment.duration=$SECONDS" | nc -u metrics.local 8125
 ```
 
 **Custom hooks directory per script:**
+
 ```bash
 HOOKS_DIR=".hooks/$(basename "$0" .sh)"  # .hooks/my-script/
 source "$E_BASH/_hooks.sh"
@@ -401,7 +409,7 @@ source "$E_BASH/_hooks.sh"
 
 More details: [Hooks Documentation](docs/public/hooks.md);
 
-Demos: [Intro](demos/demo.hooks.sh), [Multiple Hooks](demos/demo.hooks-registration.sh), [Nested Hooks](demos/demo.hooks-nested.sh), [Hooks with Logs](demos/demo.hooks-logging.sh)
+Demos: [Intro](demos/demo.hooks.sh), [Multiple Hooks](demos/demo.hooks-registration.sh), [Nested Hooks](demos/demo.hooks-nested.sh), [Hooks with Logs](demos/demo.hooks-logging.sh), [CI Hooks Demo](./demos/ci-mode/demo.ci-modes.sh), [CI Hooks with Middlewar](./demos/ci-mode/demo.ci-modes-middleware.sh)
 
 ## Semver - Semantic Versioning
 
@@ -559,6 +567,7 @@ trap "self-update '^1.0.0'" EXIT
 ```
 
 **How It Works:**
+
 1. Maintains a local git repository at `~/.e-bash/` with multiple version worktrees
 2. Creates symbolic links from your project's `.scripts/` files to version-specific files
 3. Performs file-by-file updates with automatic backup creation
@@ -593,10 +602,10 @@ Requirements:
 
 refs:
 
-- https://classic.yarnpkg.com/lang/en/docs/dependency-versions/
-- https://github.com/fsaintjacques/semver-tool
-- https://github.com/Masterminds/semver
-- https://stackoverflow.com/questions/356100/how-to-wait-in-bash-for-several-subprocesses-to-finish-and-return-exit-code-0
+- [yarn dependency version](https://classic.yarnpkg.com/lang/en/docs/dependency-versions/)
+- [semver tools](https://github.com/fsaintjacques/semver-tool)
+- [semver](https://github.com/Masterminds/semver)
+- [concurrency in bash](https://stackoverflow.com/questions/356100/how-to-wait-in-bash-for-several-subprocesses-to-finish-and-return-exit-code-0)
 
 
 ```bash

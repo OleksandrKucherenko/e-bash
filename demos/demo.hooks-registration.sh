@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-19
-## Version: 1.12.1
+## Last revisit: 2025-12-21
+## Version: 1.16.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -130,7 +130,7 @@ hook:build() {
 
 # Register additional functions
 pre_build_check() {
-  echo "  ✓ [Registered] Pre-build validation"
+  echo "  🟢 [Registered] Pre-build validation"
 }
 
 post_build_metrics() {
@@ -196,7 +196,7 @@ temporary_function() {
 }
 
 permanent_function() {
-  echo "  ✓ [Permanent] This will always run"
+  echo "  🟢 [Permanent] This will always run"
 }
 
 hooks:declare cleanup
