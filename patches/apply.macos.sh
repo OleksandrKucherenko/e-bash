@@ -32,50 +32,54 @@ if [[ ! -f "$PATCH_FILE" ]]; then
 fi
 
 # 2. Find ShellSpec Dir (macOS/Homebrew specific)
+# 2. Find ShellSpec Dir (macOS/Homebrew specific)
 find_shellspec_dir() {
-    # Try brew --prefix first
-    if command -v brew >/dev/null 2>&1; then
-        if brew list shellspec >/dev/null 2>&1; then
-             local brew_prefix
-             brew_prefix="$(brew --prefix shellspec)"
-             # In Homebrew, the actual files are in libenv/ or similar? 
-             # Actually brew --prefix points to /opt/homebrew/opt/shellspecUsually,
-             # which is a symlink to celler.
-             # But shellspec installs into lib/shellspec in some versions.
-             # best is to follow the bin/shellspec
-             true 
-        fi
-    fi
-    
     local shellspec_bin
     if ! shellspec_bin="$(command -v shellspec)"; then
-        log_error "ShellSpec no found"
+        log_error "ShellSpec not found"
         return 1
     fi
     
-    # Resolve symlink
-    local install_dir
-    install_dir="$(dirname "$shellspec_bin")"
+    # Resolve symlink to find the actual binary location
+    local resolved_bin="$shellspec_bin"
     if [[ -L "$shellspec_bin" ]]; then
          local resolved
          resolved="$(readlink "$shellspec_bin")"
+         local bin_dir="$(dirname "$shellspec_bin")"
          # Handle relative link
          if [[ "$resolved" != /* ]]; then
-            resolved="$(cd "$install_dir" && pwd)/$resolved"
+            resolved="$(cd "$bin_dir" && pwd)/$resolved"
          fi
          # Recursively resolve
          while [[ -L "$resolved" ]]; do
-            local link_dir
-            link_dir="$(dirname "$resolved")"
+            local link_dir="$(dirname "$resolved")"
             resolved="$(readlink "$resolved")"
             if [[ "$resolved" != /* ]]; then
                 resolved="$link_dir/$resolved"
             fi
         done
-        install_dir="$(dirname "$resolved")"
+        resolved_bin="$resolved"
     fi
     
-    echo "$install_dir"
+    # We have the absolute path to bin/shellspec. 
+    # The installation root relative to 'bin' is usually one level up.
+    local install_root
+    install_root="$(cd "$(dirname "$resolved_bin")/.." && pwd)"
+    
+    # Heuristic: Check where lib/core/core.sh lives relative to this root.
+    # 1. Standard: $ROOT/lib/core/core.sh
+    # 2. Homebrew: $ROOT/lib/shellspec/lib/core/core.sh -> We want $ROOT/lib/shellspec as the patch root.
+    
+    if [[ -f "$install_root/lib/core/core.sh" ]]; then
+        echo "$install_root"
+        return 0
+    elif [[ -f "$install_root/lib/shellspec/lib/core/core.sh" ]]; then
+        echo "$install_root/lib/shellspec"
+        return 0
+    fi
+    
+    # Fallback: Just return install_root and hope
+    echo "$install_root" 
 }
 
 if ! SHELLSPEC_DIR="$(find_shellspec_dir)"; then
@@ -113,45 +117,32 @@ if [[ -f "bin/shellspec.rej" ]]; then
     rm "bin/shellspec.rej"
 fi
 
-# 6. Verify
+# 6. Verify (Functional)
 log_step "Verifying..."
-if "$SHELLSPEC_DIR/shellspec" --help | grep -q timeout; then
-    VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-    log_info "Success! Version: $VERSION"
-    touch "$MARKER_FILE"
-    exit 0
-else
-    log_warn "clean patch failed. Attempting force apply..."
-    if patch -p1 -N -f < "$PATCH_FILE"; then
-         log_info "Patch applied with force."
-    else
-         log_warn "Force patch returned errors."
-    fi
-    
-    if "$SHELLSPEC_DIR/shellspec" --help | grep -q timeout; then
-        VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-        log_info "Success! Version: $VERSION"
-        touch "$MARKER_FILE"
-        exit 0
-    else
-        log_error "Verification failed"
-        exit 1
-    fi
+
+# Create a temporary test file
+TEST_FILE="$SHELLSPEC_DIR/timeout_verification_spec.sh"
+cat <<EOF > "$TEST_FILE"
+Example "timeout test" % timeout:1
+  sleep 2
+  The status should equal 0
+End
+EOF
+
+START_TIME=$(date +%s)
+"$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+rm "$TEST_FILE"
+
+if [[ $DURATION -lt 2 ]]; then
+     VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
+     log_info "Success! Timeout functional. Version: $VERSION"
+     touch "$MARKER_FILE"
+     exit 0
+else 
+     log_error "Verification failed (Duration: ${DURATION}s)."
+     exit 1
 fi
 
-# 5. Handle bin/shellspec.rej
-if [[ -f "bin/shellspec.rej" ]]; then
-    rm "bin/shellspec.rej"
-fi
 
-# 6. Verify
-log_step "Verifying..."
-if "$SHELLSPEC_DIR/shellspec" --help | grep -q timeout; then
-    VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-    log_info "Success! Version: $VERSION"
-    touch "$MARKER_FILE"
-    exit 0
-else
-    log_error "Verification failed"
-    exit 1
-fi

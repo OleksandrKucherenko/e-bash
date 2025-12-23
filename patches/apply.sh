@@ -33,6 +33,7 @@ if [[ ! -f "$PATCH_FILE" ]]; then
 fi
 
 # 2. Find ShellSpec Directory
+# 2. Find ShellSpec Directory
 find_shellspec_dir() {
   local shellspec_bin
   if ! shellspec_bin="$(command -v shellspec 2>/dev/null)"; then
@@ -40,45 +41,45 @@ find_shellspec_dir() {
     return 1
   fi
   
-  local install_dir
-  install_dir="$(dirname "$shellspec_bin")"
-  
-  # Resolve symlinks
+  # Resolve symlink to find the actual binary location
+  local resolved_bin="$shellspec_bin"
   if [[ -L "$shellspec_bin" ]]; then
-    local resolved_link
-    resolved_link="$(readlink "$shellspec_bin")"
-    if [[ "$resolved_link" != /* ]]; then
-      resolved_link="$(cd "$install_dir" && pwd)/$resolved_link"
-    fi
-     while [[ -L "$resolved_link" ]]; do
-       local link_dir
-       link_dir="$(dirname "$resolved_link")"
-       resolved_link="$(readlink "$resolved_link")"
-       if [[ "$resolved_link" != /* ]]; then
-         resolved_link="$link_dir/$resolved_link"
+       local resolved="$(readlink "$shellspec_bin")"
+       local bin_dir="$(dirname "$shellspec_bin")"
+       # Handle relative link
+       if [[ "$resolved" != /* ]]; then
+          resolved="$(cd "$bin_dir" && pwd)/$resolved"
        fi
-     done
-     install_dir="$(dirname "$resolved_link")"
+       # Recursively resolve
+       while [[ -L "$resolved" ]]; do
+          local link_dir="$(dirname "$resolved")"
+          resolved="$(readlink "$resolved")"
+          if [[ "$resolved" != /* ]]; then
+              resolved="$link_dir/$resolved"
+          fi
+       done
+       resolved_bin="$resolved"
   fi
   
-  # Check for some known file to be sure (ShellSpec root usually has 'lib' and 'shellspec')
-  if [[ -f "$install_dir/shellspec" ]] && [[ -d "$install_dir/lib" ]]; then
-      echo "$install_dir"
+  # We have the absolute path to bin/shellspec. 
+  # The installation root relative to 'bin' is usually one level up.
+  local install_root
+  install_root="$(cd "$(dirname "$resolved_bin")/.." && pwd)"
+  
+  # Heuristic: Check where lib/core/core.sh lives relative to this root.
+  # 1. Standard: $ROOT/lib/core/core.sh
+  # 2. Linuxbrew (similar to Homebrew): $ROOT/lib/shellspec/lib/core/core.sh
+  
+  if [[ -f "$install_root/lib/core/core.sh" ]]; then
+      echo "$install_root"
+      return 0
+  elif [[ -f "$install_root/lib/shellspec/lib/core/core.sh" ]]; then
+      echo "$install_root/lib/shellspec"
       return 0
   fi
   
-  # Handle Homebrew-style layout where we might have landed in bin/ and need to go up?
-  # Usually resolving symlinks takes us to the real root.
-  # Let's trust the resolved path for now or check parent if we ended up in bin
-  local parent_dir
-  parent_dir="$(dirname "$install_dir")"
-  if [[ -f "$parent_dir/shellspec" ]] && [[ -d "$parent_dir/lib" ]]; then
-       echo "$parent_dir"
-       return 0
-  fi
-  
-  # If we are here, we might be in the root already if we didn't have symlinks?
-  echo "$install_dir"
+  # Fallback
+  echo "$install_root"
 }
 
 if ! SHELLSPEC_DIR="$(find_shellspec_dir)"; then
@@ -119,30 +120,70 @@ if [[ -f "bin/shellspec.rej" ]]; then
     rm "bin/shellspec.rej"
 fi
 
-# 6. Verify
+# 6. Verify (Functional)
 log_step "Verifying..."
-if "$SHELLSPEC_DIR/shellspec" --help | grep -q timeout; then
-    VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-    log_info "Success! Version: $VERSION"
-    touch "$MARKER_FILE"
-    exit 0
-else
-    # Verification failed, try force as last resort
-    log_warn "Standard patch didn't result in working timeout. Trying force apply..."
-    if patch -p1 -N -f < "$PATCH_FILE"; then 
-         log_info "Forced patch applied."
-    else
-         log_warn "Forced patch returned errors (expected if partial)."
-    fi
+
+# Create a temporary test file
+TEST_FILE="$SHELLSPEC_DIR/timeout_verification_spec.sh"
+cat <<EOF > "$TEST_FILE"
+Example "timeout test" % timeout:1
+  sleep 2
+  The status should equal 0
+End
+EOF
+
+# Run it
+if "$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1; then
+    # It should fail (timeout) or succeed? 
+    # Wait, if it times out, the exit code might be non-zero depending on implementation.
+    # ShellSpec timeout usually fails the test.
+    # If feature is NOT present, it sleeps 2s and succeeds (status 0).
+    # If feature IS present, it aborts at 1s (fail).
     
-    if "$SHELLSPEC_DIR/shellspec" --help | grep -q timeout; then
-        VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-        log_info "Success (after force)! Version: $VERSION"
-        touch "$MARKER_FILE"
-        exit 0
+    # Actually, we want to check if it aborts.
+    # Let's time it.
+    START_TIME=$(date +%s)
+    "$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
+    END_TIME=$(date +%s)
+    DURATION=$((END_TIME - START_TIME))
+    
+    rm "$TEST_FILE"
+    
+    if [[ $DURATION -lt 2 ]]; then
+         VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
+         log_info "Success! Timeout triggered (Duration: ${DURATION}s). Version: $VERSION"
+         touch "$MARKER_FILE"
+         exit 0
     else
-        log_error "Verification failed even after force apply."
-        exit 1
+         log_error "Verification failed. Test slept for full duration (${DURATION}s)."
+         exit 1
+    fi
+else
+    # Run failed unexpectedly?
+    # Rerunning logic above handles the execution.
+    # Just need to make sure we captured the timeout behavior.
+    
+    # Simplified check:
+    # If patch is applied, `shellspec --help` MIGHT show timeout.
+    # Let's stick to the help check as a primary quick check, but fall back to functional?
+    # No, the user specifically mentioned help check failed in CI.
+    # Let's use the functional check described above.
+    
+    # Re-writing the block correctly:
+    START_TIME=$(date +%s)
+    "$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
+    END_TIME=$(date +%s)
+    DURATION=$((END_TIME - START_TIME))
+    rm "$TEST_FILE"
+    
+    if [[ $DURATION -lt 2 ]]; then
+         VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
+         log_info "Success! Timeout functional. Version: $VERSION"
+         touch "$MARKER_FILE"
+         exit 0
+    else 
+         log_error "Verification failed (Duration: ${DURATION}s)."
+         exit 1
     fi
 fi
 
