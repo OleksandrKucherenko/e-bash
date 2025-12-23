@@ -11,8 +11,8 @@
 #   clean_output=$(echo "$output" | ./strip_colors.sh)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-26
-## Version: 1.0.0
+## Last revisit: 2025-12-23
+## Version: 1.12.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
