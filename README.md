@@ -2,6 +2,9 @@
 
 # Enhanced BASH Scripts
 
+[![Run in Smithery](https://smithery.ai/badge/skills/oleksandrkucherenko)](https://smithery.ai/skills?ns=oleksandrkucherenko&utm_source=github&utm_medium=badge)
+
+
 - [Enhanced BASH Scripts](#enhanced-bash-scripts)
   - [Roadmap](#roadmap)
   - [Local Dev Environment - Requirements](#local-dev-environment---requirements)
