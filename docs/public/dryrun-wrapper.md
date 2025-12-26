@@ -1,4 +1,4 @@
-# Dry-Run Wrapper System
+# Dry-Run Wrapper System (_dryrun.sh)
 
 A comprehensive dry-run wrapper system for safe command execution with built-in support for testing (dry-run) and rollback operations. It supports three distinct execution modes that allow you to:
 
@@ -46,11 +46,13 @@ rollback:kubectl delete deployment myapp
 ## Execution Modes
 
 ### Mode 1: Normal Execution (Default)
+
 **Variables:** `DRY_RUN=false` (default), `UNDO_RUN=false` (default)
 
 **Behavior:**
-- `run:{cmd}` → Executes command
-- `dry:{cmd}` → Executes command
+
+- `run:{cmd}` → **Executes command**
+- `dry:{cmd}` → **Executes command**
 - `rollback:{cmd}` / `undo:{cmd}` → Shows dry-run message (no execution)
 - `rollback:func` → Shows dry-run message with function body
 
@@ -64,10 +66,12 @@ rollback:git reset HEAD~1  # Shows dry-run (safe by default)
 ```
 
 ### Mode 2: Dry-Run Mode
+
 **Variables:** `DRY_RUN=true`, `UNDO_RUN=false`
 
 **Behavior:**
-- `run:{cmd}` → Shows dry-run message
+
+- `run:{cmd}` → **Executes command**
 - `dry:{cmd}` → Shows dry-run message
 - `rollback:{cmd}` / `undo:{cmd}` → Shows dry-run message
 - `rollback:func` → Shows dry-run message with function body
@@ -80,10 +84,12 @@ DRY_RUN=true ./deploy.sh
 ```
 
 ### Mode 3: Undo/Rollback Mode
+
 **Variables:** `DRY_RUN=false`, `UNDO_RUN=true`
 
 **Behavior:**
-- `run:{cmd}` → Shows dry-run message (prevents normal operations)
+
+- `run:{cmd}` → **Executes command**
 - `dry:{cmd}` → Shows dry-run message (prevents normal operations)
 - `rollback:{cmd}` / `undo:{cmd}` → **Executes command** (enables rollback)
 - `rollback:func` → **Executes function** (enables rollback)
@@ -96,9 +102,11 @@ UNDO_RUN=true ./deploy.sh
 ```
 
 ### Mode 4: Combined Safety Mode
+
 **Variables:** `DRY_RUN=true`, `UNDO_RUN=true`
 
 **Behavior:**
+
 - All commands show dry-run messages
 - `DRY_RUN` takes precedence - even rollback commands won't execute
 
@@ -111,12 +119,12 @@ DRY_RUN=true UNDO_RUN=true ./deploy.sh
 
 ## Mode Comparison Table
 
-| Mode | DRY_RUN | UNDO_RUN | run:/dry: | rollback:/undo: | Use Case |
-|------|---------|----------|-----------|-----------------|----------|
-| **Normal** | false | false | Execute | Dry-run | Standard operations |
-| **Dry-run** | true | false | Dry-run | Dry-run | Testing/Preview |
-| **Undo** | false | true | Dry-run | **Execute** | Rollback operations |
-| **Safe** | true | true | Dry-run | Dry-run | Preview rollback |
+| Mode        | DRY_RUN | UNDO_RUN | run:        | dry:        | undo:       | Use Case            |
+| ----------- | ------- | -------- | ----------- | ----------- | ----------- | ------------------- |
+| **Normal**  | false   | false    | **Execute** | **Execute** | Dry-run     | Standard operations |
+| **Dry-run** | true    | false    | **Execute** | Dry-run     | Dry-run     | Testing/Preview     |
+| **Undo**    | false   | true     | **Execute** | Dry-run     | **Execute** | Rollback operations |
+| **Safe**    | true    | true     | Dry-run     | Dry-run     | Dry-run     | Preview rollback    |
 
 ## Logger Output
 
@@ -183,6 +191,7 @@ The system follows this precedence chain (highest to lowest):
 ## Wrapper Types
 
 ### `run:{cmd}`
+
 Safe execution wrapper that respects `DRY_RUN` and `UNDO_RUN`.
 
 ```bash
@@ -192,6 +201,7 @@ UNDO_RUN=true run:ls # Shows dry-run (prevents normal ops in rollback mode)
 ```
 
 ### `dry:{cmd}`
+
 Conditional execution based on dry-run flags.
 
 ```bash
@@ -201,6 +211,7 @@ UNDO_RUN=true dry:git status # Shows dry-run
 ```
 
 ### `rollback:{cmd}` / `undo:{cmd}`
+
 Rollback operations that only execute in `UNDO_RUN` mode.
 
 ```bash
@@ -210,6 +221,7 @@ UNDO_RUN=true rollback:git reset  # EXECUTES (rollback mode)
 ```
 
 ### `rollback:func`
+
 Complex rollback operations with function body preview.
 
 ```bash
@@ -426,7 +438,7 @@ fi
 
 ## Visual Decision Tree
 
-```
+```text
 Command execution flow:
 
 run:{cmd} or dry:{cmd}:
@@ -448,9 +460,9 @@ rollback:{cmd} or undo:{cmd}:
 
 ### Q: What's the difference between `run:{cmd}` and `dry:{cmd}`?
 
-**A:** Both behave identically - they execute commands normally and respect `DRY_RUN`/`UNDO_RUN` flags. Use `run:` for clarity when you always want to execute, and `dry:` when the command is conditionally executed based on flags.
+**A:** Both behave identically - they execute commands normally and respect `DRY_RUN`/`UNDO_RUN` flags. Use `run:` for clarity when you always want to execute, and `dry:` when the command is conditionally executed based on flags. `run:` should be a first choice for read-only operations, lookups, search etc.
 
-### Q: Why do rollback commands show "(dry)" by default?
+### Q: Why do rollback commands show "[on undo]" by default?
 
 **A:** Rollback operations are potentially destructive. The system defaults to dry-run mode for safety. You must explicitly set `UNDO_RUN=true` to execute rollbacks.
 
@@ -492,6 +504,7 @@ DRY_RUN=true deploy  # Both commands show dry-run
 **Cause:** Wrapper not created or script not sourced.
 
 **Solution:**
+
 ```bash
 # Ensure E_BASH is set and script is sourced
 export E_BASH=/path/to/e-bash/.scripts
@@ -507,6 +520,7 @@ run:ls -la  # Now works
 **Cause:** Variable set after sourcing, or command-specific override.
 
 **Solution:**
+
 ```bash
 # Set BEFORE sourcing for global effect
 export DRY_RUN=true
@@ -524,6 +538,7 @@ unset DRY_RUN_GIT  # Remove any overrides
 **Cause:** `DRY_RUN=true` takes precedence over `UNDO_RUN=true`.
 
 **Solution:**
+
 ```bash
 # Use only UNDO_RUN for rollback
 UNDO_RUN=true ./script.sh
@@ -536,7 +551,10 @@ UNDO_RUN=true ./script.sh
 Enable debug logging:
 
 ```bash
+# special loggers only enabled
 DEBUG="exec,dry,rollback,output" ./demos/demo.dryrun-modes.sh
+# Or all loggers, VERBOSE mode:
+DEBUG="*" ./demos/demo.dryrun-modes.sh
 ```
 
 ## Integration Patterns

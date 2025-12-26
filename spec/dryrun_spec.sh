@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-23
-## Version: 1.12.6
+## Last revisit: 2025-12-26
+## Version: 1.14.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -263,18 +263,22 @@ Describe "_dryrun.sh /"
     Describe "run: functions in dry run mode /"
       BeforeEach "export DRY_RUN=true UNDO_RUN=false SILENT=false"
 
-      It "Should not execute command when DRY_RUN=true"
-        When call run:echo "should not execute"
+      It "Should execute command when DRY_RUN=true"
+        When call run:echo "should execute"
 
         The status should be success
-        The output should include "echo should not execute"
+        The output should eq "should execute"
+        The error should include "echo should execute"
+        The error should include "code: 0"
       End
 
-      It "Should return success without executing the actual command"
+      It "Should return success and emit output when DRY_RUN=true"
         When call run:echo "false"
 
-        The status should be success           # Should be 0, not the exit code of 'false'
-        The output should include "echo false" # Should show what would be executed
+        The status should be success
+        The output should eq "false"
+        The error should include "echo false"
+        The error should include "code: 0"
       End
     End
 
@@ -342,7 +346,7 @@ Describe "_dryrun.sh /"
 
     It "Should use DRY_RUN_ECHO override when set"
       BeforeCall "export DRY_RUN_ECHO=true DRY_RUN=false"
-      When call run:echo "should be dry"
+      When call dry:echo "should be dry"
 
       The status should be success
       The output should include "echo should be dry"
@@ -370,7 +374,7 @@ Describe "_dryrun.sh /"
 
     It "Should fall back to global variables when command-specific ones are not set"
       BeforeCall "export DRY_RUN=true"
-      When call run:echo "global dry run"
+      When call dry:echo "global dry run"
 
       The status should be success
       The output should include "echo global dry run"
@@ -378,7 +382,7 @@ Describe "_dryrun.sh /"
 
     It "Should prioritize command-specific variables over global ones"
       BeforeCall "export DRY_RUN=true DRY_RUN_ECHO=false"
-      When call run:echo "should execute"
+      When call dry:echo "should execute"
 
       The status should be success
       The output should eq "should execute"
@@ -453,7 +457,7 @@ Describe "_dryrun.sh /"
       BeforeCall "dry-run 'echo' 'pwd'"
       BeforeCall "export DRY_RUN_PWD=false"
 
-      When call run:echo "dry global"
+      When call dry:echo "dry global"
       The status should be success
       The output should include "echo dry global"
     End
@@ -463,7 +467,7 @@ Describe "_dryrun.sh /"
       BeforeCall "dry-run 'echo' 'pwd'"
       BeforeCall "export DRY_RUN_PWD=false"
 
-      When call run:pwd
+      When call dry:pwd
       The status should be success
       The output should include "/"
       The error should include "pwd"

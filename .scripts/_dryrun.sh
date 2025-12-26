@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-23
-## Version: 1.12.6
+## Last revisit: 2025-12-26
+## Version: 1.14.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -77,8 +77,8 @@ function dry-run() {
     # Generate run:{cmd}
     eval "
     function run:${cmd}() {
-      local is_dry=\${${dry_var}:-\${DRY_RUN:-false}} is_undo=\${${undo_var}:-\${UNDO_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
-      if [ \"\$is_dry\" = true ] || [ \"\$is_undo\" = true ]; then
+      local is_undo=\${${undo_var}:-\${UNDO_RUN:-false}} is_silent=\${${silent_var}:-\${SILENT:-false}}
+      if [ \"\$is_undo\" = true ]; then
         echo:Dry \"${cmd} \$*\"
         return 0
       fi
