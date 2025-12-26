@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.14.4
+## Version: 0.14.5
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1992,6 +1992,29 @@ Describe "_commons.sh /"
       rm -rf "$test_root"
     }
 
+    # Helper wrapper for config:hierarchy:xdg with custom HOME
+    call_xdg_with_home() {
+      local home_dir="$1"
+      shift
+      local xdg_home=""
+      if [[ "$1" == "--xdg" ]]; then
+        xdg_home="$2"
+        shift 2
+      fi
+
+      local saved_home="$HOME"
+      local saved_xdg="$XDG_CONFIG_HOME"
+      export HOME="$home_dir"
+      [[ -n "$xdg_home" ]] && export XDG_CONFIG_HOME="$xdg_home"
+
+      config:hierarchy:xdg "$@"
+      local result=$?
+
+      export HOME="$saved_home"
+      export XDG_CONFIG_HOME="$saved_xdg"
+      return $result
+    }
+
     It "requires app_name as first argument"
       When call config:hierarchy:xdg "" "config"
 
@@ -2002,14 +2025,13 @@ Describe "_commons.sh /"
     It "searches hierarchical paths with highest priority"
       test_root=$(setup_xdg_test)
 
-      When call sh -c "
-        export HOME='$test_root'
-        result=\$(config:hierarchy:xdg 'myapp' 'myapp' '$test_root/project/subdir' 'root' '.json')
-        first_line=\$(echo \"\$result\" | head -n 1)
-        echo \"\$first_line\" | grep -c 'subdir/myapp.json' || echo '0'
-      "
-
+      result=$(call_xdg_with_home "$test_root" "myapp" "myapp" "$test_root/project/subdir" "root" ".json")
       cleanup_xdg_test "$test_root"
+
+      first_line=$(echo "$result" | head -n 1)
+      has_subdir=$(echo "$first_line" | grep -c "subdir/myapp.json" || true)
+
+      When call echo "$has_subdir"
 
       The status should be success
       The output should eq "1"
@@ -2018,13 +2040,12 @@ Describe "_commons.sh /"
     It "includes XDG config directories when they exist"
       test_root=$(setup_xdg_test)
 
-      When call sh -c "
-        export HOME='$test_root'
-        result=\$(config:hierarchy:xdg 'myapp' 'config' '$test_root/project' 'root' '.json')
-        echo \"\$result\" | grep -c '\.config/myapp/config.json' || echo '0'
-      "
-
+      result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
+
+      has_xdg=$(echo "$result" | grep -c "\.config/myapp/config.json" || true)
+
+      When call echo "$has_xdg"
 
       The status should be success
       The output should eq "1"
@@ -2035,14 +2056,12 @@ Describe "_commons.sh /"
       mkdir -p "$test_root/custom-xdg/myapp"
       echo '{"level": "custom"}' > "$test_root/custom-xdg/myapp/config.json"
 
-      When call sh -c "
-        export HOME='$test_root'
-        export XDG_CONFIG_HOME='$test_root/custom-xdg'
-        result=\$(config:hierarchy:xdg 'myapp' 'config' '$test_root/project' 'root' '.json')
-        echo \"\$result\" | grep -c 'custom-xdg/myapp/config.json' || echo '0'
-      "
-
+      result=$(call_xdg_with_home "$test_root" --xdg "$test_root/custom-xdg" "myapp" "config" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
+
+      has_custom_xdg=$(echo "$result" | grep -c "custom-xdg/myapp/config.json" || true)
+
+      When call echo "$has_custom_xdg"
 
       The status should be success
       The output should eq "1"
@@ -2076,17 +2095,15 @@ Describe "_commons.sh /"
       echo '{"file": "config"}' > "$test_root/.config/myapp/config.json"
       echo '{"file": "myapprc"}' > "$test_root/.config/myapp/myapprc.json"
 
+      result=$(call_xdg_with_home "$test_root" "myapp" "config,myapprc" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      count=$(echo "$result" | grep -c "\.config/myapp/" || true)
+
       # Helper for comparison
       check_ge_2() { test "$1" -ge 2; }
 
-      When call sh -c "
-        export HOME='$test_root'
-        result=\$(config:hierarchy:xdg 'myapp' 'config,myapprc' '$test_root/project' 'root' '.json')
-        count=\$(echo \"\$result\" | grep -c '\.config/myapp/' || echo '0')
-        test \"\$count\" -ge 2 && echo \"\$count\" || exit 1
-      "
-
-      cleanup_xdg_test "$test_root"
+      When call check_ge_2 "$count"
 
       The status should be success
     End
@@ -2094,24 +2111,19 @@ Describe "_commons.sh /"
     It "respects priority order: hierarchy > XDG_CONFIG_HOME > ~/.config > /etc/xdg > /etc"
       test_root=$(setup_xdg_test)
 
-      When call sh -c "
-        export HOME='$test_root'
-        result=\$(config:hierarchy:xdg 'myapp' 'config' '$test_root/project' 'root' '.json')
+      result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "root" ".json")
 
-        # Get line numbers of each config source
-        line_xdg_config=\$(echo \"\$result\" | grep -n '\.config/myapp' | cut -d: -f1 || echo '999')
-        line_etc_xdg=\$(echo \"\$result\" | grep -n 'etc/xdg/myapp' | cut -d: -f1 || echo '999')
-        line_etc=\$(echo \"\$result\" | grep -n 'etc/myapp' | cut -d: -f1 || echo '999')
-
-        # XDG should come before etc/xdg which comes before etc
-        if [ \"\$line_xdg_config\" -lt \"\$line_etc_xdg\" ] && [ \"\$line_etc_xdg\" -lt \"\$line_etc\" ]; then
-          echo '0'
-        else
-          echo '1'
-        fi
-      "
+      # Get line numbers of each config source
+      line_xdg_config=$(echo "$result" | grep -n "\.config/myapp" | cut -d: -f1 || echo "999")
+      line_etc_xdg=$(echo "$result" | grep -n "etc/xdg/myapp" | cut -d: -f1 || echo "999")
+      line_etc=$(echo "$result" | grep -n "etc/myapp" | cut -d: -f1 || echo "999")
 
       cleanup_xdg_test "$test_root"
+
+      # XDG should come before etc/xdg which comes before etc
+      test "$line_xdg_config" -lt "$line_etc_xdg" && test "$line_etc_xdg" -lt "$line_etc"
+
+      When call echo $?
 
       The status should be success
       The output should eq "0"
@@ -2151,13 +2163,12 @@ Describe "_commons.sh /"
       mkdir -p "$test_root/.config/nvim"
       echo 'set number' > "$test_root/.config/nvim/init.vim"
 
-      When call sh -c "
-        export HOME='$test_root'
-        result=\$(config:hierarchy:xdg 'nvim' 'init.vim' '$test_root/project' 'home' '')
-        echo \"\$result\" | grep -c '\.config/nvim/init.vim' || echo '0'
-      "
-
+      result=$(call_xdg_with_home "$test_root" "nvim" "init.vim" "$test_root/project" "home" "")
       cleanup_xdg_test "$test_root"
+
+      has_nvim=$(echo "$result" | grep -c "\.config/nvim/init.vim" || true)
+
+      When call echo "$has_nvim"
 
       The status should be success
       The output should eq "1"
@@ -2166,19 +2177,17 @@ Describe "_commons.sh /"
     It "uses default stop_at 'home' when not specified"
       test_root=$(setup_xdg_test)
 
+      # Should stop at HOME by default, not search /etc
+      result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "" ".json")
+      cleanup_xdg_test "$test_root"
+
+      # XDG directories under HOME should still be searched
+      has_xdg=$(echo "$result" | grep -c "\.config/myapp" || true)
+
       # Helper for comparison
       check_ge_0() { test "$1" -ge 0; }
 
-      When call sh -c "
-        export HOME='$test_root'
-        # Should stop at HOME by default, not search /etc
-        result=\$(config:hierarchy:xdg 'myapp' 'config' '$test_root/project' '' '.json')
-        # XDG directories under HOME should still be searched
-        has_xdg=\$(echo \"\$result\" | grep -c '\.config/myapp' || echo '0')
-        test \"\$has_xdg\" -ge 0 && echo \"\$has_xdg\" || exit 1
-      "
-
-      cleanup_xdg_test "$test_root"
+      When call check_ge_0 "$has_xdg"
 
       The status should be success
     End
