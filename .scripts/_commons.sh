@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.12.0
+## Version: 0.13.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -631,7 +631,18 @@ function git:root() {
   }
 
   # Navigate upward until we find .git (file or directory) or reach root
+  local max_iterations=1000  # Safety limit to prevent infinite loops
+  local iteration=0
+
   while [[ "$current_dir" != "/" ]]; do
+    # Safety check: prevent infinite loops
+    ((iteration++))
+    if [[ $iteration -gt $max_iterations ]]; then
+      echo "" >&2
+      echo "WARNING: git:root exceeded maximum iterations ($max_iterations), possible infinite loop" >&2
+      return 1
+    fi
+
     if [[ -e "$current_dir/.git" ]]; then
       root_path="$current_dir"
 
@@ -694,7 +705,13 @@ function git:root() {
     fi
 
     # Move up one directory
+    local prev_dir="$current_dir"
     current_dir=$(dirname "$current_dir")
+
+    # Safety check: if dirname returns same path, we're at root
+    if [[ "$current_dir" == "$prev_dir" ]]; then
+      break
+    fi
   done
 
   # No .git found
@@ -788,7 +805,18 @@ function config:hierarchy() {
 
   # Search upward from current directory to stop path
   local search_dir="$current_dir"
+  local max_iterations=1000  # Safety limit to prevent infinite loops
+  local iteration=0
+
   while true; do
+    # Safety check: prevent infinite loops
+    ((iteration++))
+    if [[ $iteration -gt $max_iterations ]]; then
+      echo "" >&2
+      echo "WARNING: config:hierarchy exceeded maximum iterations ($max_iterations), possible infinite loop" >&2
+      return 1
+    fi
+
     # Try each config name
     for name in "${name_list[@]}"; do
       name=$(echo "$name" | xargs) # Trim whitespace
@@ -811,10 +839,11 @@ function config:hierarchy() {
     fi
 
     # Move up one directory
+    local prev_dir="$search_dir"
     search_dir=$(dirname "$search_dir")
 
     # Safety check: if dirname returns same path, we're at root
-    if [[ "$search_dir" == "$(dirname "$search_dir")" ]]; then
+    if [[ "$search_dir" == "$prev_dir" ]]; then
       break
     fi
   done
