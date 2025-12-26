@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.14.7
+## Version: 1.15.8
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1707,6 +1707,20 @@ Describe "_commons.sh /"
       The error should eq ''
     End
 
+    It "resolves physical root when starting from symlinked path"
+      tmp_dir=$(mktemp -d)
+      ln -s "$REPO_ROOT" "$tmp_dir/repo-link"
+
+      result=$(git:root "$tmp_dir/repo-link")
+      rm -rf "$tmp_dir"
+
+      When call echo "$result"
+
+      The status should be success
+      The output should eq "$REPO_ROOT"
+      The error should eq ''
+    End
+
     It "returns git repository type as 'regular' for normal repo"
       When call git:root "." "type"
 
@@ -1997,21 +2011,45 @@ Describe "_commons.sh /"
       local home_dir="$1"
       shift
       local xdg_home=""
+      local xdg_dirs=""
+      local xdg_etc=""
+      local xdg_dirs_set=0
+      local xdg_etc_set=0
       if [[ "$1" == "--xdg" ]]; then
         xdg_home="$2"
+        shift 2
+      fi
+      if [[ "$1" == "--xdg-dirs" ]]; then
+        xdg_dirs="$2"
+        xdg_dirs_set=1
+        shift 2
+      fi
+      if [[ "$1" == "--xdg-etc" ]]; then
+        xdg_etc="$2"
+        xdg_etc_set=1
         shift 2
       fi
 
       local saved_home="$HOME"
       local saved_xdg="$XDG_CONFIG_HOME"
+      local saved_xdg_dirs="$XDG_CONFIG_DIRS"
+      local saved_xdg_etc="$XDG_ETC_DIR"
       export HOME="$home_dir"
       [[ -n "$xdg_home" ]] && export XDG_CONFIG_HOME="$xdg_home"
+      if [[ $xdg_dirs_set -eq 1 ]]; then
+        export XDG_CONFIG_DIRS="$xdg_dirs"
+      fi
+      if [[ $xdg_etc_set -eq 1 ]]; then
+        export XDG_ETC_DIR="$xdg_etc"
+      fi
 
       config:hierarchy:xdg "$@"
       local result=$?
 
       export HOME="$saved_home"
       export XDG_CONFIG_HOME="$saved_xdg"
+      export XDG_CONFIG_DIRS="$saved_xdg_dirs"
+      export XDG_ETC_DIR="$saved_xdg_etc"
       return $result
     }
 
@@ -2111,7 +2149,7 @@ Describe "_commons.sh /"
     It "respects priority order: hierarchy > XDG_CONFIG_HOME > ~/.config > /etc/xdg > /etc"
       test_root=$(setup_xdg_test)
 
-      result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "root" ".json")
+      result=$(call_xdg_with_home "$test_root" --xdg-dirs "$test_root/etc/xdg" --xdg-etc "$test_root/etc" "myapp" "config" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
 
       # Helper to check priority order

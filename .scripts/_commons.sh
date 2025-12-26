@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.14.6
+## Version: 1.15.8
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -625,7 +625,7 @@ function git:root() {
   local current_dir git_type git_dir root_path
 
   # Resolve to absolute path
-  current_dir=$(cd "$start_path" 2>/dev/null && pwd) || {
+  current_dir=$(cd "$start_path" 2>/dev/null && pwd -P) || {
     echo ""
     return 1
   }
@@ -778,7 +778,7 @@ function config:hierarchy() {
   local -a name_list ext_list
 
   # Resolve to absolute path
-  current_dir=$(cd "$start_path" 2>/dev/null && pwd) || {
+  current_dir=$(cd "$start_path" 2>/dev/null && pwd -P) || {
     echo ""
     return 1
   }
@@ -948,11 +948,22 @@ function config:hierarchy:xdg() {
   # ~/.config (XDG default)
   xdg_paths+=("${HOME}/.config/${app_name}")
 
-  # /etc/xdg (system-wide XDG)
-  xdg_paths+=("/etc/xdg/${app_name}")
+  # XDG_CONFIG_DIRS (system-wide XDG, colon-separated)
+  if [[ -n "${XDG_CONFIG_DIRS}" ]]; then
+    local -a xdg_config_dirs=()
+    IFS=':' read -ra xdg_config_dirs <<<"${XDG_CONFIG_DIRS}"
+    for xdg_dir in "${xdg_config_dirs[@]}"; do
+      [[ -n "$xdg_dir" ]] && xdg_paths+=("${xdg_dir%/}/${app_name}")
+    done
+  else
+    xdg_paths+=("/etc/xdg/${app_name}")
+  fi
 
   # /etc (traditional system config)
-  xdg_paths+=("/etc/${app_name}")
+  local etc_root="${XDG_ETC_DIR:-/etc}"
+  if [[ -n "$etc_root" ]]; then
+    xdg_paths+=("${etc_root%/}/${app_name}")
+  fi
 
   # 3. Search XDG directories for config files
   local -a name_list ext_list
