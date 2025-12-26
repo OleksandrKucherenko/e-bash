@@ -253,8 +253,22 @@ More details: [Arguments Parsing](docs/public/arguments.md), [Demo script](demos
 
 ### Common(s) Functions And Inputs
 
+[Complete Documentation](docs/public/commons.md)
+
 ```bash
 source ".scripts/_commons.sh"
+
+# Find git repository root (handles regular repos, worktrees, submodules)
+repo_root=$(git:root)
+repo_type=$(git:root "." "type")  # regular, worktree, or submodule
+
+# Find configuration file hierarchy (similar to c12/cosmiconfig)
+configs=$(config:hierarchy ".eslintrc" "." "git" ",.js,.json,.yaml")
+# Returns files in order: root → current (for proper config merging)
+
+# XDG-compliant config discovery
+configs=$(config:hierarchy:xdg "nvim" "init.vim" "." "home")
+# Searches: project configs → ~/.config/nvim → /etc/xdg/nvim → /etc/nvim
 
 # Extract parameter from global env variable OR from secret file (file content)
 env:variable:or:secret:file "new_value" \
