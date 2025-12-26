@@ -1,9 +1,6 @@
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/OleksandrKucherenko/e-bash) [![codecov](https://codecov.io/gh/OleksandrKucherenko/e-bash/branch/master/graph/badge.svg)](https://codecov.io/gh/OleksandrKucherenko/e-bash)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/OleksandrKucherenko/e-bash) [![codecov](https://codecov.io/gh/OleksandrKucherenko/e-bash/branch/master/graph/badge.svg)](https://codecov.io/gh/OleksandrKucherenko/e-bash) [![Run in Smithery](https://smithery.ai/badge/skills/oleksandrkucherenko)](https://smithery.ai/skills?ns=oleksandrkucherenko&utm_source=github&utm_medium=badge)
 
 # Enhanced BASH Scripts
-
-[![Run in Smithery](https://smithery.ai/badge/skills/oleksandrkucherenko)](https://smithery.ai/skills?ns=oleksandrkucherenko&utm_source=github&utm_medium=badge)
-
 
 - [Enhanced BASH Scripts](#enhanced-bash-scripts)
   - [Roadmap](#roadmap)
@@ -34,11 +31,9 @@
 
 ## Roadmap
 
-- [ ] High-level scripts should be in their own `bin` OR `scripts`
-- [ ] Git helpers
+- [x] High-level scripts should be in their own `bin` OR `demos`
+- [x] Git helpers
 - [ ] GitLab's helper scripts (work with branches, forks, submodules)
-- [ ] Slack notifications helper scripts
-- [ ] Telemetry module (report metrics to CI or DataDog)
 - [ ] Globals module (declarative way of defining script dependencies to global environment variables)
 - [x] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
 - [x] Copyright headers composing/parsing (extract from the file, update, insert)
