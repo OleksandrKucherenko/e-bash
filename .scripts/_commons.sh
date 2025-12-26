@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.13.1
+## Version: 0.14.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -634,7 +634,7 @@ function git:root() {
   local max_iterations=1000  # Safety limit to prevent infinite loops
   local iteration=0
 
-  while [[ "$current_dir" != "/" ]]; do
+  while true; do
     # Safety check: prevent infinite loops
     ((iteration++))
     if [[ $iteration -gt $max_iterations ]]; then
@@ -659,7 +659,12 @@ function git:root() {
 
           # Convert relative path to absolute if needed
           if [[ ! "$git_dir" =~ ^/ ]]; then
-            git_dir=$(cd "$current_dir" && cd "$(dirname "$git_dir")" 2>/dev/null && pwd)/$(basename "$git_dir")
+            local abs_git_dir
+            abs_git_dir=$(cd "$current_dir" && cd "$(dirname "$git_dir")" 2>/dev/null && pwd)
+            if [[ -n "$abs_git_dir" ]]; then
+              git_dir="$abs_git_dir/$(basename "$git_dir")"
+            fi
+            # If conversion fails, keep relative path as-is
           fi
 
           # Detect if it's a worktree or submodule
@@ -702,6 +707,11 @@ function git:root() {
       esac
 
       return 0
+    fi
+
+    # Break if we've reached filesystem root
+    if [[ "$current_dir" == "/" ]]; then
+      break
     fi
 
     # Move up one directory
@@ -762,7 +772,7 @@ function config:hierarchy() {
   local config_names="${1:-.config}"
   local start_path="${2:-.}"
   local stop_at="${3:-git}"
-  local extensions="${4:-,.json,.yaml,.yml,.toml,.ini,.conf,.rc}"
+  local extensions="${4-,.json,.yaml,.yml,.toml,.ini,.conf,.rc}"
 
   local current_dir stop_path found_files=()
   local -a name_list ext_list
@@ -895,7 +905,7 @@ function config:hierarchy:xdg() {
   local config_names="${2:-config}"
   local start_path="${3:-.}"
   local stop_at="${4:-home}"
-  local extensions="${5:-,.json,.yaml,.yml,.toml,.ini,.conf,.rc}"
+  local extensions="${5-,.json,.yaml,.yml,.toml,.ini,.conf,.rc}"
 
   # Validate app_name is provided
   if [[ -z "$app_name" ]]; then
