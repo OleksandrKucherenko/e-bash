@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.13.1
+## Version: 0.14.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1696,11 +1696,14 @@ Describe "_commons.sh /"
   End
 
   Describe "git:root /"
+    # Dynamically determine the repo root for CI compatibility
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo '/home/user/e-bash')"
+
     It "finds git repository root from current directory"
       When call git:root "."
 
       The status should be success
-      The output should eq "/home/user/e-bash"
+      The output should eq "$REPO_ROOT"
       The error should eq ''
     End
 
@@ -1716,7 +1719,7 @@ Describe "_commons.sh /"
       When call git:root "." "both"
 
       The status should be success
-      The output should eq "regular:/home/user/e-bash"
+      The output should eq "regular:$REPO_ROOT"
       The error should eq ''
     End
 
@@ -1724,23 +1727,23 @@ Describe "_commons.sh /"
       When call git:root "." "all"
 
       The status should be success
-      The output should match pattern "regular:/home/user/e-bash:/home/user/e-bash/.git"
+      The output should match pattern "regular:$REPO_ROOT:$REPO_ROOT/.git"
       The error should eq ''
     End
 
     It "finds git root from nested subdirectory"
-      When call git:root "/home/user/e-bash/spec"
+      When call git:root "$REPO_ROOT/spec"
 
       The status should be success
-      The output should eq "/home/user/e-bash"
+      The output should eq "$REPO_ROOT"
       The error should eq ''
     End
 
     It "finds git root from deeply nested path"
-      When call git:root "/home/user/e-bash/.scripts"
+      When call git:root "$REPO_ROOT/.scripts"
 
       The status should be success
-      The output should eq "/home/user/e-bash"
+      The output should eq "$REPO_ROOT"
       The error should eq ''
     End
 
@@ -1772,7 +1775,7 @@ Describe "_commons.sh /"
       When call git:root
 
       The status should be success
-      The output should eq "/home/user/e-bash"
+      The output should eq "$REPO_ROOT"
       The error should eq ''
     End
 
@@ -1780,12 +1783,15 @@ Describe "_commons.sh /"
       When call git:root "." "invalid_type"
 
       The status should be success
-      The output should eq "/home/user/e-bash"
+      The output should eq "$REPO_ROOT"
       The error should eq ''
     End
   End
 
   Describe "config:hierarchy /"
+    # Dynamically determine the repo root for CI compatibility
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo '/home/user/e-bash')"
+
     setup_test_configs() {
       local test_root="/tmp/config-hierarchy-test-$$"
       mkdir -p "$test_root/level1/level2/level3"
@@ -1822,7 +1828,7 @@ Describe "_commons.sh /"
       When call config:hierarchy ".shellspec" "." "git" ""
 
       The status should be success
-      The output should eq "/home/user/e-bash/.shellspec"
+      The output should eq "$REPO_ROOT/.shellspec"
       The error should eq ''
     End
 
@@ -1868,7 +1874,7 @@ Describe "_commons.sh /"
       When call config:hierarchy ".shellspec" "." "git" ""
 
       The status should be success
-      The output should eq "/home/user/e-bash/.shellspec"
+      The output should eq "$REPO_ROOT/.shellspec"
     End
 
     It "stops at custom path when specified"
@@ -1895,7 +1901,7 @@ Describe "_commons.sh /"
       When call config:hierarchy ".shellspec" "" "git" ""
 
       The status should be success
-      The output should eq "/home/user/e-bash/.shellspec"
+      The output should eq "$REPO_ROOT/.shellspec"
     End
 
     It "includes empty extension to match exact filename"
@@ -1952,11 +1958,12 @@ Describe "_commons.sh /"
       cleanup_test_configs "$test_root"
       count=$(echo "$result" | wc -l)
 
-      # Should find .json, .yaml, .toml (default extensions include these)
-      When call echo "$count"
+      # Helper function for numeric comparison
+      check_count() { test "$1" -ge 3; }
+
+      When call check_count "$count"
 
       The status should be success
-      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 3 ]
     End
   End
 
@@ -2059,11 +2066,12 @@ Describe "_commons.sh /"
 
       count=$(echo "$result" | wc -l)
 
-      # Should only appear once (hierarchical has priority)
-      When call echo "$count"
+      # Helper for comparison
+      check_ge_1() { test "$1" -ge 1; }
+
+      When call check_ge_1 "$count"
 
       The status should be success
-      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 1 ]
     End
 
     It "searches multiple config names in XDG directories"
@@ -2079,10 +2087,12 @@ Describe "_commons.sh /"
 
       count=$(echo "$result" | grep -c "\.config/myapp/" || true)
 
-      When call echo "$count"
+      # Helper for comparison
+      check_ge_2() { test "$1" -ge 2; }
+
+      When call check_ge_2 "$count"
 
       The status should be success
-      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 2 ]
     End
 
     It "respects priority order: hierarchy > XDG_CONFIG_HOME > ~/.config > /etc/xdg > /etc"
@@ -2128,10 +2138,12 @@ Describe "_commons.sh /"
       # Should still find hierarchical configs
       count=$(echo "$result" | wc -l)
 
-      When call echo "$count"
+      # Helper for comparison
+      check_ge_1() { test "$1" -ge 1; }
+
+      When call check_ge_1 "$count"
 
       The status should be success
-      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 1 ]
     End
 
     It "works with real-world app example: nvim"
@@ -2163,10 +2175,12 @@ Describe "_commons.sh /"
       # XDG directories under HOME should still be searched
       has_xdg=$(echo "$result" | grep -c "\.config/myapp" || true)
 
-      When call echo "$has_xdg"
+      # Helper for comparison
+      check_ge_0() { test "$1" -ge 0; }
+
+      When call check_ge_0 "$has_xdg"
 
       The status should be success
-      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 0 ]
     End
   End
 End
