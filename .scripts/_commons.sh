@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.14.1
+## Version: 0.14.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -923,12 +923,20 @@ function config:hierarchy:xdg() {
   local -a xdg_paths=()
 
   # 1. First, do hierarchical search (highest priority)
+  # config:hierarchy returns root-to-current order (for merging)
+  # We need to reverse it to get current-to-root (priority order)
   local hierarchy_result
   hierarchy_result=$(config:hierarchy "$config_names" "$start_path" "$stop_at" "$extensions" 2>/dev/null)
   if [[ $? -eq 0 && -n "$hierarchy_result" ]]; then
+    local -a hierarchy_files=()
     while IFS= read -r line; do
-      [[ -n "$line" ]] && all_configs+=("$line")
+      [[ -n "$line" ]] && hierarchy_files+=("$line")
     done <<<"$hierarchy_result"
+
+    # Reverse the array to get highest priority first (current before root)
+    for ((i=${#hierarchy_files[@]}-1; i>=0; i--)); do
+      all_configs+=("${hierarchy_files[i]}")
+    done
   fi
 
   # 2. Build XDG search paths (in priority order)

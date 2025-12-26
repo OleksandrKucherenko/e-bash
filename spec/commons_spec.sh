@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.14.5
+## Version: 0.14.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -2113,10 +2113,15 @@ Describe "_commons.sh /"
 
       result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "root" ".json")
 
-      # Get line numbers of each config source
-      line_xdg_config=$(echo "$result" | grep -n "\.config/myapp" | cut -d: -f1 || echo "999")
-      line_etc_xdg=$(echo "$result" | grep -n "etc/xdg/myapp" | cut -d: -f1 || echo "999")
-      line_etc=$(echo "$result" | grep -n "etc/myapp" | cut -d: -f1 || echo "999")
+      # Get line numbers of each config source (with proper empty handling)
+      line_xdg_config=$(echo "$result" | grep -n "\.config/myapp" | head -1 | cut -d: -f1)
+      line_xdg_config=${line_xdg_config:-999}
+
+      line_etc_xdg=$(echo "$result" | grep -n "etc/xdg/myapp" | head -1 | cut -d: -f1)
+      line_etc_xdg=${line_etc_xdg:-999}
+
+      line_etc=$(echo "$result" | grep -n "etc/myapp" | head -1 | cut -d: -f1)
+      line_etc=${line_etc:-999}
 
       cleanup_xdg_test "$test_root"
 
