@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.13.0
+## Version: 0.13.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -857,6 +857,116 @@ function config:hierarchy() {
   # Output results
   if [[ ${#reversed_files[@]} -gt 0 ]]; then
     printf '%s\n' "${reversed_files[@]}"
+    return 0
+  else
+    echo ""
+    return 1
+  fi
+}
+
+function config:hierarchy:xdg() {
+  # Find configuration files following XDG Base Directory Specification
+  # Combines hierarchical search with XDG-compliant directories
+  #
+  # Arguments:
+  #   $1 - app_name: Application name for XDG directories (e.g., "myapp" -> ~/.config/myapp/)
+  #   $2 - config_name: Config file name(s), comma-separated (e.g., "config,.myapprc")
+  #   $3 - start_path: Starting directory path (default: current directory)
+  #   $4 - stop_at: Where to stop hierarchical search (default: "home")
+  #   $5 - extensions: Comma-separated extensions (default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc")
+  #
+  # Returns:
+  #   0 if at least one config file found, 1 otherwise
+  #   STDOUT: List of config file paths, one per line, ordered by priority (highest to lowest)
+  #
+  # Search order (highest priority first):
+  #   1. Hierarchical search from current_dir up to stop_path
+  #   2. $XDG_CONFIG_HOME/<app_name>/ (if XDG_CONFIG_HOME is set)
+  #   3. ~/.config/<app_name>/ (XDG default user config)
+  #   4. /etc/xdg/<app_name>/ (XDG system-wide config)
+  #   5. /etc/<app_name>/ (traditional system config)
+  #
+  # Example:
+  #   config:hierarchy:xdg "myapp" "config"                    # Full XDG + hierarchy search
+  #   config:hierarchy:xdg "nvim" "init.vim,.nvimrc"           # Find nvim configs
+  #   config:hierarchy:xdg "git" "config" "." "home" ""        # Git config hierarchy
+
+  local app_name="${1}"
+  local config_names="${2:-config}"
+  local start_path="${3:-.}"
+  local stop_at="${4:-home}"
+  local extensions="${5:-,.json,.yaml,.yml,.toml,.ini,.conf,.rc}"
+
+  # Validate app_name is provided
+  if [[ -z "$app_name" ]]; then
+    echo "" >&2
+    echo "ERROR: config:hierarchy:xdg requires app_name as first argument" >&2
+    return 1
+  fi
+
+  local -a all_configs=()
+  local -a xdg_paths=()
+
+  # 1. First, do hierarchical search (highest priority)
+  local hierarchy_result
+  hierarchy_result=$(config:hierarchy "$config_names" "$start_path" "$stop_at" "$extensions" 2>/dev/null)
+  if [[ $? -eq 0 && -n "$hierarchy_result" ]]; then
+    while IFS= read -r line; do
+      [[ -n "$line" ]] && all_configs+=("$line")
+    done <<<"$hierarchy_result"
+  fi
+
+  # 2. Build XDG search paths (in priority order)
+  # XDG_CONFIG_HOME (user override)
+  if [[ -n "${XDG_CONFIG_HOME}" ]]; then
+    xdg_paths+=("${XDG_CONFIG_HOME}/${app_name}")
+  fi
+
+  # ~/.config (XDG default)
+  xdg_paths+=("${HOME}/.config/${app_name}")
+
+  # /etc/xdg (system-wide XDG)
+  xdg_paths+=("/etc/xdg/${app_name}")
+
+  # /etc (traditional system config)
+  xdg_paths+=("/etc/${app_name}")
+
+  # 3. Search XDG directories for config files
+  local -a name_list ext_list
+  IFS=',' read -ra name_list <<<"$config_names"
+  IFS=',' read -ra ext_list <<<"$extensions"
+
+  for xdg_dir in "${xdg_paths[@]}"; do
+    if [[ -d "$xdg_dir" ]]; then
+      for name in "${name_list[@]}"; do
+        name=$(echo "$name" | xargs) # Trim whitespace
+
+        for ext in "${ext_list[@]}"; do
+          ext=$(echo "$ext" | xargs) # Trim whitespace
+          local candidate="${xdg_dir}/${name}${ext}"
+
+          if [[ -f "$candidate" ]]; then
+            # Add to results if not already found in hierarchy
+            local already_found=0
+            for existing in "${all_configs[@]}"; do
+              if [[ "$existing" == "$candidate" ]]; then
+                already_found=1
+                break
+              fi
+            done
+
+            if [[ $already_found -eq 0 ]]; then
+              all_configs+=("$candidate")
+            fi
+          fi
+        done
+      done
+    fi
+  done
+
+  # Output results
+  if [[ ${#all_configs[@]} -gt 0 ]]; then
+    printf '%s\n' "${all_configs[@]}"
     return 0
   else
     echo ""

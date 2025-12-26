@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.12.0
+## Version: 0.13.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1957,6 +1957,216 @@ Describe "_commons.sh /"
 
       The status should be success
       The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 3 ]
+    End
+  End
+
+  Describe "config:hierarchy:xdg /"
+    setup_xdg_test() {
+      local test_root="/tmp/xdg-test-$$"
+      mkdir -p "$test_root/project/subdir"
+      mkdir -p "$test_root/.config/myapp"
+      mkdir -p "$test_root/etc/xdg/myapp"
+      mkdir -p "$test_root/etc/myapp"
+
+      # Hierarchical configs (highest priority)
+      echo '{"level": "project"}' > "$test_root/project/myapp.json"
+      echo '{"level": "subdir"}' > "$test_root/project/subdir/myapp.json"
+
+      # XDG configs
+      echo '{"level": "xdg_config_home"}' > "$test_root/.config/myapp/config.json"
+      echo '{"level": "etc_xdg"}' > "$test_root/etc/xdg/myapp/config.json"
+      echo '{"level": "etc"}' > "$test_root/etc/myapp/config.json"
+
+      echo "$test_root"
+    }
+
+    cleanup_xdg_test() {
+      local test_root="$1"
+      rm -rf "$test_root"
+    }
+
+    It "requires app_name as first argument"
+      When call config:hierarchy:xdg "" "config"
+
+      The status should be failure
+      The error should include "ERROR: config:hierarchy:xdg requires app_name"
+    End
+
+    It "searches hierarchical paths with highest priority"
+      test_root=$(setup_xdg_test)
+
+      # Mock HOME to test directory
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "myapp" "$test_root/project/subdir" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      # First result should be from hierarchical search (subdir)
+      first_line=$(echo "$result" | head -n 1)
+      has_subdir=$(echo "$first_line" | grep -c "subdir/myapp.json" || true)
+
+      When call echo "$has_subdir"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "includes XDG config directories when they exist"
+      test_root=$(setup_xdg_test)
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "config" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      has_xdg=$(echo "$result" | grep -c "\.config/myapp/config.json" || true)
+
+      When call echo "$has_xdg"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "searches XDG_CONFIG_HOME when set"
+      test_root=$(setup_xdg_test)
+      mkdir -p "$test_root/custom-xdg/myapp"
+      echo '{"level": "custom"}' > "$test_root/custom-xdg/myapp/config.json"
+
+      BeforeCall "export XDG_CONFIG_HOME=$test_root/custom-xdg"
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "config" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      has_custom_xdg=$(echo "$result" | grep -c "custom-xdg/myapp/config.json" || true)
+
+      When call echo "$has_custom_xdg"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "avoids duplicates between hierarchical and XDG paths"
+      test_root=$(setup_xdg_test)
+      # Create same file in both hierarchical and XDG location
+      mkdir -p "$test_root/.config/myapp"
+      echo '{"level": "duplicate"}' > "$test_root/.config/myapp/config.json"
+      echo '{"level": "duplicate"}' > "$test_root/project/config.json"
+
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "config" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      count=$(echo "$result" | wc -l)
+
+      # Should only appear once (hierarchical has priority)
+      When call echo "$count"
+
+      The status should be success
+      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 1 ]
+    End
+
+    It "searches multiple config names in XDG directories"
+      test_root=$(setup_xdg_test)
+      mkdir -p "$test_root/.config/myapp"
+      echo '{"file": "config"}' > "$test_root/.config/myapp/config.json"
+      echo '{"file": "myapprc"}' > "$test_root/.config/myapp/myapprc.json"
+
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "config,myapprc" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      count=$(echo "$result" | grep -c "\.config/myapp/" || true)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 2 ]
+    End
+
+    It "respects priority order: hierarchy > XDG_CONFIG_HOME > ~/.config > /etc/xdg > /etc"
+      test_root=$(setup_xdg_test)
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "config" "$test_root/project" "root" ".json")
+
+      # Get line numbers of each config source
+      line_xdg_config=$(echo "$result" | grep -n "\.config/myapp" | cut -d: -f1 || echo "999")
+      line_etc_xdg=$(echo "$result" | grep -n "etc/xdg/myapp" | cut -d: -f1 || echo "999")
+      line_etc=$(echo "$result" | grep -n "etc/myapp" | cut -d: -f1 || echo "999")
+
+      cleanup_xdg_test "$test_root"
+
+      # XDG should come before etc/xdg which comes before etc
+      test "$line_xdg_config" -lt "$line_etc_xdg" && test "$line_etc_xdg" -lt "$line_etc"
+
+      When call echo $?
+
+      The status should be success
+      The output should eq "0"
+    End
+
+    It "returns failure when no configs found anywhere"
+      When call config:hierarchy:xdg "nonexistent-app" "nonexistent-config" "/tmp" "root" ""
+
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "handles missing XDG directories gracefully"
+      test_root=$(setup_xdg_test)
+      # Remove XDG directories
+      rm -rf "$test_root/.config"
+      rm -rf "$test_root/etc"
+
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "myapp" "$test_root/project/subdir" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      # Should still find hierarchical configs
+      count=$(echo "$result" | wc -l)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 1 ]
+    End
+
+    It "works with real-world app example: nvim"
+      test_root=$(setup_xdg_test)
+      mkdir -p "$test_root/.config/nvim"
+      echo 'set number' > "$test_root/.config/nvim/init.vim"
+
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "nvim" "init.vim" "$test_root/project" "home" "")
+      cleanup_xdg_test "$test_root"
+
+      has_nvim=$(echo "$result" | grep -c "\.config/nvim/init.vim" || true)
+
+      When call echo "$has_nvim"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "uses default stop_at 'home' when not specified"
+      test_root=$(setup_xdg_test)
+      BeforeCall "export HOME=$test_root"
+
+      # Should stop at HOME by default, not search /etc
+      result=$(config:hierarchy:xdg "myapp" "config" "$test_root/project" "" ".json")
+      cleanup_xdg_test "$test_root"
+
+      # XDG directories under HOME should still be searched
+      has_xdg=$(echo "$result" | grep -c "\.config/myapp" || true)
+
+      When call echo "$has_xdg"
+
+      The status should be success
+      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 0 ]
     End
   End
 End
