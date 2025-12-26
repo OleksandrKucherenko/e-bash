@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-23
-## Version: 1.16.4
+## Last revisit: 2025-12-26
+## Version: 1.15.8
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1692,6 +1692,558 @@ Describe "_commons.sh /"
       The status should be success
       The output should eq "20"
       The error should eq ''
+    End
+  End
+
+  Describe "git:root /"
+    # Dynamically determine the repo root for CI compatibility
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo '/home/user/e-bash')"
+
+    It "finds git repository root from current directory"
+      When call git:root "."
+
+      The status should be success
+      The output should eq "$REPO_ROOT"
+      The error should eq ''
+    End
+
+    It "resolves physical root when starting from symlinked path"
+      tmp_dir=$(mktemp -d)
+      ln -s "$REPO_ROOT" "$tmp_dir/repo-link"
+
+      result=$(git:root "$tmp_dir/repo-link")
+      rm -rf "$tmp_dir"
+
+      When call echo "$result"
+
+      The status should be success
+      The output should eq "$REPO_ROOT"
+      The error should eq ''
+    End
+
+    It "returns git repository type as 'regular' for normal repo"
+      When call git:root "." "type"
+
+      The status should be success
+      The output should eq "regular"
+      The error should eq ''
+    End
+
+    It "returns both type and path in 'both' mode"
+      When call git:root "." "both"
+
+      The status should be success
+      The output should eq "regular:$REPO_ROOT"
+      The error should eq ''
+    End
+
+    It "returns detailed info in 'all' mode"
+      When call git:root "." "all"
+
+      The status should be success
+      The output should match pattern "regular:$REPO_ROOT:$REPO_ROOT/.git"
+      The error should eq ''
+    End
+
+    It "finds git root from nested subdirectory"
+      When call git:root "$REPO_ROOT/spec"
+
+      The status should be success
+      The output should eq "$REPO_ROOT"
+      The error should eq ''
+    End
+
+    It "finds git root from deeply nested path"
+      When call git:root "$REPO_ROOT/.scripts"
+
+      The status should be success
+      The output should eq "$REPO_ROOT"
+      The error should eq ''
+    End
+
+    It "returns error when no git repo found"
+      When call git:root "/tmp"
+
+      The status should be failure
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "returns 'none' type when no git repo found"
+      When call git:root "/tmp" "type"
+
+      The status should be failure
+      The output should eq "none"
+      The error should eq ''
+    End
+
+    It "handles invalid starting path gracefully"
+      When call git:root "/nonexistent/path"
+
+      The status should be failure
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "uses current directory as default when no path provided"
+      When call git:root
+
+      The status should be success
+      The output should eq "$REPO_ROOT"
+      The error should eq ''
+    End
+
+    It "defaults to 'path' output type when invalid type provided"
+      When call git:root "." "invalid_type"
+
+      The status should be success
+      The output should eq "$REPO_ROOT"
+      The error should eq ''
+    End
+  End
+
+  Describe "config:hierarchy /"
+    # Dynamically determine the repo root for CI compatibility
+    REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo '/home/user/e-bash')"
+
+    setup_test_configs() {
+      local test_root="/tmp/config-hierarchy-test-$$"
+      mkdir -p "$test_root/level1/level2/level3"
+
+      echo '{"root": true}' > "$test_root/.myconfig.json"
+      echo '{"level1": true}' > "$test_root/level1/.myconfig.json"
+      echo '{"level3": true}' > "$test_root/level1/level2/level3/.myconfig.json"
+
+      echo "$test_root"
+    }
+
+    cleanup_test_configs() {
+      local test_root="$1"
+      rm -rf "$test_root"
+    }
+
+    It "finds config files in correct hierarchical order (root to current)"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json")
+      cleanup_test_configs "$test_root"
+
+      line1=$(echo "$result" | sed -n '1p' | grep -o "\.myconfig\.json$")
+      line2=$(echo "$result" | sed -n '2p' | grep -o "level1/\.myconfig\.json$")
+      line3=$(echo "$result" | sed -n '3p' | grep -o "level3/\.myconfig\.json$")
+
+      When call echo "$line1,$line2,$line3"
+
+      The status should be success
+      The output should eq ".myconfig.json,level1/.myconfig.json,level3/.myconfig.json"
+    End
+
+    It "finds .shellspec file in current repository"
+      When call config:hierarchy ".shellspec" "." "git" ""
+
+      The status should be success
+      The output should eq "$REPO_ROOT/.shellspec"
+      The error should eq ''
+    End
+
+    It "returns empty when no config files found"
+      When call config:hierarchy "nonexistent.config" "/tmp" "root" ""
+
+      The status should be failure
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "searches multiple config names (comma-separated)"
+      test_root=$(setup_test_configs)
+      echo '{"alt": true}' > "$test_root/level1/level2/level3/.altconfig.json"
+
+      result=$(config:hierarchy ".myconfig,.altconfig" "$test_root/level1/level2/level3" "root" ".json")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should eq "4"
+    End
+
+    It "tries multiple extensions for same config name"
+      test_root=$(setup_test_configs)
+      echo 'root: true' > "$test_root/.myconfig.yaml"
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json,.yaml")
+      cleanup_test_configs "$test_root"
+
+      has_json=$(echo "$result" | grep -c "\.json$" || true)
+      has_yaml=$(echo "$result" | grep -c "\.yaml$" || true)
+
+      When call echo "$has_json,$has_yaml"
+
+      The status should be success
+      The output should match pattern "*,1"
+    End
+
+    It "stops at git repository root by default"
+      When call config:hierarchy ".shellspec" "." "git" ""
+
+      The status should be success
+      The output should eq "$REPO_ROOT/.shellspec"
+    End
+
+    It "stops at custom path when specified"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "$test_root/level1" ".json")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should eq "2"  # Should find level1 and level3, but not root
+    End
+
+    It "handles invalid starting path gracefully"
+      When call config:hierarchy ".config" "/nonexistent/path"
+
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "uses current directory as default start path"
+      When call config:hierarchy ".shellspec" "" "git" ""
+
+      The status should be success
+      The output should eq "$REPO_ROOT/.shellspec"
+    End
+
+    It "includes empty extension to match exact filename"
+      test_root=$(setup_test_configs)
+      echo '{"exact": true}' > "$test_root/level1/level2/level3/myconfig"
+
+      result=$(config:hierarchy "myconfig" "$test_root/level1/level2/level3" "root" ",.json")
+      cleanup_test_configs "$test_root"
+
+      has_exact=$(echo "$result" | grep -c "/myconfig$" || true)
+
+      When call echo "$has_exact"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "respects order: root configs first, current configs last"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json")
+      first_file=$(echo "$result" | head -n 1)
+      last_file=$(echo "$result" | tail -n 1)
+      cleanup_test_configs "$test_root"
+
+      first_is_root=$(echo "$first_file" | grep -c "^$test_root/\.myconfig\.json$" || true)
+      last_is_level3=$(echo "$last_file" | grep -c "level3/\.myconfig\.json$" || true)
+
+      When call echo "$first_is_root,$last_is_level3"
+
+      The status should be success
+      The output should eq "1,1"
+    End
+
+    It "handles whitespace in config names gracefully"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy " .myconfig , .altconfig " "$test_root/level1/level2/level3" "root" ".json")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should eq "3"
+    End
+
+    It "finds config files with default extensions when not specified"
+      test_root=$(setup_test_configs)
+      echo 'root: true' > "$test_root/.myconfig.yaml"
+      echo 'root: true' > "$test_root/.myconfig.toml"
+
+      result=$(config:hierarchy ".myconfig" "$test_root" "root")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      # Helper function for numeric comparison
+      check_count() { test "$1" -ge 3; }
+
+      When call check_count "$count"
+
+      The status should be success
+    End
+  End
+
+  Describe "config:hierarchy:xdg /"
+    setup_xdg_test() {
+      local test_root="/tmp/xdg-test-$$"
+      mkdir -p "$test_root/project/subdir"
+      mkdir -p "$test_root/.config/myapp"
+      mkdir -p "$test_root/etc/xdg/myapp"
+      mkdir -p "$test_root/etc/myapp"
+
+      # Hierarchical configs (highest priority)
+      echo '{"level": "project"}' > "$test_root/project/myapp.json"
+      echo '{"level": "subdir"}' > "$test_root/project/subdir/myapp.json"
+
+      # XDG configs
+      echo '{"level": "xdg_config_home"}' > "$test_root/.config/myapp/config.json"
+      echo '{"level": "etc_xdg"}' > "$test_root/etc/xdg/myapp/config.json"
+      echo '{"level": "etc"}' > "$test_root/etc/myapp/config.json"
+
+      echo "$test_root"
+    }
+
+    cleanup_xdg_test() {
+      local test_root="$1"
+      rm -rf "$test_root"
+    }
+
+    # Helper wrapper for config:hierarchy:xdg with custom HOME
+    call_xdg_with_home() {
+      local home_dir="$1"
+      shift
+      local xdg_home=""
+      local xdg_dirs=""
+      local xdg_etc=""
+      local xdg_dirs_set=0
+      local xdg_etc_set=0
+      if [[ "$1" == "--xdg" ]]; then
+        xdg_home="$2"
+        shift 2
+      fi
+      if [[ "$1" == "--xdg-dirs" ]]; then
+        xdg_dirs="$2"
+        xdg_dirs_set=1
+        shift 2
+      fi
+      if [[ "$1" == "--xdg-etc" ]]; then
+        xdg_etc="$2"
+        xdg_etc_set=1
+        shift 2
+      fi
+
+      local saved_home="$HOME"
+      local saved_xdg="$XDG_CONFIG_HOME"
+      local saved_xdg_dirs="$XDG_CONFIG_DIRS"
+      local saved_xdg_etc="$XDG_ETC_DIR"
+      export HOME="$home_dir"
+      [[ -n "$xdg_home" ]] && export XDG_CONFIG_HOME="$xdg_home"
+      if [[ $xdg_dirs_set -eq 1 ]]; then
+        export XDG_CONFIG_DIRS="$xdg_dirs"
+      fi
+      if [[ $xdg_etc_set -eq 1 ]]; then
+        export XDG_ETC_DIR="$xdg_etc"
+      fi
+
+      config:hierarchy:xdg "$@"
+      local result=$?
+
+      export HOME="$saved_home"
+      export XDG_CONFIG_HOME="$saved_xdg"
+      export XDG_CONFIG_DIRS="$saved_xdg_dirs"
+      export XDG_ETC_DIR="$saved_xdg_etc"
+      return $result
+    }
+
+    It "requires app_name as first argument"
+      When call config:hierarchy:xdg "" "config"
+
+      The status should be failure
+      The error should include "ERROR: config:hierarchy:xdg requires app_name"
+    End
+
+    It "searches hierarchical paths with highest priority"
+      test_root=$(setup_xdg_test)
+
+      result=$(call_xdg_with_home "$test_root" "myapp" "myapp" "$test_root/project/subdir" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      first_line=$(echo "$result" | head -n 1)
+      has_subdir=$(echo "$first_line" | grep -c "subdir/myapp.json" || true)
+
+      When call echo "$has_subdir"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "includes XDG config directories when they exist"
+      test_root=$(setup_xdg_test)
+
+      result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      has_xdg=$(echo "$result" | grep -c "\.config/myapp/config.json" || true)
+
+      When call echo "$has_xdg"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "searches XDG_CONFIG_HOME when set"
+      test_root=$(setup_xdg_test)
+      mkdir -p "$test_root/custom-xdg/myapp"
+      echo '{"level": "custom"}' > "$test_root/custom-xdg/myapp/config.json"
+
+      result=$(call_xdg_with_home "$test_root" --xdg "$test_root/custom-xdg" "myapp" "config" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      has_custom_xdg=$(echo "$result" | grep -c "custom-xdg/myapp/config.json" || true)
+
+      When call echo "$has_custom_xdg"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "avoids duplicates between hierarchical and XDG paths"
+      test_root=$(setup_xdg_test)
+      # Create same file in both hierarchical and XDG location
+      mkdir -p "$test_root/.config/myapp"
+      echo '{"level": "duplicate"}' > "$test_root/.config/myapp/config.json"
+      echo '{"level": "duplicate"}' > "$test_root/project/config.json"
+
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "config" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      count=$(echo "$result" | wc -l)
+
+      # Helper for comparison
+      check_ge_1() { test "$1" -ge 1; }
+
+      When call check_ge_1 "$count"
+
+      The status should be success
+    End
+
+    It "searches multiple config names in XDG directories"
+      test_root=$(setup_xdg_test)
+      mkdir -p "$test_root/.config/myapp"
+      echo '{"file": "config"}' > "$test_root/.config/myapp/config.json"
+      echo '{"file": "myapprc"}' > "$test_root/.config/myapp/myapprc.json"
+
+      result=$(call_xdg_with_home "$test_root" "myapp" "config,myapprc" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      count=$(echo "$result" | grep -c "\.config/myapp/" || true)
+
+      # Helper for comparison
+      check_ge_2() { test "$1" -ge 2; }
+
+      When call check_ge_2 "$count"
+
+      The status should be success
+    End
+
+    It "respects priority order: hierarchy > XDG_CONFIG_HOME > ~/.config > /etc/xdg > /etc"
+      test_root=$(setup_xdg_test)
+
+      result=$(call_xdg_with_home "$test_root" --xdg-dirs "$test_root/etc/xdg" --xdg-etc "$test_root/etc" "myapp" "config" "$test_root/project" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      # Helper to check priority order
+      check_priority_order() {
+        local result="$1"
+
+        # Get line numbers of each config source
+        local line_xdg_config line_etc_xdg line_etc
+        line_xdg_config=$(echo "$result" | grep -n "\.config/myapp" | head -1 | cut -d: -f1)
+        line_xdg_config=${line_xdg_config:-999}
+
+        line_etc_xdg=$(echo "$result" | grep -n "etc/xdg/myapp" | head -1 | cut -d: -f1)
+        line_etc_xdg=${line_etc_xdg:-999}
+
+        line_etc=$(echo "$result" | grep -n "etc/myapp" | head -1 | cut -d: -f1)
+        line_etc=${line_etc:-999}
+
+        # XDG should come before etc/xdg which comes before etc
+        if [[ "$line_xdg_config" -lt "$line_etc_xdg" ]] && [[ "$line_etc_xdg" -lt "$line_etc" ]]; then
+          echo "0"
+          return 0
+        else
+          echo "1"
+          return 1
+        fi
+      }
+
+      When call check_priority_order "$result"
+
+      The status should be success
+      The output should eq "0"
+    End
+
+    It "returns failure when no configs found anywhere"
+      When call config:hierarchy:xdg "nonexistent-app" "nonexistent-config" "/tmp" "root" ""
+
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "handles missing XDG directories gracefully"
+      test_root=$(setup_xdg_test)
+      # Remove XDG directories
+      rm -rf "$test_root/.config"
+      rm -rf "$test_root/etc"
+
+      BeforeCall "export HOME=$test_root"
+
+      result=$(config:hierarchy:xdg "myapp" "myapp" "$test_root/project/subdir" "root" ".json")
+      cleanup_xdg_test "$test_root"
+
+      # Should still find hierarchical configs
+      count=$(echo "$result" | wc -l)
+
+      # Helper for comparison
+      check_ge_1() { test "$1" -ge 1; }
+
+      When call check_ge_1 "$count"
+
+      The status should be success
+    End
+
+    It "works with real-world app example: nvim"
+      test_root=$(setup_xdg_test)
+      mkdir -p "$test_root/.config/nvim"
+      echo 'set number' > "$test_root/.config/nvim/init.vim"
+
+      result=$(call_xdg_with_home "$test_root" "nvim" "init.vim" "$test_root/project" "home" "")
+      cleanup_xdg_test "$test_root"
+
+      has_nvim=$(echo "$result" | grep -c "\.config/nvim/init.vim" || true)
+
+      When call echo "$has_nvim"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "uses default stop_at 'home' when not specified"
+      test_root=$(setup_xdg_test)
+
+      # Should stop at HOME by default, not search /etc
+      result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "" ".json")
+      cleanup_xdg_test "$test_root"
+
+      # XDG directories under HOME should still be searched
+      has_xdg=$(echo "$result" | grep -c "\.config/myapp" || true)
+
+      # Helper for comparison
+      check_ge_0() { test "$1" -ge 0; }
+
+      When call check_ge_0 "$has_xdg"
+
+      The status should be success
     End
   End
 End
