@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.14.0
+## Version: 0.14.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -811,7 +811,12 @@ function config:hierarchy() {
   IFS=',' read -ra name_list <<<"$config_names"
 
   # Parse extensions (comma-separated)
-  IFS=',' read -ra ext_list <<<"$extensions"
+  # Special case: if extensions is exactly "", treat as single empty extension (exact match)
+  if [[ "$extensions" == "" ]]; then
+    ext_list=("")
+  else
+    IFS=',' read -ra ext_list <<<"$extensions"
+  fi
 
   # Search upward from current directory to stop path
   local search_dir="$current_dir"
@@ -944,7 +949,13 @@ function config:hierarchy:xdg() {
   # 3. Search XDG directories for config files
   local -a name_list ext_list
   IFS=',' read -ra name_list <<<"$config_names"
-  IFS=',' read -ra ext_list <<<"$extensions"
+
+  # Parse extensions (special case for empty string)
+  if [[ "$extensions" == "" ]]; then
+    ext_list=("")
+  else
+    IFS=',' read -ra ext_list <<<"$extensions"
+  fi
 
   for xdg_dir in "${xdg_paths[@]}"; do
     if [[ -d "$xdg_dir" ]]; then
