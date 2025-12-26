@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-14
-## Version: 1.0.0
+## Last revisit: 2025-12-26
+## Version: 0.12.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -596,6 +596,243 @@ function to:slug() {
 function args:isHelp() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--help" ]]; then echo true; else echo false; fi
+}
+
+function git:root() {
+  # Find the Git repository root folder from the current folder by searching upward for .git
+  # Properly detects regular repos, worktrees, and submodules
+  #
+  # Arguments:
+  #   $1 - start_path: Starting directory path (default: current directory)
+  #   $2 - output_type: Type of output to return (default: "path")
+  #       - "path": Return the root path
+  #       - "type": Return the git repository type (regular|worktree|submodule|none)
+  #       - "both": Return "type:path" format
+  #       - "all": Return detailed info as "type:path:git_dir"
+  #
+  # Returns:
+  #   0 if git root found, 1 otherwise
+  #   STDOUT: Based on output_type parameter
+  #
+  # Example:
+  #   root=$(git:root)                           # Returns "/path/to/repo"
+  #   type=$(git:root "." "type")                # Returns "regular" or "worktree" or "submodule"
+  #   info=$(git:root "." "both")                # Returns "regular:/path/to/repo"
+  #   details=$(git:root "/some/path" "all")     # Returns "worktree:/path/to/repo:/path/to/.git/worktrees/name"
+
+  local start_path="${1:-.}"
+  local output_type="${2:-path}"
+  local current_dir git_type git_dir root_path
+
+  # Resolve to absolute path
+  current_dir=$(cd "$start_path" 2>/dev/null && pwd) || {
+    echo ""
+    return 1
+  }
+
+  # Navigate upward until we find .git (file or directory) or reach root
+  while [[ "$current_dir" != "/" ]]; do
+    if [[ -e "$current_dir/.git" ]]; then
+      root_path="$current_dir"
+
+      # Check if .git is a file (worktree or submodule) or directory (regular repo)
+      if [[ -f "$current_dir/.git" ]]; then
+        # Read the .git file content
+        local git_file_content
+        git_file_content=$(cat "$current_dir/.git" 2>/dev/null)
+
+        # Worktree format: "gitdir: /path/to/.git/worktrees/name"
+        # Submodule format: "gitdir: ../.git/modules/name"
+        if [[ "$git_file_content" =~ ^gitdir:\ (.+)$ ]]; then
+          git_dir="${BASH_REMATCH[1]}"
+
+          # Convert relative path to absolute if needed
+          if [[ ! "$git_dir" =~ ^/ ]]; then
+            git_dir=$(cd "$current_dir" && cd "$(dirname "$git_dir")" 2>/dev/null && pwd)/$(basename "$git_dir")
+          fi
+
+          # Detect if it's a worktree or submodule
+          # Worktrees: path contains "/worktrees/"
+          # Submodules: path contains "/modules/" or is within superproject
+          if [[ "$git_dir" =~ /worktrees/ ]]; then
+            git_type="worktree"
+          else
+            git_type="submodule"
+          fi
+        else
+          # Malformed .git file
+          git_type="unknown"
+          git_dir="$current_dir/.git"
+        fi
+      elif [[ -d "$current_dir/.git" ]]; then
+        # Regular git repository
+        git_type="regular"
+        git_dir="$current_dir/.git"
+      else
+        # .git exists but is neither file nor directory
+        git_type="unknown"
+        git_dir="$current_dir/.git"
+      fi
+
+      # Output based on requested type
+      case "$output_type" in
+      type)
+        echo "$git_type"
+        ;;
+      both)
+        echo "$git_type:$root_path"
+        ;;
+      all)
+        echo "$git_type:$root_path:$git_dir"
+        ;;
+      path | *)
+        echo "$root_path"
+        ;;
+      esac
+
+      return 0
+    fi
+
+    # Move up one directory
+    current_dir=$(dirname "$current_dir")
+  done
+
+  # No .git found
+  case "$output_type" in
+  type)
+    echo "none"
+    ;;
+  both)
+    echo "none:"
+    ;;
+  all)
+    echo "none::"
+    ;;
+  path | *)
+    echo ""
+    ;;
+  esac
+
+  return 1
+}
+
+function config:hierarchy() {
+  # Find hierarchy of configuration files by searching upward from current folder
+  # Similar to c12 (https://www.npmjs.com/package/c12) but only for declarative config files
+  #
+  # Arguments:
+  #   $1 - config_name: Base configuration file name(s), comma-separated (e.g., ".myrc,myconfig")
+  #   $2 - start_path: Starting directory path (default: current directory)
+  #   $3 - stop_at: Where to stop searching (default: "git")
+  #       - "git": Stop at git repository root
+  #       - "home": Stop at user home directory
+  #       - "root": Stop at filesystem root /
+  #       - "/custom/path": Stop at specific absolute path
+  #   $4 - extensions: Comma-separated list of extensions to check (default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc")
+  #       - Empty string "" means exact match only
+  #       - List with extensions tries all combinations
+  #
+  # Returns:
+  #   0 if at least one config file found, 1 otherwise
+  #   STDOUT: List of config file paths, one per line, ordered from root to current (bottom-up)
+  #
+  # Example:
+  #   config:hierarchy ".eslintrc"                          # Find .eslintrc* files up to git root
+  #   config:hierarchy "package.json" "." "home"            # Find package.json up to home
+  #   config:hierarchy ".config" "." "git" ".json,.yaml"    # Find .config.json and .config.yaml
+  #   config:hierarchy "tsconfig.json,jsconfig.json"        # Find multiple config files
+
+  local config_names="${1:-.config}"
+  local start_path="${2:-.}"
+  local stop_at="${3:-git}"
+  local extensions="${4:-,.json,.yaml,.yml,.toml,.ini,.conf,.rc}"
+
+  local current_dir stop_path found_files=()
+  local -a name_list ext_list
+
+  # Resolve to absolute path
+  current_dir=$(cd "$start_path" 2>/dev/null && pwd) || {
+    echo ""
+    return 1
+  }
+
+  # Determine stop path
+  case "$stop_at" in
+  git)
+    stop_path=$(git:root "$current_dir" "path")
+    # If no git root found, stop at home
+    [[ -z "$stop_path" ]] && stop_path="$HOME"
+    ;;
+  home)
+    stop_path="$HOME"
+    ;;
+  root)
+    stop_path="/"
+    ;;
+  /*)
+    # Absolute path provided
+    stop_path="$stop_at"
+    ;;
+  *)
+    # Relative path or invalid, fallback to git
+    stop_path=$(git:root "$current_dir" "path")
+    [[ -z "$stop_path" ]] && stop_path="$HOME"
+    ;;
+  esac
+
+  # Parse config names (comma-separated)
+  IFS=',' read -ra name_list <<<"$config_names"
+
+  # Parse extensions (comma-separated)
+  IFS=',' read -ra ext_list <<<"$extensions"
+
+  # Search upward from current directory to stop path
+  local search_dir="$current_dir"
+  while true; do
+    # Try each config name
+    for name in "${name_list[@]}"; do
+      name=$(echo "$name" | xargs) # Trim whitespace
+
+      # Try each extension (including no extension if "" is in list)
+      for ext in "${ext_list[@]}"; do
+        ext=$(echo "$ext" | xargs) # Trim whitespace
+        local candidate="$search_dir/${name}${ext}"
+
+        if [[ -f "$candidate" ]]; then
+          # Store found file (we'll reverse order later)
+          found_files+=("$candidate")
+        fi
+      done
+    done
+
+    # Check if we've reached the stop path
+    if [[ "$search_dir" == "$stop_path" ]] || [[ "$search_dir" == "/" ]]; then
+      break
+    fi
+
+    # Move up one directory
+    search_dir=$(dirname "$search_dir")
+
+    # Safety check: if dirname returns same path, we're at root
+    if [[ "$search_dir" == "$(dirname "$search_dir")" ]]; then
+      break
+    fi
+  done
+
+  # Reverse array to get root-to-current order (bottom-up hierarchy)
+  local -a reversed_files=()
+  for ((i = ${#found_files[@]} - 1; i >= 0; i--)); do
+    reversed_files+=("${found_files[i]}")
+  done
+
+  # Output results
+  if [[ ${#reversed_files[@]} -gt 0 ]]; then
+    printf '%s\n' "${reversed_files[@]}"
+    return 0
+  else
+    echo ""
+    return 1
+  fi
 }
 
 function input:selector() {

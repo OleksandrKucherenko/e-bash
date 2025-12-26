@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-23
-## Version: 1.16.4
+## Last revisit: 2025-12-26
+## Version: 0.12.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1692,6 +1692,271 @@ Describe "_commons.sh /"
       The status should be success
       The output should eq "20"
       The error should eq ''
+    End
+  End
+
+  Describe "git:root /"
+    It "finds git repository root from current directory"
+      When call git:root "."
+
+      The status should be success
+      The output should eq "/home/user/e-bash"
+      The error should eq ''
+    End
+
+    It "returns git repository type as 'regular' for normal repo"
+      When call git:root "." "type"
+
+      The status should be success
+      The output should eq "regular"
+      The error should eq ''
+    End
+
+    It "returns both type and path in 'both' mode"
+      When call git:root "." "both"
+
+      The status should be success
+      The output should eq "regular:/home/user/e-bash"
+      The error should eq ''
+    End
+
+    It "returns detailed info in 'all' mode"
+      When call git:root "." "all"
+
+      The status should be success
+      The output should match pattern "regular:/home/user/e-bash:/home/user/e-bash/.git"
+      The error should eq ''
+    End
+
+    It "finds git root from nested subdirectory"
+      When call git:root "/home/user/e-bash/spec"
+
+      The status should be success
+      The output should eq "/home/user/e-bash"
+      The error should eq ''
+    End
+
+    It "finds git root from deeply nested path"
+      When call git:root "/home/user/e-bash/.scripts"
+
+      The status should be success
+      The output should eq "/home/user/e-bash"
+      The error should eq ''
+    End
+
+    It "returns error when no git repo found"
+      When call git:root "/tmp"
+
+      The status should be failure
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "returns 'none' type when no git repo found"
+      When call git:root "/tmp" "type"
+
+      The status should be failure
+      The output should eq "none"
+      The error should eq ''
+    End
+
+    It "handles invalid starting path gracefully"
+      When call git:root "/nonexistent/path"
+
+      The status should be failure
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "uses current directory as default when no path provided"
+      When call git:root
+
+      The status should be success
+      The output should eq "/home/user/e-bash"
+      The error should eq ''
+    End
+
+    It "defaults to 'path' output type when invalid type provided"
+      When call git:root "." "invalid_type"
+
+      The status should be success
+      The output should eq "/home/user/e-bash"
+      The error should eq ''
+    End
+  End
+
+  Describe "config:hierarchy /"
+    setup_test_configs() {
+      local test_root="/tmp/config-hierarchy-test-$$"
+      mkdir -p "$test_root/level1/level2/level3"
+
+      echo '{"root": true}' > "$test_root/.myconfig.json"
+      echo '{"level1": true}' > "$test_root/level1/.myconfig.json"
+      echo '{"level3": true}' > "$test_root/level1/level2/level3/.myconfig.json"
+
+      echo "$test_root"
+    }
+
+    cleanup_test_configs() {
+      local test_root="$1"
+      rm -rf "$test_root"
+    }
+
+    It "finds config files in correct hierarchical order (root to current)"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json")
+      cleanup_test_configs "$test_root"
+
+      line1=$(echo "$result" | sed -n '1p' | grep -o "\.myconfig\.json$")
+      line2=$(echo "$result" | sed -n '2p' | grep -o "level1/\.myconfig\.json$")
+      line3=$(echo "$result" | sed -n '3p' | grep -o "level3/\.myconfig\.json$")
+
+      When call echo "$line1,$line2,$line3"
+
+      The status should be success
+      The output should eq ".myconfig.json,level1/.myconfig.json,level3/.myconfig.json"
+    End
+
+    It "finds .shellspec file in current repository"
+      When call config:hierarchy ".shellspec" "." "git" ""
+
+      The status should be success
+      The output should eq "/home/user/e-bash/.shellspec"
+      The error should eq ''
+    End
+
+    It "returns empty when no config files found"
+      When call config:hierarchy "nonexistent.config" "/tmp" "root" ""
+
+      The status should be failure
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "searches multiple config names (comma-separated)"
+      test_root=$(setup_test_configs)
+      echo '{"alt": true}' > "$test_root/level1/level2/level3/.altconfig.json"
+
+      result=$(config:hierarchy ".myconfig,.altconfig" "$test_root/level1/level2/level3" "root" ".json")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should eq "4"
+    End
+
+    It "tries multiple extensions for same config name"
+      test_root=$(setup_test_configs)
+      echo 'root: true' > "$test_root/.myconfig.yaml"
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json,.yaml")
+      cleanup_test_configs "$test_root"
+
+      has_json=$(echo "$result" | grep -c "\.json$" || true)
+      has_yaml=$(echo "$result" | grep -c "\.yaml$" || true)
+
+      When call echo "$has_json,$has_yaml"
+
+      The status should be success
+      The output should match pattern "*,1"
+    End
+
+    It "stops at git repository root by default"
+      When call config:hierarchy ".shellspec" "." "git" ""
+
+      The status should be success
+      The output should eq "/home/user/e-bash/.shellspec"
+    End
+
+    It "stops at custom path when specified"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "$test_root/level1" ".json")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should eq "2"  # Should find level1 and level3, but not root
+    End
+
+    It "handles invalid starting path gracefully"
+      When call config:hierarchy ".config" "/nonexistent/path"
+
+      The status should be failure
+      The output should eq ""
+    End
+
+    It "uses current directory as default start path"
+      When call config:hierarchy ".shellspec" "" "git" ""
+
+      The status should be success
+      The output should eq "/home/user/e-bash/.shellspec"
+    End
+
+    It "includes empty extension to match exact filename"
+      test_root=$(setup_test_configs)
+      echo '{"exact": true}' > "$test_root/level1/level2/level3/myconfig"
+
+      result=$(config:hierarchy "myconfig" "$test_root/level1/level2/level3" "root" ",.json")
+      cleanup_test_configs "$test_root"
+
+      has_exact=$(echo "$result" | grep -c "/myconfig$" || true)
+
+      When call echo "$has_exact"
+
+      The status should be success
+      The output should eq "1"
+    End
+
+    It "respects order: root configs first, current configs last"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json")
+      first_file=$(echo "$result" | head -n 1)
+      last_file=$(echo "$result" | tail -n 1)
+      cleanup_test_configs "$test_root"
+
+      first_is_root=$(echo "$first_file" | grep -c "^$test_root/\.myconfig\.json$" || true)
+      last_is_level3=$(echo "$last_file" | grep -c "level3/\.myconfig\.json$" || true)
+
+      When call echo "$first_is_root,$last_is_level3"
+
+      The status should be success
+      The output should eq "1,1"
+    End
+
+    It "handles whitespace in config names gracefully"
+      test_root=$(setup_test_configs)
+
+      result=$(config:hierarchy " .myconfig , .altconfig " "$test_root/level1/level2/level3" "root" ".json")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      When call echo "$count"
+
+      The status should be success
+      The output should eq "3"
+    End
+
+    It "finds config files with default extensions when not specified"
+      test_root=$(setup_test_configs)
+      echo 'root: true' > "$test_root/.myconfig.yaml"
+      echo 'root: true' > "$test_root/.myconfig.toml"
+
+      result=$(config:hierarchy ".myconfig" "$test_root" "root")
+      cleanup_test_configs "$test_root"
+      count=$(echo "$result" | wc -l)
+
+      # Should find .json, .yaml, .toml (default extensions include these)
+      When call echo "$count"
+
+      The status should be success
+      The output should satisfy [ "$SHELLSPEC_SUBJECT" -ge 3 ]
     End
   End
 End
