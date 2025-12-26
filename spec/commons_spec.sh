@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-26
-## Version: 0.14.6
+## Version: 0.14.7
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -2112,23 +2112,34 @@ Describe "_commons.sh /"
       test_root=$(setup_xdg_test)
 
       result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "root" ".json")
-
-      # Get line numbers of each config source (with proper empty handling)
-      line_xdg_config=$(echo "$result" | grep -n "\.config/myapp" | head -1 | cut -d: -f1)
-      line_xdg_config=${line_xdg_config:-999}
-
-      line_etc_xdg=$(echo "$result" | grep -n "etc/xdg/myapp" | head -1 | cut -d: -f1)
-      line_etc_xdg=${line_etc_xdg:-999}
-
-      line_etc=$(echo "$result" | grep -n "etc/myapp" | head -1 | cut -d: -f1)
-      line_etc=${line_etc:-999}
-
       cleanup_xdg_test "$test_root"
 
-      # XDG should come before etc/xdg which comes before etc
-      test "$line_xdg_config" -lt "$line_etc_xdg" && test "$line_etc_xdg" -lt "$line_etc"
+      # Helper to check priority order
+      check_priority_order() {
+        local result="$1"
 
-      When call echo $?
+        # Get line numbers of each config source
+        local line_xdg_config line_etc_xdg line_etc
+        line_xdg_config=$(echo "$result" | grep -n "\.config/myapp" | head -1 | cut -d: -f1)
+        line_xdg_config=${line_xdg_config:-999}
+
+        line_etc_xdg=$(echo "$result" | grep -n "etc/xdg/myapp" | head -1 | cut -d: -f1)
+        line_etc_xdg=${line_etc_xdg:-999}
+
+        line_etc=$(echo "$result" | grep -n "etc/myapp" | head -1 | cut -d: -f1)
+        line_etc=${line_etc:-999}
+
+        # XDG should come before etc/xdg which comes before etc
+        if [[ "$line_xdg_config" -lt "$line_etc_xdg" ]] && [[ "$line_etc_xdg" -lt "$line_etc" ]]; then
+          echo "0"
+          return 0
+        else
+          echo "1"
+          return 1
+        fi
+      }
+
+      When call check_priority_order "$result"
 
       The status should be success
       The output should eq "0"
