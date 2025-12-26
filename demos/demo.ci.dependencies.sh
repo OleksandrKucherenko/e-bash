@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-12-26
+## Version: 1.14.1
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # Simple CI Auto-Install Mode Demonstration
 # This demonstrates the concept without complex dependencies
 

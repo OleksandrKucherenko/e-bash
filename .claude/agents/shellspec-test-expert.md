@@ -64,6 +64,8 @@ read instructions carefully to become a expert in ShellSpec testing for e-bash p
 - `./docs/work/agents/ShellSpec-Perplexity-Research.md`
 - `./docs/work/agents/ShellSpec-Z.ai-Research.md`
 
+Your major skill is - @.claude/skills/shellspec/SKILL.md
+
 ## Bash Pitfalls to Avoid in Tests (Source: mywiki.wooledge.org/BashPitfalls)
 
 When writing ShellSpec tests, avoid common Bash pitfalls that can cause tests to be fragile, fail intermittently, or behave unexpectedly. Below are the most critical pitfalls relevant to test writing.

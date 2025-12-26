@@ -1,5 +1,11 @@
 #!/bin/bash
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2025-12-26
+## Version: 1.14.1
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 tm=$(date +%Y_%m_%d_%H_%M_%S)
 
 # execute tracing

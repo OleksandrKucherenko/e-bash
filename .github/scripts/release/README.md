@@ -6,21 +6,48 @@ All scripts are located in `.github/scripts/release/` to keep CI-related files o
 
 ## Scripts
 
+### prepare-release.sh
+
+Updates header metadata in repository scripts for a release.
+
+**Usage:**
+
+```bash
+.github/scripts/release/prepare-release.sh --next-version <version> [--date YYYY-MM-DD] [--dry-run] [--verbose]
+```
+
+**Example:**
+
+```bash
+.github/scripts/release/prepare-release.sh --next-version 2.0.0 --date 2026-01-01
+```
+
+**Notes:**
+
+- Targets tracked `*.sh` files, `.githook/*`, and `COPYRIGHT`
+- Excludes `.github/scripts/**` and `spec/fixtures/**`
+- Requires `gsed` (GNU sed); uses dry-run wrapper output to show exact commands
+
+---
+
 ### validate-version.sh
 
 Validates that a version tag follows semantic versioning format.
 
 **Usage:**
+
 ```bash
 ./validate-version.sh <version> <tag>
 ```
 
 **Example:**
+
 ```bash
 ./validate-version.sh "1.2.3" "v1.2.3"
 ```
 
 **Environment Variables:**
+
 - `GITHUB_OUTPUT` - If set, writes `is_valid=true` to this file (for CI)
 - `GITHUB_STEP_SUMMARY` - If set, writes error summary to this file (for CI)
 
@@ -31,14 +58,17 @@ Validates that a version tag follows semantic versioning format.
 Runs ShellCheck on all `.sh` files in `.scripts/` and `bin/` directories.
 
 **Usage:**
+
 ```bash
 ./check-quality.sh
 ```
 
 **Requirements:**
+
 - shellcheck must be installed (auto-installs in CI)
 
 **Environment Variables:**
+
 - `CI` - If set, auto-installs shellcheck using apt-get
 
 ---
@@ -48,11 +78,13 @@ Runs ShellCheck on all `.sh` files in `.scripts/` and `bin/` directories.
 Verifies that all required files and directories exist for distribution.
 
 **Usage:**
+
 ```bash
 ./verify-contents.sh
 ```
 
 **Checks:**
+
 - Directories: `.scripts`, `bin`, `docs`, `demos`
 - Files: `README.md`, `LICENSE`
 
@@ -63,11 +95,13 @@ Verifies that all required files and directories exist for distribution.
 Creates a distribution ZIP archive with integrity verification.
 
 **Usage:**
+
 ```bash
 ./create-archive.sh <version>
 ```
 
 **Example:**
+
 ```bash
 ./create-archive.sh "1.2.3"
 # Creates: e-bash.1.2.3.zip
@@ -75,10 +109,12 @@ Creates a distribution ZIP archive with integrity verification.
 ```
 
 **Output:**
+
 - `e-bash.<version>.zip` - Distribution archive
 - `e-bash.<version>.zip.sha256` - Checksum file
 
 **Environment Variables:**
+
 - `GITHUB_OUTPUT` - If set, writes `archive_name` and `checksum` to this file (for CI)
 
 ---
@@ -88,16 +124,19 @@ Creates a distribution ZIP archive with integrity verification.
 Generates markdown release notes for GitHub releases.
 
 **Usage:**
+
 ```bash
 ./generate-release-notes.sh <version> <tag> <commit_sha> <checksum> <archive_name>
 ```
 
 **Example:**
+
 ```bash
 ./generate-release-notes.sh "1.2.3" "v1.2.3" "abc123def" "sha256hash" "e-bash.1.2.3.zip"
 ```
 
 **Output:**
+
 - `release_notes.md` - Generated release notes
 
 ---
@@ -107,16 +146,19 @@ Generates markdown release notes for GitHub releases.
 Generates a release summary for GitHub Actions or stdout.
 
 **Usage:**
+
 ```bash
 ./release-summary.sh <version> <tag> <commit_sha> <checksum> <archive_name> [repository]
 ```
 
 **Example:**
+
 ```bash
 ./release-summary.sh "1.2.3" "v1.2.3" "abc123def" "sha256hash" "e-bash.1.2.3.zip" "OleksandrKucherenko/e-bash"
 ```
 
 **Environment Variables:**
+
 - `GITHUB_STEP_SUMMARY` - If set, writes summary to this file (for CI), otherwise writes to stdout
 
 ---
@@ -128,6 +170,9 @@ You can test these scripts locally before pushing to CI:
 ```bash
 # Navigate to repository root first
 cd /path/to/e-bash
+
+# Prepare headers for a release (dry-run)
+./.github/scripts/release/prepare-release.sh --next-version 2.0.0 --dry-run
 
 # Test validation (should pass)
 ./.github/scripts/release/validate-version.sh "1.2.3" "v1.2.3"
@@ -152,6 +197,20 @@ cd /path/to/e-bash
 ./.github/scripts/release/release-summary.sh "1.2.3" "v1.2.3" "$(git rev-parse HEAD)" \
   "$(sha256sum e-bash.1.2.3-test.zip | cut -d' ' -f1)" "e-bash.1.2.3-test.zip"
 ```
+
+## Release Preparation (Manual)
+
+Use these steps before tagging a release:
+
+1. Update headers and copyright template for the release version:
+
+   ```bash
+   ./.github/scripts/release/prepare-release.sh --version 2.0.0
+   ```
+
+2. Review changes (`git diff`) and commit if needed.
+3. Run local checks as desired (`check-quality.sh`, tests).
+4. Create and push the tag (e.g., `git tag v2.0.0 && git push origin v2.0.0`).
 
 ## Integration with GitHub Actions
 
