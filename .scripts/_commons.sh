@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.18.0
+## Version: 1.18.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -461,20 +461,29 @@ function _env:resolve:string() {
       var_value="${!var_name:-}"
     fi
 
-    # Escape special characters in replacement value
-    # In bash parameter expansion ${var/pattern/replacement}, the replacement string
-    # has special handling for: & (represents matched text) and \ (escape character)
-    # We must escape these to ensure they appear literally in the output
-    local escaped_value="$var_value"
-    escaped_value="${escaped_value//\\/\\\\}"  # Escape backslashes first
-    escaped_value="${escaped_value//&/\\&}"    # Then escape ampersands
-
     # Store previous state to detect if replacement made progress
     local previous_string="$expanded_string"
 
-    # Replace the matched pattern with the escaped value
-    # The pattern is in a variable, and the escaped value ensures special chars are literal
-    expanded_string="${expanded_string/$matched_pattern/$escaped_value}"
+    # Replace the matched pattern with the variable value using substring slicing
+    # This approach is more portable than parameter expansion ${var/pattern/replacement}
+    # which has inconsistent behavior with special characters across bash versions
+
+    # Find the pattern using prefix removal
+    local prefix="${expanded_string%%"$matched_pattern"*}"
+
+    # Check if pattern was found
+    if [[ "$prefix" != "$expanded_string" ]]; then
+      # Calculate positions
+      local pattern_len=${#matched_pattern}
+      local prefix_len=${#prefix}
+
+      # Extract suffix after the pattern
+      local suffix="${expanded_string:$((prefix_len + pattern_len))}"
+
+      # Concatenate: prefix + replacement + suffix
+      # This preserves all special characters literally without escaping
+      expanded_string="${prefix}${var_value}${suffix}"
+    fi
 
     # Safety check: if no progress was made, break to prevent infinite loop
     # This handles cases where the value equals the pattern (self-reference)

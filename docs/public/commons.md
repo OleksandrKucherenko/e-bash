@@ -729,9 +729,9 @@ result=$(env:resolve "{{env.CYCLE_A}}" 2>&1)
 # Error: env:resolve exceeded maximum iterations (10), possible infinite loop
 ```
 
-**Special Character Escaping:**
+**Special Character Handling:**
 
-The function properly handles special characters in variable values. In bash parameter expansion `${var/pattern/replacement}`, the replacement string interprets `&` as "matched text" and `\` as an escape character. The function escapes these characters before replacement to ensure they appear literally in the output.
+The function correctly handles all special characters in variable values, including `&`, `\`, and other characters. The implementation uses pure bash substring operations (string slicing) rather than parameter expansion for replacement, ensuring portable behavior across all bash versions and compilation options.
 
 ```bash
 # Ampersands in URLs

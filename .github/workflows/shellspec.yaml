@@ -128,10 +128,18 @@ jobs:
           echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
           mkdir -p "${HOME}/.local/bin"
 
-      - name: Install DIRENV
+      - name: Install DIRENV and latest BASH
         run: |
+          # Install latest bash to ensure consistent behavior across platforms
+          brew install bash
+
           # Install direnv for macOS
           brew install direnv
+
+          # Verify bash version
+          echo "Installed bash version: $(brew list --versions bash)"
+          echo "System bash version: $BASH_VERSION"
+          echo "Brew bash path: $(brew --prefix)/bin/bash"
 
       - name: Verify installation order and setup
         run: |
@@ -356,11 +364,19 @@ jobs:
           echo "HOMEBREW_CELLAR=${{ steps.brew_path.outputs.path }}/Cellar" >> "$GITHUB_ENV"
           echo "HOMEBREW_REPOSITORY=${{ steps.brew_path.outputs.path }}/Homebrew" >> "$GITHUB_ENV"
 
-      - name: Install DIRENV
+      - name: Install DIRENV and latest BASH
         run: |
+          # Install latest bash via Homebrew to ensure consistent behavior across platforms
+          brew install bash
+
           # Install direnv for Ubuntu (must be after Homebrew for dependency order)
           curl -sfL https://direnv.net/install.sh | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+          # Verify bash version
+          echo "Installed bash version: $(brew list --versions bash)"
+          echo "System bash version: $BASH_VERSION"
+          echo "Brew bash path: $(brew --prefix)/bin/bash"
 
       - name: Verify installation order and setup
         run: |
