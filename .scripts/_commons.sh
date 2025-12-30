@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.3
+## Version: 1.17.4
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 

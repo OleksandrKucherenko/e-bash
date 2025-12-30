@@ -2517,7 +2517,8 @@ line2"
     End
 
     It "does not resolve pattern with invalid variable name (starts with number)"
-      BeforeCall "export 123VAR='value'"
+      # No BeforeCall needed - variable names starting with numbers are invalid in bash
+      # Our regex pattern won't match this, so it should be left unchanged
       When call env:resolve "{{env.123VAR}}"
 
       The status should be success

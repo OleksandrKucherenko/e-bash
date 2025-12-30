@@ -731,22 +731,20 @@ result=$(env:resolve "{{env.CYCLE_A}}" 2>&1)
 
 **Special Character Escaping:**
 
-The function properly escapes special characters to prevent corruption during expansion.
+The function properly escapes special characters to prevent corruption during expansion. Bash `${var/pattern/replacement}` treats `&` as "matched text" and `\` as an escape character, so these must be escaped before replacement.
 
 ```bash
-# Ampersands in URLs (& treated as "matched text" without escaping)
+# Ampersands in URLs
 export URL='https://api.com?a=1&b=2&c=3'
 result=$(env:resolve "URL: {{env.URL}}")
 echo "$result"
 # Output: URL: https://api.com?a=1&b=2&c=3
-# (Without escaping: would corrupt the URL)
 
-# Backslashes in Windows paths (\ treated as escape character)
+# Backslashes in Windows paths
 export WIN_PATH='C:\Users\Admin\Documents'
 result=$(env:resolve "Path: {{env.WIN_PATH}}")
 echo "$result"
 # Output: Path: C:\Users\Admin\Documents
-# (Without escaping: would lose backslashes)
 
 # Combined special characters
 export MIXED='C:\Path\file.txt?query=a&b=c'
@@ -754,7 +752,7 @@ result=$(env:resolve "{{env.MIXED}}")
 echo "$result"
 # Output: C:\Path\file.txt?query=a&b=c
 
-# Sed replacement patterns (& has special meaning in sed)
+# Sed replacement patterns (& has special meaning in both sed and bash)
 export SED_PATTERN='s/old/& new/g'
 result=$(env:resolve "{{env.SED_PATTERN}}")
 echo "$result"
