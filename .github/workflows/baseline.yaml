@@ -76,6 +76,20 @@ jobs:
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
 
+      - name: Apply ShellSpec Timeout Patch
+        shell: bash
+        run: |
+          # Apply the timeout feature patch to ShellSpec if not already applied
+          if ! shellspec --help 2>/dev/null | grep -q -- '--timeout'; then
+            echo "Applying ShellSpec timeout patch..."
+            chmod +x patches/apply.sh
+            ./patches/apply.sh
+          else
+            echo "ShellSpec timeout patch already applied"
+          fi
+          # Verify patch is applied
+          shellspec --help | grep -A 2 timeout
+
       - name: Run full ShellSpec suite (with coverage)
         shell: bash
         run: |
@@ -153,6 +167,19 @@ jobs:
         run: |
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
+
+      - name: Apply ShellSpec Timeout Patch
+        run: |
+          # Apply the timeout feature patch to ShellSpec if not already applied
+          if ! shellspec --help 2>/dev/null | grep -q -- '--timeout'; then
+            echo "Applying ShellSpec timeout patch..."
+            chmod +x patches/apply.sh
+            ./patches/apply.sh
+          else
+            echo "ShellSpec timeout patch already applied"
+          fi
+          # Verify patch is applied
+          shellspec --help | grep -A 2 timeout
 
       - name: Run full ShellSpec suite
         shell: bash
