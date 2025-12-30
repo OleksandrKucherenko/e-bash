@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.16.3
+## Version: 1.17.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -2579,6 +2579,290 @@ line2"
       The status should be success
       The output should eq "Running in staging mode with dry_run=true"
       The error should eq ''
+    End
+
+    Describe "Associative array support /"
+      It "resolves variable from associative array"
+        setup_array() {
+          declare -gA TEST_ARRAY
+          TEST_ARRAY[API_HOST]="api.example.com"
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "Host: {{env.API_HOST}}" "TEST_ARRAY"
+
+        The status should be success
+        The output should eq "Host: api.example.com"
+        The error should eq ''
+      End
+
+      It "resolves multiple variables from associative array"
+        setup_array() {
+          declare -gA CONFIG
+          CONFIG[API_HOST]="api.example.com"
+          CONFIG[VERSION]="v2"
+          CONFIG[PORT]="8080"
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "https://{{env.API_HOST}}:{{env.PORT}}/{{env.VERSION}}/users" "CONFIG"
+
+        The status should be success
+        The output should eq "https://api.example.com:8080/v2/users"
+        The error should eq ''
+      End
+
+      It "falls back to environment variable when not in array"
+        setup_array() {
+          declare -gA PARTIAL_CONFIG
+          PARTIAL_CONFIG[API_HOST]="api.example.com"
+        }
+        BeforeCall setup_array
+        BeforeCall "export PORT='3000'"
+
+        When call env:resolve "{{env.API_HOST}}:{{env.PORT}}" "PARTIAL_CONFIG"
+
+        The status should be success
+        The output should eq "api.example.com:3000"
+        The error should eq ''
+      End
+
+      It "array value takes priority over environment variable"
+        setup_array() {
+          declare -gA OVERRIDE_CONFIG
+          OVERRIDE_CONFIG[PATH]="/custom/path"
+        }
+        BeforeCall setup_array
+        BeforeCall "export PATH='/usr/bin'"
+
+        When call env:resolve "{{env.PATH}}" "OVERRIDE_CONFIG"
+
+        The status should be success
+        The output should eq "/custom/path"
+        The error should eq ''
+      End
+
+      It "handles empty value in associative array"
+        setup_array() {
+          declare -gA EMPTY_CONFIG
+          EMPTY_CONFIG[EMPTY_VAR]=""
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "Value: {{env.EMPTY_VAR}}" "EMPTY_CONFIG"
+
+        The status should be success
+        The output should eq "Value: "
+        The error should eq ''
+      End
+
+      It "handles non-existent array gracefully"
+        BeforeCall "export FALLBACK='value'"
+
+        When call env:resolve "{{env.FALLBACK}}" "NONEXISTENT_ARRAY"
+
+        The status should be success
+        The output should eq "value"
+        The error should eq ''
+      End
+
+      It "handles regular array (not associative) gracefully"
+        setup_array() {
+          declare -ga REGULAR_ARRAY
+          REGULAR_ARRAY=(one two three)
+        }
+        BeforeCall setup_array
+        BeforeCall "export VAR='env_value'"
+
+        When call env:resolve "{{env.VAR}}" "REGULAR_ARRAY"
+
+        The status should be success
+        The output should eq "env_value"
+        The error should eq ''
+      End
+
+      It "handles array with special characters in values"
+        setup_array() {
+          declare -gA SPECIAL_CONFIG
+          SPECIAL_CONFIG[URL]="https://example.com/path?query=value&foo=bar"
+          SPECIAL_CONFIG[QUOTED]='"quoted value"'
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "{{env.URL}} - {{env.QUOTED}}" "SPECIAL_CONFIG"
+
+        The status should be success
+        The output should eq 'https://example.com/path?query=value&foo=bar - "quoted value"'
+        The error should eq ''
+      End
+
+      It "real-world: template rendering with config array"
+        setup_config() {
+          declare -gA DEPLOY_CONFIG
+          DEPLOY_CONFIG[ENVIRONMENT]="production"
+          DEPLOY_CONFIG[REGION]="us-east-1"
+          DEPLOY_CONFIG[CLUSTER]="main-cluster"
+          DEPLOY_CONFIG[REPLICAS]="3"
+        }
+        BeforeCall setup_config
+
+        When call env:resolve "Deploy to {{env.ENVIRONMENT}} in {{env.REGION}} ({{env.CLUSTER}}, replicas={{env.REPLICAS}})" "DEPLOY_CONFIG"
+
+        The status should be success
+        The output should eq "Deploy to production in us-east-1 (main-cluster, replicas=3)"
+        The error should eq ''
+      End
+    End
+
+    Describe "Pipeline mode /"
+      It "resolves variables from stdin (single line)"
+        Data
+          #|{{env.TEST_VAR}}
+        End
+        BeforeCall "export TEST_VAR='piped_value'"
+
+        When call env:resolve
+
+        The status should be success
+        The output should eq "piped_value"
+        The error should eq ''
+      End
+
+      It "resolves variables from stdin (multiple lines)"
+        Data
+          #|Line 1: {{env.VAR1}}
+          #|Line 2: {{env.VAR2}}
+          #|Line 3: {{env.VAR3}}
+        End
+        BeforeCall "export VAR1='first'"
+        BeforeCall "export VAR2='second'"
+        BeforeCall "export VAR3='third'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "Line 1: first"
+        The line 2 of output should eq "Line 2: second"
+        The line 3 of output should eq "Line 3: third"
+        The error should eq ''
+      End
+
+      It "pipeline mode with associative array"
+        Data
+          #|{{env.API_HOST}}/{{env.VERSION}}
+        End
+        setup_array() {
+          declare -gA PIPE_CONFIG
+          PIPE_CONFIG[API_HOST]="api.example.com"
+          PIPE_CONFIG[VERSION]="v3"
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "PIPE_CONFIG"
+
+        The status should be success
+        The output should eq "api.example.com/v3"
+        The error should eq ''
+      End
+
+      It "pipeline mode with array fallback to env"
+        Data
+          #|{{env.FROM_ARRAY}} and {{env.FROM_ENV}}
+        End
+        setup_array() {
+          declare -gA MIXED_CONFIG
+          MIXED_CONFIG[FROM_ARRAY]="array_value"
+        }
+        BeforeCall setup_array
+        BeforeCall "export FROM_ENV='env_value'"
+
+        When call env:resolve "MIXED_CONFIG"
+
+        The status should be success
+        The output should eq "array_value and env_value"
+        The error should eq ''
+      End
+
+      It "pipeline mode preserves empty lines"
+        Data
+          #|{{env.VAR1}}
+          #|
+          #|{{env.VAR2}}
+        End
+        BeforeCall "export VAR1='first'"
+        BeforeCall "export VAR2='second'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "first"
+        The line 2 of output should eq ""
+        The line 3 of output should eq "second"
+        The error should eq ''
+      End
+
+      It "pipeline mode handles lines without patterns"
+        Data
+          #|Plain text line
+          #|{{env.VAR}} with pattern
+          #|Another plain line
+        End
+        BeforeCall "export VAR='value'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "Plain text line"
+        The line 2 of output should eq "value with pattern"
+        The line 3 of output should eq "Another plain line"
+        The error should eq ''
+      End
+
+      It "real-world: process config file template"
+        Data
+          #|server:
+          #|  host: {{env.SERVER_HOST}}
+          #|  port: {{env.SERVER_PORT}}
+          #|database:
+          #|  url: {{env.DB_URL}}
+        End
+        BeforeCall "export SERVER_HOST='localhost'"
+        BeforeCall "export SERVER_PORT='8080'"
+        BeforeCall "export DB_URL='postgresql://localhost/mydb'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "server:"
+        The line 2 of output should eq "  host: localhost"
+        The line 3 of output should eq "  port: 8080"
+        The line 4 of output should eq "database:"
+        The line 5 of output should eq "  url: postgresql://localhost/mydb"
+        The error should eq ''
+      End
+
+      It "real-world: process Dockerfile template with array"
+        Data
+          #|FROM {{env.BASE_IMAGE}}
+          #|ENV APP_VERSION={{env.VERSION}}
+          #|EXPOSE {{env.PORT}}
+        End
+        setup_docker_vars() {
+          declare -gA DOCKER_VARS
+          DOCKER_VARS[BASE_IMAGE]="node:18-alpine"
+          DOCKER_VARS[VERSION]="1.2.3"
+          DOCKER_VARS[PORT]="3000"
+        }
+        BeforeCall setup_docker_vars
+
+        When call env:resolve "DOCKER_VARS"
+
+        The status should be success
+        The line 1 of output should eq "FROM node:18-alpine"
+        The line 2 of output should eq "ENV APP_VERSION=1.2.3"
+        The line 3 of output should eq "EXPOSE 3000"
+        The error should eq ''
+      End
     End
   End
 End

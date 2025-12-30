@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.16.3
+## Version: 1.17.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -336,23 +336,81 @@ function env:resolve() {
   # Resolve {{env.VAR_NAME}} patterns in a string to their environment variable values
   #
   # Arguments:
-  #   $1 - input_string: The string containing {{env.*}} patterns to expand
+  #   $1 - input_string: The string containing {{env.*}} patterns to expand (optional in pipeline mode)
+  #   $2 - array_name: Name of a globally defined associative array for custom variable resolution (optional)
+  #
+  # Pipeline mode (when stdin is not a terminal):
+  #   echo "{{env.VAR}}" | env:resolve               # Read from stdin, use env vars
+  #   cat file.txt | env:resolve "CUSTOM_VARS"       # Read from stdin, use custom array + env vars
+  #
+  # Direct mode:
+  #   env:resolve "string"                           # Use env vars only
+  #   env:resolve "string" "CUSTOM_VARS"             # Use custom array + env vars
   #
   # Returns:
   #   The string with all {{env.VAR_NAME}} patterns replaced with their values
-  #   If a variable is unset or empty, it will be replaced with an empty string
+  #   Resolution priority: associative array > environment variables
+  #   If a variable is not found in either source, it will be replaced with an empty string
   #
   # Supports optional whitespace in patterns:
   #   {{env.VAR}}, {{ env.VAR }}, {{  env.VAR  }} are all valid
   #
   # Example:
+  #   # Using environment variables
   #   export MY_PATH="/usr/local/bin"
   #   result=$(env:resolve "Path is: {{env.MY_PATH}}")  # Returns "Path is: /usr/local/bin"
-  #   result=$(env:resolve "{{ env.HOME }}/config")     # Returns "/home/user/config"
-  #   result=$(env:resolve "{{env.UNSET}}")             # Returns ""
+  #
+  #   # Using custom associative array
+  #   declare -A CONFIG=([API_HOST]="api.example.com" [VERSION]="v2")
+  #   result=$(env:resolve "https://{{env.API_HOST}}/{{env.VERSION}}" "CONFIG")
+  #   # Returns "https://api.example.com/v2"
+  #
+  #   # Pipeline mode
+  #   echo "Config: {{env.HOME}}/.config" | env:resolve
+  #   cat template.txt | env:resolve "VARS"
 
   local input_string="$1"
-  local expanded_string="$input_string"
+  local array_name="$2"
+
+  # Detect pipeline mode:
+  # - If $# is 0 (no arguments) AND stdin is not a terminal, OR
+  # - If $# is 1 AND first arg matches array name pattern AND stdin is not a terminal
+  # Then we're in pipeline mode
+  local pipeline_mode=false
+
+  if [[ $# -eq 0 ]] && [[ ! -t 0 ]]; then
+    # No arguments, stdin available - pipeline mode without array
+    pipeline_mode=true
+  elif [[ $# -eq 1 ]] && [[ "$input_string" =~ ^[A-Z_][A-Z0-9_]*$ ]] && [[ ! -t 0 ]]; then
+    # One argument that looks like an array name, stdin available - pipeline mode with array
+    pipeline_mode=true
+    array_name="$input_string"
+    input_string=""
+  fi
+
+  if $pipeline_mode; then
+    # Pipeline mode: read from stdin line by line
+    while IFS= read -r line; do
+      _env:resolve:string "$line" "$array_name"
+    done
+  else
+    # Direct mode: resolve the input string
+    if [[ -z "$input_string" ]]; then
+      # No input string and no pipeline - return empty
+      echo ""
+      return 0
+    fi
+
+    _env:resolve:string "$input_string" "$array_name"
+  fi
+}
+
+# Internal helper function to resolve a single string
+# Follows naming convention: _domain:purpose for internal functions
+function _env:resolve:string() {
+  local str="$1"
+  local arr_name="$2"
+  local expanded_string="$str"
 
   # Iterate while there are {{env.VAR_NAME}} patterns in the string
   # Pattern: {{env.\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}
@@ -361,7 +419,31 @@ function env:resolve() {
   # - Followed by optional whitespace and }}
   while [[ "$expanded_string" =~ \{\{[[:space:]]*env\.[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\}\} ]]; do
     local var_name="${BASH_REMATCH[1]}"
-    local var_value="${!var_name:-}"
+    local var_value=""
+
+    # Priority 1: Check associative array if provided
+    if [[ -n "$arr_name" ]]; then
+      # Verify the array exists and is an associative array
+      if declare -p "$arr_name" 2>/dev/null | grep -q "declare -A"; then
+        # Use eval to access the associative array value
+        # This works across different scopes and subshells
+        local array_lookup
+        array_lookup="echo \"\${${arr_name}[${var_name}]:-__NOTFOUND__}\""
+        var_value=$(eval "$array_lookup")
+
+        # If not found in array, fall back to environment variable
+        if [[ "$var_value" == "__NOTFOUND__" ]]; then
+          var_value="${!var_name:-}"
+        fi
+      else
+        # Array doesn't exist or isn't associative, fall back to environment variable
+        var_value="${!var_name:-}"
+      fi
+    else
+      # No array provided, use environment variable
+      var_value="${!var_name:-}"
+    fi
+
     # Replace the full match (including any whitespace) with the variable value
     expanded_string="${expanded_string/${BASH_REMATCH[0]}/$var_value}"
   done
