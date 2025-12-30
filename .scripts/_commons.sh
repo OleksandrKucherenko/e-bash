@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-26
-## Version: 1.15.8
+## Last revisit: 2025-12-30
+## Version: 1.18.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -330,6 +330,173 @@ function env:variable:or:secret:file:optional() {
     # make unit test happy, they expect 0 exit code, otherwise variable preserve will not work
     ${__SOURCED__:+x} && return 0 || return 1
   fi
+}
+
+function env:resolve() {
+  # Resolve {{env.VAR_NAME}} patterns in a string to their environment variable values
+  #
+  # Arguments:
+  #   $1 - input_string: The string containing {{env.*}} patterns to expand (optional in pipeline mode)
+  #   $2 - array_name: Name of a globally defined associative array for custom variable resolution (optional)
+  #
+  # Pipeline mode (when stdin is not a terminal):
+  #   echo "{{env.VAR}}" | env:resolve               # Read from stdin, use env vars
+  #   cat file.txt | env:resolve "CUSTOM_VARS"       # Read from stdin, use custom array + env vars
+  #
+  # Direct mode:
+  #   env:resolve "string"                           # Use env vars only
+  #   env:resolve "string" "CUSTOM_VARS"             # Use custom array + env vars
+  #
+  # Returns:
+  #   The string with all {{env.VAR_NAME}} patterns replaced with their values
+  #   Resolution priority: associative array > environment variables
+  #   If a variable is not found in either source, it will be replaced with an empty string
+  #
+  # Supports optional whitespace in patterns:
+  #   {{env.VAR}}, {{ env.VAR }}, {{  env.VAR  }} are all valid
+  #
+  # Example:
+  #   # Using environment variables
+  #   export MY_PATH="/usr/local/bin"
+  #   result=$(env:resolve "Path is: {{env.MY_PATH}}")  # Returns "Path is: /usr/local/bin"
+  #
+  #   # Using custom associative array
+  #   declare -A CONFIG=([API_HOST]="api.example.com" [VERSION]="v2")
+  #   result=$(env:resolve "https://{{env.API_HOST}}/{{env.VERSION}}" "CONFIG")
+  #   # Returns "https://api.example.com/v2"
+  #
+  #   # Pipeline mode
+  #   echo "Config: {{env.HOME}}/.config" | env:resolve
+  #   cat template.txt | env:resolve "VARS"
+
+  local input_string="$1"
+  local array_name="$2"
+
+  # Detect pipeline mode:
+  # - If $# is 0 (no arguments) AND stdin is not a terminal, OR
+  # - If $# is 1 AND first arg matches array name pattern AND stdin is not a terminal
+  # Then we're in pipeline mode
+  local pipeline_mode=false
+
+  if [[ $# -eq 0 ]] && [[ ! -t 0 ]]; then
+    # No arguments, stdin available - pipeline mode without array
+    pipeline_mode=true
+  elif [[ $# -eq 1 ]] && [[ "$input_string" =~ ^[A-Z_][A-Z0-9_]*$ ]] && [[ ! -t 0 ]]; then
+    # One argument that looks like an array name, stdin available - pipeline mode with array
+    pipeline_mode=true
+    array_name="$input_string"
+    input_string=""
+  fi
+
+  if $pipeline_mode; then
+    # Pipeline mode: read from stdin line by line
+    while IFS= read -r line; do
+      _env:resolve:string "$line" "$array_name"
+    done
+  else
+    # Direct mode: resolve the input string
+    if [[ -z "$input_string" ]]; then
+      # No input string and no pipeline - return empty
+      echo ""
+      return 0
+    fi
+
+    _env:resolve:string "$input_string" "$array_name"
+  fi
+}
+
+# Internal helper function to resolve a single string
+# Follows naming convention: _domain:purpose for internal functions
+function _env:resolve:string() {
+  local str="$1"
+  local arr_name="$2"
+  local expanded_string="$str"
+  local max_iterations=10  # Safety limit to prevent infinite loops
+  local iteration=0
+
+  # Iterate while there are {{env.VAR_NAME}} patterns in the string
+  # Pattern: {{env.\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}
+  # - Matches {{env. followed by optional whitespace
+  # - Captures variable name (must start with letter or underscore, then alphanumeric or underscore)
+  # - Followed by optional whitespace and }}
+  while [[ "$expanded_string" =~ \{\{[[:space:]]*env\.[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\}\} ]]; do
+    # Safety check: prevent infinite loops from self-referential patterns
+    ((iteration++))
+    if [[ $iteration -gt $max_iterations ]]; then
+      echo "$expanded_string" >&2
+      echo "ERROR: env:resolve exceeded maximum iterations ($max_iterations), possible infinite loop" >&2
+      echo "This may be caused by self-referential patterns like: export VAR='{{env.VAR}}'" >&2
+      echo:Common "Context: ...${expanded_string:0:80}..." >&2
+      return 1
+    fi
+
+    local var_name="${BASH_REMATCH[1]}"
+    local var_value=""
+    local matched_pattern="${BASH_REMATCH[0]}"
+
+    # Priority 1: Check associative array if provided
+    if [[ -n "$arr_name" ]]; then
+      # Verify the array exists and is an associative array
+      if declare -p "$arr_name" 2>/dev/null | grep -q "declare -A"; then
+        # Safer eval approach: validate array name contains only safe characters
+        if [[ "$arr_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && [[ "$var_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+          # Use printf with eval for safer array access
+          # This is safer than echo-based eval as it doesn't execute arbitrary commands
+          local lookup_expr="\${${arr_name}[${var_name}]:-__NOTFOUND__}"
+          var_value=$(eval "printf '%s' \"$lookup_expr\"" 2>/dev/null || echo "__NOTFOUND__")
+        else
+          var_value="__NOTFOUND__"
+        fi
+
+        # If not found in array, fall back to environment variable
+        if [[ "$var_value" == "__NOTFOUND__" ]]; then
+          var_value="${!var_name:-}"
+        fi
+      else
+        # Array doesn't exist or isn't associative, fall back to environment variable
+        var_value="${!var_name:-}"
+      fi
+    else
+      # No array provided, use environment variable
+      var_value="${!var_name:-}"
+    fi
+
+    # Store previous state to detect if replacement made progress
+    local previous_string="$expanded_string"
+
+    # Replace the matched pattern with the variable value using substring slicing
+    # This approach is more portable than parameter expansion ${var/pattern/replacement}
+    # which has inconsistent behavior with special characters across bash versions
+
+    # Find the pattern using prefix removal
+    local prefix="${expanded_string%%"$matched_pattern"*}"
+
+    # Check if pattern was found
+    if [[ "$prefix" != "$expanded_string" ]]; then
+      # Calculate positions
+      local pattern_len=${#matched_pattern}
+      local prefix_len=${#prefix}
+
+      # Extract suffix after the pattern
+      local suffix="${expanded_string:$((prefix_len + pattern_len))}"
+
+      # Concatenate: prefix + replacement + suffix
+      # This preserves all special characters literally without escaping
+      expanded_string="${prefix}${var_value}${suffix}"
+    fi
+
+    # Safety check: if no progress was made, break to prevent infinite loop
+    # This handles cases where the value equals the pattern (self-reference)
+    if [[ "$expanded_string" == "$previous_string" ]]; then
+      echo "$expanded_string" >&2
+      echo "ERROR: env:resolve detected self-referential pattern for variable '$var_name'" >&2
+      echo "Variable value contains the same placeholder pattern: $matched_pattern" >&2
+      echo:Common "Context: ...${expanded_string:0:80}..." >&2
+      return 1
+    fi
+  done
+
+  echo "$expanded_string"
 }
 
 function confirm:by:input() {

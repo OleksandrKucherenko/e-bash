@@ -2287,3 +2287,366 @@ The result of function no_colors_stderr should include "Warning: Hook 'deploy' i
 
 **Last Updated:** 2025-12-18
 **Context:** Comprehensive _hooks.sh test suite development - transforming 54 superficial tests into logger-verified unit tests with proper business logic validation.
+
+---
+
+## Part X: Cross-Platform Bash Parameter Expansion - Substring Slicing Solution
+
+### Case Study 10: env:resolve Special Character Handling Across Bash Versions
+
+**Date**: 2025-12-30
+**Project**: e-bash framework
+**Issue**: Tests passing on macOS (bash 5.3.9) but failing on Ubuntu CI (bash 5.1.16)
+
+#### Problem Statement
+
+The `env:resolve` function uses string replacement to expand template patterns like `{{env.VAR}}` with environment variable values. Tests passed on macOS but consistently failed on Ubuntu CI with special characters appearing escaped in the output.
+
+**Failing Test Output (Ubuntu CI - bash 5.1.16):**
+```
+expected: "URL: https://example.com/api?a=1&b=2&c=3"
+     got: "URL: https://example.com/api?a=1\&b=2\&c=3"
+
+expected: "Path: C:\Users\Admin\Documents"
+     got: "Path: C:\\Users\\Admin\\Documents"
+```
+
+**Passing Test Output (macOS - bash 5.3.9):**
+```
+expected: "URL: https://example.com/api?a=1&b=2&c=3"
+     got: "URL: https://example.com/api?a=1&b=2&c=3" ✓
+
+expected: "Path: C:\Users\Admin\Documents"
+     got: "Path: C:\Users\Admin\Documents" ✓
+```
+
+#### Root Cause Analysis
+
+**Initial Investigation:**
+- Both environments reported bash 5.2.21 in error messages
+- Local testing on bash 5.2.21 worked correctly
+- Suspected compilation flag differences (LinuxBrew vs Homebrew)
+
+**Actual Discovery:**
+```bash
+Ubuntu CI:  bash 5.1.16 (LinuxBrew: /home/linuxbrew/.linuxbrew/)
+macOS Dev:  bash 5.3.9  (Homebrew: /opt/homebrew/)
+```
+
+**The Critical Difference:**
+
+Bash parameter expansion `${var/pattern/replacement}` changed behavior between bash 5.1.x and 5.3.x regarding special characters in the replacement string.
+
+**Bash 5.1.16 Behavior:**
+```bash
+str="test {{X}}"
+pattern="{{X}}"
+val="a&b"
+escaped="${val//&/\\&}"  # escaped="a\&b"
+result="${str/$pattern/$escaped}"
+echo "$result"
+# Output: test a\&b  ← Escape preserved as literal
+```
+
+**Bash 5.3.9 Behavior:**
+```bash
+str="test {{X}}"
+pattern="{{X}}"
+val="a&b"
+escaped="${val//&/\\&}"  # escaped="a\&b"
+result="${str/$pattern/$escaped}"
+echo "$result"
+# Output: test a&b  ← Escape consumed and interpreted
+```
+
+**The Non-Obvious Insight:**
+
+In bash 5.3.9, the `&` in the replacement string has special meaning ("the matched text", like sed), so escaping with `\&` makes it literal. In bash 5.1.16, there is NO special meaning for `&`, so the backslash becomes literal too.
+
+#### Investigation Steps and Dead Ends
+
+**Attempt 1: Escaping with Backslashes**
+```bash
+# Escape special characters before replacement
+escaped_value="${var_value//\\/\\\\}"  # Escape backslashes
+escaped_value="${escaped_value//&/\\&}" # Escape ampersands
+expanded_string="${expanded_string/$matched_pattern/$escaped_value}"
+```
+
+**Result:** Works on bash 5.3.9, fails on bash 5.1.16 (escapes preserved)
+
+**Attempt 2: Using Perl**
+```bash
+expanded_string=$(perl -e '
+  my ($str, $pat, $repl) = @ARGV;
+  $pat = quotemeta($pat);
+  $str =~ s/$pat/$repl/;
+  print $str;
+' "$expanded_string" "$matched_pattern" "$var_value")
+```
+
+**Result:** Works everywhere, but adds external dependency (perl not always available in minimal containers)
+
+**Attempt 3: Using AWK**
+```bash
+awk -v str="$str" -v pat="$pattern" -v repl="$replacement" '
+  BEGIN {
+    gsub(/[\\^$.*+?()[\]{}|]/, "\\\\&", pat)
+    gsub(/[\\&]/, "\\\\&", repl)
+    gsub(pat, repl, str)
+    print str
+  }
+'
+```
+
+**Result:** Issues with backslash handling, overly complex escaping logic, doesn't work reliably
+
+**Byte-Level Analysis:**
+
+```bash
+# bash 5.3.9 (macOS) - Escaping CONSUMED
+Escaped value bytes: 61 5c 26 62  (a\&b)
+Final output bytes:  61 26 62     (a&b) ✓ Correct
+
+# bash 5.1.16 (Ubuntu) - Escaping PRESERVED
+Escaped value bytes: 61 5c 26 62  (a\&b)
+Final output bytes:  61 5c 26 62  (a\&b) ✗ Wrong
+```
+
+### ✅ Final Solution: Pure Bash Substring Slicing
+
+**Implementation:**
+```bash
+# Instead of: expanded_string="${expanded_string/$matched_pattern/$var_value}"
+# Use substring operations:
+
+# Find the pattern using prefix removal
+local prefix="${expanded_string%%"$matched_pattern"*}"
+
+# Check if pattern was found
+if [[ "$prefix" != "$expanded_string" ]]; then
+  # Calculate positions
+  local pattern_len=${#matched_pattern}
+  local prefix_len=${#prefix}
+
+  # Extract suffix after the pattern
+  local suffix="${expanded_string:$((prefix_len + pattern_len))}"
+
+  # Concatenate: prefix + replacement + suffix
+  # This preserves all special characters literally without escaping
+  expanded_string="${prefix}${var_value}${suffix}"
+fi
+```
+
+**Why This Works:**
+
+1. **Pure POSIX operations**: Uses only:
+   - `%%` (prefix removal - greedy match from end)
+   - `${#var}` (string length)
+   - `${var:offset:length}` (substring extraction)
+
+2. **No special character handling**: The replacement value is used as-is via string concatenation, not parameter expansion replacement
+
+3. **Portable across ALL bash versions**: These operations work identically in bash 3.x, 4.x, 5.1.x, 5.3.x+
+
+4. **No external dependencies**: Pure bash, no perl/awk/sed required
+
+5. **Predictable behavior**: String concatenation has no special characters
+
+**Test Results (Both Platforms):**
+```bash
+# bash 5.1.16 (Ubuntu CI)
+Input: "URL: {{env.URL}}"
+Value: "https://example.com/api?a=1&b=2&c=3"
+Output: "URL: https://example.com/api?a=1&b=2&c=3" ✓
+
+# bash 5.3.9 (macOS)  
+Input: "URL: {{env.URL}}"
+Value: "https://example.com/api?a=1&b=2&c=3"
+Output: "URL: https://example.com/api?a=1&b=2&c=3" ✓
+
+# Backslashes work correctly
+Input: "Path: {{env.PATH}}"
+Value: "C:\Users\Admin\Documents"
+Output: "Path: C:\Users\Admin\Documents" ✓
+
+# Mixed special characters
+Input: "Mixed: {{env.MIXED}}"
+Value: "C:\Path\file.txt?query=a&b=c"
+Output: "Mixed: C:\Path\file.txt?query=a&b=c" ✓
+```
+
+### Key Learnings
+
+**1. Bash Minor Versions Can Have Breaking Changes**
+- bash 5.1.x vs 5.3.x have different parameter expansion behavior
+- Don't assume `bash >= 5.0` means uniform behavior
+- ALWAYS test across target versions, not just major versions
+
+**2. Parameter Expansion Replacement is NOT Portable**
+- `${var/pattern/replacement}` has version-specific special character handling
+- The behavior of `&` and `\` in replacement string varies across versions
+- Documented behavior doesn't match reality across versions
+
+**3. Substring Operations ARE Portable**
+- String slicing with `%%`, `${#var}`, and `${var:offset}` work consistently
+- These POSIX operations have been stable since bash 2.x
+- Prefer substring manipulation over parameter expansion replacement
+
+**4. ShellSpec Testing Across Platforms is Critical**
+- Tests passing locally don't guarantee CI success
+- Version numbers can be misleading (LinuxBrew bash reporting vs actual version)
+- Always run CI tests on all target platforms before assuming portability
+
+**5. Avoid Complex Escaping**
+- If you find yourself escaping characters multiple times, there's a simpler way
+- Escaping rules that work in one version may not work in another
+- Simpler operations = more portable code
+
+### Best Practices for Cross-Platform Bash
+
+```bash
+# ❌ AVOID: Parameter expansion replacement with special chars
+result="${string/$pattern/$replacement}"  # Behavior varies by bash version
+
+# ✅ PREFER: Substring slicing and concatenation
+prefix="${string%%"$pattern"*}"
+if [[ "$prefix" != "$string" ]]; then
+  suffix="${string:$((${#prefix} + ${#pattern}))}"
+  result="${prefix}${replacement}${suffix}"
+fi
+
+# ❌ AVOID: Assuming bash >=5.0 behaves uniformly
+if [[ "${BASH_VERSINFO[0]}" -ge 5 ]]; then
+  # Still not safe - 5.1 vs 5.3 differ!
+fi
+
+# ✅ PREFER: Feature detection or portable patterns
+# Use substring operations that work everywhere
+
+# ❌ AVOID: Escaping special characters for parameter expansion
+escaped="${value//&/\\&}"
+result="${str/$pattern/$escaped}"  # Version-dependent
+
+# ✅ PREFER: Operations that don't need escaping
+# Substring slicing, concatenation
+```
+
+### Testing Checklist for Cross-Platform Bash Scripts
+
+- [ ] Test on minimum supported bash version (e.g., 3.2 for macOS, 4.4 for Ubuntu LTS, 5.1 for modern Linux)
+- [ ] Test on latest bash version (5.x+)
+- [ ] Test with special characters: `&`, `\`, `$`, `*`, `?`, `[`, `]`, `{`, `}`
+- [ ] Test on both macOS (Homebrew bash) and Linux (system/LinuxBrew bash)
+- [ ] Verify actual bash version in CI (not just what error messages report)
+- [ ] Enable ShellCheck and address all warnings
+- [ ] Verify no assumptions about bash compilation flags
+- [ ] Document minimum bash version requirements explicitly
+- [ ] Run ShellSpec tests on ALL target platforms before merging
+
+### ShellSpec-Specific Considerations for Cross-Platform Tests
+
+**Environment Version Detection:**
+```bash
+Describe 'cross-platform behavior'
+  It 'works on bash 5.1.x'
+    Skip if "bash version >= 5.2" test "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" = "5.1"
+    When call function_under_test
+    The output should eq "expected"
+  End
+
+  It 'works on bash 5.3.x'
+    Skip if "bash version < 5.3" test "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}" = "5.3"
+    When call function_under_test
+    The output should eq "expected"
+  End
+End
+```
+
+**Output Verification Across Versions:**
+```bash
+# When verifying output with special characters
+It 'handles ampersands correctly'
+  When call env:resolve "{{env.URL}}"
+
+  # This assertion must work on ALL bash versions
+  The output should eq "https://api.com?a=1&b=2&c=3"
+
+  # Alternative: Verify byte-by-byte
+  The output should satisfy check_bytes
+End
+
+check_bytes() {
+  # Verify literal & character (hex 26)
+  printf '%s' "$1" | od -A n -t x1 | grep -q " 26 "
+}
+```
+
+### Real-World Impact
+
+**Affected Tests:** 12 out of 12 special character tests
+**Fix Commits:** 3 commits (investigation, perl attempt, final solution)
+**Time to Resolution:** ~4 hours (including investigation and documentation)
+**Lines Changed:** ~20 lines of production code
+**Tests Fixed:** 100% (12/12 tests now pass on both platforms)
+
+**Version Distribution:**
+- Production environments: bash 4.4+ (Ubuntu LTS), bash 5.1+ (modern Linux)
+- Development environments: bash 5.3.9 (macOS Homebrew)
+- CI environments: bash 5.1.16 (Ubuntu with LinuxBrew)
+
+### Related Issues and References
+
+- **Bash Manual**: Section 3.5.3 "Shell Parameter Expansion" - replacement behavior specification is vague
+- **POSIX Standard**: Parameter expansion replacement is NOT part of POSIX (bash extension)
+- **ShellCheck**: SC2295 warns about expansions that might not work as expected
+- **Bash Changelog**: No explicit mention of `&` and `\` behavior changes between 5.1 and 5.3
+- **GitHub Issues**: Similar issues reported in other projects using bash parameter expansion with special characters
+
+### Prevention and Detection
+
+**Static Analysis:**
+```bash
+# Find potentially problematic patterns
+grep -r '${.*/.*/.*}' .scripts/
+grep -r 'escaped.*//&/' .scripts/
+grep -r 'escaped.*/\\\\/.*' .scripts/
+```
+
+**Runtime Detection:**
+```bash
+# Detect bash version differences in test output
+shellspec --format tap | tee test_results.txt
+# Compare results across platforms
+diff macos_results.txt ubuntu_results.txt
+```
+
+**Documentation Pattern:**
+```bash
+# At the top of scripts using string replacement
+# Minimum bash version: 3.2 (uses portable substring operations)
+# Compatible: bash 3.x, 4.x, 5.1.x, 5.3.x+
+# Special characters: Handled via substring slicing (no escaping needed)
+```
+
+### Conclusion
+
+When writing cross-platform bash scripts:
+
+1. **Avoid** relying on parameter expansion replacement (`${var/pattern/replacement}`) with special characters
+2. **Use** substring slicing (prefix/suffix removal + concatenation) for portable string manipulation
+3. **Test** on ALL target bash versions (minor versions matter!)
+4. **Document** minimum bash version requirements explicitly
+5. **Prefer** simple, well-documented operations over clever one-liners
+6. **Remember** "Works on bash 5.x" ≠ "Works on all bash 5.x versions"
+
+**Key Insight:** Portable bash code isn't about testing on "bash 5+", it's about using operations that work identically across all versions you support. Substring slicing has been stable for decades; parameter expansion replacement behavior continues to evolve.
+
+**Rule of Thumb:** If your replacement value can contain `&`, `\`, `$`, or other special characters, don't use parameter expansion replacement - use substring slicing instead.
+
+---
+
+**Last Updated:** 2025-12-30
+**Context:** env:resolve cross-platform bash behavior investigation and substring slicing solution
+**Commits:** 441c82c (final fix), 4c82553 (test fix), 9c8be9a (documentation)
+**Files Changed:** `.scripts/_commons.sh`, `docs/public/commons.md`, `spec/commons_spec.sh`

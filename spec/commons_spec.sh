@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-26
-## Version: 1.15.8
+## Last revisit: 2025-12-30
+## Version: 1.17.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -2244,6 +2244,790 @@ Describe "_commons.sh /"
       When call check_ge_0 "$has_xdg"
 
       The status should be success
+    End
+  End
+
+  Describe "env:resolve /"
+    It "resolves simple environment variable"
+      BeforeCall "export TEST_VAR='hello'"
+      When call env:resolve "Value: {{env.TEST_VAR}}"
+
+      The status should be success
+      The output should eq "Value: hello"
+      The error should eq ''
+    End
+
+    It "resolves variable with no whitespace in pattern"
+      BeforeCall "export MY_PATH='/usr/local/bin'"
+      When call env:resolve "Path is: {{env.MY_PATH}}"
+
+      The status should be success
+      The output should eq "Path is: /usr/local/bin"
+      The error should eq ''
+    End
+
+    It "resolves variable with whitespace before variable name"
+      BeforeCall "export MY_VAR='test'"
+      When call env:resolve "{{ env.MY_VAR }}"
+
+      The status should be success
+      The output should eq "test"
+      The error should eq ''
+    End
+
+    It "resolves variable with multiple spaces before variable name"
+      BeforeCall "export MY_VAR='value'"
+      When call env:resolve "{{  env.MY_VAR  }}"
+
+      The status should be success
+      The output should eq "value"
+      The error should eq ''
+    End
+
+    It "resolves variable with tabs and spaces"
+      BeforeCall "export TEST_VAR='result'"
+      When call env:resolve "{{   env.TEST_VAR   }}"
+
+      The status should be success
+      The output should eq "result"
+      The error should eq ''
+    End
+
+    It "resolves multiple variables in one string"
+      BeforeCall "export VAR1='first'"
+      BeforeCall "export VAR2='second'"
+      When call env:resolve "{{env.VAR1}} and {{env.VAR2}}"
+
+      The status should be success
+      The output should eq "first and second"
+      The error should eq ''
+    End
+
+    It "resolves three variables in one string"
+      BeforeCall "export A='alpha'"
+      BeforeCall "export B='beta'"
+      BeforeCall "export C='gamma'"
+      When call env:resolve "{{env.A}}-{{env.B}}-{{env.C}}"
+
+      The status should be success
+      The output should eq "alpha-beta-gamma"
+      The error should eq ''
+    End
+
+    It "resolves variables with mixed whitespace"
+      BeforeCall "export VAR1='one'"
+      BeforeCall "export VAR2='two'"
+      When call env:resolve "{{env.VAR1}} {{ env.VAR2 }} {{  env.VAR1  }}"
+
+      The status should be success
+      The output should eq "one two one"
+      The error should eq ''
+    End
+
+    It "returns empty string for unset variable"
+      BeforeCall "unset UNSET_VAR"
+      When call env:resolve "Value: {{env.UNSET_VAR}}"
+
+      The status should be success
+      The output should eq "Value: "
+      The error should eq ''
+    End
+
+    It "returns empty string for empty variable"
+      BeforeCall "export EMPTY_VAR=''"
+      When call env:resolve "Value: {{env.EMPTY_VAR}}"
+
+      The status should be success
+      The output should eq "Value: "
+      The error should eq ''
+    End
+
+    It "handles path expansion with HOME"
+      BeforeCall "export HOME='/home/user'"
+      When call env:resolve "{{env.HOME}}/config"
+
+      The status should be success
+      The output should eq "/home/user/config"
+      The error should eq ''
+    End
+
+    It "handles special characters in variable value"
+      BeforeCall "export SPECIAL='test@value#123'"
+      When call env:resolve "{{env.SPECIAL}}"
+
+      The status should be success
+      The output should eq "test@value#123"
+      The error should eq ''
+    End
+
+    It "handles spaces in variable value"
+      BeforeCall "export SPACED='value with spaces'"
+      When call env:resolve "Result: {{env.SPACED}}"
+
+      The status should be success
+      The output should eq "Result: value with spaces"
+      The error should eq ''
+    End
+
+    It "handles slashes in variable value (paths)"
+      BeforeCall "export FILE_PATH='/path/to/file.txt'"
+      When call env:resolve "File: {{env.FILE_PATH}}"
+
+      The status should be success
+      The output should eq "File: /path/to/file.txt"
+      The error should eq ''
+    End
+
+    It "handles variable names with underscores"
+      BeforeCall "export MY_LONG_VAR_NAME='test'"
+      When call env:resolve "{{env.MY_LONG_VAR_NAME}}"
+
+      The status should be success
+      The output should eq "test"
+      The error should eq ''
+    End
+
+    It "handles variable names with numbers"
+      BeforeCall "export VAR123='numeric'"
+      When call env:resolve "{{env.VAR123}}"
+
+      The status should be success
+      The output should eq "numeric"
+      The error should eq ''
+    End
+
+    It "handles mixed underscores and numbers in variable names"
+      BeforeCall "export MY_VAR_123_TEST='complex'"
+      When call env:resolve "{{env.MY_VAR_123_TEST}}"
+
+      The status should be success
+      The output should eq "complex"
+      The error should eq ''
+    End
+
+    It "preserves text outside of patterns"
+      BeforeCall "export VAR='value'"
+      When call env:resolve "before {{env.VAR}} after"
+
+      The status should be success
+      The output should eq "before value after"
+      The error should eq ''
+    End
+
+    It "returns input unchanged when no patterns present"
+      When call env:resolve "no patterns here"
+
+      The status should be success
+      The output should eq "no patterns here"
+      The error should eq ''
+    End
+
+    It "handles empty string input"
+      When call env:resolve ""
+
+      The status should be success
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "handles string with only pattern"
+      BeforeCall "export ONLY='value'"
+      When call env:resolve "{{env.ONLY}}"
+
+      The status should be success
+      The output should eq "value"
+      The error should eq ''
+    End
+
+    It "handles multiline variable values"
+      BeforeCall "export MULTILINE='line1
+line2'"
+      When call env:resolve "{{env.MULTILINE}}"
+
+      The status should be success
+      The output should eq "line1
+line2"
+      The error should eq ''
+    End
+
+    It "handles numeric variable values"
+      BeforeCall "export NUMBER='12345'"
+      When call env:resolve "Count: {{env.NUMBER}}"
+
+      The status should be success
+      The output should eq "Count: 12345"
+      The error should eq ''
+    End
+
+    It "handles consecutive patterns"
+      BeforeCall "export A='1'"
+      BeforeCall "export B='2'"
+      When call env:resolve "{{env.A}}{{env.B}}"
+
+      The status should be success
+      The output should eq "12"
+      The error should eq ''
+    End
+
+    It "handles pattern at start of string"
+      BeforeCall "export VAR='start'"
+      When call env:resolve "{{env.VAR}} rest of string"
+
+      The status should be success
+      The output should eq "start rest of string"
+      The error should eq ''
+    End
+
+    It "handles pattern at end of string"
+      BeforeCall "export VAR='end'"
+      When call env:resolve "start of string {{env.VAR}}"
+
+      The status should be success
+      The output should eq "start of string end"
+      The error should eq ''
+    End
+
+    It "handles complex real-world example: config file path"
+      BeforeCall "export CONFIG_DIR='/etc/myapp'"
+      BeforeCall "export ENV='production'"
+      When call env:resolve "{{env.CONFIG_DIR}}/config.{{env.ENV}}.json"
+
+      The status should be success
+      The output should eq "/etc/myapp/config.production.json"
+      The error should eq ''
+    End
+
+    It "handles URL construction"
+      BeforeCall "export API_HOST='api.example.com'"
+      BeforeCall "export API_VERSION='v1'"
+      When call env:resolve "https://{{env.API_HOST}}/{{env.API_VERSION}}/users"
+
+      The status should be success
+      The output should eq "https://api.example.com/v1/users"
+      The error should eq ''
+    End
+
+    It "does not resolve invalid pattern (missing env prefix)"
+      BeforeCall "export VAR='value'"
+      When call env:resolve "{{VAR}}"
+
+      The status should be success
+      The output should eq "{{VAR}}"
+      The error should eq ''
+    End
+
+    It "does not resolve pattern with invalid variable name (starts with number)"
+      # No BeforeCall needed - variable names starting with numbers are invalid in bash
+      # Our regex pattern won't match this, so it should be left unchanged
+      When call env:resolve "{{env.123VAR}}"
+
+      The status should be success
+      # Should not resolve because variable names can't start with numbers
+      The output should eq "{{env.123VAR}}"
+      The error should eq ''
+    End
+
+    It "handles pattern with dash (not resolved - invalid variable name)"
+      When call env:resolve "{{env.MY-VAR}}"
+
+      The status should be success
+      # Dash is not valid in bash variable names, so pattern is not resolved
+      The output should eq "{{env.MY-VAR}}"
+      The error should eq ''
+    End
+
+    It "resolves same variable multiple times"
+      BeforeCall "export REPEAT='test'"
+      When call env:resolve "{{env.REPEAT}} and {{env.REPEAT}} and {{env.REPEAT}}"
+
+      The status should be success
+      The output should eq "test and test and test"
+      The error should eq ''
+    End
+
+    It "handles quoted values in environment variables"
+      BeforeCall "export QUOTED='\"quoted value\"'"
+      When call env:resolve "{{env.QUOTED}}"
+
+      The status should be success
+      The output should eq '"quoted value"'
+      The error should eq ''
+    End
+
+    It "handles dollar signs in variable values"
+      BeforeCall "export DOLLAR='$100'"
+      When call env:resolve "Price: {{env.DOLLAR}}"
+
+      The status should be success
+      The output should eq "Price: $100"
+      The error should eq ''
+    End
+
+    It "handles backslashes in variable values"
+      BeforeCall "export BACKSLASH='C:\path\to\file'"
+      When call env:resolve "{{env.BACKSLASH}}"
+
+      The status should be success
+      The output should eq 'C:\path\to\file'
+      The error should eq ''
+    End
+
+    It "real-world use case: CI/CD mode resolution"
+      BeforeCall "export CI_MODE='staging'"
+      BeforeCall "export DRY_RUN='true'"
+      When call env:resolve "Running in {{env.CI_MODE}} mode with dry_run={{env.DRY_RUN}}"
+
+      The status should be success
+      The output should eq "Running in staging mode with dry_run=true"
+      The error should eq ''
+    End
+
+    Describe "Associative array support /"
+      It "resolves variable from associative array"
+        setup_array() {
+          declare -gA TEST_ARRAY
+          TEST_ARRAY[API_HOST]="api.example.com"
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "Host: {{env.API_HOST}}" "TEST_ARRAY"
+
+        The status should be success
+        The output should eq "Host: api.example.com"
+        The error should eq ''
+      End
+
+      It "resolves multiple variables from associative array"
+        setup_array() {
+          declare -gA CONFIG
+          CONFIG[API_HOST]="api.example.com"
+          CONFIG[VERSION]="v2"
+          CONFIG[PORT]="8080"
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "https://{{env.API_HOST}}:{{env.PORT}}/{{env.VERSION}}/users" "CONFIG"
+
+        The status should be success
+        The output should eq "https://api.example.com:8080/v2/users"
+        The error should eq ''
+      End
+
+      It "falls back to environment variable when not in array"
+        setup_array() {
+          declare -gA PARTIAL_CONFIG
+          PARTIAL_CONFIG[API_HOST]="api.example.com"
+        }
+        BeforeCall setup_array
+        BeforeCall "export PORT='3000'"
+
+        When call env:resolve "{{env.API_HOST}}:{{env.PORT}}" "PARTIAL_CONFIG"
+
+        The status should be success
+        The output should eq "api.example.com:3000"
+        The error should eq ''
+      End
+
+      It "array value takes priority over environment variable"
+        setup_array() {
+          declare -gA OVERRIDE_CONFIG
+          OVERRIDE_CONFIG[PATH]="/custom/path"
+        }
+        BeforeCall setup_array
+        BeforeCall "export PATH='/usr/bin'"
+
+        When call env:resolve "{{env.PATH}}" "OVERRIDE_CONFIG"
+
+        The status should be success
+        The output should eq "/custom/path"
+        The error should eq ''
+      End
+
+      It "handles empty value in associative array"
+        setup_array() {
+          declare -gA EMPTY_CONFIG
+          EMPTY_CONFIG[EMPTY_VAR]=""
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "Value: {{env.EMPTY_VAR}}" "EMPTY_CONFIG"
+
+        The status should be success
+        The output should eq "Value: "
+        The error should eq ''
+      End
+
+      It "handles non-existent array gracefully"
+        BeforeCall "export FALLBACK='value'"
+
+        When call env:resolve "{{env.FALLBACK}}" "NONEXISTENT_ARRAY"
+
+        The status should be success
+        The output should eq "value"
+        The error should eq ''
+      End
+
+      It "handles regular array (not associative) gracefully"
+        setup_array() {
+          declare -ga REGULAR_ARRAY
+          REGULAR_ARRAY=(one two three)
+        }
+        BeforeCall setup_array
+        BeforeCall "export VAR='env_value'"
+
+        When call env:resolve "{{env.VAR}}" "REGULAR_ARRAY"
+
+        The status should be success
+        The output should eq "env_value"
+        The error should eq ''
+      End
+
+      It "handles array with special characters in values"
+        setup_array() {
+          declare -gA SPECIAL_CONFIG
+          SPECIAL_CONFIG[URL]="https://example.com/path?query=value&foo=bar"
+          SPECIAL_CONFIG[QUOTED]='"quoted value"'
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "{{env.URL}} - {{env.QUOTED}}" "SPECIAL_CONFIG"
+
+        The status should be success
+        The output should eq 'https://example.com/path?query=value&foo=bar - "quoted value"'
+        The error should eq ''
+      End
+
+      It "real-world: template rendering with config array"
+        setup_config() {
+          declare -gA DEPLOY_CONFIG
+          DEPLOY_CONFIG[ENVIRONMENT]="production"
+          DEPLOY_CONFIG[REGION]="us-east-1"
+          DEPLOY_CONFIG[CLUSTER]="main-cluster"
+          DEPLOY_CONFIG[REPLICAS]="3"
+        }
+        BeforeCall setup_config
+
+        When call env:resolve "Deploy to {{env.ENVIRONMENT}} in {{env.REGION}} ({{env.CLUSTER}}, replicas={{env.REPLICAS}})" "DEPLOY_CONFIG"
+
+        The status should be success
+        The output should eq "Deploy to production in us-east-1 (main-cluster, replicas=3)"
+        The error should eq ''
+      End
+    End
+
+    Describe "Pipeline mode /"
+      It "resolves variables from stdin (single line)"
+        Data
+          #|{{env.TEST_VAR}}
+        End
+        BeforeCall "export TEST_VAR='piped_value'"
+
+        When call env:resolve
+
+        The status should be success
+        The output should eq "piped_value"
+        The error should eq ''
+      End
+
+      It "resolves variables from stdin (multiple lines)"
+        Data
+          #|Line 1: {{env.VAR1}}
+          #|Line 2: {{env.VAR2}}
+          #|Line 3: {{env.VAR3}}
+        End
+        BeforeCall "export VAR1='first'"
+        BeforeCall "export VAR2='second'"
+        BeforeCall "export VAR3='third'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "Line 1: first"
+        The line 2 of output should eq "Line 2: second"
+        The line 3 of output should eq "Line 3: third"
+        The error should eq ''
+      End
+
+      It "pipeline mode with associative array"
+        Data
+          #|{{env.API_HOST}}/{{env.VERSION}}
+        End
+        setup_array() {
+          declare -gA PIPE_CONFIG
+          PIPE_CONFIG[API_HOST]="api.example.com"
+          PIPE_CONFIG[VERSION]="v3"
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "PIPE_CONFIG"
+
+        The status should be success
+        The output should eq "api.example.com/v3"
+        The error should eq ''
+      End
+
+      It "pipeline mode with array fallback to env"
+        Data
+          #|{{env.FROM_ARRAY}} and {{env.FROM_ENV}}
+        End
+        setup_array() {
+          declare -gA MIXED_CONFIG
+          MIXED_CONFIG[FROM_ARRAY]="array_value"
+        }
+        BeforeCall setup_array
+        BeforeCall "export FROM_ENV='env_value'"
+
+        When call env:resolve "MIXED_CONFIG"
+
+        The status should be success
+        The output should eq "array_value and env_value"
+        The error should eq ''
+      End
+
+      It "pipeline mode preserves empty lines"
+        Data
+          #|{{env.VAR1}}
+          #|
+          #|{{env.VAR2}}
+        End
+        BeforeCall "export VAR1='first'"
+        BeforeCall "export VAR2='second'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "first"
+        The line 2 of output should eq ""
+        The line 3 of output should eq "second"
+        The error should eq ''
+      End
+
+      It "pipeline mode handles lines without patterns"
+        Data
+          #|Plain text line
+          #|{{env.VAR}} with pattern
+          #|Another plain line
+        End
+        BeforeCall "export VAR='value'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "Plain text line"
+        The line 2 of output should eq "value with pattern"
+        The line 3 of output should eq "Another plain line"
+        The error should eq ''
+      End
+
+      It "real-world: process config file template"
+        Data
+          #|server:
+          #|  host: {{env.SERVER_HOST}}
+          #|  port: {{env.SERVER_PORT}}
+          #|database:
+          #|  url: {{env.DB_URL}}
+        End
+        BeforeCall "export SERVER_HOST='localhost'"
+        BeforeCall "export SERVER_PORT='8080'"
+        BeforeCall "export DB_URL='postgresql://localhost/mydb'"
+
+        When call env:resolve
+
+        The status should be success
+        The line 1 of output should eq "server:"
+        The line 2 of output should eq "  host: localhost"
+        The line 3 of output should eq "  port: 8080"
+        The line 4 of output should eq "database:"
+        The line 5 of output should eq "  url: postgresql://localhost/mydb"
+        The error should eq ''
+      End
+
+      It "real-world: process Dockerfile template with array"
+        Data
+          #|FROM {{env.BASE_IMAGE}}
+          #|ENV APP_VERSION={{env.VERSION}}
+          #|EXPOSE {{env.PORT}}
+        End
+        setup_docker_vars() {
+          declare -gA DOCKER_VARS
+          DOCKER_VARS[BASE_IMAGE]="node:18-alpine"
+          DOCKER_VARS[VERSION]="1.2.3"
+          DOCKER_VARS[PORT]="3000"
+        }
+        BeforeCall setup_docker_vars
+
+        When call env:resolve "DOCKER_VARS"
+
+        The status should be success
+        The line 1 of output should eq "FROM node:18-alpine"
+        The line 2 of output should eq "ENV APP_VERSION=1.2.3"
+        The line 3 of output should eq "EXPOSE 3000"
+        The error should eq ''
+      End
+    End
+
+    Describe "Special character escaping and safety /"
+      It "handles ampersand (&) in variable values"
+        BeforeCall "export URL='https://example.com/api?a=1&b=2&c=3'"
+        When call env:resolve "URL: {{env.URL}}"
+
+        The status should be success
+        The output should eq "URL: https://example.com/api?a=1&b=2&c=3"
+        The error should eq ''
+      End
+
+      It "handles multiple ampersands in URL query parameters"
+        BeforeCall "export QUERY='param1=value1&param2=value2&param3=value3'"
+        When call env:resolve "Query: {{env.QUERY}}"
+
+        The status should be success
+        The output should eq "Query: param1=value1&param2=value2&param3=value3"
+        The error should eq ''
+      End
+
+      It "handles backslash in variable values"
+        BeforeCall "export WIN_PATH='C:\Users\Admin\Documents'"
+        When call env:resolve "Path: {{env.WIN_PATH}}"
+
+        The status should be success
+        The output should eq 'Path: C:\Users\Admin\Documents'
+        The error should eq ''
+      End
+
+      It "handles both backslash and ampersand together"
+        BeforeCall "export MIXED='C:\Path\file.txt?query=a&b=c'"
+        When call env:resolve "Mixed: {{env.MIXED}}"
+
+        The status should be success
+        The output should eq 'Mixed: C:\Path\file.txt?query=a&b=c'
+        The error should eq ''
+      End
+
+      It "handles ampersand at start and end of value"
+        BeforeCall "export AMP_EDGES='&start_and_end&'"
+        When call env:resolve "Value: {{env.AMP_EDGES}}"
+
+        The status should be success
+        The output should eq "Value: &start_and_end&"
+        The error should eq ''
+      End
+
+      It "handles backslash at end of value"
+        BeforeCall "export TRAILING_SLASH='path\with\trailing\'"
+        When call env:resolve "Path: {{env.TRAILING_SLASH}}"
+
+        The status should be success
+        The output should eq 'Path: path\with\trailing\'
+        The error should eq ''
+      End
+
+      It "handles escaped characters in array values"
+        setup_array() {
+          declare -gA SPECIAL_CHARS
+          SPECIAL_CHARS[URL]="https://api.com?token=abc&user=xyz"
+          SPECIAL_CHARS[PATH]='C:\Program Files\App'
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "{{env.URL}} - {{env.PATH}}" "SPECIAL_CHARS"
+
+        The status should be success
+        The output should eq 'https://api.com?token=abc&user=xyz - C:\Program Files\App'
+        The error should eq ''
+      End
+
+      It "detects direct self-referential pattern"
+        BeforeCall "export SELF_REF='{{env.SELF_REF}}'"
+        When call env:resolve "Value: {{env.SELF_REF}}"
+
+        The status should be failure
+        The error should include "self-referential pattern"
+      End
+
+      It "detects indirect self-referential pattern (cycle)"
+        BeforeCall "export A='{{env.B}}'"
+        BeforeCall "export B='{{env.A}}'"
+        When call env:resolve "Value: {{env.A}}"
+
+        The status should be failure
+        The error should include "exceeded maximum iterations"
+      End
+
+      It "handles nested patterns (A->B->value)"
+        BeforeCall "export INNER='final_value'"
+        BeforeCall "export OUTER='{{env.INNER}}'"
+        When call env:resolve "Value: {{env.OUTER}}"
+
+        The status should be success
+        The output should eq "Value: final_value"
+        The error should eq ''
+      End
+
+      It "handles deep nesting without cycles"
+        BeforeCall "export L0='value'"
+        BeforeCall "export L1='{{env.L0}}'"
+        BeforeCall "export L2='{{env.L1}}'"
+        BeforeCall "export L3='{{env.L2}}'"
+        When call env:resolve "Deep: {{env.L3}}"
+
+        The status should be success
+        The output should eq "Deep: value"
+        The error should eq ''
+      End
+
+      It "stops at max iterations for complex cycles"
+        # Create a longer cycle: A->B->C->D->E->A
+        BeforeCall "export CYCLE_A='{{env.CYCLE_B}}'"
+        BeforeCall "export CYCLE_B='{{env.CYCLE_C}}'"
+        BeforeCall "export CYCLE_C='{{env.CYCLE_D}}'"
+        BeforeCall "export CYCLE_D='{{env.CYCLE_E}}'"
+        BeforeCall "export CYCLE_E='{{env.CYCLE_A}}'"
+
+        When call env:resolve "Cycle: {{env.CYCLE_A}}"
+
+        The status should be failure
+        The error should include "exceeded maximum iterations"
+      End
+
+      It "handles self-referential pattern in array"
+        setup_array() {
+          declare -gA BAD_CONFIG
+          BAD_CONFIG[SELF]='{{env.SELF}}'
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "Value: {{env.SELF}}" "BAD_CONFIG"
+
+        The status should be failure
+        The error should include "self-referential pattern"
+      End
+
+      It "real-world: URL with query parameters and fragments"
+        BeforeCall "export API_URL='https://api.example.com/v1/users?sort=name&filter=active#results'"
+        When call env:resolve "API: {{env.API_URL}}"
+
+        The status should be success
+        The output should eq "API: https://api.example.com/v1/users?sort=name&filter=active#results"
+        The error should eq ''
+      End
+
+      It "real-world: Windows registry path"
+        BeforeCall "export REG_PATH='HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion'"
+        When call env:resolve "Registry: {{env.REG_PATH}}"
+
+        The status should be success
+        The output should eq 'Registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion'
+        The error should eq ''
+      End
+
+      It "real-world: sed command with ampersand"
+        BeforeCall "export SED_REPL='s/old/& new/g'"
+        When call env:resolve "Command: {{env.SED_REPL}}"
+
+        The status should be success
+        The output should eq "Command: s/old/& new/g"
+        The error should eq ''
+      End
     End
   End
 End
