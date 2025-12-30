@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-26
-## Version: 1.15.8
+## Last revisit: 2025-12-30
+## Version: 1.16.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -330,6 +330,43 @@ function env:variable:or:secret:file:optional() {
     # make unit test happy, they expect 0 exit code, otherwise variable preserve will not work
     ${__SOURCED__:+x} && return 0 || return 1
   fi
+}
+
+function env:resolve() {
+  # Resolve {{env.VAR_NAME}} patterns in a string to their environment variable values
+  #
+  # Arguments:
+  #   $1 - input_string: The string containing {{env.*}} patterns to expand
+  #
+  # Returns:
+  #   The string with all {{env.VAR_NAME}} patterns replaced with their values
+  #   If a variable is unset or empty, it will be replaced with an empty string
+  #
+  # Supports optional whitespace in patterns:
+  #   {{env.VAR}}, {{ env.VAR }}, {{  env.VAR  }} are all valid
+  #
+  # Example:
+  #   export MY_PATH="/usr/local/bin"
+  #   result=$(env:resolve "Path is: {{env.MY_PATH}}")  # Returns "Path is: /usr/local/bin"
+  #   result=$(env:resolve "{{ env.HOME }}/config")     # Returns "/home/user/config"
+  #   result=$(env:resolve "{{env.UNSET}}")             # Returns ""
+
+  local input_string="$1"
+  local expanded_string="$input_string"
+
+  # Iterate while there are {{env.VAR_NAME}} patterns in the string
+  # Pattern: {{env.\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}
+  # - Matches {{env. followed by optional whitespace
+  # - Captures variable name (must start with letter or underscore, then alphanumeric or underscore)
+  # - Followed by optional whitespace and }}
+  while [[ "$expanded_string" =~ \{\{[[:space:]]*env\.[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\}\} ]]; do
+    local var_name="${BASH_REMATCH[1]}"
+    local var_value="${!var_name:-}"
+    # Replace the full match (including any whitespace) with the variable value
+    expanded_string="${expanded_string/${BASH_REMATCH[0]}/$var_value}"
+  done
+
+  echo "$expanded_string"
 }
 
 function confirm:by:input() {

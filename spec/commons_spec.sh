@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-26
-## Version: 1.15.8
+## Last revisit: 2025-12-30
+## Version: 1.16.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -2244,6 +2244,341 @@ Describe "_commons.sh /"
       When call check_ge_0 "$has_xdg"
 
       The status should be success
+    End
+  End
+
+  Describe "env:resolve /"
+    It "resolves simple environment variable"
+      BeforeCall "export TEST_VAR='hello'"
+      When call env:resolve "Value: {{env.TEST_VAR}}"
+
+      The status should be success
+      The output should eq "Value: hello"
+      The error should eq ''
+    End
+
+    It "resolves variable with no whitespace in pattern"
+      BeforeCall "export MY_PATH='/usr/local/bin'"
+      When call env:resolve "Path is: {{env.MY_PATH}}"
+
+      The status should be success
+      The output should eq "Path is: /usr/local/bin"
+      The error should eq ''
+    End
+
+    It "resolves variable with whitespace before variable name"
+      BeforeCall "export MY_VAR='test'"
+      When call env:resolve "{{ env.MY_VAR }}"
+
+      The status should be success
+      The output should eq "test"
+      The error should eq ''
+    End
+
+    It "resolves variable with multiple spaces before variable name"
+      BeforeCall "export MY_VAR='value'"
+      When call env:resolve "{{  env.MY_VAR  }}"
+
+      The status should be success
+      The output should eq "value"
+      The error should eq ''
+    End
+
+    It "resolves variable with tabs and spaces"
+      BeforeCall "export TEST_VAR='result'"
+      When call env:resolve "{{   env.TEST_VAR   }}"
+
+      The status should be success
+      The output should eq "result"
+      The error should eq ''
+    End
+
+    It "resolves multiple variables in one string"
+      BeforeCall "export VAR1='first'"
+      BeforeCall "export VAR2='second'"
+      When call env:resolve "{{env.VAR1}} and {{env.VAR2}}"
+
+      The status should be success
+      The output should eq "first and second"
+      The error should eq ''
+    End
+
+    It "resolves three variables in one string"
+      BeforeCall "export A='alpha'"
+      BeforeCall "export B='beta'"
+      BeforeCall "export C='gamma'"
+      When call env:resolve "{{env.A}}-{{env.B}}-{{env.C}}"
+
+      The status should be success
+      The output should eq "alpha-beta-gamma"
+      The error should eq ''
+    End
+
+    It "resolves variables with mixed whitespace"
+      BeforeCall "export VAR1='one'"
+      BeforeCall "export VAR2='two'"
+      When call env:resolve "{{env.VAR1}} {{ env.VAR2 }} {{  env.VAR1  }}"
+
+      The status should be success
+      The output should eq "one two one"
+      The error should eq ''
+    End
+
+    It "returns empty string for unset variable"
+      BeforeCall "unset UNSET_VAR"
+      When call env:resolve "Value: {{env.UNSET_VAR}}"
+
+      The status should be success
+      The output should eq "Value: "
+      The error should eq ''
+    End
+
+    It "returns empty string for empty variable"
+      BeforeCall "export EMPTY_VAR=''"
+      When call env:resolve "Value: {{env.EMPTY_VAR}}"
+
+      The status should be success
+      The output should eq "Value: "
+      The error should eq ''
+    End
+
+    It "handles path expansion with HOME"
+      BeforeCall "export HOME='/home/user'"
+      When call env:resolve "{{env.HOME}}/config"
+
+      The status should be success
+      The output should eq "/home/user/config"
+      The error should eq ''
+    End
+
+    It "handles special characters in variable value"
+      BeforeCall "export SPECIAL='test@value#123'"
+      When call env:resolve "{{env.SPECIAL}}"
+
+      The status should be success
+      The output should eq "test@value#123"
+      The error should eq ''
+    End
+
+    It "handles spaces in variable value"
+      BeforeCall "export SPACED='value with spaces'"
+      When call env:resolve "Result: {{env.SPACED}}"
+
+      The status should be success
+      The output should eq "Result: value with spaces"
+      The error should eq ''
+    End
+
+    It "handles slashes in variable value (paths)"
+      BeforeCall "export FILE_PATH='/path/to/file.txt'"
+      When call env:resolve "File: {{env.FILE_PATH}}"
+
+      The status should be success
+      The output should eq "File: /path/to/file.txt"
+      The error should eq ''
+    End
+
+    It "handles variable names with underscores"
+      BeforeCall "export MY_LONG_VAR_NAME='test'"
+      When call env:resolve "{{env.MY_LONG_VAR_NAME}}"
+
+      The status should be success
+      The output should eq "test"
+      The error should eq ''
+    End
+
+    It "handles variable names with numbers"
+      BeforeCall "export VAR123='numeric'"
+      When call env:resolve "{{env.VAR123}}"
+
+      The status should be success
+      The output should eq "numeric"
+      The error should eq ''
+    End
+
+    It "handles mixed underscores and numbers in variable names"
+      BeforeCall "export MY_VAR_123_TEST='complex'"
+      When call env:resolve "{{env.MY_VAR_123_TEST}}"
+
+      The status should be success
+      The output should eq "complex"
+      The error should eq ''
+    End
+
+    It "preserves text outside of patterns"
+      BeforeCall "export VAR='value'"
+      When call env:resolve "before {{env.VAR}} after"
+
+      The status should be success
+      The output should eq "before value after"
+      The error should eq ''
+    End
+
+    It "returns input unchanged when no patterns present"
+      When call env:resolve "no patterns here"
+
+      The status should be success
+      The output should eq "no patterns here"
+      The error should eq ''
+    End
+
+    It "handles empty string input"
+      When call env:resolve ""
+
+      The status should be success
+      The output should eq ""
+      The error should eq ''
+    End
+
+    It "handles string with only pattern"
+      BeforeCall "export ONLY='value'"
+      When call env:resolve "{{env.ONLY}}"
+
+      The status should be success
+      The output should eq "value"
+      The error should eq ''
+    End
+
+    It "handles multiline variable values"
+      BeforeCall "export MULTILINE='line1
+line2'"
+      When call env:resolve "{{env.MULTILINE}}"
+
+      The status should be success
+      The output should eq "line1
+line2"
+      The error should eq ''
+    End
+
+    It "handles numeric variable values"
+      BeforeCall "export NUMBER='12345'"
+      When call env:resolve "Count: {{env.NUMBER}}"
+
+      The status should be success
+      The output should eq "Count: 12345"
+      The error should eq ''
+    End
+
+    It "handles consecutive patterns"
+      BeforeCall "export A='1'"
+      BeforeCall "export B='2'"
+      When call env:resolve "{{env.A}}{{env.B}}"
+
+      The status should be success
+      The output should eq "12"
+      The error should eq ''
+    End
+
+    It "handles pattern at start of string"
+      BeforeCall "export VAR='start'"
+      When call env:resolve "{{env.VAR}} rest of string"
+
+      The status should be success
+      The output should eq "start rest of string"
+      The error should eq ''
+    End
+
+    It "handles pattern at end of string"
+      BeforeCall "export VAR='end'"
+      When call env:resolve "start of string {{env.VAR}}"
+
+      The status should be success
+      The output should eq "start of string end"
+      The error should eq ''
+    End
+
+    It "handles complex real-world example: config file path"
+      BeforeCall "export CONFIG_DIR='/etc/myapp'"
+      BeforeCall "export ENV='production'"
+      When call env:resolve "{{env.CONFIG_DIR}}/config.{{env.ENV}}.json"
+
+      The status should be success
+      The output should eq "/etc/myapp/config.production.json"
+      The error should eq ''
+    End
+
+    It "handles URL construction"
+      BeforeCall "export API_HOST='api.example.com'"
+      BeforeCall "export API_VERSION='v1'"
+      When call env:resolve "https://{{env.API_HOST}}/{{env.API_VERSION}}/users"
+
+      The status should be success
+      The output should eq "https://api.example.com/v1/users"
+      The error should eq ''
+    End
+
+    It "does not resolve invalid pattern (missing env prefix)"
+      BeforeCall "export VAR='value'"
+      When call env:resolve "{{VAR}}"
+
+      The status should be success
+      The output should eq "{{VAR}}"
+      The error should eq ''
+    End
+
+    It "does not resolve pattern with invalid variable name (starts with number)"
+      BeforeCall "export 123VAR='value'"
+      When call env:resolve "{{env.123VAR}}"
+
+      The status should be success
+      # Should not resolve because variable names can't start with numbers
+      The output should eq "{{env.123VAR}}"
+      The error should eq ''
+    End
+
+    It "handles pattern with dash (not resolved - invalid variable name)"
+      When call env:resolve "{{env.MY-VAR}}"
+
+      The status should be success
+      # Dash is not valid in bash variable names, so pattern is not resolved
+      The output should eq "{{env.MY-VAR}}"
+      The error should eq ''
+    End
+
+    It "resolves same variable multiple times"
+      BeforeCall "export REPEAT='test'"
+      When call env:resolve "{{env.REPEAT}} and {{env.REPEAT}} and {{env.REPEAT}}"
+
+      The status should be success
+      The output should eq "test and test and test"
+      The error should eq ''
+    End
+
+    It "handles quoted values in environment variables"
+      BeforeCall "export QUOTED='\"quoted value\"'"
+      When call env:resolve "{{env.QUOTED}}"
+
+      The status should be success
+      The output should eq '"quoted value"'
+      The error should eq ''
+    End
+
+    It "handles dollar signs in variable values"
+      BeforeCall "export DOLLAR='$100'"
+      When call env:resolve "Price: {{env.DOLLAR}}"
+
+      The status should be success
+      The output should eq "Price: $100"
+      The error should eq ''
+    End
+
+    It "handles backslashes in variable values"
+      BeforeCall "export BACKSLASH='C:\path\to\file'"
+      When call env:resolve "{{env.BACKSLASH}}"
+
+      The status should be success
+      The output should eq 'C:\path\to\file'
+      The error should eq ''
+    End
+
+    It "real-world use case: CI/CD mode resolution"
+      BeforeCall "export CI_MODE='staging'"
+      BeforeCall "export DRY_RUN='true'"
+      When call env:resolve "Running in {{env.CI_MODE}} mode with dry_run={{env.DRY_RUN}}"
+
+      The status should be success
+      The output should eq "Running in staging mode with dry_run=true"
+      The error should eq ''
     End
   End
 End
