@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-26
-## Version: 1.14.0
+## Last revisit: 2025-12-30
+## Version: 0.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -22,7 +22,7 @@ export UNDO_RUN=${UNDO_RUN:-false}
 export SILENT=${SILENT:-false}
 
 # Shared execution function
-function dryrun:exec() {
+function _dryrun:exec() {
   local logger_suffix="$1"
   local is_silent="$2"
   local cmd="$3"
@@ -59,7 +59,7 @@ function dryrun:exec() {
 }
 
 # Function to generate wrappers for given commands
-function dry-run() {
+function dryrun() {
   local cmd suffix dry_var undo_var silent_var
   while [ $# -gt 0 ]; do
     cmd="$1"
@@ -82,7 +82,7 @@ function dry-run() {
         echo:Dry \"${cmd} \$*\"
         return 0
       fi
-      dryrun:exec Exec \"\$is_silent\" ${cmd} \"\$@\"
+      _dryrun:exec Exec \"\$is_silent\" ${cmd} \"\$@\"
     }
     "
 
@@ -94,7 +94,7 @@ function dry-run() {
         echo:Dry \"${cmd} \$*\"
         return 0
       fi
-      dryrun:exec Exec \"\$is_silent\" ${cmd} \"\$@\"
+      _dryrun:exec Exec \"\$is_silent\" ${cmd} \"\$@\"
     }
     "
 
@@ -110,15 +110,18 @@ function dry-run() {
         echo:Udry \"${cmd} \$*\"
         return 0
       fi
-      dryrun:exec Undo \"\$is_silent\" ${cmd} \"\$@\"
+      _dryrun:exec Undo \"\$is_silent\" ${cmd} \"\$@\"
     }
     function undo:${cmd}() { rollback:${cmd} \"\$@\"; }
     "
   done
 }
 
-# Complex rollback handler
-function rollback:func() {
+# Backward compatibility alias
+function dry-run() { dryrun "$@"; }
+
+# Complex undo handler
+function undo:func() {
   local func_name="$1"
   shift
   local is_undo=${UNDO_RUN:-false} is_dry=${DRY_RUN:-false} is_silent=${SILENT:-false}
@@ -136,8 +139,11 @@ function rollback:func() {
     fi
     return 0
   fi
-  dryrun:exec Undo "$is_silent" "$func_name" "$@"
+  _dryrun:exec Undo "$is_silent" "$func_name" "$@"
 }
+
+# Backward compatibility alias
+function rollback:func() { undo:func "$@"; }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
