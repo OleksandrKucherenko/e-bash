@@ -792,6 +792,19 @@ CONFIG[PORT]="${PORT:-8080}"
 result=$(env:resolve "{{env.HOST}}:{{env.PORT}}" "CONFIG")
 ```
 
+**Advanced Templating:**
+
+For more complex templating scenarios beyond simple variable expansion, consider using specialized templating tools:
+
+- **[Mo (Mustache templates in Bash)](https://github.com/tests-always-included/mo)** - Full Mustache templating support with:
+  - Conditional rendering (`{{#variable}}...{{/variable}}`)
+  - Loops and iteration (`{{#array}}...{{/array}}`)
+  - Partials and includes (`{{>partial}}`)
+  - Lambda functions and custom helpers
+  - Comment blocks and whitespace control
+
+The `env:resolve` function is designed for simple, secure variable expansion. For advanced template rendering with logic and control structures, Mo provides a comprehensive solution while maintaining bash compatibility.
+
 ## Use Cases and Patterns
 
 ### Monorepo Project Root Detection

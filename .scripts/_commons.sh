@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.2
+## Version: 1.17.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -426,6 +426,7 @@ function _env:resolve:string() {
       echo "$expanded_string" >&2
       echo "ERROR: env:resolve exceeded maximum iterations ($max_iterations), possible infinite loop" >&2
       echo "This may be caused by self-referential patterns like: export VAR='{{env.VAR}}'" >&2
+      echo:Common "Context: ...${expanded_string:0:80}..." >&2
       return 1
     fi
 
@@ -437,11 +438,15 @@ function _env:resolve:string() {
     if [[ -n "$arr_name" ]]; then
       # Verify the array exists and is an associative array
       if declare -p "$arr_name" 2>/dev/null | grep -q "declare -A"; then
-        # Use eval to access the associative array value
-        # This works across different scopes and subshells
-        local array_lookup
-        array_lookup="echo \"\${${arr_name}[${var_name}]:-__NOTFOUND__}\""
-        var_value=$(eval "$array_lookup")
+        # Safer eval approach: validate array name contains only safe characters
+        if [[ "$arr_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] && [[ "$var_name" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+          # Use printf with eval for safer array access
+          # This is safer than echo-based eval as it doesn't execute arbitrary commands
+          local lookup_expr="\${${arr_name}[${var_name}]:-__NOTFOUND__}"
+          var_value=$(eval "printf '%s' \"$lookup_expr\"" 2>/dev/null || echo "__NOTFOUND__")
+        else
+          var_value="__NOTFOUND__"
+        fi
 
         # If not found in array, fall back to environment variable
         if [[ "$var_value" == "__NOTFOUND__" ]]; then
@@ -476,6 +481,7 @@ function _env:resolve:string() {
       echo "$expanded_string" >&2
       echo "ERROR: env:resolve detected self-referential pattern for variable '$var_name'" >&2
       echo "Variable value contains the same placeholder pattern: $matched_pattern" >&2
+      echo:Common "Context: ...${expanded_string:0:80}..." >&2
       return 1
     fi
   done
