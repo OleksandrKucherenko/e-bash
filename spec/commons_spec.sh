@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.0
+## Version: 1.17.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -2861,6 +2861,170 @@ line2"
         The line 1 of output should eq "FROM node:18-alpine"
         The line 2 of output should eq "ENV APP_VERSION=1.2.3"
         The line 3 of output should eq "EXPOSE 3000"
+        The error should eq ''
+      End
+    End
+
+    Describe "Special character escaping and safety /"
+      It "handles ampersand (&) in variable values"
+        BeforeCall "export URL='https://example.com/api?a=1&b=2&c=3'"
+        When call env:resolve "URL: {{env.URL}}"
+
+        The status should be success
+        The output should eq "URL: https://example.com/api?a=1&b=2&c=3"
+        The error should eq ''
+      End
+
+      It "handles multiple ampersands in URL query parameters"
+        BeforeCall "export QUERY='param1=value1&param2=value2&param3=value3'"
+        When call env:resolve "Query: {{env.QUERY}}"
+
+        The status should be success
+        The output should eq "Query: param1=value1&param2=value2&param3=value3"
+        The error should eq ''
+      End
+
+      It "handles backslash in variable values"
+        BeforeCall "export WIN_PATH='C:\Users\Admin\Documents'"
+        When call env:resolve "Path: {{env.WIN_PATH}}"
+
+        The status should be success
+        The output should eq 'Path: C:\Users\Admin\Documents'
+        The error should eq ''
+      End
+
+      It "handles both backslash and ampersand together"
+        BeforeCall "export MIXED='C:\Path\file.txt?query=a&b=c'"
+        When call env:resolve "Mixed: {{env.MIXED}}"
+
+        The status should be success
+        The output should eq 'Mixed: C:\Path\file.txt?query=a&b=c'
+        The error should eq ''
+      End
+
+      It "handles ampersand at start and end of value"
+        BeforeCall "export AMP_EDGES='&start_and_end&'"
+        When call env:resolve "Value: {{env.AMP_EDGES}}"
+
+        The status should be success
+        The output should eq "Value: &start_and_end&"
+        The error should eq ''
+      End
+
+      It "handles backslash at end of value"
+        BeforeCall "export TRAILING_SLASH='path\with\trailing\'"
+        When call env:resolve "Path: {{env.TRAILING_SLASH}}"
+
+        The status should be success
+        The output should eq 'Path: path\with\trailing\'
+        The error should eq ''
+      End
+
+      It "handles escaped characters in array values"
+        setup_array() {
+          declare -gA SPECIAL_CHARS
+          SPECIAL_CHARS[URL]="https://api.com?token=abc&user=xyz"
+          SPECIAL_CHARS[PATH]='C:\Program Files\App'
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "{{env.URL}} - {{env.PATH}}" "SPECIAL_CHARS"
+
+        The status should be success
+        The output should eq 'https://api.com?token=abc&user=xyz - C:\Program Files\App'
+        The error should eq ''
+      End
+
+      It "detects direct self-referential pattern"
+        BeforeCall "export SELF_REF='{{env.SELF_REF}}'"
+        When call env:resolve "Value: {{env.SELF_REF}}"
+
+        The status should be failure
+        The error should include "self-referential pattern"
+      End
+
+      It "detects indirect self-referential pattern (cycle)"
+        BeforeCall "export A='{{env.B}}'"
+        BeforeCall "export B='{{env.A}}'"
+        When call env:resolve "Value: {{env.A}}"
+
+        The status should be failure
+        The error should include "exceeded maximum iterations"
+      End
+
+      It "handles nested patterns (A->B->value)"
+        BeforeCall "export INNER='final_value'"
+        BeforeCall "export OUTER='{{env.INNER}}'"
+        When call env:resolve "Value: {{env.OUTER}}"
+
+        The status should be success
+        The output should eq "Value: final_value"
+        The error should eq ''
+      End
+
+      It "handles deep nesting without cycles"
+        BeforeCall "export L0='value'"
+        BeforeCall "export L1='{{env.L0}}'"
+        BeforeCall "export L2='{{env.L1}}'"
+        BeforeCall "export L3='{{env.L2}}'"
+        When call env:resolve "Deep: {{env.L3}}"
+
+        The status should be success
+        The output should eq "Deep: value"
+        The error should eq ''
+      End
+
+      It "stops at max iterations for complex cycles"
+        # Create a longer cycle: A->B->C->D->E->A
+        BeforeCall "export CYCLE_A='{{env.CYCLE_B}}'"
+        BeforeCall "export CYCLE_B='{{env.CYCLE_C}}'"
+        BeforeCall "export CYCLE_C='{{env.CYCLE_D}}'"
+        BeforeCall "export CYCLE_D='{{env.CYCLE_E}}'"
+        BeforeCall "export CYCLE_E='{{env.CYCLE_A}}'"
+
+        When call env:resolve "Cycle: {{env.CYCLE_A}}"
+
+        The status should be failure
+        The error should include "exceeded maximum iterations"
+      End
+
+      It "handles self-referential pattern in array"
+        setup_array() {
+          declare -gA BAD_CONFIG
+          BAD_CONFIG[SELF]='{{env.SELF}}'
+        }
+        BeforeCall setup_array
+
+        When call env:resolve "Value: {{env.SELF}}" "BAD_CONFIG"
+
+        The status should be failure
+        The error should include "self-referential pattern"
+      End
+
+      It "real-world: URL with query parameters and fragments"
+        BeforeCall "export API_URL='https://api.example.com/v1/users?sort=name&filter=active#results'"
+        When call env:resolve "API: {{env.API_URL}}"
+
+        The status should be success
+        The output should eq "API: https://api.example.com/v1/users?sort=name&filter=active#results"
+        The error should eq ''
+      End
+
+      It "real-world: Windows registry path"
+        BeforeCall "export REG_PATH='HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion'"
+        When call env:resolve "Registry: {{env.REG_PATH}}"
+
+        The status should be success
+        The output should eq 'Registry: HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion'
+        The error should eq ''
+      End
+
+      It "real-world: sed command with ampersand"
+        BeforeCall "export SED_REPL='s/old/& new/g'"
+        When call env:resolve "Command: {{env.SED_REPL}}"
+
+        The status should be success
+        The output should eq "Command: s/old/& new/g"
         The error should eq ''
       End
     End

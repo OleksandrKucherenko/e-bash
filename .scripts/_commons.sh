@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.0
+## Version: 1.17.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -411,6 +411,8 @@ function _env:resolve:string() {
   local str="$1"
   local arr_name="$2"
   local expanded_string="$str"
+  local max_iterations=100  # Safety limit to prevent infinite loops
+  local iteration=0
 
   # Iterate while there are {{env.VAR_NAME}} patterns in the string
   # Pattern: {{env.\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}
@@ -418,8 +420,18 @@ function _env:resolve:string() {
   # - Captures variable name (must start with letter or underscore, then alphanumeric or underscore)
   # - Followed by optional whitespace and }}
   while [[ "$expanded_string" =~ \{\{[[:space:]]*env\.[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*\}\} ]]; do
+    # Safety check: prevent infinite loops from self-referential patterns
+    ((iteration++))
+    if [[ $iteration -gt $max_iterations ]]; then
+      echo "$expanded_string" >&2
+      echo "ERROR: env:resolve exceeded maximum iterations ($max_iterations), possible infinite loop" >&2
+      echo "This may be caused by self-referential patterns like: export VAR='{{env.VAR}}'" >&2
+      return 1
+    fi
+
     local var_name="${BASH_REMATCH[1]}"
     local var_value=""
+    local matched_pattern="${BASH_REMATCH[0]}"
 
     # Priority 1: Check associative array if provided
     if [[ -n "$arr_name" ]]; then
@@ -444,8 +456,28 @@ function _env:resolve:string() {
       var_value="${!var_name:-}"
     fi
 
-    # Replace the full match (including any whitespace) with the variable value
-    expanded_string="${expanded_string/${BASH_REMATCH[0]}/$var_value}"
+    # Escape special characters in replacement value to avoid corruption
+    # Bash ${var/pattern/replacement} treats '&' as "matched text" and '\' as escape
+    # Replace '\' with '\\' (must be first to avoid double-escaping)
+    # Replace '&' with '\&'
+    local escaped_value="$var_value"
+    escaped_value="${escaped_value//\\/\\\\}"  # Escape backslashes
+    escaped_value="${escaped_value//&/\\&}"    # Escape ampersands
+
+    # Store previous state to detect if replacement made progress
+    local previous_string="$expanded_string"
+
+    # Replace the full match (including any whitespace) with the escaped variable value
+    expanded_string="${expanded_string/$matched_pattern/$escaped_value}"
+
+    # Safety check: if no progress was made, break to prevent infinite loop
+    # This handles cases where the value equals the pattern (self-reference)
+    if [[ "$expanded_string" == "$previous_string" ]]; then
+      echo "$expanded_string" >&2
+      echo "ERROR: env:resolve detected self-referential pattern for variable '$var_name'" >&2
+      echo "Variable value contains the same placeholder pattern: $matched_pattern" >&2
+      return 1
+    fi
   done
 
   echo "$expanded_string"
