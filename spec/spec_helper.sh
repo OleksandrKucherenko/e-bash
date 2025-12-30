@@ -4,7 +4,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 2.0.0
+## Version: 2.0.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -113,5 +113,7 @@ count_lines() {
 count_matches() {
   local pattern="$1"
   local input="$2"
-  echo "$input" | grep -c "$pattern" 2>/dev/null | tr -d ' ' || echo "0"
+  local count
+  count=$(echo "$input" | grep -c "$pattern" 2>/dev/null) || count=0
+  echo "$count" | tr -d ' '
 }
