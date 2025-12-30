@@ -15,7 +15,7 @@ All wrappers include color-coded logging, command exit status tracking, and flex
 - ✅ Global `DRY_RUN` and `UNDO_RUN` environment variable support
 - ✅ Command-specific dry run flags via suffixes
 - ✅ Silent mode for reduced output
-- ✅ Multi-command rollback support with `rollback:func`
+- ✅ Multi-command undo support with `undo:func` (alias: `rollback:func`)
 - ✅ e-bash logging integration with color-coded output
 - ✅ Command exit status tracking
 - ✅ Customizable behavior through environment variables
@@ -30,7 +30,7 @@ export E_BASH=/path/to/e-bash/.scripts
 source "$E_BASH/_dryrun.sh"
 
 # 2. Create wrappers for commands you want to control
-dry-run git docker kubectl
+dryrun git docker kubectl
 
 # 3. Use the wrappers in your script
 run:git clone https://github.com/user/repo.git
@@ -54,7 +54,7 @@ rollback:kubectl delete deployment myapp
 - `run:{cmd}` → **Executes command**
 - `dry:{cmd}` → **Executes command**
 - `rollback:{cmd}` / `undo:{cmd}` → Shows dry-run message (no execution)
-- `rollback:func` → Shows dry-run message with function body
+- `undo:func` → Shows dry-run message with function body
 
 **Use case:** Standard script execution where you want commands to run normally but prevent accidental rollback operations.
 
@@ -74,7 +74,7 @@ rollback:git reset HEAD~1  # Shows dry-run (safe by default)
 - `run:{cmd}` → **Executes command**
 - `dry:{cmd}` → Shows dry-run message
 - `rollback:{cmd}` / `undo:{cmd}` → Shows dry-run message
-- `rollback:func` → Shows dry-run message with function body
+- `undo:func` → Shows dry-run message with function body
 
 **Use case:** Testing and validation before actual execution. Preview what would happen without making any changes.
 
@@ -92,7 +92,7 @@ DRY_RUN=true ./deploy.sh
 - `run:{cmd}` → **Executes command**
 - `dry:{cmd}` → Shows dry-run message (prevents normal operations)
 - `rollback:{cmd}` / `undo:{cmd}` → **Executes command** (enables rollback)
-- `rollback:func` → **Executes function** (enables rollback)
+- `undo:func` → **Executes function** (enables rollback)
 
 **Use case:** Rollback mode where you want to execute undo operations while preventing all normal operations from running.
 
@@ -174,7 +174,7 @@ You can specify custom suffixes when creating wrappers:
 
 ```bash
 # Use custom suffix "DEPLOY" instead of "KUBECTL"
-dry-run kubectl DEPLOY
+dryrun kubectl DEPLOY
 
 # Now control with DRY_RUN_DEPLOY instead of DRY_RUN_KUBECTL
 DRY_RUN=true DRY_RUN_DEPLOY=false dry:kubectl apply -f app.yaml  # Executes
@@ -189,6 +189,8 @@ The system follows this precedence chain (highest to lowest):
 3. **Default value** (`false`)
 
 ## Wrapper Types
+
+> **Note:** The old function names `dry-run` and `rollback:func` are still supported for backward compatibility, but the new names `dryrun` and `undo:func` are recommended.
 
 ### `run:{cmd}`
 
@@ -220,9 +222,9 @@ DRY_RUN=true rollback:git reset   # Dry-run
 UNDO_RUN=true rollback:git reset  # EXECUTES (rollback mode)
 ```
 
-### `rollback:func`
+### `undo:func`
 
-Complex rollback operations with function body preview.
+Complex undo operations with function body preview.
 
 ```bash
 function cleanup() {
@@ -230,8 +232,11 @@ function cleanup() {
   git checkout main
 }
 
-rollback:func cleanup              # Normal: shows dry-run with body
-UNDO_RUN=true rollback:func cleanup # EXECUTES cleanup
+undo:func cleanup              # Normal: shows dry-run with body
+UNDO_RUN=true undo:func cleanup # EXECUTES cleanup
+
+# Backward compatibility: rollback:func still works
+rollback:func cleanup  # Same as undo:func
 ```
 
 ## Setup and Initialization
@@ -251,7 +256,7 @@ DEBUG=${DEBUG:-"myapp,exec,dry,rollback,-loader"}
 source "$E_BASH/_dryrun.sh"
 
 # 4. Create wrappers for commands you need
-dry-run ls git rm cp docker kubectl
+dryrun ls git rm cp docker kubectl
 
 # 5. Use the wrappers
 run:ls -la
@@ -280,7 +285,7 @@ export E_BASH="/usr/local/lib/e-bash"
 source "$E_BASH/_dryrun.sh"
 
 # Create wrappers for deployment commands
-dry-run git docker kubectl
+dryrun git docker kubectl
 
 function deploy() {
   echo "Deploying application..."
@@ -330,7 +335,7 @@ fi
 ## migrate.sh - Database migration with rollback
 
 source "$E_BASH/_dryrun.sh"
-dry-run psql git
+dryrun psql git
 
 function migrate_up() {
   echo "Running migrations..."
@@ -374,7 +379,7 @@ fi
 ## backup.sh - Backup with automatic cleanup and rollback
 
 source "$E_BASH/_dryrun.sh"
-dry-run tar rsync rm
+dryrun tar rsync rm
 
 BACKUP_DIR="/backup/$(date +%Y%m%d)"
 SOURCE_DIR="/data/important"
@@ -471,7 +476,7 @@ rollback:{cmd} or undo:{cmd}:
 **A:** Yes, but unwrapped commands won't respect `DRY_RUN`/`UNDO_RUN` flags:
 
 ```bash
-dry-run git
+dryrun git
 dry:git status     # Respects DRY_RUN
 git status         # Always executes (unwrapped)
 ```
@@ -511,7 +516,7 @@ export E_BASH=/path/to/e-bash/.scripts
 source "$E_BASH/_dryrun.sh"
 
 # Create wrapper before using
-dry-run ls
+dryrun ls
 run:ls -la  # Now works
 ```
 
@@ -564,7 +569,7 @@ DEBUG="*" ./demos/demo.dryrun-modes.sh
 ```bash
 #!/usr/bin/env bash
 source "$E_BASH/_dryrun.sh"
-dry-run git docker
+dryrun git docker
 
 # Auto-detect mode from arguments
 case "${1:-}" in

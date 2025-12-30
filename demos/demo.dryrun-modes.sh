@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
-## Version: 1.0.0
+## Last revisit: 2025-12-30
+## Version: 0.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -17,12 +17,12 @@ source "$E_BASH/_dryrun.sh"
 
 logger:init demo "${cl_blue}[DEMO]${cl_reset} " ">&2"
 
-echo:Demo "Testing dry-run wrapper three-mode system..."
+echo:Demo "Testing dryrun wrapper three-mode system..."
 echo:Demo ""
 
 # Create wrappers for commands
 echo:Demo "Creating wrappers for ls and git commands..."
-dry-run ls git
+dryrun ls git
 echo:Demo ""
 
 # ============================================================================
@@ -46,12 +46,12 @@ echo:Demo "Test 1.3: rollback:git status (should be dry-run)"
 rollback:git status
 
 echo:Demo ""
-echo:Demo "Test 1.4: rollback:func (should be dry-run)"
+echo:Demo "Test 1.4: undo:func (should be dry-run)"
 function sample_rollback() {
   echo "This would undo changes"
   return 0
 }
-rollback:func sample_rollback
+undo:func sample_rollback
 
 # ============================================================================
 # MODE 2: Dry-Run Mode
@@ -75,8 +75,8 @@ echo:Demo "Test 2.3: rollback:git status (should be dry-run)"
 DRY_RUN=true rollback:git status
 
 echo:Demo ""
-echo:Demo "Test 2.4: rollback:func (should be dry-run)"
-DRY_RUN=true rollback:func sample_rollback
+echo:Demo "Test 2.4: undo:func (should be dry-run)"
+DRY_RUN=true undo:func sample_rollback
 
 # ============================================================================
 # MODE 3: Undo/Rollback Mode
@@ -104,8 +104,8 @@ echo:Demo "Test 3.4: undo:git status (should EXECUTE)"
 UNDO_RUN=true undo:git status
 
 echo:Demo ""
-echo:Demo "Test 3.5: rollback:func (should EXECUTE)"
-UNDO_RUN=true rollback:func sample_rollback
+echo:Demo "Test 3.5: undo:func (should EXECUTE)"
+UNDO_RUN=true undo:func sample_rollback
 
 # ============================================================================
 # MODE 4: Combined modes (edge case testing)
@@ -121,8 +121,8 @@ echo:Demo "Test 4.1: rollback:git status (should be dry-run)"
 DRY_RUN=true UNDO_RUN=true rollback:git status
 
 echo:Demo ""
-echo:Demo "Test 4.2: rollback:func (should be dry-run)"
-DRY_RUN=true UNDO_RUN=true rollback:func sample_rollback
+echo:Demo "Test 4.2: undo:func (should be dry-run)"
+DRY_RUN=true UNDO_RUN=true undo:func sample_rollback
 
 # ============================================================================
 # MODE 5: Command-specific overrides

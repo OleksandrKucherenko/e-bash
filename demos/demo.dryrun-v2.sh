@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-28
-## Version: 1.0.0
+## Last revisit: 2025-12-30
+## Version: 0.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -17,11 +17,11 @@ source "$E_BASH/_dryrun.sh"
 
 logger:init demo "${cl_blue}[DEMO]${cl_reset} "
 
-echo:Demo "Starting dry-run wrapper demonstration..."
+echo:Demo "Starting dryrun wrapper demonstration..."
 
 # Create wrappers for ls and git commands
 echo:Demo "Creating wrappers for ls and git commands..."
-dry-run ls git
+dryrun ls git
 
 echo:Demo "Wrappers created successfully!"
 echo:Demo ""
@@ -59,7 +59,7 @@ function rollback_step() {
   git log --oneline -1
   pwd
 }
-DRY_RUN=true rollback:func rollback_step
+DRY_RUN=true undo:func rollback_step
 
 echo:Demo ""
 echo:Demo "=== Example 5: Custom suffixes ==="

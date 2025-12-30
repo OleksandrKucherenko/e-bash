@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-26
-## Version: 1.14.0
+## Last revisit: 2025-12-30
+## Version: 0.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -109,9 +109,9 @@ Describe "_dryrun.sh /"
     End
   End
 
-  Describe "dryrun:exec function /"
+  Describe "_dryrun:exec function /"
     It "Should execute command successfully and return exit code"
-      When call dryrun:exec "Test" "false" "echo" "hello world"
+      When call _dryrun:exec "Test" "false" "echo" "hello world"
 
       The status should be success
       The output should eq "hello world"
@@ -120,7 +120,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should handle command failure and return correct exit code"
-      When call dryrun:exec "Test" "false" "exit" "1"
+      When call _dryrun:exec "Test" "false" "exit" "1"
 
       The status should eq 1
       The output should eq ""
@@ -129,7 +129,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should display output when not in silent mode"
-      When call dryrun:exec "Test" "false" "echo" "test output"
+      When call _dryrun:exec "Test" "false" "echo" "test output"
 
       The status should be success
       The output should eq "test output"
@@ -138,7 +138,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should suppress output when in silent mode"
-      When call dryrun:exec "Test" "true" "echo" "test output"
+      When call _dryrun:exec "Test" "true" "echo" "test output"
 
       The status should be success
       The output should eq ""
@@ -148,7 +148,7 @@ Describe "_dryrun.sh /"
 
     It "Should preserve errexit setting"
       BeforeCall "set -e"
-      When call dryrun:exec "Test" "false" "echo" "preserved errexit"
+      When call _dryrun:exec "Test" "false" "echo" "preserved errexit"
 
       The status should be success
       The output should eq "preserved errexit"
@@ -157,7 +157,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should handle command with arguments containing spaces"
-      When call dryrun:exec "Test" "false" "echo" "hello world with spaces"
+      When call _dryrun:exec "Test" "false" "echo" "hello world with spaces"
 
       The status should be success
       The output should eq "hello world with spaces"
@@ -166,7 +166,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should handle command with no arguments"
-      When call dryrun:exec "Test" "false" "pwd"
+      When call _dryrun:exec "Test" "false" "pwd"
 
       The status should be success
       The output should include "/"
@@ -175,9 +175,9 @@ Describe "_dryrun.sh /"
     End
   End
 
-  Describe "dry-run function generator /"
+  Describe "dryrun function generator /"
     It "Should generate wrapper functions for a single command"
-      When call dry-run "testcmd"
+      When call dryrun "testcmd"
 
       The status should be success
       The function run:testcmd should be defined
@@ -187,7 +187,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should generate wrapper functions for multiple commands"
-      When call dry-run "cmd1" "cmd2" "cmd3"
+      When call dryrun "cmd1" "cmd2" "cmd3"
 
       The status should be success
       The function run:cmd1 should be defined
@@ -205,7 +205,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should use custom suffix when provided"
-      When call dry-run "mycmd" "CUSTOM"
+      When call dryrun "mycmd" "CUSTOM"
 
       The status should be success
       The function run:mycmd should be defined
@@ -215,7 +215,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should convert command name to uppercase for default suffix"
-      When call dry-run "testcommand"
+      When call dryrun "testcommand"
 
       The status should be success
       The function run:testcommand should be defined
@@ -223,7 +223,7 @@ Describe "_dryrun.sh /"
   End
 
   Describe "Generated functions behavior /"
-    BeforeEach "dry-run 'echo' 'pwd'"
+    BeforeEach "dryrun 'echo' 'pwd'"
 
     Describe "run: functions in normal mode /"
       BeforeEach "export DRY_RUN=false UNDO_RUN=false SILENT=false"
@@ -342,7 +342,7 @@ Describe "_dryrun.sh /"
   End
 
   Describe "Per-command environment variable overrides /"
-    BeforeEach "dry-run 'echo'"
+    BeforeEach "dryrun 'echo'"
 
     It "Should use DRY_RUN_ECHO override when set"
       BeforeCall "export DRY_RUN_ECHO=true DRY_RUN=false"
@@ -391,10 +391,10 @@ Describe "_dryrun.sh /"
     End
   End
 
-  Describe "rollback:func function /"
+  Describe "undo:func function /"
     It "Should not execute function when UNDO_RUN=false"
       BeforeCall "export UNDO_RUN=false DRY_RUN=false"
-      When call rollback:func "test_function" "arg1" "arg2"
+      When call undo:func "test_function" "arg1" "arg2"
 
       The status should be success
       The output should include "(dry-func): test_function arg1 arg2"
@@ -402,7 +402,7 @@ Describe "_dryrun.sh /"
 
     It "Should not execute function when DRY_RUN=true"
       BeforeCall "export UNDO_RUN=true DRY_RUN=true"
-      When call rollback:func "test_function" "arg1" "arg2"
+      When call undo:func "test_function" "arg1" "arg2"
 
       The status should be success
       The output should include "(dry-func): test_function arg1 arg2"
@@ -410,7 +410,7 @@ Describe "_dryrun.sh /"
 
     It "Should execute function when UNDO_RUN=true and DRY_RUN=false"
       BeforeCall "export UNDO_RUN=true DRY_RUN=false"
-      When call rollback:func "echo" "hello world"
+      When call undo:func "echo" "hello world"
 
       The status should be success
       The output should eq "hello world"
@@ -425,7 +425,7 @@ Describe "_dryrun.sh /"
       }
 
       BeforeCall "export UNDO_RUN=false DRY_RUN=true"
-      When call rollback:func "test_function"
+      When call undo:func "test_function"
 
       The status should be success
       The output should include "(dry-func): test_function"
@@ -434,7 +434,7 @@ Describe "_dryrun.sh /"
 
     It "Should handle non-existent function gracefully"
       BeforeCall "export UNDO_RUN=false DRY_RUN=true"
-      When call rollback:func "non_existent_function"
+      When call undo:func "non_existent_function"
 
       The status should be success
       The output should include "(dry-func): non_existent_function"
@@ -442,7 +442,7 @@ Describe "_dryrun.sh /"
 
     It "Should respect SILENT setting"
       BeforeCall "export UNDO_RUN=true DRY_RUN=false SILENT=true"
-      When call rollback:func "echo" "silent rollback"
+      When call undo:func "echo" "silent rollback"
 
       The status should be success
       The output should eq ""
@@ -454,7 +454,7 @@ Describe "_dryrun.sh /"
   Describe "Complex scenarios and edge cases /"
     It "Should handle mixed global and per-command settings"
       BeforeCall "export DRY_RUN=true UNDO_RUN=false SILENT=false"
-      BeforeCall "dry-run 'echo' 'pwd'"
+      BeforeCall "dryrun 'echo' 'pwd'"
       BeforeCall "export DRY_RUN_PWD=false"
 
       When call dry:echo "dry global"
@@ -464,7 +464,7 @@ Describe "_dryrun.sh /"
 
     It "Should respect per-command override over global settings"
       BeforeCall "export DRY_RUN=true UNDO_RUN=false SILENT=false"
-      BeforeCall "dry-run 'echo' 'pwd'"
+      BeforeCall "dryrun 'echo' 'pwd'"
       BeforeCall "export DRY_RUN_PWD=false"
 
       When call dry:pwd
@@ -475,7 +475,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should handle command names with special characters"
-      When call dry-run "test-cmd" "test_cmd" "test123"
+      When call dryrun "test-cmd" "test_cmd" "test123"
 
       The status should be success
       The function run:test-cmd should be defined
@@ -484,7 +484,7 @@ Describe "_dryrun.sh /"
     End
 
     It "Should handle empty command arguments"
-      BeforeCall "dry-run 'echo'"
+      BeforeCall "dryrun 'echo'"
 
       When call run:echo
       The status should be success
@@ -494,7 +494,7 @@ Describe "_dryrun.sh /"
 
     It "Should preserve shell options correctly"
       BeforeCall "set -e"
-      BeforeCall "dry-run 'echo'"
+      BeforeCall "dryrun 'echo'"
       BeforeCall "export DRY_RUN=false UNDO_RUN=false"
 
       When call run:echo "test with errexit"
@@ -508,9 +508,9 @@ Describe "_dryrun.sh /"
 
   Describe "Integration with logger system /"
     It "Should use correct logger tags for different operations"
-      # The dryrun:exec function uses printf:Exec for command logging
+      # The _dryrun:exec function uses printf:Exec for command logging
       # This tests that the logger integration works
-      When call dryrun:exec "TestLogger" "false" "echo" "logger test"
+      When call _dryrun:exec "TestLogger" "false" "echo" "logger test"
 
       The status should be success
       The output should eq "logger test"
@@ -520,11 +520,33 @@ Describe "_dryrun.sh /"
 
     It "Should respect DEBUG environment for logger output"
       BeforeCall "export DEBUG=Exec"
-      When call dryrun:exec "Exec" "false" "echo" "debug test"
+      When call _dryrun:exec "Exec" "false" "echo" "debug test"
 
       The status should be success
       The output should eq "debug test"
       The error should include "echo debug test"
+      The error should include "code: 0"
+    End
+  End
+
+  Describe "Backward compatibility /"
+    It "Should support old dry-run function name"
+      When call dry-run "testcmd"
+
+      The status should be success
+      The function run:testcmd should be defined
+      The function dry:testcmd should be defined
+      The function rollback:testcmd should be defined
+      The function undo:testcmd should be defined
+    End
+
+    It "Should support old rollback:func function name"
+      BeforeCall "export UNDO_RUN=true DRY_RUN=false"
+      When call rollback:func "echo" "backward compatible"
+
+      The status should be success
+      The output should eq "backward compatible"
+      The error should include "echo backward compatible"
       The error should include "code: 0"
     End
   End
