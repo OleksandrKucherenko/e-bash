@@ -3,8 +3,8 @@
 # shellcheck shell=bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-23
-## Version: 1.12.6
+## Last revisit: 2025-12-30
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -99,4 +99,19 @@ strip_colors() {
 script_sourced() {
   # Mock the source guard test
   [[ "${BASH_SOURCE[0]}" != "${0}" ]]
+}
+
+# Cross-platform helper: count lines in output
+# macOS wc -l adds leading whitespace, this strips it
+count_lines() {
+  local input="$1"
+  echo "$input" | wc -l | tr -d ' '
+}
+
+# Cross-platform helper: count matches in output
+# macOS grep -c adds leading whitespace, this strips it
+count_matches() {
+  local pattern="$1"
+  local input="$2"
+  echo "$input" | grep -c "$pattern" 2>/dev/null | tr -d ' ' || echo "0"
 }

@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.1
+## Version: 2.0.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1860,7 +1860,7 @@ Describe "_commons.sh /"
 
       result=$(config:hierarchy ".myconfig,.altconfig" "$test_root/level1/level2/level3" "root" ".json")
       cleanup_test_configs "$test_root"
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       When call echo "$count"
 
@@ -1875,8 +1875,8 @@ Describe "_commons.sh /"
       result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json,.yaml")
       cleanup_test_configs "$test_root"
 
-      has_json=$(echo "$result" | grep -c "\.json$" || true)
-      has_yaml=$(echo "$result" | grep -c "\.yaml$" || true)
+      has_json=$(count_matches "\.json$" "$result")
+      has_yaml=$(count_matches "\.yaml$" "$result")
 
       When call echo "$has_json,$has_yaml"
 
@@ -1896,7 +1896,7 @@ Describe "_commons.sh /"
 
       result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "$test_root/level1" ".json")
       cleanup_test_configs "$test_root"
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       When call echo "$count"
 
@@ -1925,7 +1925,7 @@ Describe "_commons.sh /"
       result=$(config:hierarchy "myconfig" "$test_root/level1/level2/level3" "root" ",.json")
       cleanup_test_configs "$test_root"
 
-      has_exact=$(echo "$result" | grep -c "/myconfig$" || true)
+      has_exact=$(count_matches "/myconfig$" "$result")
 
       When call echo "$has_exact"
 
@@ -1941,8 +1941,8 @@ Describe "_commons.sh /"
       last_file=$(echo "$result" | tail -n 1)
       cleanup_test_configs "$test_root"
 
-      first_is_root=$(echo "$first_file" | grep -c "^$test_root/\.myconfig\.json$" || true)
-      last_is_level3=$(echo "$last_file" | grep -c "level3/\.myconfig\.json$" || true)
+      first_is_root=$(count_matches "^${test_root}/\.myconfig\.json$" "$first_file")
+      last_is_level3=$(count_matches "level3/\.myconfig\.json$" "$last_file")
 
       When call echo "$first_is_root,$last_is_level3"
 
@@ -1955,7 +1955,7 @@ Describe "_commons.sh /"
 
       result=$(config:hierarchy " .myconfig , .altconfig " "$test_root/level1/level2/level3" "root" ".json")
       cleanup_test_configs "$test_root"
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       When call echo "$count"
 
@@ -1970,7 +1970,7 @@ Describe "_commons.sh /"
 
       result=$(config:hierarchy ".myconfig" "$test_root" "root")
       cleanup_test_configs "$test_root"
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       # Helper function for numeric comparison
       check_count() { test "$1" -ge 3; }
@@ -2067,7 +2067,7 @@ Describe "_commons.sh /"
       cleanup_xdg_test "$test_root"
 
       first_line=$(echo "$result" | head -n 1)
-      has_subdir=$(echo "$first_line" | grep -c "subdir/myapp.json" || true)
+      has_subdir=$(count_matches "subdir/myapp.json" "$first_line")
 
       When call echo "$has_subdir"
 
@@ -2081,7 +2081,7 @@ Describe "_commons.sh /"
       result=$(call_xdg_with_home "$test_root" "myapp" "config" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
 
-      has_xdg=$(echo "$result" | grep -c "\.config/myapp/config.json" || true)
+      has_xdg=$(count_matches "\.config/myapp/config.json" "$result")
 
       When call echo "$has_xdg"
 
@@ -2097,7 +2097,7 @@ Describe "_commons.sh /"
       result=$(call_xdg_with_home "$test_root" --xdg "$test_root/custom-xdg" "myapp" "config" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
 
-      has_custom_xdg=$(echo "$result" | grep -c "custom-xdg/myapp/config.json" || true)
+      has_custom_xdg=$(count_matches "custom-xdg/myapp/config.json" "$result")
 
       When call echo "$has_custom_xdg"
 
@@ -2117,7 +2117,7 @@ Describe "_commons.sh /"
       result=$(config:hierarchy:xdg "myapp" "config" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
 
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       # Helper for comparison
       check_ge_1() { test "$1" -ge 1; }
@@ -2136,7 +2136,7 @@ Describe "_commons.sh /"
       result=$(call_xdg_with_home "$test_root" "myapp" "config,myapprc" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
 
-      count=$(echo "$result" | grep -c "\.config/myapp/" || true)
+      count=$(count_matches "\.config/myapp/" "$result")
 
       # Helper for comparison
       check_ge_2() { test "$1" -ge 2; }
@@ -2202,7 +2202,7 @@ Describe "_commons.sh /"
       cleanup_xdg_test "$test_root"
 
       # Should still find hierarchical configs
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       # Helper for comparison
       check_ge_1() { test "$1" -ge 1; }
@@ -2220,7 +2220,7 @@ Describe "_commons.sh /"
       result=$(call_xdg_with_home "$test_root" "nvim" "init.vim" "$test_root/project" "home" "")
       cleanup_xdg_test "$test_root"
 
-      has_nvim=$(echo "$result" | grep -c "\.config/nvim/init.vim" || true)
+      has_nvim=$(count_matches "\.config/nvim/init.vim" "$result")
 
       When call echo "$has_nvim"
 
@@ -2236,7 +2236,7 @@ Describe "_commons.sh /"
       cleanup_xdg_test "$test_root"
 
       # XDG directories under HOME should still be searched
-      has_xdg=$(echo "$result" | grep -c "\.config/myapp" || true)
+      has_xdg=$(count_matches "\.config/myapp" "$result")
 
       # Helper for comparison
       check_ge_0() { test "$1" -ge 0; }
