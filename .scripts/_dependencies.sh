@@ -2,8 +2,8 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-14
-## Version: 1.0.0
+## Last revisit: 2025-12-30
+## Version: 1.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -38,6 +38,68 @@ function isSilent() {
   if [[ "${args[*]}" =~ "--silent" ]]; then echo true; else echo false; fi
 }
 
+# Internal: Version flag exceptions - tools that don't use --version
+# shellcheck disable=SC2034
+declare -gA __DEPS_VERSION_FLAGS_EXCEPTIONS
+
+# Populate version flag exceptions
+__DEPS_VERSION_FLAGS_EXCEPTIONS[java]="-version"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[javac]="-version"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[scala]="-version"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[kotlin]="-version"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[ant]="-version"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[go]="version"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[ssh]="-V"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[tmux]="-V"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[ab]="-V"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[unrar]="-V"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[composer]="-V"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[screen]="-v"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[unzip]="-v"
+
+# Resolve tool aliases to their canonical command names
+# Override: set SKIP_DEALIAS=1 to bypass alias resolution
+function dependency:dealias() {
+  # Skip dealiasing if requested (workaround for wrong resolutions)
+  if [[ "${SKIP_DEALIAS:-}" == "1" ]]; then
+    echo "$1"
+    return
+  fi
+
+  local alias_name="$1"
+
+  case "$alias_name" in
+    rust|rustc)         echo "rustc" ;;
+    golang|go)          echo "go" ;;
+    nodejs|node)        echo "node" ;;
+    jre|java)           echo "java" ;;
+    jdk|javac)          echo "javac" ;;
+    homebrew|brew)      echo "brew" ;;
+    awsebcli|eb)        echo "eb" ;;
+    awscli|aws)         echo "aws" ;;
+    postgresql|psql)    echo "psql" ;;
+    mongodb|mongo)      echo "mongo" ;;
+    openssh)            echo "ssh" ;;
+    goreplay|gor)       echo "gor" ;;
+    httpie|http)        echo "http" ;;
+    *)                  echo "$alias_name" ;;
+  esac
+}
+
+# Get version flag for a tool (exception or default --version)
+function dependency:known:flags() {
+  local tool="$1"
+  local provided_flag="$2"
+
+  if [[ -n "$provided_flag" ]]; then
+    echo "$provided_flag"
+  elif [[ -v __DEPS_VERSION_FLAGS_EXCEPTIONS[$tool] ]]; then
+    echo "${__DEPS_VERSION_FLAGS_EXCEPTIONS[$tool]}"
+  else
+    echo "--version"
+  fi
+}
+
 function isCIAutoInstallEnabled() {
   # Only enable auto-install if we're in a CI environment AND the flag is set
   if [[ -n "${CI:-}" ]]; then
@@ -56,9 +118,12 @@ function isCIAutoInstallEnabled() {
 # shellcheck disable=SC2001,SC2155,SC2086
 function dependency() {
   local tool_name=$1
+  local tool_name_resolved=$(dependency:dealias "$tool_name")
   local tool_version_pattern=$2
   local tool_fallback=${3:-"No details. Please google it."}
-  local tool_version_flag=${4:-"--version"}
+  local tool_version_flag=${4:-""}
+  # Resolve version flag (user-provided or built-in exception or default --version)
+  tool_version_flag=$(dependency:known:flags "$tool_name_resolved" "$tool_version_flag")
   local is_exec=$(isExec "$@")
   local is_optional=$(isOptional "$@")
   local is_ci_auto_install=$(isCIAutoInstallEnabled)
@@ -73,7 +138,7 @@ function dependency() {
   local tool_version=$(sed -e 's#[&\\/\.{}]#\\&#g; s#$#\\#' -e '$s#\\$##' -e 's#*#[0-9]\\{1,4\\}#g' <<<$tool_version_pattern)
 
   # try to find tool
-  local which_tool=$(command -v $tool_name)
+  local which_tool=$(command -v $tool_name_resolved)
 
   if [ -z "$which_tool" ]; then
     printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
@@ -86,7 +151,7 @@ function dependency() {
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
-        if command -v "$tool_name" >/dev/null 2>&1; then
+        if command -v "$tool_name_resolved" >/dev/null 2>&1; then
           echo:Install "$YEP Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet
@@ -110,7 +175,7 @@ function dependency() {
     fi
   fi
 
-  local version_message=$($tool_name $tool_version_flag 2>&1)
+  local version_message=$($tool_name_resolved $tool_version_flag 2>&1)
   local version_cleaned=$(echo "'$version_message'" | sed -n "s#.*\($tool_version\).*#\1#p" | head -1)
 
   printf:Dependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\\\1#g\"\nver.   : %s\n-------\n" \
@@ -124,7 +189,7 @@ function dependency() {
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
-        if command -v "$tool_name" >/dev/null 2>&1; then
+        if command -v "$tool_name_resolved" >/dev/null 2>&1; then
           echo:Install "$YEP Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet

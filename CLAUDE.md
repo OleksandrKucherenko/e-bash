@@ -408,9 +408,19 @@ Use Gemini CLI as a complementary AI tool. Use when:
 - Deep analysis beyond Claude's context limits
 - Processing files exceeding Claude's context capacity
 
+#### `/e-bash` or `Skill(e-bash)`
+Expert guidance for the e-bash library - a comprehensive Bash framework. Use when:
+- Understanding or using `.scripts/` modules (logger, dependencies, arguments, semver, hooks, traps, dryrun, tmux, self-update, colors, commons)
+- Working with `bin/` tools (git helpers, version management, installers, validators)
+- Learning from `demos/` (color demos, dry-run patterns, self-update examples, CI/CD hooks)
+- Integrating e-bash into new or existing projects
+- Writing new modules or tools using e-bash patterns
+- Debugging e-bash logger, hooks, or dependency issues
+- Understanding semantic versioning in shell scripts
+
 ### Invoking Skills
 
 Skills can be invoked via:
-- **Slash command**: `/shellspec` or `/bats`
-- **Tool**: `Skill` tool with skill name (e.g., `Skill(shellspec)`)
+- **Slash command**: `/shellspec`, `/bats`, `/e-bash`
+- **Tool**: `Skill` tool with skill name (e.g., `Skill(shellspec)`, `Skill(e-bash)`)
 - **Direct reference**: Mention the skill name in context

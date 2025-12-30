@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-17
-## Version: 1.0.0
+## Last revisit: 2025-12-30
+## Version: 1.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -439,6 +439,266 @@ Describe "_dependencies.sh /"
 
       unset CI CI_E_BASH_INSTALL_DEPENDENCIES
       # Dump
+    End
+  End
+
+  Describe "dependency:dealias /"
+    BeforeEach 'unset SKIP_DEALIAS'
+
+    It "resolves 'golang' alias to 'go'"
+      When call dependency:dealias "golang"
+      The output should eq "go"
+      The error should eq ''
+    End
+
+    It "resolves 'nodejs' alias to 'node'"
+      When call dependency:dealias "nodejs"
+      The output should eq "node"
+      The error should eq ''
+    End
+
+    It "resolves 'homebrew' alias to 'brew'"
+      When call dependency:dealias "homebrew"
+      The output should eq "brew"
+      The error should eq ''
+    End
+
+    It "resolves 'rust' alias to 'rustc'"
+      When call dependency:dealias "rust"
+      The output should eq "rustc"
+      The error should eq ''
+    End
+
+    It "resolves 'jre' alias to 'java'"
+      When call dependency:dealias "jre"
+      The output should eq "java"
+      The error should eq ''
+    End
+
+    It "resolves 'jdk' alias to 'javac'"
+      When call dependency:dealias "jdk"
+      The output should eq "javac"
+      The error should eq ''
+    End
+
+    It "resolves 'awsebcli' alias to 'eb'"
+      When call dependency:dealias "awsebcli"
+      The output should eq "eb"
+      The error should eq ''
+    End
+
+    It "resolves 'awscli' alias to 'aws'"
+      When call dependency:dealias "awscli"
+      The output should eq "aws"
+      The error should eq ''
+    End
+
+    It "resolves 'postgresql' alias to 'psql'"
+      When call dependency:dealias "postgresql"
+      The output should eq "psql"
+      The error should eq ''
+    End
+
+    It "resolves 'mongodb' alias to 'mongo'"
+      When call dependency:dealias "mongodb"
+      The output should eq "mongo"
+      The error should eq ''
+    End
+
+    It "resolves 'openssh' alias to 'ssh'"
+      When call dependency:dealias "openssh"
+      The output should eq "ssh"
+      The error should eq ''
+    End
+
+    It "resolves 'goreplay' alias to 'gor'"
+      When call dependency:dealias "goreplay"
+      The output should eq "gor"
+      The error should eq ''
+    End
+
+    It "resolves 'httpie' alias to 'http'"
+      When call dependency:dealias "httpie"
+      The output should eq "http"
+      The error should eq ''
+    End
+
+    It "passes through unknown aliases as-is"
+      When call dependency:dealias "unknown_tool"
+      The output should eq "unknown_tool"
+      The error should eq ''
+    End
+
+    It "passes through canonical names as-is"
+      When call dependency:dealias "bash"
+      The output should eq "bash"
+      The error should eq ''
+    End
+
+    It "passes through 'go' as-is (already canonical)"
+      When call dependency:dealias "go"
+      The output should eq "go"
+      The error should eq ''
+    End
+
+    It "bypasses alias resolution when SKIP_DEALIAS=1"
+      export SKIP_DEALIAS=1
+      When call dependency:dealias "golang"
+      The output should eq "golang"
+      The error should eq ''
+      unset SKIP_DEALIAS
+    End
+  End
+
+  Describe "dependency:known:flags /"
+    It "returns '-version' for java"
+      When call dependency:known:flags "java" ""
+      The output should eq "-version"
+      The error should eq ''
+    End
+
+    It "returns '-version' for javac"
+      When call dependency:known:flags "javac" ""
+      The output should eq "-version"
+      The error should eq ''
+    End
+
+    It "returns '-version' for scala"
+      When call dependency:known:flags "scala" ""
+      The output should eq "-version"
+      The error should eq ''
+    End
+
+    It "returns '-version' for kotlin"
+      When call dependency:known:flags "kotlin" ""
+      The output should eq "-version"
+      The error should eq ''
+    End
+
+    It "returns '-version' for ant"
+      When call dependency:known:flags "ant" ""
+      The output should eq "-version"
+      The error should eq ''
+    End
+
+    It "returns 'version' (no dash) for go"
+      When call dependency:known:flags "go" ""
+      The output should eq "version"
+      The error should eq ''
+    End
+
+    It "returns '-V' for tmux"
+      When call dependency:known:flags "tmux" ""
+      The output should eq "-V"
+      The error should eq ''
+    End
+
+    It "returns '-V' for ab"
+      When call dependency:known:flags "ab" ""
+      The output should eq "-V"
+      The error should eq ''
+    End
+
+    It "returns '-V' for unrar"
+      When call dependency:known:flags "unrar" ""
+      The output should eq "-V"
+      The error should eq ''
+    End
+
+    It "returns '-V' for composer"
+      When call dependency:known:flags "composer" ""
+      The output should eq "-V"
+      The error should eq ''
+    End
+
+    It "returns '-V' for ssh"
+      When call dependency:known:flags "ssh" ""
+      The output should eq "-V"
+      The error should eq ''
+    End
+
+    It "returns '-v' for screen"
+      When call dependency:known:flags "screen" ""
+      The output should eq "-v"
+      The error should eq ''
+    End
+
+    It "returns '-v' for unzip"
+      When call dependency:known:flags "unzip" ""
+      The output should eq "-v"
+      The error should eq ''
+    End
+
+    It "defaults to '--version' for unknown tools"
+      When call dependency:known:flags "unknown_tool" ""
+      The output should eq "--version"
+      The error should eq ''
+    End
+
+    It "defaults to '--version' for bash"
+      When call dependency:known:flags "bash" ""
+      The output should eq "--version"
+      The error should eq ''
+    End
+
+    It "defaults to '--version' for git"
+      When call dependency:known:flags "git" ""
+      The output should eq "--version"
+      The error should eq ''
+    End
+
+    It "defaults to '--version' for node"
+      When call dependency:known:flags "node" ""
+      The output should eq "--version"
+      The error should eq ''
+    End
+
+    It "respects user-provided flag override"
+      When call dependency:known:flags "java" "--custom-flag"
+      The output should eq "--custom-flag"
+      The error should eq ''
+    End
+
+    It "uses user-provided flag even for tools with exceptions"
+      When call dependency:known:flags "go" "--my-version"
+      The output should eq "--my-version"
+      The error should eq ''
+    End
+
+    It "returns user flag when provided (not default)"
+      When call dependency:known:flags "unknown" "--flag"
+      The output should eq "--flag"
+      The error should eq ''
+    End
+  End
+
+  Describe "Integration: Alias + Version Flag /"
+    It "works with bash (uses default --version flag)"
+      When call dependency bash "5.*.*" "brew install bash"
+      The status should be success
+      The output should include "Dependency [OK]: \`bash\` - version:"
+      The error should include ""
+    End
+
+    It "works with git (uses default --version flag)"
+      When call dependency git "2.*.*" "brew install git"
+      The status should be success
+      The output should include "Dependency [OK]: \`git\` - version:"
+      The error should include ""
+    End
+
+    It "works with alias 'jre' which resolves to 'java' with '-version' flag"
+      When call dependency jre ".*.*" "brew install java"
+      The status should be success
+      The output should include "Dependency [OK]: \`jre\` - version:"
+      The error should include ""
+    End
+
+    It "works with alias 'openssh' which resolves to 'ssh' with '-V' flag"
+      When call dependency openssh ".*.*" "brew install openssh"
+      The status should be success
+      The output should include "Dependency [OK]: \`openssh\` - version:"
+      The error should include ""
     End
   End
 End
