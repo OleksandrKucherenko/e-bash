@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.14.4
+## Version: 1.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -49,6 +49,7 @@ __DEPS_VERSION_FLAGS_EXCEPTIONS[scala]="-version"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[kotlin]="-version"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[ant]="-version"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[go]="version"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[ssh]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[tmux]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[ab]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[unrar]="-V"
@@ -150,7 +151,7 @@ function dependency() {
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
-        if command -v "$tool_name" >/dev/null 2>&1; then
+        if command -v "$tool_name_resolved" >/dev/null 2>&1; then
           echo:Install "$YEP Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet
@@ -188,7 +189,7 @@ function dependency() {
       if eval $tool_fallback; then
         # Trust the exit code - if install command succeeded, assume it worked
         # Optionally check if tool is now available (informational only)
-        if command -v "$tool_name" >/dev/null 2>&1; then
+        if command -v "$tool_name_resolved" >/dev/null 2>&1; then
           echo:Install "$YEP Successfully installed \`$tool_name\`"
         else
           # Installation command succeeded but tool not in PATH yet

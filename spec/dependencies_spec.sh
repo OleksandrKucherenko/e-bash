@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.14.4
+## Version: 1.15.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -611,6 +611,12 @@ Describe "_dependencies.sh /"
       The error should eq ''
     End
 
+    It "returns '-V' for ssh"
+      When call dependency:known:flags "ssh" ""
+      The output should eq "-V"
+      The error should eq ''
+    End
+
     It "returns '-v' for screen"
       When call dependency:known:flags "screen" ""
       The output should eq "-v"
@@ -685,6 +691,13 @@ Describe "_dependencies.sh /"
       When call dependency jre ".*.*" "brew install java"
       The status should be success
       The output should include "Dependency [OK]: \`jre\` - version:"
+      The error should include ""
+    End
+
+    It "works with alias 'openssh' which resolves to 'ssh' with '-V' flag"
+      When call dependency openssh ".*.*" "brew install openssh"
+      The status should be success
+      The output should include "Dependency [OK]: \`openssh\` - version:"
       The error should include ""
     End
   End
