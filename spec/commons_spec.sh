@@ -5,7 +5,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.1
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1860,7 +1860,7 @@ Describe "_commons.sh /"
 
       result=$(config:hierarchy ".myconfig,.altconfig" "$test_root/level1/level2/level3" "root" ".json")
       cleanup_test_configs "$test_root"
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       When call echo "$count"
 
@@ -1875,8 +1875,8 @@ Describe "_commons.sh /"
       result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json,.yaml")
       cleanup_test_configs "$test_root"
 
-      has_json=$(echo "$result" | grep -c "\.json$" || true)
-      has_yaml=$(echo "$result" | grep -c "\.yaml$" || true)
+      has_json=$(count_matches "\.json$" "$result")
+      has_yaml=$(count_matches "\.yaml$" "$result")
 
       When call echo "$has_json,$has_yaml"
 
@@ -1896,7 +1896,7 @@ Describe "_commons.sh /"
 
       result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "$test_root/level1" ".json")
       cleanup_test_configs "$test_root"
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       When call echo "$count"
 
@@ -1925,7 +1925,7 @@ Describe "_commons.sh /"
       result=$(config:hierarchy "myconfig" "$test_root/level1/level2/level3" "root" ",.json")
       cleanup_test_configs "$test_root"
 
-      has_exact=$(echo "$result" | grep -c "/myconfig$" || true)
+      has_exact=$(count_matches "/myconfig$" "$result")
 
       When call echo "$has_exact"
 
@@ -1941,8 +1941,8 @@ Describe "_commons.sh /"
       last_file=$(echo "$result" | tail -n 1)
       cleanup_test_configs "$test_root"
 
-      first_is_root=$(echo "$first_file" | grep -c "^$test_root/\.myconfig\.json$" || true)
-      last_is_level3=$(echo "$last_file" | grep -c "level3/\.myconfig\.json$" || true)
+      first_is_root=$(count_matches "^${test_root}/\.myconfig\.json$" "$first_file")
+      last_is_level3=$(count_matches "level3/\.myconfig\.json$" "$last_file")
 
       When call echo "$first_is_root,$last_is_level3"
 
@@ -1955,7 +1955,7 @@ Describe "_commons.sh /"
 
       result=$(config:hierarchy " .myconfig , .altconfig " "$test_root/level1/level2/level3" "root" ".json")
       cleanup_test_configs "$test_root"
-      count=$(echo "$result" | wc -l)
+      count=$(count_lines "$result")
 
       When call echo "$count"
 

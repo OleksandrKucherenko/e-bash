@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.18.1
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -964,8 +964,11 @@ function config:hierarchy() {
     stop_path="/"
     ;;
   /*)
-    # Absolute path provided
-    stop_path="$stop_at"
+    # Absolute path provided - resolve to physical path (like current_dir)
+    stop_path=$(cd "$stop_at" 2>/dev/null && pwd -P) || {
+      echo ""
+      return 1
+    }
     ;;
   *)
     # Relative path or invalid, fallback to git
