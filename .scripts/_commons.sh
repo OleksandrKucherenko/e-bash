@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.4
+## Version: 1.18.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -461,18 +461,19 @@ function _env:resolve:string() {
       var_value="${!var_name:-}"
     fi
 
-    # Escape special characters in replacement value to avoid corruption
-    # Bash ${var/pattern/replacement} treats '&' as "matched text" and '\' as escape
-    # Replace '\' with '\\' (must be first to avoid double-escaping)
-    # Replace '&' with '\&'
+    # Escape special characters in replacement value
+    # In bash parameter expansion ${var/pattern/replacement}, the replacement string
+    # has special handling for: & (represents matched text) and \ (escape character)
+    # We must escape these to ensure they appear literally in the output
     local escaped_value="$var_value"
-    escaped_value="${escaped_value//\\/\\\\}"  # Escape backslashes
-    escaped_value="${escaped_value//&/\\&}"    # Escape ampersands
+    escaped_value="${escaped_value//\\/\\\\}"  # Escape backslashes first
+    escaped_value="${escaped_value//&/\\&}"    # Then escape ampersands
 
     # Store previous state to detect if replacement made progress
     local previous_string="$expanded_string"
 
-    # Replace the full match (including any whitespace) with the escaped variable value
+    # Replace the matched pattern with the escaped value
+    # The pattern is in a variable, and the escaped value ensures special chars are literal
     expanded_string="${expanded_string/$matched_pattern/$escaped_value}"
 
     # Safety check: if no progress was made, break to prevent infinite loop
