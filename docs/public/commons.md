@@ -7,6 +7,7 @@
     - [Git Repository Root Detection](#git-repository-root-detection)
     - [Configuration File Hierarchy](#configuration-file-hierarchy)
     - [XDG-Compliant Configuration Discovery](#xdg-compliant-configuration-discovery)
+    - [Template Variable Expansion](#template-variable-expansion)
   - [Git Repository Functions](#git-repository-functions)
     - [git:root - Find Git Repository Root](#gitroot---find-git-repository-root)
       - [Function Signature](#function-signature)
@@ -28,6 +29,15 @@
       - [Return Values](#return-values-2)
       - [Examples](#examples-2)
       - [Search Priority](#search-priority)
+  - [Variable Resolution Functions](#variable-resolution-functions)
+    - [env:resolve - Template Variable Expansion](#envresolve---template-variable-expansion)
+      - [Function Signature](#function-signature-3)
+      - [Arguments](#arguments-3)
+      - [Return Values](#return-values-3)
+      - [Examples](#examples-3)
+      - [Resolution Priority](#resolution-priority)
+      - [Pipeline Mode](#pipeline-mode)
+      - [Safety Features](#safety-features-1)
   - [Use Cases and Patterns](#use-cases-and-patterns)
     - [Monorepo Project Root Detection](#monorepo-project-root-detection)
     - [Multi-Environment Configuration Loading](#multi-environment-configuration-loading)
@@ -38,7 +48,7 @@
     - [Configuration File Precedence](#configuration-file-precedence)
     - [Security Considerations](#security-considerations)
   - [Reference](#reference)
-    - [Safety Features](#safety-features-1)
+    - [Safety Features](#safety-features-2)
     - [Cross-Platform Compatibility](#cross-platform-compatibility)
 
 <!-- /TOC -->
@@ -90,6 +100,32 @@ echo "$configs"
 # ~/.config/nvim/init.vim                   (user config)
 # /etc/xdg/nvim/init.vim                    (system-wide XDG)
 # /etc/nvim/init.vim                        (traditional system config)
+```
+
+### Template Variable Expansion
+
+```bash
+source "$E_BASH/_commons.sh"
+
+# Expand environment variables in template strings
+export API_HOST="api.example.com"
+export API_VERSION="v2"
+
+result=$(env:resolve "https://{{env.API_HOST}}/{{env.API_VERSION}}/users")
+echo "$result"
+# Output: https://api.example.com/v2/users
+
+# Use custom configuration array
+declare -A CONFIG
+CONFIG[DB_HOST]="localhost"
+CONFIG[DB_PORT]="5432"
+
+result=$(env:resolve "postgres://{{env.DB_HOST}}:{{env.DB_PORT}}/mydb" "CONFIG")
+echo "$result"
+# Output: postgres://localhost:5432/mydb
+
+# Process templates from files using pipeline mode
+cat template.conf | env:resolve > config.conf
 ```
 
 ## Git Repository Functions
@@ -373,6 +409,387 @@ Configuration files are returned in priority order (highest to lowest):
 #   - Project directory (.config/myapp/config.json)
 #   - User XDG directory (~/.config/myapp/config.json)
 # Only the project directory version is returned (higher priority)
+```
+
+## Variable Resolution Functions
+
+### env:resolve - Template Variable Expansion
+
+Resolves `{{env.VAR_NAME}}` template patterns in strings by expanding them to their environment variable values or custom associative array values. Supports both direct string expansion and pipeline-based template processing.
+
+#### Function Signature
+
+```bash
+env:resolve [input_string] [array_name]
+
+# Pipeline mode
+cat template.txt | env:resolve [array_name]
+```
+
+#### Arguments
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `input_string` | - | String containing `{{env.*}}` patterns (required in direct mode) |
+| `array_name` | - | Name of globally defined associative array for custom variable resolution (optional) |
+
+**Pattern Syntax:**
+- `{{env.VAR_NAME}}` - Standard format
+- `{{ env.VAR_NAME }}` - Whitespace allowed
+- `{{  env.VAR_NAME  }}` - Multiple spaces supported
+
+**Variable Name Rules:**
+- Must start with letter or underscore: `[A-Za-z_]`
+- Followed by alphanumeric or underscore: `[A-Za-z0-9_]*`
+- Examples: `VAR`, `MY_VAR`, `var123`, `_private`
+
+#### Return Values
+
+- **Exit Code**: `0` on success, `1` on error (infinite loop detected)
+- **STDOUT**: Expanded string with all patterns replaced
+- **STDERR**: Error messages for self-referential patterns or infinite loops
+
+#### Examples
+
+**Basic Environment Variable Expansion:**
+
+```bash
+# Simple variable expansion
+export API_HOST="api.example.com"
+result=$(env:resolve "Host: {{env.API_HOST}}")
+echo "$result"
+# Output: Host: api.example.com
+
+# Multiple variables in one string
+export API_HOST="api.example.com"
+export API_PORT="8080"
+export API_VERSION="v2"
+result=$(env:resolve "https://{{env.API_HOST}}:{{env.API_PORT}}/{{env.API_VERSION}}/users")
+echo "$result"
+# Output: https://api.example.com:8080/v2/users
+
+# Whitespace variations (all valid)
+export HOME="/home/user"
+env:resolve "{{env.HOME}}/config"           # No whitespace
+env:resolve "{{ env.HOME }}/config"         # With whitespace
+env:resolve "{{  env.HOME  }}/config"       # Multiple spaces
+# All output: /home/user/config
+```
+
+**Using Custom Associative Arrays:**
+
+```bash
+# Declare configuration array
+declare -A CONFIG
+CONFIG[DB_HOST]="localhost"
+CONFIG[DB_PORT]="5432"
+CONFIG[DB_NAME]="myapp"
+
+# Resolve using custom array
+result=$(env:resolve "postgres://{{env.DB_HOST}}:{{env.DB_PORT}}/{{env.DB_NAME}}" "CONFIG")
+echo "$result"
+# Output: postgres://localhost:5432/myapp
+
+# Array values override environment variables
+export API_VERSION="v1"  # Environment variable
+declare -A OVERRIDE
+OVERRIDE[API_VERSION]="v2"  # Array value (takes priority)
+
+result=$(env:resolve "Version: {{env.API_VERSION}}" "OVERRIDE")
+echo "$result"
+# Output: Version: v2
+
+# Fallback to environment when key not in array
+declare -A PARTIAL
+PARTIAL[HOST]="api.example.com"
+export PORT="8080"  # Not in array, uses env var
+
+result=$(env:resolve "{{env.HOST}}:{{env.PORT}}" "PARTIAL")
+echo "$result"
+# Output: api.example.com:8080
+```
+
+**Pipeline Mode - Template File Processing:**
+
+```bash
+# Process template file with environment variables
+cat > template.conf <<'EOF'
+server {
+  host: {{env.SERVER_HOST}}
+  port: {{env.SERVER_PORT}}
+}
+database {
+  url: {{env.DB_URL}}
+}
+EOF
+
+export SERVER_HOST="localhost"
+export SERVER_PORT="8080"
+export DB_URL="postgresql://localhost/mydb"
+
+# Pipeline mode without array
+cat template.conf | env:resolve > config.conf
+
+# View result
+cat config.conf
+# Output:
+# server {
+#   host: localhost
+#   port: 8080
+# }
+# database {
+#   url: postgresql://localhost/mydb
+# }
+
+# Pipeline mode with custom array
+declare -A DEPLOY_VARS
+DEPLOY_VARS[ENVIRONMENT]="production"
+DEPLOY_VARS[REGION]="us-east-1"
+
+cat template.yaml | env:resolve "DEPLOY_VARS" > deploy.yaml
+```
+
+**Real-World Use Cases:**
+
+```bash
+# 1. Docker Compose template expansion
+cat > docker-compose.template.yml <<'EOF'
+version: '3.8'
+services:
+  app:
+    image: {{env.APP_IMAGE}}
+    ports:
+      - "{{env.APP_PORT}}:{{env.APP_PORT}}"
+    environment:
+      NODE_ENV: {{env.NODE_ENV}}
+      API_URL: {{env.API_URL}}
+EOF
+
+export APP_IMAGE="node:18-alpine"
+export APP_PORT="3000"
+export NODE_ENV="production"
+export API_URL="https://api.example.com"
+
+cat docker-compose.template.yml | env:resolve > docker-compose.yml
+
+# 2. Kubernetes manifest generation
+declare -A K8S_CONFIG
+K8S_CONFIG[NAMESPACE]="production"
+K8S_CONFIG[REPLICAS]="3"
+K8S_CONFIG[IMAGE_TAG]="v1.2.3"
+
+cat k8s.template.yaml | env:resolve "K8S_CONFIG" > k8s.yaml
+
+# 3. CI/CD configuration templating
+export CI_BRANCH="main"
+export CI_COMMIT_SHA="abc123"
+export DEPLOY_ENV="staging"
+
+result=$(env:resolve "Deploying {{env.CI_BRANCH}}@{{env.CI_COMMIT_SHA}} to {{env.DEPLOY_ENV}}")
+echo "$result"
+# Output: Deploying main@abc123 to staging
+
+# 4. URL construction with query parameters
+export BASE_URL="https://example.com/api"
+export TOKEN="secret123"
+export USER_ID="456"
+
+result=$(env:resolve "{{env.BASE_URL}}/users/{{env.USER_ID}}?token={{env.TOKEN}}")
+echo "$result"
+# Output: https://example.com/api/users/456?token=secret123
+```
+
+**Nested Variable Expansion:**
+
+```bash
+# Valid nested expansion (one variable references another)
+export INNER="final_value"
+export OUTER='{{env.INNER}}'
+
+result=$(env:resolve "Value: {{env.OUTER}}")
+echo "$result"
+# Output: Value: final_value
+
+# Deep nesting (up to 10 levels supported)
+export L0="base"
+export L1='{{env.L0}}'
+export L2='{{env.L1}}'
+export L3='{{env.L2}}'
+
+result=$(env:resolve "Deep: {{env.L3}}")
+echo "$result"
+# Output: Deep: base
+```
+
+#### Resolution Priority
+
+Variables are resolved in the following priority order:
+
+1. **Associative Array** (if provided)
+   - Highest priority
+   - Custom configuration values
+
+2. **Environment Variables**
+   - Fallback when key not found in array
+   - Standard shell environment
+
+3. **Empty String**
+   - When variable is unset or not found
+   - No error thrown for missing variables
+
+```bash
+# Priority demonstration
+export VAR="from_env"
+declare -A CUSTOM
+CUSTOM[VAR]="from_array"
+
+# Array takes priority
+result=$(env:resolve "{{env.VAR}}" "CUSTOM")
+echo "$result"
+# Output: from_array
+
+# No array - uses environment
+result=$(env:resolve "{{env.VAR}}")
+echo "$result"
+# Output: from_env
+
+# Variable not found - empty string
+result=$(env:resolve "{{env.NONEXISTENT}}")
+echo "$result"
+# Output: (empty)
+```
+
+#### Pipeline Mode
+
+Pipeline mode is automatically activated when stdin is not a terminal.
+
+**Detection Logic:**
+- `$# -eq 0` AND stdin available → Pipeline mode without array
+- `$# -eq 1` AND arg matches `^[A-Z_][A-Z0-9_]*$` AND stdin available → Pipeline mode with array
+- Otherwise → Direct mode
+
+```bash
+# Stdin from pipe - pipeline mode
+echo "Value: {{env.VAR}}" | env:resolve
+
+# Stdin from file redirect - pipeline mode
+env:resolve < template.txt
+
+# Stdin from heredoc - pipeline mode
+env:resolve <<'EOF'
+Line 1: {{env.VAR1}}
+Line 2: {{env.VAR2}}
+EOF
+
+# Pipeline mode with array
+declare -A CONFIG
+CONFIG[KEY]="value"
+cat template.txt | env:resolve "CONFIG"
+
+# Direct mode (no stdin)
+result=$(env:resolve "{{env.VAR}}")  # Direct mode
+
+# Empty lines are preserved in pipeline mode
+env:resolve <<'EOF'
+{{env.LINE1}}
+
+{{env.LINE2}}
+EOF
+# Output includes blank line between expansions
+```
+
+#### Safety Features
+
+**Infinite Loop Protection:**
+
+The function includes robust protection against circular references and self-referential patterns.
+
+```bash
+# Self-referential pattern detected immediately
+export SELF='{{env.SELF}}'
+result=$(env:resolve "{{env.SELF}}" 2>&1)
+# Exit code: 1
+# Error: env:resolve detected self-referential pattern for variable 'SELF'
+
+# Circular reference (A→B→A)
+export A='{{env.B}}'
+export B='{{env.A}}'
+result=$(env:resolve "{{env.A}}" 2>&1)
+# Exit code: 1
+# Error: env:resolve exceeded maximum iterations (10), possible infinite loop
+
+# Complex cycle (A→B→C→D→E→A)
+export CYCLE_A='{{env.CYCLE_B}}'
+export CYCLE_B='{{env.CYCLE_C}}'
+export CYCLE_C='{{env.CYCLE_D}}'
+export CYCLE_D='{{env.CYCLE_E}}'
+export CYCLE_E='{{env.CYCLE_A}}'
+result=$(env:resolve "{{env.CYCLE_A}}" 2>&1)
+# Exit code: 1
+# Error: env:resolve exceeded maximum iterations (10), possible infinite loop
+```
+
+**Special Character Escaping:**
+
+The function properly escapes special characters to prevent corruption during expansion.
+
+```bash
+# Ampersands in URLs (& treated as "matched text" without escaping)
+export URL='https://api.com?a=1&b=2&c=3'
+result=$(env:resolve "URL: {{env.URL}}")
+echo "$result"
+# Output: URL: https://api.com?a=1&b=2&c=3
+# (Without escaping: would corrupt the URL)
+
+# Backslashes in Windows paths (\ treated as escape character)
+export WIN_PATH='C:\Users\Admin\Documents'
+result=$(env:resolve "Path: {{env.WIN_PATH}}")
+echo "$result"
+# Output: Path: C:\Users\Admin\Documents
+# (Without escaping: would lose backslashes)
+
+# Combined special characters
+export MIXED='C:\Path\file.txt?query=a&b=c'
+result=$(env:resolve "{{env.MIXED}}")
+echo "$result"
+# Output: C:\Path\file.txt?query=a&b=c
+
+# Sed replacement patterns (& has special meaning in sed)
+export SED_PATTERN='s/old/& new/g'
+result=$(env:resolve "{{env.SED_PATTERN}}")
+echo "$result"
+# Output: s/old/& new/g
+```
+
+**Safety Limits:**
+
+- **Max iterations**: 10 (prevents infinite loops)
+- **Progress detection**: Breaks if no change after replacement
+- **Error reporting**: Clear messages to stderr with original pattern
+- **Exit codes**: Non-zero on error for proper error handling
+
+**Best Practices:**
+
+```bash
+# Always check return codes
+if ! result=$(env:resolve "{{env.VAR}}" 2>&1); then
+  echo "ERROR: Variable expansion failed" >&2
+  echo "$result" >&2
+  exit 1
+fi
+
+# Validate critical variables exist before expansion
+if [[ -z "$API_KEY" ]]; then
+  echo "ERROR: API_KEY must be set" >&2
+  exit 1
+fi
+result=$(env:resolve "API Key: {{env.API_KEY}}")
+
+# Use arrays for structured configuration
+declare -A CONFIG
+CONFIG[HOST]="${HOST:-localhost}"
+CONFIG[PORT]="${PORT:-8080}"
+result=$(env:resolve "{{env.HOST}}:{{env.PORT}}" "CONFIG")
 ```
 
 ## Use Cases and Patterns
