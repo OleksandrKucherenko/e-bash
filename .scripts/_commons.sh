@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2025-12-30
-## Version: 1.17.1
+## Version: 1.17.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -411,7 +411,7 @@ function _env:resolve:string() {
   local str="$1"
   local arr_name="$2"
   local expanded_string="$str"
-  local max_iterations=100  # Safety limit to prevent infinite loops
+  local max_iterations=10  # Safety limit to prevent infinite loops
   local iteration=0
 
   # Iterate while there are {{env.VAR_NAME}} patterns in the string
