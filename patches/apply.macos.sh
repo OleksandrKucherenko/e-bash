@@ -2,8 +2,8 @@
 # Apply ShellSpec timeout patch (macOS)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-23
-## Version: 1.12.6
+## Last revisit: 2025-12-31
+## Version: 2.0.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -61,15 +61,25 @@ find_shellspec_dir() {
         resolved_bin="$resolved"
     fi
     
-    # We have the absolute path to bin/shellspec. 
-    # The installation root relative to 'bin' is usually one level up.
+    # Get the directory containing the shellspec binary
+    local bin_dir
+    bin_dir="$(dirname "$resolved_bin")"
+
+    # Heuristic: Check where lib/core/core.sh lives relative to this binary.
+    # 1. Manual install: Binary is in root, lib is in $ROOT/lib/core/core.sh
+    # 2. Standard install: Binary is in bin/, lib is in $ROOT/../lib/core/core.sh
+    # 3. Homebrew: lib is in $ROOT/lib/shellspec/lib/core/core.sh -> We want $ROOT/lib/shellspec
+
+    # Case 1: Manual install - check if lib/core/core.sh exists in the same directory as the binary
+    if [[ -f "$bin_dir/lib/core/core.sh" ]]; then
+        echo "$bin_dir"
+        return 0
+    fi
+
+    # Case 2: Standard install - go up one level from bin/
     local install_root
-    install_root="$(cd "$(dirname "$resolved_bin")/.." && pwd)"
-    
-    # Heuristic: Check where lib/core/core.sh lives relative to this root.
-    # 1. Standard: $ROOT/lib/core/core.sh
-    # 2. Homebrew: $ROOT/lib/shellspec/lib/core/core.sh -> We want $ROOT/lib/shellspec as the patch root.
-    
+    install_root="$(cd "$bin_dir/.." && pwd)"
+
     if [[ -f "$install_root/lib/core/core.sh" ]]; then
         echo "$install_root"
         return 0
@@ -77,7 +87,7 @@ find_shellspec_dir() {
         echo "$install_root/lib/shellspec"
         return 0
     fi
-    
+
     # Fallback: Just return install_root and hope
     echo "$install_root" 
 }

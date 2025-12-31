@@ -4,8 +4,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-23
-## Version: 1.12.6
+## Last revisit: 2025-12-31
+## Version: 2.0.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -127,6 +127,57 @@ Describe "bin/git.semantic-version.sh /"
     It "returns false for non-breaking change"
       When call gitsv:has_breaking_change "feat: normal feature"
       The status should be failure
+    End
+  End
+
+  Describe "gitsv:extract_breaking_change_line() /"
+    It "returns the BREAKING CHANGE line from the body"
+      When call gitsv:extract_breaking_change_line $'feat: something\n\nBREAKING CHANGE: api change\nmore'
+      The output should eq "BREAKING CHANGE: api change"
+    End
+
+    It "returns empty when no breaking change exists"
+      When call gitsv:extract_breaking_change_line "feat: something"
+      The output should eq ""
+    End
+  End
+
+  Describe "gitsv:truncate_text() /"
+    It "returns original text when under limit"
+      When call gitsv:truncate_text "short" 10
+      The output should eq "short"
+    End
+
+    It "truncates and appends ellipsis when over limit"
+      When call gitsv:truncate_text "0123456789" 8
+      The output should eq "01234..."
+    End
+  End
+
+  Describe "gitsv:format_annotation_marker() /"
+    It "wraps the number in purple brackets"
+      When call gitsv:format_annotation_marker "3"
+      The output should eq "${cl_purple}[3]${cl_reset}"
+    End
+  End
+
+  Describe "gitsv:format_annotation_entry() /"
+    It "adds a hint to show the full commit message"
+      When call gitsv:format_annotation_entry "${cl_purple}[2]${cl_reset}" "found BREAKING CHANGE: api" "abc1234"
+      The result of function no_colors_stdout should include "[2] - found BREAKING CHANGE: api..."
+      The result of function no_colors_stdout should include "full message: git show -s --format=%B abc1234"
+    End
+  End
+
+  Describe "gitsv:breaking_change_annotation() /"
+    It "returns annotation when breaking change is hidden in body"
+      When call gitsv:breaking_change_annotation $'feat: foo\n\nBREAKING CHANGE: api change' "feat: foo"
+      The output should include "found BREAKING CHANGE: api change"
+    End
+
+    It "returns empty when breaking change is not hidden"
+      When call gitsv:breaking_change_annotation "BREAKING CHANGE: api change" "BREAKING CHANGE: api change"
+      The output should eq ""
     End
   End
 

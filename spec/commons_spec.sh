@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-30
-## Version: 2.0.2
+## Last revisit: 2025-12-31
+## Version: 2.0.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1809,6 +1809,7 @@ Describe "_commons.sh /"
     setup_test_configs() {
       local test_root="/tmp/config-hierarchy-test-$$"
       mkdir -p "$test_root/level1/level2/level3"
+      test_root=$(cd "$test_root" && pwd -P)
 
       echo '{"root": true}' > "$test_root/.myconfig.json"
       echo '{"level1": true}' > "$test_root/level1/.myconfig.json"

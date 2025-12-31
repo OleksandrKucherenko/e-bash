@@ -5,8 +5,8 @@
 ## Analyzes conventional commits and calculates semantic version progression
 ##
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-11-06
-## Version: 1.0.0
+## Last revisit: 2025-12-31
+## Version: 2.0.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -24,14 +24,14 @@ readonly SCRIPT_VERSION="1.0.0"
 
 # Import utilities
 # shellcheck source=../.scripts/_colors.sh
-# shellcheck source=../.scripts/_commons.sh
-# shellcheck source=../.scripts/_logger.sh
-# shellcheck source=../.scripts/_arguments.sh
-# shellcheck source=../.scripts/_semver.sh
 source "$E_BASH/_colors.sh"
+# shellcheck source=../.scripts/_logger.sh
 source "$E_BASH/_logger.sh"
+# shellcheck source=../.scripts/_arguments.sh
 source "$E_BASH/_arguments.sh"
+# shellcheck source=../.scripts/_semver.sh
 source "$E_BASH/_semver.sh"
+# shellcheck source=../.scripts/_commons.sh
 source "$E_BASH/_commons.sh"
 # Note: tmux pattern implemented inline (see demos/demo.tmux.progress.sh)
 
@@ -47,6 +47,7 @@ readonly EXIT_INTERRUPTED=130
 
 # Global flags
 INTERRUPTED=false
+readonly ANNOTATION_MAX_LEN=80
 
 # Tmux progress display variables (inline pattern from demo)
 readonly TMUX_PROGRESS_HEIGHT=2
@@ -166,6 +167,94 @@ function gitsv:has_breaking_change() {
   fi
 
   return 1
+}
+
+## Extract the first BREAKING CHANGE line from a commit message
+## @param $1 - full commit message
+## @return line containing BREAKING CHANGE or empty
+function gitsv:extract_breaking_change_line() {
+  local commit_msg="$1"
+  local line=""
+
+  while IFS= read -r line; do
+    if [[ "$line" =~ (BREAKING[\ -]CHANGE:.*) ]]; then
+      echo "${BASH_REMATCH[1]}"
+      return 0
+    fi
+  done <<< "$commit_msg"
+
+  echo ""
+  return 0
+}
+
+## Truncate text to a maximum length, appending "..." when needed
+## @param $1 - text
+## @param $2 - max length
+## @return truncated text
+function gitsv:truncate_text() {
+  local text="$1"
+  local max_len="$2"
+
+  if [[ -z "$max_len" ]] || [[ "$max_len" -le 0 ]]; then
+    echo ""
+    return 0
+  fi
+
+  if (( ${#text} <= max_len )); then
+    echo "$text"
+    return 0
+  fi
+
+  if (( max_len <= 3 )); then
+    echo "${text:0:max_len}"
+    return 0
+  fi
+
+  local cut_len=$((max_len - 3))
+  echo "${text:0:cut_len}..."
+  return 0
+}
+
+## Format annotation marker with color
+## @param $1 - annotation number
+## @return colored marker like "[1]"
+function gitsv:format_annotation_marker() {
+  local number="$1"
+  echo "${cl_purple}[${number}]${cl_reset}"
+}
+
+## Format annotation entry with hint for full commit message
+## @param $1 - marker (colored)
+## @param $2 - annotation text
+## @param $3 - short commit hash
+## @return formatted annotation line
+function gitsv:format_annotation_entry() {
+  local marker="$1"
+  local text="$2"
+  local hash="$3"
+
+  echo "${marker} - ${text}... (full message: ${cl_yellow}git show -s --format=%B ${hash}${cl_reset})"
+}
+
+## Build an annotation for hidden breaking change indicators
+## @param $1 - full commit message
+## @param $2 - first line (subject)
+## @return annotation text or empty
+function gitsv:breaking_change_annotation() {
+  local commit_msg="$1"
+  local first_line="$2"
+
+  if [[ "$commit_msg" =~ BREAKING[\ -]CHANGE: ]] && [[ ! "$first_line" =~ BREAKING[\ -]CHANGE: ]]; then
+    local breaking_line
+    breaking_line=$(gitsv:extract_breaking_change_line "$commit_msg")
+    if [[ -n "$breaking_line" ]]; then
+      local short_line
+      short_line=$(gitsv:truncate_text "$breaking_line" "$ANNOTATION_MAX_LEN")
+      echo "found $short_line"
+    fi
+  fi
+
+  return 0
 }
 
 ## Determine version bump type based on commit message
@@ -529,6 +618,8 @@ function gitsv:process_commits() {
   local stat_patch=0
   local stat_none=0
   local stat_tag=0
+  local -a annotations=()
+  local annotation_count=0
 
   echo:SemVer "Processing $total_commits commits from $start_commit to HEAD"
 
@@ -621,6 +712,20 @@ function gitsv:process_commits() {
       diff=$(gitsv:version_diff "$version_before" "$version_after")
     fi
 
+    # Track hidden breaking change indicators for annotation display
+    local annotation_marker=""
+    if [[ "$bump_type" == "major" ]]; then
+      local annotation_text
+      annotation_text=$(gitsv:breaking_change_annotation "$commit_msg" "$first_line")
+      if [[ -n "$annotation_text" ]]; then
+        annotation_count=$((annotation_count + 1))
+        local marker
+        marker=$(gitsv:format_annotation_marker "$annotation_count")
+        annotations+=("$(gitsv:format_annotation_entry "$marker" "$annotation_text" "$short_hash")")
+        annotation_marker=" ${marker}"
+      fi
+    fi
+
     # Color the diff based on bump type
     local colored_diff="$diff"
 
@@ -655,10 +760,12 @@ function gitsv:process_commits() {
       display_tag="${cl_cyan}${commit_tags}${cl_reset}"
     fi
 
+    local display_msg="${first_line}${annotation_marker}"
+
     # Format and print line
     gitsv:format_output_line \
       "$short_hash" \
-      "$first_line" \
+      "$display_msg" \
       "$version_before" \
       "$version_after" \
       "$colored_diff" \
@@ -708,6 +815,14 @@ function gitsv:process_commits() {
 
   # Print footer
   gitsv:print_footer
+
+  if (( annotation_count > 0 )); then
+    echo ""
+    echo "${st_bold}Annotations:${cl_reset}"
+    for annotation in "${annotations[@]}"; do
+      echo "  $annotation"
+    done
+  fi
 
   # Print summary
   echo ""
