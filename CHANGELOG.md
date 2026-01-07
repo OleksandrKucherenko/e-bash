@@ -1,0 +1,73 @@
+# Release 2.0.0
+
+Version 2.0.0 introduces significant enhancements to the core architecture, including a robust hooks middleware system, expanded utility functions, and improved self-update capabilities. This release also brings substantial improvements to the CI/CD pipeline with parallelized testing, macOS compatibility fixes, and new integration tools like ShellMetrics.
+
+## ✨ Features
+- Add alias resolution and version flag mapping to dependencies module (#55) (bd32ffb)
+- Add environment variable expansion function (#54) (065a07d)
+- Add utility functions to commons script (#53) (a73770e)
+- Hooks with middleware support (#51) (8df142d)
+- Implement hooks abstraction for script delegation (#46) (7b665d1)
+- Self update, ability to granularly update the e-bash (#44) (831453c)
+- Add 10-minute timeout to CI test chunks (#45) (1e33037)
+- Junit baseline pipeline (#38) (836f4f5)
+- Implement to:slug function with unit tests (#37) (9d14a8c)
+- Add variable fallback functions to commons script (#33) (be8b346)
+- Extra helper script for npm versions (5f3feed)
+- Add custom directory option to install script (#31) (22efc44)
+- Add ShellMetrics CI integration for code complexity tracking (#30) (c862c21)
+- Implement multiple trap handlers for Bash (#24) (95e7d5e)
+- Add mise tool support to e-bash install script (#23) (fbdee5c)
+- Add git semantic version calculator script (#20) (13f8feb)
+- Added Ipv6 utils (#11) (67a62d3)
+- Claude/emoji printer script (cc2918b)
+
+## 🐛 Bug Fixes
+- Run on local macos (#59) (c6bc740)
+- Fix/macos ci test whitespace issues (#58) (4fae203)
+- Resolve macOS CI test failures due to wc -l and grep -c whitespace (#57) (f0bf5e3)
+- Prepare for release (ef627ad)
+- Dryrun logic bug (f48f629)
+- New unit tests optimization baseline (#49) (a547928)
+- Tests isolation and speed (#47) (594e6de)
+- Shellcheck source files (454048a)
+- Install script patching wrong config file (#43) (4af4446)
+- Remove dead api key (6a95e72)
+- Week51, new unit tests optimization baseline (#42) (0dba625)
+- New unit tests optimization baseline (#41) (59de68e)
+- Web installer output (#35) (78b1778)
+- Forgotten change (#32) (fc39bab)
+- Forgotten change (c9b9595)
+- E_BASH definition for demos, dos2unix (2140c13)
+- Fix and optimize Codecov configuration (#22) (bf2da24)
+- Fix/coverage unknown status (#21) (2b4b34f)
+- Installation script global and local installation scenarios (#16) (b00a1d0)
+- Resolved merge conflicts (7ee535d)
+
+## ♻️ Refactoring
+- Rename functions for consistency and clarity in dryrun (#56) (0dec6ec)
+- Hooks functions (#48) (e2c28fc)
+
+## 📚 Documentation
+- Quick update (2cdbcad)
+- Small updates in documentation (6d6b542)
+- Update README.md (21ba265)
+
+## 🔧 Other Changes
+- Add Smithery badge (#52) (d4d1bb6)
+- Add unit tests for self-update script functions (#50) (fd5ab02)
+- Optimize macos ci execution time (#36) (25722f8)
+- Parallelize unit tests in CI pipeline (#34) (1b9677f)
+- More references (d17f413)
+- Naming conventions (#28) (671a3ae)
+- Add size check to disable Homebrew caching when > 300MB (#29) (04314af)
+- Create distribution ZIP archive pipeline (#26) (d471b5a)
+- Add CI cache for Homebrew installations (#25) (7cc5870)
+- Add comprehensive test coverage for version-up v2 (TDD approach) (#19) (b0901ab)
+- Code review of another PR (#18) (60fcd80)
+- Updated dependencies (82a5c35)
+- V2 version up script (#12) (86de415)
+- Badges - one more (3554bdd)
+- Badge added (1c0a2fa)
+- Installation short link (f9698cc)
+- Updated installation link (f880300)
