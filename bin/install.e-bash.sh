@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-01-14
+## Version: 2.0.2
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -1044,30 +1044,60 @@ function post_installation_steps_global() {
   # Configure E_BASH environment variable
   local env_line="export E_BASH=\"${ver_dir}/${SCRIPTS_DIR}\""
 
+  # Configure PATH for GNU tools (Linux only)
+  local gnubin_line="export PATH=\"\${HOME}/${__GLOBAL_DIR}/bin/gnubin:\$PATH\""
+
   # Add to .bashrc if it exists
   if [ -f "$shellrc" ] && [ "$DRY_RUN" == false ]; then
+    local needs_update=false
+
     if ! grep -q "export E_BASH=" "$shellrc"; then
+      needs_update=true
       echo -e "${BLUE}Adding E_BASH environment variable to ${shellrc}...${NC}"
+    else
+      echo -e "${GRAY}Skipping E_BASH export, export already exists in ${YELLOW}${shellrc}${NC}"
+    fi
+
+    # Add gnubin to PATH on Linux (for GNU tool symlinks)
+    if [[ "$(uname -s)" == "Linux" ]]; then
+      if ! grep -q "${__GLOBAL_DIR}/bin/gnubin" "$shellrc"; then
+        needs_update=true
+        echo -e "${BLUE}Adding GNU tools path to ${shellrc}...${NC}"
+      else
+        echo -e "${GRAY}Skipping gnubin PATH, already exists in ${YELLOW}${shellrc}${NC}"
+      fi
+    fi
+
+    if [ "$needs_update" = true ]; then
       {
         echo ""
         echo "# e-Bash scripts configuration"
         echo "$env_line"
+        if [[ "$(uname -s)" == "Linux" ]]; then
+          echo "# GNU tools for Linux compatibility (gsed, ggrep, etc.)"
+          echo "$gnubin_line"
+        fi
       } >>"$shellrc"
       echo -e "${GREEN}E_BASH points to ${YELLOW}${ver_dir}/${SCRIPTS_DIR}${NC}"
-    else
-      echo -e "${GRAY}Skipping E_BASH export, export already exists in ${YELLOW}${shellrc}${NC}"
-      local found_line=$(grep "export E_BASH=" "$shellrc" | head -1)
-
-      if [ "${found_line}" != "${env_line}" ]; then
-        echo -e "${GRAY}You can add/edit manually: ${YELLOW}${env_line}${NC}"
-        echo -n "Found: " >&2
-        grep "export E_BASH=" "$shellrc" >&2
-      fi
     fi
   else
     local prefix=""
     [ "$DRY_RUN" == true ] && prefix="${CYAN}dry run: ${NC}"
     echo -e "${prefix}${GRAY}Skipping E_BASH export configuration. No ${YELLOW}${shellrc}${GRAY} file.${NC}" >&2
+  fi
+
+  # Create GNU tool symlinks on Linux
+  if [[ "$(uname -s)" == "Linux" ]] && [ "$DRY_RUN" == false ]; then
+    echo -e "${BLUE}Setting up GNU tool symlinks...${NC}"
+    # Source _gnu.sh from the global installation to create symlinks
+    local gnu_script="${GLOBAL_INSTALL_DIR}/${SCRIPTS_DIR}/_gnu.sh"
+    if [ -f "$gnu_script" ]; then
+      # shellcheck source=/dev/null
+      source "$gnu_script"
+      echo -e "${GREEN}GNU tool symlinks created in ${YELLOW}${GLOBAL_INSTALL_DIR}/bin/gnubin${NC}"
+    else
+      echo -e "${YELLOW}Warning: _gnu.sh not found at ${gnu_script}${NC}" >&2
+    fi
   fi
 }
 

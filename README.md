@@ -3,11 +3,10 @@
 # Enhanced BASH Scripts
 
 - [Enhanced BASH Scripts](#enhanced-bash-scripts)
-  - [Roadmap](#roadmap)
-  - [Local Dev Environment - Requirements](#local-dev-environment---requirements)
-  - [TDD - Test Driven Development, run tests on file change](#tdd---test-driven-development-run-tests-on-file-change)
   - [Usage](#usage)
+    - [Using e-bash in Your Scripts](#using-e-bash-in-your-scripts)
     - [Manual installation](#manual-installation)
+  - [Library Overview](#library-overview)
     - [Colors](#colors)
     - [Script Dependencies](#script-dependencies)
     - [Logger](#logger)
@@ -17,71 +16,22 @@
     - [UI: Ask for Password](#ui-ask-for-password)
     - [Dry-Run Wrapper System](#dry-run-wrapper-system)
     - [Hooks](#hooks)
-  - [Semver - Semantic Versioning](#semver---semantic-versioning)
-  - [Git Semantic/Conventional commits](#git-semanticconventional-commits)
-  - [Git Verify Commits Messages - Conventional Commits](#git-verify-commits-messages---conventional-commits)
-  - [Git Logs](#git-logs)
-  - [Git Files Changes](#git-files-changes)
-  - [Self-Update](#self-update)
+    - [Semver - Semantic Versioning](#semver---semantic-versioning)
+    - [Git Semantic/Conventional commits](#git-semanticconventional-commits)
+    - [Git Verify Commits Messages - Conventional Commits](#git-verify-commits-messages---conventional-commits)
+    - [Git Logs](#git-logs)
+    - [Git Files Changes](#git-files-changes)
+    - [Self-Update](#self-update)
     - [Troubleshooting](#troubleshooting)
-  - [Profile BASH script execution](#profile-bash-script-execution)
-  - [Colors support in my terminal](#colors-support-in-my-terminal)
-  - [Emoji support in my terminal](#emoji-support-in-my-terminal)
-  - [References](#references)
-
-## Roadmap
-
-- [x] High-level scripts should be in their own `bin` OR `demos`
-- [x] Git helpers
-- [ ] GitLab's helper scripts (work with branches, forks, submodules)
-- [ ] Globals module (declarative way of defining script dependencies to global environment variables)
-- [x] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
-- [x] Copyright headers composing/parsing (extract from the file, update, insert)
-
-Conventions and folder structure: [docs/public/conventions.md](docs/public/conventions.md)
-
-## Local Dev Environment - Requirements
-
-- [DirEnv](https://github.com/direnv/direnv)
-- [ShellFormat](https://github.com/mvdan/sh)
-- [ShellCheck](https://github.com/koalaman/shellcheck)
-- [KCov](https://github.com/SimonKagstrom/kcov)
-- [ShellSpec](https://github.com/shellspec/shellspec)
-
-> Note: alternative Unit Test Frameworks, Bats - [BATS core](https://github.com/bats-core/bats-core)
-
-```bash
-brew install direnv
-brew install shellcheck
-brew install shfmt
-brew install shellspec
-brew install kcov
-```
-
-## TDD - Test Driven Development, run tests on file change
-
-```bash
-# make tool required Python in hidden dependencies
-# ref1: https://docs.astral.sh/uv/guides/install-python/
-# ref2: https://github.com/astral-sh/uv
-uv python install 
-# alternative: pyenv install 3.13.2 && pyenv global 3.13.2
-
-# run all unit tests on file change
-watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec"
-
-# run failed only unit tests on file change
-watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
-
-# run failed only unit tests on file change without coverage
-watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick --no-kcov --"
-
-# Multiple Jobs (parallel execution)
-# shellspec -j 8  
-# 40.34s user 10.62s system 38% cpu 2:12.97 total
-# shellspec -j 4  
-# 40.35s user 10.28s system 40% cpu 2:03.77 total
-```
+    - [Profile BASH script execution](#profile-bash-script-execution)
+    - [Colors support in my terminal](#colors-support-in-my-terminal)
+    - [Emoji support in my terminal](#emoji-support-in-my-terminal)
+    - [References](#references)
+  - [Contributing](#contributing)
+    - [Roadmap](#roadmap)
+    - [Local Dev Environment - Requirements](#local-dev-environment---requirements)
+    - [TDD - Test Driven Development, run tests on file change](#tdd---test-driven-development-run-tests-on-file-change)
+  - [License](#license)
 
 ## Usage
 
@@ -90,7 +40,11 @@ Installation into your project with helper script:
 > install/upgrade to the latest version
 
 ```bash
+# install into current folder/workspace
 curl -sSL https://git.new/e-bash | bash -s --
+
+# OR: install into global folder (~/.e-bash)
+curl -sSL https://git.new/e-bash | bash -s -- --global install
 ```
 
 Alternatives:
@@ -111,7 +65,7 @@ http -b https://git.new/e-bash | bash -s -- install v1.0.0
 
 [More details](./docs/public/installation.md)
 
-#### Using e-bash in Your Scripts
+### Using e-bash in Your Scripts
 
 To use e-bash utilities in your bash scripts, add this bootstrap snippet at the top:
 
@@ -163,11 +117,12 @@ source "$E_BASH/_logger.sh"
 source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
 ```
 
-**Version C: Ultra-Optimized** (198 characters, used in e-bash scripts)
+**Version C: Ultra-Optimized** (used in e-bash scripts)
 
 ```bash
-# Ultra-optimized bootstrap: E_BASH discovery + gnubin PATH
-[ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; . "$E_BASH/_gnu.sh"; PATH="$E_BASH/../bin/gnubin:$PATH"; }
+# Bootstrap: 1) E_BASH discovery (only if not set), 2) gnubin setup (always)
+[ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
+. "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
 # Source modules (examples)
 source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
 ```
@@ -213,6 +168,8 @@ refs:
 - [git-cross](https://github.com/epcim/git-cross)
 - [git-subrepo](https://github.com/ingydotnet/git-subrepo)
 - [github repo for article](https://gist.github.com/icheko/9ff2a0a90ef2b676a5fc8d76f69db1d3), [article itself](https://medium.com/@icheko/use-a-subfolder-from-a-remote-repo-in-another-repo-using-git-subtree-98046f33ca40)
+
+## Library Overview
 
 ### Colors
 
@@ -499,7 +456,7 @@ More details: [Hooks Documentation](docs/public/hooks.md);
 
 Demos: [Intro](demos/demo.hooks.sh), [Multiple Hooks](demos/demo.hooks-registration.sh), [Nested Hooks](demos/demo.hooks-nested.sh), [Hooks with Logs](demos/demo.hooks-logging.sh), [CI Hooks Demo](./demos/ci-mode/demo.ci-modes.sh), [CI Hooks with Middlewar](./demos/ci-mode/demo.ci-modes-middleware.sh)
 
-## Semver - Semantic Versioning
+### Semver - Semantic Versioning
 
 Requirements:
 
@@ -526,7 +483,7 @@ semver:parse "2.0.0-rc.1+build.123" "V" \
 echo "1" | grep -E "${SEMVER_LINE}" --color=always --ignore-case || echo "OK!"
 ```
 
-## Git Semantic/Conventional commits
+### Git Semantic/Conventional commits
 
 Set of git helpers are implemented.
 
@@ -578,7 +535,7 @@ Summary:
 Final Version: 1.4.7
 ```
 
-## Git Verify Commits Messages - Conventional Commits
+### Git Verify Commits Messages - Conventional Commits
 
 ```bash
 bin/git.verify-all-commits.sh
@@ -610,7 +567,7 @@ Progress: 0.........10.........20.........30.........40.........50.....
     Reference: https://www.conventionalcommits.org/
 ```
 
-## Git Logs
+### Git Logs
 
 ```bash
 # show last 10 commits messages
@@ -619,12 +576,11 @@ bin/git.log.sh 25
 
 ![Git Logs Preview](docs/images/public/git-logs-last-25-messages.jpg)
 
-## Git Files Changes
+### Git Files Changes
 
 Display all changed files from N last commits, in PLAIN or TREE view.
 
 Script also uses links integration into terminal, on click should be open vscode.
-
 
 ```bash
 # show changed files in 1 last commit, and show it as a tree
@@ -633,8 +589,7 @@ bin/git.files.sh 1 --tree
 
 ![Tree View](docs/images/public/git-changed-files-tree.jpg)
 
-
-## Self-Update
+### Self-Update
 
 **Purpose:** The self-update functionality allows any project that uses the e-bash scripts library to automatically detect source updates and update library files file-by-file. This is designed specifically for BASH scripts built on top of the e-bash library.
 
@@ -741,7 +696,7 @@ source ".scripts/_self-update.sh" && self-update:rollback:backup "${full_path_to
 source ".scripts/_self-update.sh" && self-update:rollback:version "v1.0.0" "${full_path_to_file}"
 ```
 
-## Profile BASH script execution
+### Profile BASH script execution
 
 ![Profiler](docs/images/public/profiler.version-up.gif)
 
@@ -762,7 +717,7 @@ bin/profiler/profile.sh bin/version-up.v2.sh
 - ref1: https://itecnote.com/tecnote/r-performance-profiling-tools-for-shell-scripts/
 - ref2: https://www.thegeekstuff.com/2008/09/bash-shell-take-control-of-ps1-ps2-ps3-ps4-and-prompt_command/
 
-## Colors support in my terminal
+### Colors support in my terminal
 
 ![Terminal Colors](docs/images/public/terminal.colors.gif)
 
@@ -771,7 +726,7 @@ bin/profiler/profile.sh bin/version-up.v2.sh
 demos/demo.colors.sh
 ```
 
-## Emoji support in my terminal
+### Emoji support in my terminal
 
 Run this command if you want to see how your terminal setup support emojis.
 
@@ -779,7 +734,7 @@ Run this command if you want to see how your terminal setup support emojis.
 demos/demo.emojis.sh
 ```
 
-## References
+### References
 
 - PV - https://manpages.ubuntu.com/manpages/focal/man1/pv.1.html
 - https://catern.com/posts/pipes.html
@@ -789,3 +744,63 @@ demos/demo.emojis.sh
 - https://github.com/dylanaraps/writing-a-tui-in-bash
 - [bash-toml](https://github.com/bash-bastion/bash-toml) TOML Support (also INI files support!)
 - [Pure Bash Bible](https://github.com/dylanaraps/pure-bash-bible)
+
+## Contributing
+
+Conventions and folder structure: [docs/public/conventions.md](docs/public/conventions.md)
+
+### Roadmap
+
+- [x] High-level scripts should be in their own `bin` OR `demos`
+- [x] Git helpers
+- [ ] GitLab's helper scripts (work with branches, forks, submodules)
+- [ ] Globals module (declarative way of defining script dependencies to global environment variables)
+- [x] Logs monitoring documentation (different streams/files/tty for different information: info, debug, telemetry, dependencies)
+- [x] Copyright headers composing/parsing (extract from the file, update, insert)
+
+### Local Dev Environment - Requirements
+
+- [DirEnv](https://github.com/direnv/direnv)
+- [ShellFormat](https://github.com/mvdan/sh)
+- [ShellCheck](https://github.com/koalaman/shellcheck)
+- [KCov](https://github.com/SimonKagstrom/kcov)
+- [ShellSpec](https://github.com/shellspec/shellspec)
+
+> Note: alternative Unit Test Frameworks, Bats - [BATS core](https://github.com/bats-core/bats-core)
+
+```bash
+brew install direnv
+brew install shellcheck
+brew install shfmt
+brew install shellspec
+brew install kcov
+```
+
+### TDD - Test Driven Development, run tests on file change
+
+```bash
+# make tool required Python in hidden dependencies
+# ref1: https://docs.astral.sh/uv/guides/install-python/
+# ref2: https://github.com/astral-sh/uv
+uv python install 
+# alternative: pyenv install 3.13.2 && pyenv global 3.13.2
+
+# run all unit tests on file change
+watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec"
+
+# run failed only unit tests on file change
+watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick"
+
+# run failed only unit tests on file change without coverage
+watchman-make -p 'spec/*_spec.sh' '.scripts/*.sh' --run "shellspec --quick --no-kcov --"
+
+# Multiple Jobs (parallel execution)
+# shellspec -j 8  
+# 40.34s user 10.62s system 38% cpu 2:12.97 total
+# shellspec -j 4  
+# 40.35s user 10.28s system 40% cpu 2:03.77 total
+```
+
+## License
+
+[MIT](./LICENSE)
