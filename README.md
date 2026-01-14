@@ -111,6 +111,73 @@ http -b https://git.new/e-bash | bash -s -- install v1.0.0
 
 [More details](./docs/public/installation.md)
 
+#### Using e-bash in Your Scripts
+
+To use e-bash utilities in your bash scripts, add this bootstrap snippet at the top:
+
+**Version A: Documented/Readable** (recommended, with error handling)
+
+```bash
+# -----------------------------------------------------------------------------
+# e-bash bootstrap: auto-establish E_BASH and PATH
+# -----------------------------------------------------------------------------
+[ -z "$E_BASH" ] && readonly E_BASH="$(
+  # 1. Use existing E_BASH if set
+  # 2. Find .scripts relative to this script
+  # 3. Fallback to ~/.e-bash/.scripts
+  if [ -n "${E_BASH+x}" ]; then
+    echo "$E_BASH"
+  elif [ -f "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../.scripts/_colors.sh" ]; then
+    echo "$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
+  elif [ -d "$HOME/.e-bash/.scripts" ]; then
+    echo "$HOME/.e-bash/.scripts"
+  else
+    echo "" >&2
+    echo "Error: Cannot find e-bash library. Please install e-bash first." >&2
+    echo "  Visit: https://github.com/OleksandrKucherenko/e-bash" >&2
+    echo "" >&2
+    exit 1
+  fi
+)"
+
+# Add gnubin to PATH (Linux/macOS compatibility)
+if [[ -d "$E_BASH/../bin/gnubin" ]]; then
+  PATH="$E_BASH/../bin/gnubin:$PATH"
+  # Source _gnu.sh to create symlinks if needed
+  [[ -f "$E_BASH/_gnu.sh" ]] && source "$E_BASH/_gnu.sh"
+fi
+
+# Now source required modules
+source "$E_BASH/_colors.sh"
+source "$E_BASH/_logger.sh"
+# ... add more modules as needed
+# -----------------------------------------------------------------------------
+```
+
+**Version B: Ultra-Compact 2-LOC** (for power users)
+
+```bash
+# 2-LOC bootstrap: E_BASH discovery + gnubin PATH
+[ -z "$E_BASH" ] && readonly E_BASH="${E_BASH:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && [[ -f ../.scripts/_colors.sh ]] && echo ../.scripts || echo "$HOME/.e-bash/.scripts")}" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
+# Source modules (examples)
+source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
+```
+
+**Note:** The 2-LOC version assumes `~/.e-bash/.scripts` exists as fallback. If you need error handling, use Version A.
+
+Then source the modules you need:
+
+- `source "$E_BASH/_logger.sh"` - Advanced logging with tag-based filtering
+- `source "$E_BASH/_dependencies.sh"` - Dependency management with version constraints
+- `source "$E_BASH/_arguments.sh"` - Command-line argument parsing
+- `source "$E_BASH/_hooks.sh"` - Declarative hooks system
+- `source "$E_BASH/_traps.sh"` - Enhanced trap management
+- `source "$E_BASH/_semver.sh"` - Semantic versioning support
+- `source "$E_BASH/_commons.sh"` - Common utilities and UI components
+- `source "$E_BASH/_colors.sh"` - Terminal color detection and ANSI definitions
+
+See `.scripts/` directory for all available modules.
+
 ### Manual installation
 
 ```bash

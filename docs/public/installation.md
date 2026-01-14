@@ -63,6 +63,92 @@ export E_BASH_REMOTE_URL="https://github.com/mycompany/e-bash.git"
 ./bin/install.e-bash.sh install
 ```
 
+## Using e-bash from Global Installation
+
+When you install e-bash globally using `--global` flag, scripts are installed to `~/.e-bash/`. To use e-bash utilities in your own scripts that can run from anywhere, add this bootstrap snippet at the top of your script:
+
+### Bootstrap Snippet
+
+```bash
+# -----------------------------------------------------------------------------
+# e-bash bootstrap: auto-establish E_BASH and PATH
+# -----------------------------------------------------------------------------
+[ -z "$E_BASH" ] && readonly E_BASH="$(
+  # 1. Use existing E_BASH if set (from direnv, mise, etc.)
+  # 2. Find .scripts relative to this script
+  # 3. Fallback to ~/.e-bash/.scripts (global installation)
+  if [ -n "${E_BASH+x}" ]; then
+    echo "$E_BASH"
+  elif [ -f "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../.scripts/_colors.sh" ]; then
+    echo "$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
+  elif [ -d "$HOME/.e-bash/.scripts" ]; then
+    echo "$HOME/.e-bash/.scripts"
+  else
+    echo "" >&2
+    echo "Error: Cannot find e-bash library. Please install e-bash first." >&2
+    echo "  Visit: https://github.com/OleksandrKucherenko/e-bash" >&2
+    echo "" >&2
+    exit 1
+  fi
+)"
+
+# Add gnubin to PATH (Linux/macOS compatibility)
+if [[ -d "$E_BASH/../bin/gnubin" ]]; then
+  PATH="$E_BASH/../bin/gnubin:$PATH"
+  # Source _gnu.sh to create symlinks if needed
+  [[ -f "$E_BASH/_gnu.sh" ]] && source "$E_BASH/_gnu.sh"
+fi
+
+# Now source required modules
+source "$E_BASH/_colors.sh"
+source "$E_BASH/_logger.sh"
+# ... add more modules as needed
+# -----------------------------------------------------------------------------
+```
+
+### Discovery Order
+
+The bootstrap uses this priority order to find `E_BASH`:
+
+1. **`E_BASH` environment variable** - If already set by direnv, mise, or manually
+2. **Relative path** - Find `.scripts/` relative to script location (`../.scripts`)
+3. **Global fallback** - Use `~/.e-bash/.scripts` if it exists
+4. **Error** - Print helpful error with installation link if nothing found
+
+### Ultra-Compact Version
+
+For minimal boilerplate, a compressed 2-line version is also available:
+
+```bash
+# 2-LOC bootstrap: E_BASH discovery + gnubin PATH
+[ -z "$E_BASH" ] && readonly E_BASH="${E_BASH:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && [[ -f ../.scripts/_colors.sh ]] && echo ../.scripts || echo "$HOME/.e-bash/.scripts")}" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
+# Source modules (examples)
+source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
+```
+
+### Example: Creating a Standalone Script
+
+```bash
+#!/usr/bin/env bash
+# My script that uses e-bash utilities
+
+# Bootstrap e-bash
+[ -z "$E_BASH" ] && readonly E_BASH="$([ -n "${E_BASH+x}" ] && echo "$E_BASH" || [ -f "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../.scripts/_colors.sh" ] && echo "$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)" || [ -d "$HOME/.e-bash/.scripts" ] && echo "$HOME/.e-bash/.scripts" || { echo "Error: Cannot find e-bash library" >&2; exit 1; })"
+if [[ -d "$E_BASH/../bin/gnubin" ]]; then
+  PATH="$E_BASH/../bin/gnubin:$PATH"
+  [[ -f "$E_BASH/_gnu.sh" ]] && source "$E_BASH/_gnu.sh"
+fi
+
+# Source required modules
+source "$E_BASH/_logger.sh"
+source "$E_BASH/_commons.sh"
+
+logger myscript "$@"
+
+# Your script logic here...
+echo:MyScript "Hello from my script!"
+```
+
 ## Review of the Script Actions
 
 The following state diagram illustrates the logic flow of the `install.e-bash.sh` script, showing the various states and transitions during the installation, upgrade, and rollback processes.

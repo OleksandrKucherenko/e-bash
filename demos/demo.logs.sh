@@ -2,15 +2,15 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-14
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 DEBUG=demo,loader # enable debug mode
 
-# shellcheck disable=SC2155 # evaluate E_BASH from project structure if it's not set
-[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
+# 2-LOC bootstrap: E_BASH discovery + gnubin PATH
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && [[ -f ../.scripts/_colors.sh ]] && echo "$(pwd)/../.scripts" || echo "$HOME/.e-bash/.scripts")" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
 
 # shellcheck source=../.scripts/_colors.sh
 source /dev/null # trick shellcheck

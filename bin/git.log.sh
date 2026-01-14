@@ -2,10 +2,13 @@
 # shellcheck disable=SC2059,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-14
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+
+# 2-LOC bootstrap: E_BASH discovery + gnubin PATH
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && [[ -f ../.scripts/_colors.sh ]] && echo "$(pwd)/../.scripts" || echo "$HOME/.e-bash/.scripts")" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
 
 # include other scripts: _colors, _logger, _commons, _dependencies, _arguments
 # shellcheck source=../.scripts/_colors.sh
