@@ -4,8 +4,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-01-14
+## Version: 2.0.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -475,7 +475,7 @@ Describe "bin/git.semantic-version.sh /"
       When call gitsv:get_last_version_tag
       The status should be success
       # Output should be a version (1.1.0 in this repo)
-      The result of function no_colors_stdout should include "1."
+      The result of function no_colors_stdout should match pattern "*[0-9].[0-9]*.[0-9]*"
     End
 
     It "strips 'v' prefix from tags"

@@ -67,7 +67,9 @@ export E_BASH_REMOTE_URL="https://github.com/mycompany/e-bash.git"
 
 When you install e-bash globally using `--global` flag, scripts are installed to `~/.e-bash/`. To use e-bash utilities in your own scripts that can run from anywhere, add this bootstrap snippet at the top of your script:
 
-### Bootstrap Snippet
+### Bootstrap Versions
+
+**Version A: Documented/Readable** (with error handling)
 
 ```bash
 # -----------------------------------------------------------------------------
@@ -106,25 +108,32 @@ source "$E_BASH/_logger.sh"
 # -----------------------------------------------------------------------------
 ```
 
+**Version B: Compact 2-LOC** (248 characters, good balance)
+
+```bash
+# 2-LOC bootstrap: E_BASH discovery + gnubin PATH
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && [[ -f ../.scripts/_colors.sh ]] && echo "$(pwd)/../.scripts" || echo "$HOME/.e-bash/.scripts")" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
+# Source modules (examples)
+source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
+```
+
+**Version C: Ultra-Optimized** (198 characters, used in e-bash scripts)
+
+```bash
+# Ultra-optimized bootstrap: E_BASH discovery + gnubin PATH
+[ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; . "$E_BASH/_gnu.sh"; PATH="$E_BASH/../bin/gnubin:$PATH"; }
+# Source modules (examples)
+source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
+```
+
 ### Discovery Order
 
-The bootstrap uses this priority order to find `E_BASH`:
+All bootstrap versions use this priority order to find `E_BASH`:
 
 1. **`E_BASH` environment variable** - If already set by direnv, mise, or manually
 2. **Relative path** - Find `.scripts/` relative to script location (`../.scripts`)
 3. **Global fallback** - Use `~/.e-bash/.scripts` if it exists
-4. **Error** - Print helpful error with installation link if nothing found
-
-### Ultra-Compact Version
-
-For minimal boilerplate, a compressed 2-line version is also available:
-
-```bash
-# 2-LOC bootstrap: E_BASH discovery + gnubin PATH
-[ -z "$E_BASH" ] && readonly E_BASH="${E_BASH:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && [[ -f ../.scripts/_colors.sh ]] && echo ../.scripts || echo "$HOME/.e-bash/.scripts")}" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
-# Source modules (examples)
-source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
-```
+4. **Error** - Print helpful error with installation link if nothing found (Version A only)
 
 ### Example: Creating a Standalone Script
 

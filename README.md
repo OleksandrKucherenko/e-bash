@@ -115,7 +115,7 @@ http -b https://git.new/e-bash | bash -s -- install v1.0.0
 
 To use e-bash utilities in your bash scripts, add this bootstrap snippet at the top:
 
-**Version A: Documented/Readable** (recommended, with error handling)
+**Version A: Documented/Readable** (with error handling)
 
 ```bash
 # -----------------------------------------------------------------------------
@@ -154,16 +154,25 @@ source "$E_BASH/_logger.sh"
 # -----------------------------------------------------------------------------
 ```
 
-**Version B: Ultra-Compact 2-LOC** (for power users)
+**Version B: Compact 2-LOC** (248 characters, good balance)
 
 ```bash
 # 2-LOC bootstrap: E_BASH discovery + gnubin PATH
-[ -z "$E_BASH" ] && readonly E_BASH="${E_BASH:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && [[ -f ../.scripts/_colors.sh ]] && echo ../.scripts || echo "$HOME/.e-bash/.scripts")}" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
+[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && [[ -f ../.scripts/_colors.sh ]] && echo "$(pwd)/../.scripts" || echo "$HOME/.e-bash/.scripts")" && source "${E_BASH}/_gnu.sh" && PATH="${E_BASH}/../bin/gnubin:$PATH"
 # Source modules (examples)
 source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
 ```
 
-**Note:** The 2-LOC version assumes `~/.e-bash/.scripts` exists as fallback. If you need error handling, use Version A.
+**Version C: Ultra-Optimized** (198 characters, used in e-bash scripts)
+
+```bash
+# Ultra-optimized bootstrap: E_BASH discovery + gnubin PATH
+[ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; . "$E_BASH/_gnu.sh"; PATH="$E_BASH/../bin/gnubin:$PATH"; }
+# Source modules (examples)
+source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
+```
+
+**Note:** All versions use the same discovery order: `E_BASH` env var → relative `.scripts/` → `~/.e-bash/.scripts` fallback. Version A has full error handling; Versions B/C are more compact.
 
 Then source the modules you need:
 

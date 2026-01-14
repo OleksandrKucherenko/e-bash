@@ -2,17 +2,16 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-01-14
+## Version: 2.0.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # Script for visualizing and managing NPM package versions from NPM registry
 # Allows for easy selection and unpublishing of versions in various range formats
 
-# E_BASH is globally available via direnv
-# If for some reason it's not set, provide a fallback
-[ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd ../.scripts && pwd)"
+# Ultra-optimized bootstrap: E_BASH discovery + gnubin PATH
+[ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; . "$E_BASH/_gnu.sh"; PATH="$E_BASH/../bin/gnubin:$PATH"; }
 
 # Skip automatic argument parsing - we'll call parse:arguments manually
 export SKIP_ARGS_PARSING=1
