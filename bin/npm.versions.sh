@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-14
-## Version: 2.0.2
+## Last revisit: 2026-01-15
+## Version: 2.0.12
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -66,6 +66,57 @@ SILENT_NPM=${SILENT_NPM:-false}
 # Determine terminal width for column layout (can be mocked in tests)
 TERM_WIDTH=${TERM_WIDTH:-$(tput cols 2>/dev/null || echo 80)}
 
+# Sort newline-separated versions using semver ordering (ascending)
+function semver:sort_lines() {
+  awk '
+  function pad(num) { return sprintf("%010d", num) }
+  function prerelease_key(pre,   count, segments, key, idx, part) {
+    if (pre == "") {
+      return "~"
+    }
+    count = split(pre, segments, ".")
+    key = ""
+    for (idx = 1; idx <= count; idx++) {
+      part = segments[idx]
+      if (part ~ /^[0-9]+$/) {
+        key = key sprintf("0%010d", part + 0)
+      } else {
+        key = key sprintf("1%s", part)
+      }
+    }
+    return key
+  }
+  {
+    line = $0
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+    if (line == "") {
+      next
+    }
+    version = line
+    sub(/^v/, "", version)
+    build = ""
+    core = version
+    plus_index = index(version, "+")
+    if (plus_index > 0) {
+      build = substr(version, plus_index + 1)
+      core = substr(version, 1, plus_index - 1)
+    }
+    prerelease = ""
+    main = core
+    dash_index = index(core, "-")
+    if (dash_index > 0) {
+      prerelease = substr(core, dash_index + 1)
+      main = substr(core, 1, dash_index - 1)
+    }
+    split(main, numbers, ".")
+    major = (numbers[1] == "" ? 0 : numbers[1] + 0)
+    minor = (numbers[2] == "" ? 0 : numbers[2] + 0)
+    patch = (numbers[3] == "" ? 0 : numbers[3] + 0)
+    printf "%s.%s.%s.%s.%s %s\n", pad(major), pad(minor), pad(patch), prerelease_key(prerelease), build, line
+  }
+  ' | LC_ALL=C sort | cut -d' ' -f2-
+}
+
 # Function to print usage instructions (wraps print:help with examples)
 function print_usage() {
   # Ensure argument metadata is initialized when sourced in tests
@@ -104,7 +155,7 @@ function fetch_versions() {
   echo:Dump "Versions JSON:" "${versions[*]}"
   
   # Parse JSON output and sort versions
-  local result=$(echo "$versions" | tr -d '[]" ' | tr ',' '\n' | grep -v '^$' | sort -V)
+  local result=$(echo "$versions" | tr -d '[]" ' | tr ',' '\n' | grep -v '^$' | semver:sort_lines)
   echo:Dump "Sorted versions: ${result}"
 
   echo "$result"

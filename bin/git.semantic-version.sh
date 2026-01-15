@@ -5,8 +5,8 @@
 ## Analyzes conventional commits and calculates semantic version progression
 ##
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-14
-## Version: 2.0.2
+## Last revisit: 2026-01-15
+## Version: 2.0.12
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -438,7 +438,7 @@ function gitsv:is_tag_included() {
 ## @return tag name (without 'v' prefix) or empty string
 function gitsv:get_last_version_tag() {
   # Get all tags matching semver pattern, sorted by version (descending for efficiency)
-  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -Vr)
+  local tags=$(git tag -l --sort=-version:refname 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
 
   # Find the first (highest version) tag that passes ancestry check
   while IFS= read -r tag; do
@@ -458,7 +458,7 @@ function gitsv:get_last_version_tag() {
 ## @return commit hash or empty string
 function gitsv:get_last_version_tag_commit() {
   # Get all tags matching semver pattern, sorted by version (descending for efficiency)
-  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -Vr)
+  local tags=$(git tag -l --sort=-version:refname 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
 
   # Find the first (highest version) tag that passes ancestry check
   while IFS= read -r tag; do
@@ -503,7 +503,7 @@ function gitsv:get_commit_from_n_versions_back() {
   local n="$1"
 
   # Get all version tags sorted
-  local all_tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V)
+  local all_tags=$(git tag -l --sort=version:refname 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
 
   # Explicitly check for empty tag list
   if [[ -z "$all_tags" ]]; then

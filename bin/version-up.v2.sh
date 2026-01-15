@@ -3,8 +3,8 @@
 # shellcheck disable=SC2155,SC1090,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-14
-## Version: 2.0.2
+## Last revisit: 2026-01-15
+## Version: 2.0.12
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -264,7 +264,7 @@ function use_prefix() {
 
 # get the highest version tag for all branches, print it to STDOUT
 function highest_tag() {
-	local gitTag=$(git tag --list 2>/dev/null | sort -V | tail -n1 2>/dev/null)
+	local gitTag=$(git tag --list --sort=-version:refname 2>/dev/null | head -n1 2>/dev/null)
 	echo "$gitTag"
 }
 
