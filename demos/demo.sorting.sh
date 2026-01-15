@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-14
-## Version: 2.0.2
+## Last revisit: 2026-01-15
+## Version: 2.0.14
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -28,7 +28,21 @@ function compare:numbers() {
 function compare:versions() {
   #echo:Dbg "${cl_green}$1${cl_reset} < ${cl_blue}$2${cl_reset}: $( (semver:constraints:simple "$1<$2") && echo 'yes' || echo 'no')"
 
-  (semver:constraints:simple "$1<$2") && return 0 || return 1
+  # Optimization: Use semver:compare directly instead of constraints:simple wrapper
+  # Returns: 0=equal, 1=greater, 2=less
+  local res
+  semver:compare "$1" "$2" >/dev/null 2>&1
+  res=$?
+  
+  # if less, return true (0)
+  if [[ $res -eq 2 ]]; then return 0; fi
+  
+  # if equal, use string comparison for stability (shorter/lexicographical first)
+  if [[ $res -eq 0 ]]; then 
+    [[ "$1" < "$2" ]] && return 0
+  fi
+  
+  return 1
 }
 
 function compare:strings() {
@@ -79,6 +93,57 @@ function array:qsort() {
   array:qsort "$compare" "${right[@]}"
 }
 
+# Sort newline-separated versions using semver ordering (ascending)
+function semver:sort_lines() {
+  awk '
+  function pad(num) { return sprintf("%010d", num) }
+  function prerelease_key(pre,   count, segments, key, idx, part) {
+    if (pre == "") {
+      return "~"
+    }
+    count = split(pre, segments, ".")
+    key = ""
+    for (idx = 1; idx <= count; idx++) {
+      part = segments[idx]
+      if (part ~ /^[0-9]+$/) {
+        key = key sprintf("0%010d", part + 0)
+      } else {
+        key = key sprintf("1%s", part)
+      }
+    }
+    return key
+  }
+  {
+    line = $0
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+    if (line == "") {
+      next
+    }
+    version = line
+    sub(/^v/, "", version)
+    build = ""
+    core = version
+    plus_index = index(version, "+")
+    if (plus_index > 0) {
+      build = substr(version, plus_index + 1)
+      core = substr(version, 1, plus_index - 1)
+    }
+    prerelease = ""
+    main = core
+    dash_index = index(core, "-")
+    if (dash_index > 0) {
+      prerelease = substr(core, dash_index + 1)
+      main = substr(core, 1, dash_index - 1)
+    }
+    split(main, numbers, ".")
+    major = (numbers[1] == "" ? 0 : numbers[1] + 0)
+    minor = (numbers[2] == "" ? 0 : numbers[2] + 0)
+    patch = (numbers[3] == "" ? 0 : numbers[3] + 0)
+    printf "%s.%s.%s.%s.%s %s\n", pad(major), pad(minor), pad(patch), prerelease_key(prerelease), build, line
+  }
+  ' | LC_ALL=C sort | cut -d' ' -f2-
+}
+
 function test:version-strings() {
   local versions=()
   versions+=("1.0.0-beta")
@@ -98,17 +163,26 @@ function test:version-strings() {
   versions+=("2.2.3")
 
   echo "input:" "${versions[@]}"
+  echo ""
 
   # expected:
   # 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0
   #  set -x
   local version
-  echo "output:"
 
-  while read -r version; do
-    [ -z "$version" ] && continue # skip empty line
-    echo "$version"
-  done < <(array:qsort "compare:versions" "${versions[@]}")
+  echo "--- Bash QuickSort ---"
+  time (
+    while read -r version; do
+      [ -z "$version" ] && continue # skip empty line
+      echo "$version"
+    done < <(array:qsort "compare:versions" "${versions[@]}")
+  )
+  
+  echo ""
+  echo "--- Awk Sort ---"
+  time (
+    printf "%s\n" "${versions[@]}" | semver:sort_lines
+  )
 }
 
 readonly VERSION_PATTERN="v?${SEMVER}"
@@ -122,12 +196,21 @@ function test:git-tags() {
   done < <(git tag -l --sort="v:refname" | grep -i -E "^${VERSION_PATTERN}\$" | sed -E "s/^v?//gi")
 
   echo "input:" "${versions[@]}"
-  echo "output:"
+  echo ""
+  
+  echo "--- Bash QuickSort ---"
+  time (
+    while IFS= read -r version; do
+      [ -z "$version" ] && continue # skip empty line
+      echo "$version"
+    done < <(array:qsort "compare:versions" "${versions[@]}")
+  )
 
-  while IFS= read -r version; do
-    [ -z "$version" ] && continue # skip empty line
-    echo "$version"
-  done < <(array:qsort "compare:versions" "${versions[@]}")
+  echo ""
+  echo "--- Awk Sort ---"
+  time (
+    printf "%s\n" "${versions[@]}" | semver:sort_lines
+  )
 }
 
 test:git-tags
