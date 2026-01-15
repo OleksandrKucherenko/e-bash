@@ -4,8 +4,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-14
-## Version: 2.0.1
+## Last revisit: 2026-01-15
+## Version: 2.0.14
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -492,7 +492,7 @@ Describe "bin/git.semantic-version.sh /"
             ;;
           "merge-base --is-ancestor")
             # Simulate: tag IS an ancestor
-            return 0
+            exit 0
             ;;
           *)
             command git "$@"
@@ -516,7 +516,7 @@ Describe "bin/git.semantic-version.sh /"
             ;;
           "merge-base --is-ancestor")
             # Simulate: tag is NOT an ancestor
-            return 1
+            exit 1
             ;;
           *)
             command git "$@"
@@ -539,7 +539,7 @@ Describe "bin/git.semantic-version.sh /"
             ;;
           "merge-base --is-ancestor")
             # Simulate: tag is NOT an ancestor
-            return 1
+            exit 1
             ;;
           *)
             command git "$@"
@@ -592,9 +592,9 @@ Describe "bin/git.semantic-version.sh /"
             # v2.0.0 is NOT an ancestor, v1.0.0 IS an ancestor
             # git merge-base --is-ancestor <commit> HEAD -> $1=merge-base, $2=--is-ancestor, $3=<commit>, $4=HEAD
             if [[ "$3" == "notancestor123" ]]; then
-              return 1
+              exit 1
             elif [[ "$3" == "ancestor456" ]]; then
-              return 0
+              exit 0
             else
               command git "$@"
             fi
@@ -627,7 +627,7 @@ Describe "bin/git.semantic-version.sh /"
             ;;
           merge-base)
             # Simulate NOT an ancestor (but filtering is disabled)
-            return 1
+            exit 1
             ;;
           *)
             command git "$@"
