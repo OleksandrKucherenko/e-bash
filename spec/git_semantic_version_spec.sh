@@ -495,7 +495,7 @@ Describe "bin/git.semantic-version.sh /"
             return 0
             ;;
           *)
-            %preserve git
+            command git "$@"
             ;;
         esac
       End
@@ -519,7 +519,7 @@ Describe "bin/git.semantic-version.sh /"
             return 1
             ;;
           *)
-            %preserve git
+            command git "$@"
             ;;
         esac
       End
@@ -542,7 +542,7 @@ Describe "bin/git.semantic-version.sh /"
             return 1
             ;;
           *)
-            %preserve git
+            command git "$@"
             ;;
         esac
       End
@@ -584,6 +584,8 @@ Describe "bin/git.semantic-version.sh /"
               echo "notancestor123"
             elif [[ "$4" == "v1.0.0" ]]; then
               echo "ancestor456"
+            else
+              command git "$@"
             fi
             ;;
           merge-base)
@@ -593,10 +595,12 @@ Describe "bin/git.semantic-version.sh /"
               return 1
             elif [[ "$3" == "ancestor456" ]]; then
               return 0
+            else
+              command git "$@"
             fi
             ;;
           *)
-            %preserve git
+            command git "$@"
             ;;
         esac
       End
@@ -626,7 +630,7 @@ Describe "bin/git.semantic-version.sh /"
             return 1
             ;;
           *)
-            %preserve git
+            command git "$@"
             ;;
         esac
       End
