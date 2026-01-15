@@ -23,6 +23,7 @@
 
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
 import {
     binPackingFFD,
     buildFileItemsFromTimings,
@@ -206,6 +207,53 @@ function buildHybridItems(
     return { items, usingStatic, splitFiles };
 }
 
+/**
+ * Helper to parse shellspec output for runtime line number resolution
+ */
+function parseShellspecExamplesLinenoOutput(stdout: string): Map<string, number[]> {
+    const fileLineNumbers: Map<string, number[]> = new Map();
+    for (const rawLine of stdout.trim().split("\n")) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        const match = line.match(/^(.+):(\d+)$/);
+        if (!match) continue;
+        const [, file, lineno] = match;
+        const n = parseInt(lineno, 10);
+        if (!Number.isFinite(n)) continue;
+        if (!fileLineNumbers.has(file)) fileLineNumbers.set(file, []);
+        fileLineNumbers.get(file)!.push(n);
+    }
+    return fileLineNumbers;
+}
+
+/**
+ * Helper to attach line numbers to timing data
+ */
+function attachLinenoByOrder(
+    data: TimingDataV2,
+    fileLineNumbers: Map<string, number[]>,
+): number {
+    let updatedCount = 0;
+
+    for (const [file, fileData] of Object.entries(data.timings)) {
+        const lineNumbers = fileLineNumbers.get(file);
+        if (!lineNumbers) continue;
+
+        const exampleEntries = Object.entries(fileData.examples);
+        let lineIndex = 0;
+
+        for (const [, example] of exampleEntries) {
+            if (lineIndex >= lineNumbers.length) break;
+            // Overwrite missing or existing line number to match current state
+            example.lineno = lineNumbers[lineIndex];
+            updatedCount++;
+            lineIndex++;
+        }
+    }
+
+    return updatedCount;
+}
+
 function main() {
     const parsed = parseChunkArgs(process.argv.slice(2));
 
@@ -239,6 +287,42 @@ function main() {
     let effectiveGranularity = granularity;
 
     console.error(`🔧 Granularity: ${granularity}`);
+
+    // Check for missing line numbers and attempt runtime resolution if needed
+    if (granularity === "example" && timingData && timingData.version === "2.0") {
+        const v2Data = timingData as TimingDataV2;
+        let missingCount = 0;
+
+        for (const [file, data] of Object.entries(v2Data.timings)) {
+            if (data.examples) {
+                for (const ex of Object.values(data.examples)) {
+                    if (ex.lineno === undefined || ex.lineno === null) missingCount++;
+                }
+            }
+        }
+
+        if (missingCount > 0) {
+            console.error(`⚠️  Found ${missingCount} examples missing line numbers. Resolving via shellspec...`);
+
+            try {
+                const linenoResult = spawnSync("shellspec", ["--list", "examples:lineno"], {
+                    encoding: "utf-8",
+                    cwd: projectRoot,
+                });
+
+                if (linenoResult.error || !linenoResult.stdout) {
+                    console.error("⚠️  Failed to resolve line numbers: shellspec execution failed");
+                } else {
+                    const fileLineNumbers = parseShellspecExamplesLinenoOutput(linenoResult.stdout);
+                    // Updated call to attachLinenoByOrder, no third arg needed for in-memory resolution as we want to update everything
+                    const updated = attachLinenoByOrder(v2Data, fileLineNumbers);
+                    console.error(`✅ Resolved line numbers for ${updated} examples`);
+                }
+            } catch (err) {
+                console.error("⚠️  Failed to run shellspec resolution:", err);
+            }
+        }
+    }
 
     if (granularity === "file") {
         // Extract file timings from data
