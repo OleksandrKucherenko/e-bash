@@ -49,6 +49,7 @@ readonly EXIT_INTERRUPTED=130
 # Global flags
 INTERRUPTED=false
 readonly ANNOTATION_MAX_LEN=80
+FILTER_BRANCH_TAGS=true  # Filter tags to only include those in HEAD ancestry (disable with --all-refs)
 
 # Tmux progress display variables (inline pattern from demo)
 readonly TMUX_PROGRESS_HEIGHT=2
@@ -412,30 +413,63 @@ function gitsv:extract_semvers_from_tags() {
   echo "$versions"
 }
 
+## Check if a tag should be included based on ancestry filtering
+## @param $1 - tag name
+## @return 0 if tag should be included, 1 otherwise
+function gitsv:is_tag_included() {
+  local tag="$1"
+
+  # If filtering is disabled (--all-tags flag), always include
+  if [[ "$FILTER_BRANCH_TAGS" != "true" ]]; then
+    return 0
+  fi
+
+  # Check if tag's commit is an ancestor of HEAD
+  local commit=$(git rev-list -n 1 "$tag" 2>/dev/null)
+  if [[ -n "$commit" ]] && git merge-base --is-ancestor "$commit" HEAD 2>/dev/null; then
+    return 0
+  fi
+
+  return 1
+}
+
 ## Get the latest semantic version tag
+## Optionally filters to only tags in HEAD ancestry based on FILTER_BRANCH_TAGS
 ## @return tag name (without 'v' prefix) or empty string
 function gitsv:get_last_version_tag() {
-  # Get all tags sorted by version
-  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
+  # Get all tags matching semver pattern, sorted by version (descending for efficiency)
+  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -Vr)
 
-  if [[ -n "$tags" ]]; then
-    # Remove 'v' prefix if present
-    echo "$tags" | sed 's/^v//'
-  else
-    echo ""
-  fi
+  # Find the first (highest version) tag that passes ancestry check
+  while IFS= read -r tag; do
+    if [[ -n "$tag" ]] && gitsv:is_tag_included "$tag"; then
+      # Remove 'v' prefix if present
+      echo "$tag" | sed 's/^v//'
+      return 0
+    fi
+  done <<< "$tags"
+
+  echo ""
+  return 0
 }
 
 ## Get commit hash of the latest version tag
+## Optionally filters to only tags in HEAD ancestry based on FILTER_BRANCH_TAGS
 ## @return commit hash or empty string
 function gitsv:get_last_version_tag_commit() {
-  local tag=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n1)
+  # Get all tags matching semver pattern, sorted by version (descending for efficiency)
+  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -Vr)
 
-  if [[ -n "$tag" ]]; then
-    git rev-list -n 1 "$tag" 2>/dev/null
-  else
-    echo ""
-  fi
+  # Find the first (highest version) tag that passes ancestry check
+  while IFS= read -r tag; do
+    if [[ -n "$tag" ]] && gitsv:is_tag_included "$tag"; then
+      git rev-list -n 1 "$tag" 2>/dev/null
+      return 0
+    fi
+  done <<< "$tags"
+
+  echo ""
+  return 0
 }
 
 ## Get commit where current branch diverged from main/master
@@ -462,23 +496,42 @@ function gitsv:get_branch_start_commit() {
 }
 
 ## Get commit hash from N versions back
+## Optionally filters to only tags in HEAD ancestry based on FILTER_BRANCH_TAGS
 ## @param $1 - number of versions to go back
 ## @return commit hash or empty string
 function gitsv:get_commit_from_n_versions_back() {
   local n="$1"
 
   # Get all version tags sorted
-  local tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V)
+  local all_tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+' | sort -V)
 
-  # Explicitly check for empty tag list before counting
-  # wc -l counts trailing newline, so empty string still reports as 1 line
-  if [[ -z "$tags" ]]; then
+  # Explicitly check for empty tag list
+  if [[ -z "$all_tags" ]]; then
     # No tags exist, fall back to first commit
     gitsv:get_first_commit
     return 0
   fi
 
-  local tag_count=$(echo "$tags" | wc -l)
+  # Filter tags based on ancestry if filtering is enabled
+  local filtered_tags=""
+  while IFS= read -r tag; do
+    if [[ -n "$tag" ]] && gitsv:is_tag_included "$tag"; then
+      if [[ -z "$filtered_tags" ]]; then
+        filtered_tags="$tag"
+      else
+        filtered_tags="${filtered_tags}"$'\n'"${tag}"
+      fi
+    fi
+  done <<< "$all_tags"
+
+  # Check if we have any tags after filtering
+  if [[ -z "$filtered_tags" ]]; then
+    # No tags pass the filter, fall back to first commit
+    gitsv:get_first_commit
+    return 0
+  fi
+
+  local tag_count=$(echo "$filtered_tags" | wc -l)
 
   if [[ $tag_count -lt $n ]]; then
     # Not enough tags, return first commit
@@ -487,7 +540,7 @@ function gitsv:get_commit_from_n_versions_back() {
   fi
 
   # Get the Nth tag from the end
-  local target_tag=$(echo "$tags" | tail -n "$n" | head -n1)
+  local target_tag=$(echo "$filtered_tags" | tail -n "$n" | head -n1)
 
   if [[ -n "$target_tag" ]]; then
     git rev-list -n 1 "$target_tag" 2>/dev/null
@@ -881,6 +934,8 @@ ${st_bold}OPTIONS:${cl_reset}
                                 BUMP is major, minor, patch, or none
                                 Can be specified multiple times
                                 Example: --add-keyword wip:patch
+  --all-refs                    Get latest tag from ALL refs (like release-it)
+                                ${cl_grey}(default: only tags in current branch ancestry)${cl_reset}
   --tmux-progress               Enable tmux progress display
                                 ${cl_grey}(auto-starts tmux session if not already in one)${cl_reset}
 
@@ -905,6 +960,9 @@ ${st_bold}EXAMPLES:${cl_reset}
 
   # Enable tmux progress display (auto-starts tmux if needed)
   $SCRIPT_NAME --tmux-progress --from-first-commit
+
+  # Get latest tag from ALL refs (like release-it's getLatestTagFromAllRefs)
+  $SCRIPT_NAME --all-refs --from-last-tag
 
 ${st_bold}CONVENTIONAL COMMITS:${cl_reset}
   This tool follows the Conventional Commits specification (conventionalcommits.org)
@@ -986,6 +1044,10 @@ function parse:cli:arguments() {
         local kw_bump="${BASH_REMATCH[2]}"
         gitsv:add_keyword "$kw_type" "$kw_bump" || return $EXIT_INVALID_ARGS
         shift 2
+        ;;
+      --all-refs)
+        FILTER_BRANCH_TAGS=false
+        shift
         ;;
       --tmux-progress)
         USE_TMUX="true"
