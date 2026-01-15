@@ -579,14 +579,16 @@ Describe "bin/git.semantic-version.sh /"
             ;;
           rev-list)
             # Return commit hash for the tag
-            if [[ "$3" == "v2.0.0" ]]; then
+            # git rev-list -n 1 <tag> -> $1=rev-list, $2=-n, $3=1, $4=<tag>
+            if [[ "$4" == "v2.0.0" ]]; then
               echo "notancestor123"
-            elif [[ "$3" == "v1.0.0" ]]; then
+            elif [[ "$4" == "v1.0.0" ]]; then
               echo "ancestor456"
             fi
             ;;
           merge-base)
             # v2.0.0 is NOT an ancestor, v1.0.0 IS an ancestor
+            # git merge-base --is-ancestor <commit> HEAD -> $1=merge-base, $2=--is-ancestor, $3=<commit>, $4=HEAD
             if [[ "$3" == "notancestor123" ]]; then
               return 1
             elif [[ "$3" == "ancestor456" ]]; then
