@@ -2,8 +2,8 @@
 # Apply ShellSpec timeout patch (Ubuntu/Linux)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-01-15
+## Version: 2.0.3
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -40,7 +40,7 @@ find_shellspec_dir() {
     log_error "ShellSpec not found in PATH"
     return 1
   fi
-  
+
   # Resolve symlink to find the actual binary location
   local resolved_bin="$shellspec_bin"
   if [[ -L "$shellspec_bin" ]]; then
@@ -60,30 +60,38 @@ find_shellspec_dir() {
        done
        resolved_bin="$resolved"
   fi
-  
-  # We have the absolute path to bin/shellspec. 
-  # The installation root relative to 'bin' is usually one level up.
-  local install_root
-  install_root="$(cd "$(dirname "$resolved_bin")/.." && pwd)"
-  
-  # Heuristic: Check where lib/core/core.sh lives relative to this root.
-  # 1. Standard: $ROOT/lib/core/core.sh
-  # 2. Linuxbrew (similar to Homebrew): $ROOT/lib/shellspec/lib/core/core.sh
-  
-  if [[ -f "$install_root/lib/core/core.sh" ]]; then
-      echo "$install_root"
-      return 0
-  elif [[ -f "$install_root/lib/shellspec/lib/core/core.sh" ]]; then
-      echo "$install_root/lib/shellspec"
+
+  local bin_dir
+  bin_dir="$(cd "$(dirname "$resolved_bin")" && pwd)"
+
+  # Candidate #1: the directory that already contains shellspec
+  if [[ -f "$bin_dir/lib/core/core.sh" ]]; then
+      echo "$bin_dir"
       return 0
   fi
-  
-  # Fallback
-  echo "$install_root"
+
+  # Candidate #2: parent of bin/shellspec style installs
+  local parent_dir
+  parent_dir="$(cd "$bin_dir/.." && pwd)"
+  if [[ -f "$parent_dir/lib/core/core.sh" ]]; then
+      echo "$parent_dir"
+      return 0
+  elif [[ -f "$parent_dir/lib/shellspec/lib/core/core.sh" ]]; then
+      echo "$parent_dir/lib/shellspec"
+      return 0
+  fi
+
+  # Fallback to the directory that owns the binary.
+  echo "$bin_dir"
 }
 
 if ! SHELLSPEC_DIR="$(find_shellspec_dir)"; then
   log_error "Could not determine ShellSpec installation directory."
+  exit 1
+fi
+
+if [[ ! -f "$SHELLSPEC_DIR/lib/core/core.sh" ]]; then
+  log_error "ShellSpec core not found under $SHELLSPEC_DIR"
   exit 1
 fi
 
@@ -111,8 +119,15 @@ fi
 
 # Apply patch
 # Apply patch (tolerant of partials)
-log_info "Applying patch (ignoring partial errors)..."
-patch -p1 -N < "$PATCH_FILE" || true
+PATCH_OPTS=(--batch --forward -p1 -N)
+log_info "Checking patch applicability..."
+if ! patch "${PATCH_OPTS[@]}" --dry-run -i "$PATCH_FILE" >/dev/null; then
+    log_error "Patch dry-run failed. Please ensure ShellSpec sources match 0.28.1"
+    exit 1
+fi
+
+log_info "Applying patch..."
+patch "${PATCH_OPTS[@]}" -i "$PATCH_FILE"
 
 # 5. Handle bin/shellspec.rej (Harmless)
 if [[ -f "bin/shellspec.rej" ]]; then
