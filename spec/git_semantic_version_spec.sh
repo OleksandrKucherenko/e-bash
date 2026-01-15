@@ -4,8 +4,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-14
-## Version: 2.0.1
+## Last revisit: 2026-01-15
+## Version: 2.0.14
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -470,6 +470,89 @@ Describe "bin/git.semantic-version.sh /"
     End
   End
 
+  Describe "gitsv:is_tag_included() - Branch ancestry filtering /"
+    It "includes all tags when FILTER_BRANCH_TAGS is false"
+      FILTER_BRANCH_TAGS=false
+      # Get any tag from the repository
+      local_tag=$(git tag -l 2>/dev/null | head -n1)
+
+      When call gitsv:is_tag_included "$local_tag"
+      The status should be success
+    End
+
+    It "returns success for tag in HEAD ancestry when filtering enabled"
+      FILTER_BRANCH_TAGS=true
+
+      # Mock git to simulate tag that IS an ancestor
+      Mock git
+        case "$1 $2" in
+          "rev-list -n")
+            # Return a fake commit hash
+            echo "abc123def456"
+            ;;
+          "merge-base --is-ancestor")
+            # Simulate: tag IS an ancestor
+            exit 0
+            ;;
+          *)
+            command git "$@"
+            ;;
+        esac
+      End
+
+      When call gitsv:is_tag_included "v1.0.0"
+      The status should be success
+    End
+
+    It "returns failure for tag NOT in HEAD ancestry when filtering enabled"
+      FILTER_BRANCH_TAGS=true
+
+      # Mock git to simulate tag that is NOT an ancestor
+      Mock git
+        case "$1 $2" in
+          "rev-list -n")
+            # Return a fake commit hash
+            echo "abc123def456"
+            ;;
+          "merge-base --is-ancestor")
+            # Simulate: tag is NOT an ancestor
+            exit 1
+            ;;
+          *)
+            command git "$@"
+            ;;
+        esac
+      End
+
+      When call gitsv:is_tag_included "v2.0.0"
+      The status should be failure
+    End
+
+    It "returns success when filtering disabled regardless of ancestry"
+      FILTER_BRANCH_TAGS=false
+
+      # Mock git to simulate tag that is NOT an ancestor
+      Mock git
+        case "$1 $2" in
+          "rev-list -n")
+            echo "abc123def456"
+            ;;
+          "merge-base --is-ancestor")
+            # Simulate: tag is NOT an ancestor
+            exit 1
+            ;;
+          *)
+            command git "$@"
+            ;;
+        esac
+      End
+
+      # Should still return success because filtering is disabled
+      When call gitsv:is_tag_included "v2.0.0"
+      The status should be success
+    End
+  End
+
   Describe "gitsv:get_last_version_tag() /"
     It "returns latest semver tag if exists"
       When call gitsv:get_last_version_tag
@@ -481,6 +564,80 @@ Describe "bin/git.semantic-version.sh /"
     It "strips 'v' prefix from tags"
       # Mock git tag command to test
       Skip "Requires git command mocking"
+    End
+
+    It "filters tags to only ancestors when FILTER_BRANCH_TAGS is true"
+      FILTER_BRANCH_TAGS=true
+
+      # Mock git to return multiple tags, with v2.0.0 being NOT an ancestor
+      Mock git
+        case "$1" in
+          tag)
+            # Return tags in reverse version order (highest first)
+            echo "v2.0.0"
+            echo "v1.0.0"
+            ;;
+          rev-list)
+            # Return commit hash for the tag
+            # git rev-list -n 1 <tag> -> $1=rev-list, $2=-n, $3=1, $4=<tag>
+            if [[ "$4" == "v2.0.0" ]]; then
+              echo "notancestor123"
+            elif [[ "$4" == "v1.0.0" ]]; then
+              echo "ancestor456"
+            else
+              command git "$@"
+            fi
+            ;;
+          merge-base)
+            # v2.0.0 is NOT an ancestor, v1.0.0 IS an ancestor
+            # git merge-base --is-ancestor <commit> HEAD -> $1=merge-base, $2=--is-ancestor, $3=<commit>, $4=HEAD
+            if [[ "$3" == "notancestor123" ]]; then
+              exit 1
+            elif [[ "$3" == "ancestor456" ]]; then
+              exit 0
+            else
+              command git "$@"
+            fi
+            ;;
+          *)
+            command git "$@"
+            ;;
+        esac
+      End
+
+      # Should return v1.0.0 (without 'v'), skipping v2.0.0
+      When call gitsv:get_last_version_tag
+      The output should eq "1.0.0"
+    End
+
+    It "includes all tags when FILTER_BRANCH_TAGS is false"
+      FILTER_BRANCH_TAGS=false
+
+      # Mock git to return multiple tags
+      Mock git
+        case "$1" in
+          tag)
+            # Return tags in reverse version order
+            echo "v2.0.0"
+            echo "v1.0.0"
+            ;;
+          rev-list)
+            # Return commit hash
+            echo "commit123"
+            ;;
+          merge-base)
+            # Simulate NOT an ancestor (but filtering is disabled)
+            exit 1
+            ;;
+          *)
+            command git "$@"
+            ;;
+        esac
+      End
+
+      # Should return v2.0.0 (highest) even though it's not an ancestor
+      When call gitsv:get_last_version_tag
+      The output should eq "2.0.0"
     End
   End
 

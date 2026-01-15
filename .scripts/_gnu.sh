@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-01-15
+## Version: 2.0.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -11,13 +11,14 @@
 # when running on Linux, providing ggrep/gsed commands for compatibility
 #
 
-# Only proceed if we're on Linux
+# Determine gnubin directory path
+BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/gnubin"
+
+# Always create gnubin directory (even on macOS) to prevent cd errors
+mkdir -p "$BIN_DIR"
+
+# Only create symlinks on Linux
 if [[ "$(uname -s)" == "Linux" ]]; then
-  BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/gnubin"
-
-  # Create bin directory if it doesn't exist
-  mkdir -p "$BIN_DIR"
-
   TOOLS=("grep" "sed" "find" "awk" "mv" "cp" "ln" "readlink" "date")
 
   for tool in "${TOOLS[@]}"; do
