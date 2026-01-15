@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-14
-## Version: 2.0.2
+## Last revisit: 2026-01-15
+## Version: 2.0.13
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -118,6 +118,57 @@ function on_return() {
   echo -e "${indent}${GRAY}<< ${BLUE}$current_func${NC}" >&2
 
   __FUNC_STACK="${__FUNC_STACK},<<"
+}
+
+# Sort newline-separated semantic versions (ascending) without relying on GNU sort -V
+function semver:sort_lines() {
+  awk '
+  function pad(num) { return sprintf("%010d", num) }
+  function prerelease_key(pre,   count, segments, key, idx, part) {
+    if (pre == "") {
+      return "~"
+    }
+    count = split(pre, segments, ".")
+    key = ""
+    for (idx = 1; idx <= count; idx++) {
+      part = segments[idx]
+      if (part ~ /^[0-9]+$/) {
+        key = key sprintf("0%010d", part + 0)
+      } else {
+        key = key sprintf("1%s", part)
+      }
+    }
+    return key
+  }
+  {
+    line = $0
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+    if (line == "") {
+      next
+    }
+    version = line
+    sub(/^v/, "", version)
+    build = ""
+    core = version
+    plus_index = index(version, "+")
+    if (plus_index > 0) {
+      build = substr(version, plus_index + 1)
+      core = substr(version, 1, plus_index - 1)
+    }
+    prerelease = ""
+    main = core
+    dash_index = index(core, "-")
+    if (dash_index > 0) {
+      prerelease = substr(core, dash_index + 1)
+      main = substr(core, 1, dash_index - 1)
+    }
+    split(main, numbers, ".")
+    major = (numbers[1] == "" ? 0 : numbers[1] + 0)
+    minor = (numbers[2] == "" ? 0 : numbers[2] + 0)
+    patch = (numbers[3] == "" ? 0 : numbers[3] + 0)
+    printf "%s.%s.%s.%s.%s %s\n", pad(major), pad(minor), pad(patch), prerelease_key(prerelease), build, line
+  }
+  ' | LC_ALL=C sort | cut -d' ' -f2-
 }
 
 [ -n "$DEBUG" ] && trap on_entry DEBUG && trap on_return RETURN
@@ -2058,7 +2109,7 @@ function repo_versions() {
   non_stable_tags=$(echo "$all_remote_tags" | grep -v -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || echo "")
 
   # Identify latest stable version
-  latest_version=$(echo "$stable_tags" | sort -V | tail -n 1)
+  latest_version=$(echo "$stable_tags" | semver:sort_lines | tail -n 1)
 
   # First display information about home installation
   echo ""
@@ -2091,7 +2142,7 @@ function repo_versions() {
 
   # Display all stable versions with highlights
   if [ -n "$stable_tags" ]; then
-    echo "$stable_tags" | sort -V | while read -r version; do
+    echo "$stable_tags" | semver:sort_lines | while read -r version; do
       local version_status=""
       [ "$version" = "$current_version" ] && version_status=" ${GREEN}[CURRENT]${NC}"
       [ "$version" = "$latest_version" ] && version_status="${version_status} ${YELLOW}[LAST]${NC}"
@@ -2107,7 +2158,7 @@ function repo_versions() {
 
   echo ""
   echo -e "${GREEN}Available remote non-stable versions (pre-releases, development):${NC}"
-  echo "$non_stable_tags" | sort -V | while read -r version; do
+  echo "$non_stable_tags" | semver:sort_lines | while read -r version; do
     local version_status=""
     [ "$version" = "$current_version" ] && version_status=" ${GREEN}[CURRENT]${NC}"
 
