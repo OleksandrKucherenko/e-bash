@@ -419,7 +419,7 @@ function gitsv:extract_semvers_from_tags() {
 function gitsv:is_tag_included() {
   local tag="$1"
 
-  # If filtering is disabled (--all-tags flag), always include
+  # If filtering is disabled (--all-refs flag), always include
   if [[ "$FILTER_BRANCH_TAGS" != "true" ]]; then
     return 0
   fi
