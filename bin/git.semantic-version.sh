@@ -19,7 +19,11 @@ export SKIP_ARGS_PARSING=1
 
 # Bootstrap: 1) E_BASH discovery (only if not set), 2) gnubin setup (always)
 [ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
-. "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
+. "$E_BASH/_gnu.sh"
+# Add gnubin to PATH only if directory exists (for macOS compatibility)
+if [[ -d "$E_BASH/../bin/gnubin" ]]; then
+  PATH="$(cd "$E_BASH/../bin/gnubin" && pwd):$PATH"
+fi
 readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 readonly SCRIPT_VERSION="1.0.0"
 

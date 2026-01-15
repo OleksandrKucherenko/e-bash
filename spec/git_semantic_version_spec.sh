@@ -480,23 +480,11 @@ Describe "bin/git.semantic-version.sh /"
       The status should be success
     End
 
-    It "checks ancestry when FILTER_BRANCH_TAGS is true"
-      FILTER_BRANCH_TAGS=true
-      # Get a tag that exists in the repository
-      local_tag=$(git tag -l 2>/dev/null | head -n1)
-
-      # Should return success if tag is in ancestry, or failure if not
-      # We can't predict which, so just verify the function runs
-      When call gitsv:is_tag_included "$local_tag"
-      # Status depends on whether tag is ancestor - just verify it doesn't error
-      The status should satisfy [ "$status" -eq 0 ] || [ "$status" -eq 1 ]
-    End
-
     It "returns success for tag in HEAD ancestry when filtering enabled"
       FILTER_BRANCH_TAGS=true
 
       # Mock git to simulate tag that IS an ancestor
-      git() {
+      Mock git
         case "$1 $2" in
           "rev-list -n")
             # Return a fake commit hash
@@ -507,10 +495,10 @@ Describe "bin/git.semantic-version.sh /"
             return 0
             ;;
           *)
-            command git "$@"
+            %preserve git
             ;;
         esac
-      }
+      End
 
       When call gitsv:is_tag_included "v1.0.0"
       The status should be success
@@ -520,7 +508,7 @@ Describe "bin/git.semantic-version.sh /"
       FILTER_BRANCH_TAGS=true
 
       # Mock git to simulate tag that is NOT an ancestor
-      git() {
+      Mock git
         case "$1 $2" in
           "rev-list -n")
             # Return a fake commit hash
@@ -531,10 +519,10 @@ Describe "bin/git.semantic-version.sh /"
             return 1
             ;;
           *)
-            command git "$@"
+            %preserve git
             ;;
         esac
-      }
+      End
 
       When call gitsv:is_tag_included "v2.0.0"
       The status should be failure
@@ -544,7 +532,7 @@ Describe "bin/git.semantic-version.sh /"
       FILTER_BRANCH_TAGS=false
 
       # Mock git to simulate tag that is NOT an ancestor
-      git() {
+      Mock git
         case "$1 $2" in
           "rev-list -n")
             echo "abc123def456"
@@ -554,10 +542,10 @@ Describe "bin/git.semantic-version.sh /"
             return 1
             ;;
           *)
-            command git "$@"
+            %preserve git
             ;;
         esac
-      }
+      End
 
       # Should still return success because filtering is disabled
       When call gitsv:is_tag_included "v2.0.0"
@@ -582,7 +570,7 @@ Describe "bin/git.semantic-version.sh /"
       FILTER_BRANCH_TAGS=true
 
       # Mock git to return multiple tags, with v2.0.0 being NOT an ancestor
-      git() {
+      Mock git
         case "$1" in
           tag)
             # Return tags in reverse version order (highest first)
@@ -606,10 +594,10 @@ Describe "bin/git.semantic-version.sh /"
             fi
             ;;
           *)
-            command git "$@"
+            %preserve git
             ;;
         esac
-      }
+      End
 
       # Should return v1.0.0 (without 'v'), skipping v2.0.0
       When call gitsv:get_last_version_tag
@@ -620,7 +608,7 @@ Describe "bin/git.semantic-version.sh /"
       FILTER_BRANCH_TAGS=false
 
       # Mock git to return multiple tags
-      git() {
+      Mock git
         case "$1" in
           tag)
             # Return tags in reverse version order
@@ -636,10 +624,10 @@ Describe "bin/git.semantic-version.sh /"
             return 1
             ;;
           *)
-            command git "$@"
+            %preserve git
             ;;
         esac
-      }
+      End
 
       # Should return v2.0.0 (highest) even though it's not an ancestor
       When call gitsv:get_last_version_tag
