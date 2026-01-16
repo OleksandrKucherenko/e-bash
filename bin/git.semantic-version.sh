@@ -5,8 +5,8 @@
 ## Analyzes conventional commits and calculates semantic version progression
 ##
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-15
-## Version: 2.0.12
+## Last revisit: 2026-01-16
+## Version: 2.1.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -50,6 +50,14 @@ readonly EXIT_INTERRUPTED=130
 INTERRUPTED=false
 readonly ANNOTATION_MAX_LEN=80
 FILTER_BRANCH_TAGS=true  # Filter tags to only include those in HEAD ancestry (disable with --all-refs)
+
+# Tag mapping: commit_hash -> comma-separated list of tags
+# Includes both direct tags and tags on branches that branched from this commit
+declare -A -g TAG_MAP=()
+
+# Branch tag info: tag_name -> "branch_name:commit_hash:branched_from_hash"
+# Stores detailed information about tags on branches
+declare -A -g BRANCH_TAG_INFO=()
 
 # Tmux progress display variables (inline pattern from demo)
 readonly TMUX_PROGRESS_HEIGHT=2
@@ -413,6 +421,67 @@ function gitsv:extract_semvers_from_tags() {
   echo "$versions"
 }
 
+## Sort tags using semantic version comparison
+## Uses bubble sort with semver:compare for proper semver ordering
+## @param $1 - newline-separated list of tags
+## @param $2 - sort order: "desc" for descending (highest first), "asc" for ascending
+## @return newline-separated sorted tags
+function gitsv:sort_tags_by_semver() {
+  local tags="$1"
+  local order="${2:-desc}"
+  local -a tag_array=()
+  local tag_count=0
+
+  # Read tags into array
+  while IFS= read -r tag; do
+    [[ -n "$tag" ]] && tag_array+=("$tag")
+  done <<< "$tags"
+  tag_count=${#tag_array[@]}
+
+  # Bubble sort using semver:compare
+  local swapped=true
+  while [[ "$swapped" == "true" ]]; do
+    swapped=false
+    for ((i = 0; i < tag_count - 1; i++)); do
+      local tag1="${tag_array[$i]}"
+      local tag2="${tag_array[$i + 1]}"
+
+      # Extract semver from tags for comparison
+      local ver1=$(gitsv:extract_semver_from_tag "$tag1")
+      local ver2=$(gitsv:extract_semver_from_tag "$tag2")
+
+      # Skip if either tag doesn't have a valid semver
+      if [[ -z "$ver1" ]] || [[ -z "$ver2" ]]; then
+        continue
+      fi
+
+      # Compare versions
+      semver:compare "$ver1" "$ver2"
+      local cmp_result=$?
+
+      # Determine if swap is needed based on sort order
+      local should_swap=false
+      if [[ "$order" == "desc" ]]; then
+        # For descending, we want ver1 > ver2
+        [[ $cmp_result -eq 2 ]] && should_swap=true  # ver1 < ver2, swap needed
+      else
+        # For ascending, we want ver1 < ver2
+        [[ $cmp_result -eq 1 ]] && should_swap=true  # ver1 > ver2, swap needed
+      fi
+
+      if [[ "$should_swap" == "true" ]]; then
+        # Swap tags
+        tag_array[$i]="$tag2"
+        tag_array[$i + 1]="$tag1"
+        swapped=true
+      fi
+    done
+  done
+
+  # Output sorted tags
+  printf '%s\n' "${tag_array[@]}"
+}
+
 ## Check if a tag should be included based on ancestry filtering
 ## @param $1 - tag name
 ## @return 0 if tag should be included, 1 otherwise
@@ -433,21 +502,114 @@ function gitsv:is_tag_included() {
   return 1
 }
 
+## Build a map of commits to tags, including tags on branches that branched from those commits
+## This populates the global TAG_MAP and BRANCH_TAG_INFO associative arrays
+## When --all-refs is used, also includes tags on other branches by mapping them to their
+## branched-from commit on HEAD's ancestry
+function gitsv:build_tag_map() {
+  # Clear existing maps
+  TAG_MAP=()
+  BRANCH_TAG_INFO=()
+
+  # Get the main branch name (default to HEAD if not found)
+  local main_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+  if [[ -z "$main_branch" ]]; then
+    for branch in main master; do
+      if git rev-parse --verify "$branch" >/dev/null 2>&1; then
+        main_branch="$branch"
+        break
+      fi
+    done
+  fi
+  # Default to HEAD if no main branch found
+  if [[ -z "$main_branch" ]]; then
+    main_branch="HEAD"
+  fi
+
+  # Get all tags matching semver pattern
+  local all_tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
+
+  while IFS= read -r tag; do
+    [[ -z "$tag" ]] && continue
+
+    local tag_commit=$(git rev-list -n 1 "$tag" 2>/dev/null)
+    [[ -z "$tag_commit" ]] && continue
+
+    # Check if tag is on HEAD's ancestry
+    if git merge-base --is-ancestor "$tag_commit" HEAD 2>/dev/null; then
+      # Tag is directly on HEAD's ancestry, map to its own commit
+      if [[ -z "${TAG_MAP[$tag_commit]}" ]]; then
+        TAG_MAP[$tag_commit]="$tag"
+      else
+        TAG_MAP[$tag_commit]="${TAG_MAP[$tag_commit]},$tag"
+      fi
+      # Store as direct tag (on main/current branch)
+      BRANCH_TAG_INFO[$tag]="main:$tag_commit:$tag_commit"
+    elif [[ "$FILTER_BRANCH_TAGS" != "true" ]]; then
+      # --all-refs mode: tag is on a different branch
+      # Find the merge-base with main branch to get the branched-from commit
+      local merge_base=$(git merge-base "$main_branch" "$tag_commit" 2>/dev/null)
+      if [[ -n "$merge_base" ]]; then
+        # Map the tag to the branched-from commit
+        if [[ -z "${TAG_MAP[$merge_base]}" ]]; then
+          TAG_MAP[$merge_base]="$tag"
+        else
+          TAG_MAP[$merge_base]="${TAG_MAP[$merge_base]},$tag"
+        fi
+        # Find the branch name for this tag's commit
+        local tag_branch=$(git branch --contains "$tag_commit" --format='%(refname:short)' 2>/dev/null | head -1)
+        if [[ -z "$tag_branch" ]]; then
+          # Try remote branches
+          tag_branch=$(git branch -r --contains "$tag_commit" --format='%(refname:short)' 2>/dev/null | head -1)
+        fi
+        if [[ -z "$tag_branch" ]]; then
+          tag_branch="unknown"
+        fi
+        # Store detailed branch info: "branch_name:tag_commit:branched_from_commit"
+        BRANCH_TAG_INFO[$tag]="$tag_branch:$tag_commit:$merge_base"
+      fi
+    fi
+  done <<< "$all_tags"
+
+  echo:SemVer "Built tag map with ${#TAG_MAP[@]} entries"
+}
+
+## Get all tags associated with a commit (including branched-from tags)
+## @param $1 - commit hash
+## @return comma-separated list of tags, or empty string
+function gitsv:get_commit_tags_with_map() {
+  local commit_hash="$1"
+
+  # First check if commit is in TAG_MAP
+  if [[ -n "${TAG_MAP[$commit_hash]}" ]]; then
+    echo "${TAG_MAP[$commit_hash]}"
+    return 0
+  fi
+
+  # Fall back to direct tag lookup
+  gitsv:get_commit_tags "$commit_hash"
+}
+
 ## Get the latest semantic version tag
 ## Optionally filters to only tags in HEAD ancestry based on FILTER_BRANCH_TAGS
 ## @return tag name (without 'v' prefix) or empty string
 function gitsv:get_last_version_tag() {
-  # Get all tags matching semver pattern, sorted by version (descending for efficiency)
-  local tags=$(git tag -l --sort=-version:refname 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
+  # Get all tags matching semver pattern
+  local all_tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
+
+  # Sort tags by semver (descending - highest first)
+  local sorted_tags=$(gitsv:sort_tags_by_semver "$all_tags" "desc")
 
   # Find the first (highest version) tag that passes ancestry check
+  # In --all-refs mode, we still return the tag version (even if not in HEAD ancestry)
+  # because gitsv:get_last_version_tag_commit will handle the merge-base logic
   while IFS= read -r tag; do
     if [[ -n "$tag" ]] && gitsv:is_tag_included "$tag"; then
       # Remove 'v' prefix if present
       echo "$tag" | sed 's/^v//'
       return 0
     fi
-  done <<< "$tags"
+  done <<< "$sorted_tags"
 
   echo ""
   return 0
@@ -455,18 +617,80 @@ function gitsv:get_last_version_tag() {
 
 ## Get commit hash of the latest version tag
 ## Optionally filters to only tags in HEAD ancestry based on FILTER_BRANCH_TAGS
+## When --all-refs is used (FILTER_BRANCH_TAGS=false), handles tags on other branches:
+## - If tag is ancestor of HEAD: use tag's commit
+## - If HEAD is ancestor of tag (branch created from HEAD): find parent of tag's commit
+## - If branches diverged: use merge-base
 ## @return commit hash or empty string
 function gitsv:get_last_version_tag_commit() {
-  # Get all tags matching semver pattern, sorted by version (descending for efficiency)
-  local tags=$(git tag -l --sort=-version:refname 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
+  # Get all tags matching semver pattern
+  local all_tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
 
-  # Find the first (highest version) tag that passes ancestry check
+  # Sort tags by semver (descending - highest first)
+  local sorted_tags=$(gitsv:sort_tags_by_semver "$all_tags" "desc")
+
+  # Find the first (highest version) tag
   while IFS= read -r tag; do
-    if [[ -n "$tag" ]] && gitsv:is_tag_included "$tag"; then
-      git rev-list -n 1 "$tag" 2>/dev/null
-      return 0
+    if [[ -z "$tag" ]]; then
+      continue
     fi
-  done <<< "$tags"
+
+    local tag_commit=$(git rev-list -n 1 "$tag" 2>/dev/null)
+    if [[ -z "$tag_commit" ]]; then
+      continue
+    fi
+
+    # If filtering is enabled (--all-refs not used), only include tags in HEAD ancestry
+    if [[ "$FILTER_BRANCH_TAGS" == "true" ]]; then
+      if gitsv:is_tag_included "$tag"; then
+        echo "$tag_commit"
+        return 0
+      fi
+    else
+      # --all-refs mode: find the highest version tag
+      local tag_ancestor=false
+      local head_ancestor=false
+
+      if git merge-base --is-ancestor "$tag_commit" HEAD 2>/dev/null; then
+        tag_ancestor=true
+      fi
+
+      if git merge-base --is-ancestor HEAD "$tag_commit" 2>/dev/null; then
+        head_ancestor=true
+      fi
+
+      if [[ "$tag_ancestor" == "true" ]]; then
+        # Tag is ancestor of HEAD, use it directly
+        echo "$tag_commit"
+        return 0
+      elif [[ "$head_ancestor" == "true" ]]; then
+        # HEAD is ancestor of tag (branch was created from current HEAD)
+        # This means the release branch was just created from HEAD
+        # We need to use the parent of HEAD as the starting point to show new commits
+        local head_parent=$(git rev-parse "HEAD^@" 2>/dev/null | head -n1)
+        if [[ -n "$head_parent" ]] && [[ "$head_parent" != "HEAD" ]] && [[ "$head_parent" != "$(git rev-list -n1 HEAD)" ]]; then
+          echo:SemVer "${cl_yellow}Tag '$tag' is on a branch created from current HEAD.${cl_reset}"
+          echo:SemVer "${cl_yellow}Using parent of HEAD (${head_parent:0:8}) as starting point.${cl_reset}"
+          echo "$head_parent"
+          return 0
+        else
+          # HEAD has no parent (single commit repo), fall back to first commit
+          echo:SemVer "${cl_yellow}HEAD has no parent commit, falling back to first commit.${cl_reset}"
+          gitsv:get_first_commit
+          return 0
+        fi
+      else
+        # Branches have diverged, use merge-base
+        local merge_base=$(git merge-base "$tag_commit" HEAD 2>/dev/null)
+        if [[ -n "$merge_base" ]]; then
+          echo:SemVer "${cl_yellow}Tag '$tag' is on a diverged branch.${cl_reset}"
+          echo:SemVer "${cl_yellow}Using merge-base ${merge_base:0:8} as starting point.${cl_reset}"
+          echo "$merge_base"
+          return 0
+        fi
+      fi
+    fi
+  done <<< "$sorted_tags"
 
   echo ""
   return 0
@@ -502,8 +726,8 @@ function gitsv:get_branch_start_commit() {
 function gitsv:get_commit_from_n_versions_back() {
   local n="$1"
 
-  # Get all version tags sorted
-  local all_tags=$(git tag -l --sort=version:refname 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
+  # Get all version tags (unsorted initially)
+  local all_tags=$(git tag -l 2>/dev/null | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+')
 
   # Explicitly check for empty tag list
   if [[ -z "$all_tags" ]]; then
@@ -511,6 +735,9 @@ function gitsv:get_commit_from_n_versions_back() {
     gitsv:get_first_commit
     return 0
   fi
+
+  # Sort tags by semver (ascending - oldest first for N-versions-back logic)
+  local sorted_tags=$(gitsv:sort_tags_by_semver "$all_tags" "asc")
 
   # Filter tags based on ancestry if filtering is enabled
   local filtered_tags=""
@@ -522,7 +749,7 @@ function gitsv:get_commit_from_n_versions_back() {
         filtered_tags="${filtered_tags}"$'\n'"${tag}"
       fi
     fi
-  done <<< "$all_tags"
+  done <<< "$sorted_tags"
 
   # Check if we have any tags after filtering
   if [[ -z "$filtered_tags" ]]; then
@@ -539,7 +766,7 @@ function gitsv:get_commit_from_n_versions_back() {
     return 0
   fi
 
-  # Get the Nth tag from the end
+  # Get the Nth tag from the end (Nth most recent tag)
   local target_tag=$(echo "$filtered_tags" | tail -n "$n" | head -n1)
 
   if [[ -n "$target_tag" ]]; then
@@ -654,6 +881,9 @@ function gitsv:process_commits() {
   local current_version="$2"
   local use_tmux="$3"
 
+  # Build tag map (includes branched-from tags for --all-refs mode)
+  gitsv:build_tag_map
+
   # Get commit list from start to HEAD
   local commits=$(git rev-list --reverse "${start_commit}..HEAD" 2>/dev/null)
 
@@ -744,7 +974,7 @@ function gitsv:process_commits() {
     local short_hash=$(git rev-parse --short "$commit_hash")
     local commit_msg=$(git log -1 --format=%B "$commit_hash")
     local first_line=$(git log -1 --format=%s "$commit_hash")
-    local commit_tags=$(gitsv:get_commit_tags "$commit_hash")
+    local commit_tags=$(gitsv:get_commit_tags_with_map "$commit_hash")
 
     # Check if commit has semver tags that should override version
     local tag_versions=$(gitsv:extract_semvers_from_tags "$commit_tags")
@@ -809,9 +1039,20 @@ function gitsv:process_commits() {
 
     # Format tag display with color if present
     # Show all tags (not just semver ones) in display
+    # Indicate if tag is from a branched-from commit (not directly on this commit)
     local display_tag="${commit_tags:--}"
     if [[ -n "$commit_tags" && "$commit_tags" != "-" ]]; then
-      display_tag="${cl_cyan}${commit_tags}${cl_reset}"
+      # Check if any tag is not directly on this commit (from TAG_MAP)
+      local direct_tags=$(git tag --points-at "$commit_hash" 2>/dev/null)
+      local tag_display=""
+
+      if [[ "$commit_tags" != "$direct_tags" ]]; then
+        # Some tags are from branched-from commits, show with indicator
+        display_tag="${cl_cyan}${commit_tags}${cl_yellow}*${cl_reset}"
+      else
+        # All tags are directly on this commit
+        display_tag="${cl_cyan}${commit_tags}${cl_reset}"
+      fi
     fi
 
     local display_msg="${first_line}${annotation_marker}"
@@ -875,6 +1116,32 @@ function gitsv:process_commits() {
     echo "${st_bold}Annotations:${cl_reset}"
     for annotation in "${annotations[@]}"; do
       echo "  $annotation"
+    done
+  fi
+
+  # Print branch tag information if any tags are from other branches (before Summary)
+  if [[ ${#BRANCH_TAG_INFO[@]} -gt 0 ]]; then
+    local has_branch_tags=false
+    for tag in "${!BRANCH_TAG_INFO[@]}"; do
+      local info="${BRANCH_TAG_INFO[$tag]}"
+      local branch_name=$(echo "$info" | cut -d':' -f1)
+      local tag_commit=$(echo "$info" | cut -d':' -f2)
+      local branched_from=$(echo "$info" | cut -d':' -f3)
+
+      # Only show tags that are not on main (branched_from != tag_commit)
+      if [[ "$branched_from" != "$tag_commit" ]]; then
+        if [[ "$has_branch_tags" == "false" ]]; then
+          echo ""
+          echo "${st_bold}${cl_yellow}Tags from branches:${cl_reset}"
+          has_branch_tags=true
+        fi
+
+        local short_tag=$(echo "$tag" | sed 's/^v//')
+        local short_tag_commit=$(git rev-parse --short "$tag_commit" 2>/dev/null)
+        local short_branched_from=$(git rev-parse --short "$branched_from" 2>/dev/null)
+
+        echo "  ${cl_cyan}${tag}${cl_reset} - found in branch ${cl_yellow}${branch_name}${cl_reset} at commit ${short_tag_commit}, branched from ${short_branched_from}"
+      fi
     done
   fi
 
@@ -1247,12 +1514,22 @@ function main() {
     return $EXIT_ERROR
   fi
 
+  # For from-last-tag strategy, get the tag's version to use as starting version
+  local start_version="$INITIAL_VERSION"
+  if [[ "$STRATEGY" == "from-last-tag" ]]; then
+    local tag_version=$(gitsv:get_last_version_tag)
+    if [[ -n "$tag_version" ]]; then
+      start_version="$tag_version"
+      echo:SemVer "Using tag version as starting point: $start_version"
+    fi
+  fi
+
   echo:SemVer "Strategy: $STRATEGY"
   echo:SemVer "Start commit: $start_commit"
-  echo:SemVer "Initial version: $INITIAL_VERSION"
+  echo:SemVer "Initial version: $start_version"
 
   # Process commits
-  gitsv:process_commits "$start_commit" "$INITIAL_VERSION" "$USE_TMUX"
+  gitsv:process_commits "$start_commit" "$start_version" "$USE_TMUX"
 
   return $?
 }
