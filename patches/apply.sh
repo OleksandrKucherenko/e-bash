@@ -135,7 +135,7 @@ if [[ -f "bin/shellspec.rej" ]]; then
     rm "bin/shellspec.rej"
 fi
 
-# 5. Verify patch was applied
+# 6. Verify patch was applied
 log_step "Verifying patch..."
 
 # Functional verification: Create a test that times out
