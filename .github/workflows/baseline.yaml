@@ -284,16 +284,16 @@ jobs:
         shell: bash
         run: |
           # Check specific package directories only (not entire Homebrew)
-          # Based on dependencies from .envrc
+          # Excludes GitHub pre-installed tools: bash, git, git-lfs, jq
+          # Excludes optional dev tools: watchman, t-rec, mise
           MAX_SIZE_MB=300
           TOTAL_SIZE=0
 
-          # Required packages (from .envrc dependency list)
-          PACKAGES="bash direnv git git-lfs shellspec grep gnu-sed gawk coreutils jq"
-          # Optional packages that might be installed
-          PACKAGES="$PACKAGES watchman t-rec mise"
+          # Only cache packages NOT pre-installed by GitHub Actions
+          # Required for CI: direnv, shellspec, GNU tools (grep, sed, awk, coreutils)
+          PACKAGES="direnv shellspec grep gnu-sed gawk coreutils"
 
-          echo "=== Checking package sizes ==="
+          echo "=== Checking package sizes (CI-required only) ==="
           for pkg in $PACKAGES; do
             if [ -d "${{ steps.brew_path.outputs.path }}/Cellar/$pkg" ]; then
               PKG_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}/Cellar/$pkg" 2>/dev/null | cut -f1 || echo "0")
@@ -315,6 +315,10 @@ jobs:
           echo ""
           echo "Total package cache size: ${TOTAL_SIZE}MB"
           echo "Maximum allowed size: ${MAX_SIZE_MB}MB"
+          echo ""
+          echo "ℹ️  Excluded from cache:"
+          echo "  - Pre-installed by GitHub: bash, git, git-lfs, jq"
+          echo "  - Optional dev tools: watchman, t-rec, mise"
 
           if [ "$TOTAL_SIZE" -le "$MAX_SIZE_MB" ]; then
             echo "✅ Package cache size is within limits, caching enabled"
@@ -324,30 +328,23 @@ jobs:
             echo "should_cache=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Cache Homebrew packages (selective - only .envrc dependencies)
+      - name: Cache Homebrew packages (CI-required only, excludes pre-installed tools)
         if: steps.cache_check.outputs.should_cache == 'true'
         uses: actions/cache@v4
         with:
           path: |
-            ${{ steps.brew_path.outputs.path }}/Cellar/bash
             ${{ steps.brew_path.outputs.path }}/Cellar/direnv
-            ${{ steps.brew_path.outputs.path }}/Cellar/git
-            ${{ steps.brew_path.outputs.path }}/Cellar/git-lfs
             ${{ steps.brew_path.outputs.path }}/Cellar/shellspec
             ${{ steps.brew_path.outputs.path }}/Cellar/grep
             ${{ steps.brew_path.outputs.path }}/Cellar/gnu-sed
             ${{ steps.brew_path.outputs.path }}/Cellar/gawk
             ${{ steps.brew_path.outputs.path }}/Cellar/coreutils
-            ${{ steps.brew_path.outputs.path }}/Cellar/jq
-            ${{ steps.brew_path.outputs.path }}/Cellar/watchman
-            ${{ steps.brew_path.outputs.path }}/Cellar/t-rec
-            ${{ steps.brew_path.outputs.path }}/Cellar/mise
             ${{ steps.brew_path.outputs.path }}/bin
             ${{ steps.brew_path.outputs.path }}/opt
             ${{ steps.brew_path.outputs.path }}/var/homebrew
-          key: brew-${{ runner.os }}-selective-${{ steps.hashes.outputs.sha256 }}
+          key: brew-${{ runner.os }}-ci-only-${{ steps.hashes.outputs.sha256 }}
           restore-keys: |
-            brew-${{ runner.os }}-selective-
+            brew-${{ runner.os }}-ci-only-
 
       - name: Add Homebrew to PATH
         shell: bash
