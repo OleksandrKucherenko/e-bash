@@ -283,43 +283,71 @@ jobs:
         id: cache_check
         shell: bash
         run: |
-          # Check if Homebrew directories exist and their size
+          # Check specific package directories only (not entire Homebrew)
+          # Based on dependencies from .envrc
           MAX_SIZE_MB=300
           TOTAL_SIZE=0
 
-          if [ -d "${{ steps.brew_path.outputs.path }}" ]; then
-            BREW_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}" 2>/dev/null | cut -f1 || echo "0")
-            TOTAL_SIZE=$((TOTAL_SIZE + BREW_SIZE))
-            echo "Homebrew path size: ${BREW_SIZE}MB"
-          fi
+          # Required packages (from .envrc dependency list)
+          PACKAGES="bash direnv git git-lfs shellspec grep gnu-sed gawk coreutils jq"
+          # Optional packages that might be installed
+          PACKAGES="$PACKAGES watchman t-rec mise"
 
-          if [ -d "${{ steps.brew_path.outputs.cache_dir }}" ]; then
-            CACHE_SIZE=$(du -sm "${{ steps.brew_path.outputs.cache_dir }}" 2>/dev/null | cut -f1 || echo "0")
-            TOTAL_SIZE=$((TOTAL_SIZE + CACHE_SIZE))
-            echo "Homebrew cache size: ${CACHE_SIZE}MB"
-          fi
+          echo "=== Checking package sizes ==="
+          for pkg in $PACKAGES; do
+            if [ -d "${{ steps.brew_path.outputs.path }}/Cellar/$pkg" ]; then
+              PKG_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}/Cellar/$pkg" 2>/dev/null | cut -f1 || echo "0")
+              TOTAL_SIZE=$((TOTAL_SIZE + PKG_SIZE))
+              echo "  $pkg: ${PKG_SIZE}MB"
+            fi
+          done
 
-          echo "Total Homebrew size: ${TOTAL_SIZE}MB"
+          # Add small directories (bin, opt, var/homebrew - contain symlinks and metadata)
+          echo "=== Checking metadata directories ==="
+          for dir in bin opt var/homebrew; do
+            if [ -d "${{ steps.brew_path.outputs.path }}/$dir" ]; then
+              DIR_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}/$dir" 2>/dev/null | cut -f1 || echo "0")
+              TOTAL_SIZE=$((TOTAL_SIZE + DIR_SIZE))
+              echo "  $dir: ${DIR_SIZE}MB"
+            fi
+          done
+
+          echo ""
+          echo "Total package cache size: ${TOTAL_SIZE}MB"
           echo "Maximum allowed size: ${MAX_SIZE_MB}MB"
 
           if [ "$TOTAL_SIZE" -le "$MAX_SIZE_MB" ]; then
-            echo "✅ Homebrew size is within limits, caching enabled"
+            echo "✅ Package cache size is within limits, caching enabled"
             echo "should_cache=true" >> $GITHUB_OUTPUT
           else
-            echo "⚠️  Homebrew size exceeds ${MAX_SIZE_MB}MB, caching disabled to avoid inefficiency"
+            echo "⚠️  Package cache exceeds ${MAX_SIZE_MB}MB, caching disabled"
             echo "should_cache=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Cache Homebrew packages
+      - name: Cache Homebrew packages (selective - only .envrc dependencies)
         if: steps.cache_check.outputs.should_cache == 'true'
         uses: actions/cache@v4
         with:
           path: |
-            ${{ steps.brew_path.outputs.path }}
-            ${{ steps.brew_path.outputs.cache_dir }}
-          key: brew-${{ runner.os }}-${{ steps.hashes.outputs.sha256 }}
+            ${{ steps.brew_path.outputs.path }}/Cellar/bash
+            ${{ steps.brew_path.outputs.path }}/Cellar/direnv
+            ${{ steps.brew_path.outputs.path }}/Cellar/git
+            ${{ steps.brew_path.outputs.path }}/Cellar/git-lfs
+            ${{ steps.brew_path.outputs.path }}/Cellar/shellspec
+            ${{ steps.brew_path.outputs.path }}/Cellar/grep
+            ${{ steps.brew_path.outputs.path }}/Cellar/gnu-sed
+            ${{ steps.brew_path.outputs.path }}/Cellar/gawk
+            ${{ steps.brew_path.outputs.path }}/Cellar/coreutils
+            ${{ steps.brew_path.outputs.path }}/Cellar/jq
+            ${{ steps.brew_path.outputs.path }}/Cellar/watchman
+            ${{ steps.brew_path.outputs.path }}/Cellar/t-rec
+            ${{ steps.brew_path.outputs.path }}/Cellar/mise
+            ${{ steps.brew_path.outputs.path }}/bin
+            ${{ steps.brew_path.outputs.path }}/opt
+            ${{ steps.brew_path.outputs.path }}/var/homebrew
+          key: brew-${{ runner.os }}-selective-${{ steps.hashes.outputs.sha256 }}
           restore-keys: |
-            brew-${{ runner.os }}-
+            brew-${{ runner.os }}-selective-
 
       - name: Add Homebrew to PATH
         shell: bash
