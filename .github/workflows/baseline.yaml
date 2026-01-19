@@ -43,23 +43,105 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Detect Homebrew Path
+        id: brew_path
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "path=/home/linuxbrew/.linuxbrew" >> "$GITHUB_OUTPUT"
+            echo "cache_dir=/home/runner/.cache/Homebrew" >> "$GITHUB_OUTPUT"
+          else
+            if [ -d "/opt/homebrew" ]; then
+              echo "path=/opt/homebrew" >> "$GITHUB_OUTPUT"
+            else
+              echo "path=/usr/local/Homebrew" >> "$GITHUB_OUTPUT"
+            fi
+            echo "cache_dir=$HOME/Library/Caches/Homebrew" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify Files and Folders
+        id: hashes
+        shell: bash
+        run: |
+          ls -la .
+          pwd
+          shasum -a 256 .envrc
+          shasum -a 256 .envrc | cut -c1-8
+          echo "sha256=$(shasum -a 256 .envrc | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Check Homebrew cache size
+        id: cache_check
+        shell: bash
+        run: |
+          # Check if Homebrew directories exist and their size
+          MAX_SIZE_MB=300
+          TOTAL_SIZE=0
+
+          if [ -d "${{ steps.brew_path.outputs.path }}" ]; then
+            BREW_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + BREW_SIZE))
+            echo "Homebrew path size: ${BREW_SIZE}MB"
+          fi
+
+          if [ -d "${{ steps.brew_path.outputs.cache_dir }}" ]; then
+            CACHE_SIZE=$(du -sm "${{ steps.brew_path.outputs.cache_dir }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + CACHE_SIZE))
+            echo "Homebrew cache size: ${CACHE_SIZE}MB"
+          fi
+
+          echo "Total Homebrew size: ${TOTAL_SIZE}MB"
+          echo "Maximum allowed size: ${MAX_SIZE_MB}MB"
+
+          if [ "$TOTAL_SIZE" -le "$MAX_SIZE_MB" ]; then
+            echo "✅ Homebrew size is within limits, caching enabled"
+            echo "should_cache=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Homebrew size exceeds ${MAX_SIZE_MB}MB, caching disabled to avoid inefficiency"
+            echo "should_cache=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Cache Homebrew packages
+        if: steps.cache_check.outputs.should_cache == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.brew_path.outputs.path }}
+            ${{ steps.brew_path.outputs.cache_dir }}
+          key: brew-${{ runner.os }}-${{ steps.hashes.outputs.sha256 }}
+          restore-keys: |
+            brew-${{ runner.os }}-
+
+      - name: Setup PATH for local binaries
+        run: |
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+          mkdir -p "${HOME}/.local/bin"
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y kcov uuid-runtime curl build-essential procps file git
 
-      - name: Install Homebrew
+      - name: Install Homebrew (Linux only)
+        run: |
+          # Check if Homebrew is already installed (from cache)
+          if [ ! -x ${{ steps.brew_path.outputs.path }}/bin/brew ]; then
+            echo "Installing Homebrew for Linux..."
+            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          else
+            echo "Homebrew found in cache, skipping installation"
+          fi
+
+      - name: Add Homebrew to PATH
         shell: bash
         run: |
-          set -euo pipefail
-          if ! command -v brew >/dev/null 2>&1; then
-            NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          fi
-          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          echo "${{ steps.brew_path.outputs.path }}/bin" >> $GITHUB_PATH
+          # Set up Homebrew environment variables
+          eval "$(${{ steps.brew_path.outputs.path }}/bin/brew shellenv)"
+          echo "HOMEBREW_PREFIX=${{ steps.brew_path.outputs.path }}" >> "$GITHUB_ENV"
+          echo "HOMEBREW_CELLAR=${{ steps.brew_path.outputs.path }}/Cellar" >> "$GITHUB_ENV"
+          echo "HOMEBREW_REPOSITORY=${{ steps.brew_path.outputs.path }}/Homebrew" >> "$GITHUB_ENV"
 
-      - name: Install direnv
-        shell: bash
+      - name: Install DIRENV and latest BASH
         run: |
           # Install latest bash via Homebrew to ensure consistent behavior across platforms
           brew install bash
@@ -68,13 +150,29 @@ jobs:
           curl -sfL https://direnv.net/install.sh | bash
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Setup project dependencies (direnv)
-        shell: bash
+          # Verify bash version
+          echo "Installed bash version: $(brew list --versions bash)"
+          echo "System bash version: $BASH_VERSION"
+          echo "Brew bash path: $(brew --prefix)/bin/bash"
+
+      - name: Verify installation order and setup
         run: |
-          set -euo pipefail
-          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          # Verify critical tools are available in correct order
+          echo "=== Verifying installation order ==="
+          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
+          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
+          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
+          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
+
+      - name: Setup project dependencies using DIRENV and CI auto-install mode
+        run: |
+          # Ensure Homebrew is in PATH for this step
+          eval "$(${{ steps.brew_path.outputs.path }}/bin/brew shellenv)"
+          # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
+          echo "Dependencies loaded via DIRENV with CI auto-install mode"
+          brew cleanup
 
       - name: Apply ShellSpec Timeout Patch
         shell: bash
@@ -155,7 +253,85 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install direnv
+      - name: Detect Homebrew Path
+        id: brew_path
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            echo "path=/home/linuxbrew/.linuxbrew" >> "$GITHUB_OUTPUT"
+            echo "cache_dir=/home/runner/.cache/Homebrew" >> "$GITHUB_OUTPUT"
+          else
+            if [ -d "/opt/homebrew" ]; then
+              echo "path=/opt/homebrew" >> "$GITHUB_OUTPUT"
+            else
+              echo "path=/usr/local/Homebrew" >> "$GITHUB_OUTPUT"
+            fi
+            echo "cache_dir=$HOME/Library/Caches/Homebrew" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify Files and Folders
+        id: hashes
+        shell: bash
+        run: |
+          ls -la .
+          pwd
+          shasum -a 256 .envrc
+          shasum -a 256 .envrc | cut -c1-8
+          echo "sha256=$(shasum -a 256 .envrc | cut -c1-8)" >> $GITHUB_OUTPUT
+
+      - name: Check Homebrew cache size
+        id: cache_check
+        shell: bash
+        run: |
+          # Check if Homebrew directories exist and their size
+          MAX_SIZE_MB=300
+          TOTAL_SIZE=0
+
+          if [ -d "${{ steps.brew_path.outputs.path }}" ]; then
+            BREW_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + BREW_SIZE))
+            echo "Homebrew path size: ${BREW_SIZE}MB"
+          fi
+
+          if [ -d "${{ steps.brew_path.outputs.cache_dir }}" ]; then
+            CACHE_SIZE=$(du -sm "${{ steps.brew_path.outputs.cache_dir }}" 2>/dev/null | cut -f1 || echo "0")
+            TOTAL_SIZE=$((TOTAL_SIZE + CACHE_SIZE))
+            echo "Homebrew cache size: ${CACHE_SIZE}MB"
+          fi
+
+          echo "Total Homebrew size: ${TOTAL_SIZE}MB"
+          echo "Maximum allowed size: ${MAX_SIZE_MB}MB"
+
+          if [ "$TOTAL_SIZE" -le "$MAX_SIZE_MB" ]; then
+            echo "✅ Homebrew size is within limits, caching enabled"
+            echo "should_cache=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Homebrew size exceeds ${MAX_SIZE_MB}MB, caching disabled to avoid inefficiency"
+            echo "should_cache=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Cache Homebrew packages
+        if: steps.cache_check.outputs.should_cache == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ steps.brew_path.outputs.path }}
+            ${{ steps.brew_path.outputs.cache_dir }}
+          key: brew-${{ runner.os }}-${{ steps.hashes.outputs.sha256 }}
+          restore-keys: |
+            brew-${{ runner.os }}-
+
+      - name: Add Homebrew to PATH
+        shell: bash
+        run: |
+          echo "${{ steps.brew_path.outputs.path }}/bin" >> $GITHUB_PATH
+
+      - name: Setup PATH for local binaries
+        run: |
+          echo "${HOME}/.local/bin" >> "$GITHUB_PATH"
+          mkdir -p "${HOME}/.local/bin"
+
+      - name: Install DIRENV and latest BASH
         run: |
           # Install latest bash to ensure consistent behavior across platforms
           brew install bash
@@ -163,10 +339,27 @@ jobs:
           # Install direnv for macOS
           brew install direnv
 
-      - name: Setup project dependencies (direnv)
+          # Verify bash version
+          echo "Installed bash version: $(brew list --versions bash)"
+          echo "System bash version: $BASH_VERSION"
+          echo "Brew bash path: $(brew --prefix)/bin/bash"
+
+      - name: Verify installation order and setup
         run: |
+          # Verify critical tools are available in correct order
+          echo "=== Verifying installation order ==="
+          echo "1. Homebrew: $(which brew || echo 'NOT FOUND')"
+          echo "2. DIRENV: $(which direnv || echo 'NOT FOUND')"
+          echo "3. Homebrew available: $(brew --help >/dev/null 2>&1 && echo 'YES' || echo 'NO')"
+          echo "4. DIRENV version: $(direnv version || echo 'FAILED')"
+
+      - name: Setup project dependencies using DIRENV and CI auto-install mode
+        run: |
+          # Allow .envrc execution and export environment to GitHub Actions
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
+          echo "Dependencies loaded via DIRENV with CI auto-install mode"
+          brew cleanup
 
       - name: Apply ShellSpec Timeout Patch
         run: |
