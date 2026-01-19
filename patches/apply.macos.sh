@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-01-19
-## Version: 2.0.4
+## Version: 2.0.5
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -145,11 +145,12 @@ fi
 log_step "Verifying patch..."
 
 # Functional verification: Create a test that times out
+# Using longer timeouts for reliability across different system performance levels
 TEST_FILE="$SHELLSPEC_DIR/timeout_verification_spec.sh"
 cat <<'EOF' > "$TEST_FILE"
 Describe "timeout verification"
-  Example "should timeout in 1 second" % timeout:1
-    sleep 2
+  Example "should timeout in 2 seconds" % timeout:2
+    sleep 5
     The status should equal 0
   End
 End
@@ -164,15 +165,16 @@ DURATION=$((END_TIME - START_TIME))
 # Cleanup test file
 rm -f "$TEST_FILE"
 
-# If timeout is working, test should abort before 2 seconds
-if [[ $DURATION -lt 2 ]]; then
+# If timeout is working, test should abort well before 5 seconds
+# Using < 4 to allow margin for system overhead (timeout at 2s + 2s margin)
+if [[ $DURATION -lt 4 ]]; then
     VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
     log_info "Success! Timeout feature verified (Duration: ${DURATION}s). Version: $VERSION"
     touch "$MARKER_FILE"
     exit 0
 else
     log_error "Verification failed. Test did not timeout (Duration: ${DURATION}s)."
-    log_error "Expected duration < 2s, which would indicate timeout feature is working."
+    log_error "Expected duration < 4s (timeout at 2s + margin), which would indicate timeout feature is working."
     exit 1
 fi
 
