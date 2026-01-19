@@ -2,8 +2,8 @@
 # Apply ShellSpec timeout patch (macOS)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-01-19
+## Version: 2.0.4
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -97,6 +97,11 @@ if ! SHELLSPEC_DIR="$(find_shellspec_dir)"; then
     exit 1
 fi
 
+if [[ ! -f "$SHELLSPEC_DIR/lib/core/core.sh" ]]; then
+  log_error "ShellSpec core not found under $SHELLSPEC_DIR"
+  exit 1
+fi
+
 log_info "ShellSpec Dir: $SHELLSPEC_DIR"
 
 # 3. Check Marker
@@ -119,40 +124,56 @@ if ! command -v patch >/dev/null 2>&1; then
     exit 1
 fi
 
-log_info "Applying patch (ignoring partial errors)..."
-patch -p1 -N < "$PATCH_FILE" || true
+# Apply patch (tolerant of partials)
+PATCH_OPTS=(--batch --forward -p1 -N)
+log_info "Checking patch applicability..."
+if ! patch "${PATCH_OPTS[@]}" --dry-run -i "$PATCH_FILE" >/dev/null; then
+    log_error "Patch dry-run failed. Please ensure ShellSpec sources match 0.28.1"
+    exit 1
+fi
 
-# 5. Handle bin/shellspec.rej
+log_info "Applying patch..."
+patch "${PATCH_OPTS[@]}" -i "$PATCH_FILE"
+
+# 5. Handle bin/shellspec.rej (Harmless)
 if [[ -f "bin/shellspec.rej" ]]; then
+    log_info "Removing harmless bin/shellspec.rej..."
     rm "bin/shellspec.rej"
 fi
 
-# 6. Verify (Functional)
-log_step "Verifying..."
+# 6. Verify patch was applied
+log_step "Verifying patch..."
 
-# Create a temporary test file
+# Functional verification: Create a test that times out
 TEST_FILE="$SHELLSPEC_DIR/timeout_verification_spec.sh"
-cat <<EOF > "$TEST_FILE"
-Example "timeout test" % timeout:1
-  sleep 2
-  The status should equal 0
+cat <<'EOF' > "$TEST_FILE"
+Describe "timeout verification"
+  Example "should timeout in 1 second" % timeout:1
+    sleep 2
+    The status should equal 0
+  End
 End
 EOF
 
+# Run the test and measure duration
 START_TIME=$(date +%s)
 "$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
-rm "$TEST_FILE"
 
+# Cleanup test file
+rm -f "$TEST_FILE"
+
+# If timeout is working, test should abort before 2 seconds
 if [[ $DURATION -lt 2 ]]; then
-     VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-     log_info "Success! Timeout functional. Version: $VERSION"
-     touch "$MARKER_FILE"
-     exit 0
-else 
-     log_error "Verification failed (Duration: ${DURATION}s)."
-     exit 1
+    VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
+    log_info "Success! Timeout feature verified (Duration: ${DURATION}s). Version: $VERSION"
+    touch "$MARKER_FILE"
+    exit 0
+else
+    log_error "Verification failed. Test did not timeout (Duration: ${DURATION}s)."
+    log_error "Expected duration < 2s, which would indicate timeout feature is working."
+    exit 1
 fi
 
 

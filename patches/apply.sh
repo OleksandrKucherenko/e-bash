@@ -2,8 +2,8 @@
 # Apply ShellSpec timeout patch (Ubuntu/Linux)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-15
-## Version: 2.0.3
+## Last revisit: 2026-01-19
+## Version: 2.0.4
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -135,87 +135,37 @@ if [[ -f "bin/shellspec.rej" ]]; then
     rm "bin/shellspec.rej"
 fi
 
-# 6. Verify (Functional)
-log_step "Verifying..."
+# 6. Verify patch was applied
+log_step "Verifying patch..."
 
-# Create a temporary test file
+# Functional verification: Create a test that times out
 TEST_FILE="$SHELLSPEC_DIR/timeout_verification_spec.sh"
-cat <<EOF > "$TEST_FILE"
-Example "timeout test" % timeout:1
-  sleep 2
-  The status should equal 0
+cat <<'EOF' > "$TEST_FILE"
+Describe "timeout verification"
+  Example "should timeout in 1 second" % timeout:1
+    sleep 2
+    The status should equal 0
+  End
 End
 EOF
 
-# Run it
-if "$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1; then
-    # It should fail (timeout) or succeed? 
-    # Wait, if it times out, the exit code might be non-zero depending on implementation.
-    # ShellSpec timeout usually fails the test.
-    # If feature is NOT present, it sleeps 2s and succeeds (status 0).
-    # If feature IS present, it aborts at 1s (fail).
-    
-    # Actually, we want to check if it aborts.
-    # Let's time it.
-    START_TIME=$(date +%s)
-    "$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
-    END_TIME=$(date +%s)
-    DURATION=$((END_TIME - START_TIME))
-    
-    rm "$TEST_FILE"
-    
-    if [[ $DURATION -lt 2 ]]; then
-         VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-         log_info "Success! Timeout triggered (Duration: ${DURATION}s). Version: $VERSION"
-         touch "$MARKER_FILE"
-         exit 0
-    else
-         log_error "Verification failed. Test slept for full duration (${DURATION}s)."
-         exit 1
-    fi
-else
-    # Run failed unexpectedly?
-    # Rerunning logic above handles the execution.
-    # Just need to make sure we captured the timeout behavior.
-    
-    # Simplified check:
-    # If patch is applied, `shellspec --help` MIGHT show timeout.
-    # Let's stick to the help check as a primary quick check, but fall back to functional?
-    # No, the user specifically mentioned help check failed in CI.
-    # Let's use the functional check described above.
-    
-    # Re-writing the block correctly:
-    START_TIME=$(date +%s)
-    "$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
-    END_TIME=$(date +%s)
-    DURATION=$((END_TIME - START_TIME))
-    rm "$TEST_FILE"
-    
-    if [[ $DURATION -lt 2 ]]; then
-         VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-         log_info "Success! Timeout functional. Version: $VERSION"
-         touch "$MARKER_FILE"
-         exit 0
-    else 
-         log_error "Verification failed (Duration: ${DURATION}s)."
-         exit 1
-    fi
-fi
+# Run the test and measure duration
+START_TIME=$(date +%s)
+"$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
 
-# 5. Handle bin/shellspec.rej (Harmless)
-if [[ -f "bin/shellspec.rej" ]]; then
-    log_info "Removing harmless bin/shellspec.rej..."
-    rm "bin/shellspec.rej"
-fi
+# Cleanup test file
+rm -f "$TEST_FILE"
 
-# 6. Verify
-log_step "Verifying..."
-if "$SHELLSPEC_DIR/shellspec" --help | grep -q timeout; then
+# If timeout is working, test should abort before 2 seconds
+if [[ $DURATION -lt 2 ]]; then
     VERSION="$("$SHELLSPEC_DIR/shellspec" --version)"
-    log_info "Success! Version: $VERSION"
+    log_info "Success! Timeout feature verified (Duration: ${DURATION}s). Version: $VERSION"
     touch "$MARKER_FILE"
     exit 0
 else
-    log_error "Verification failed."
+    log_error "Verification failed. Test did not timeout (Duration: ${DURATION}s)."
+    log_error "Expected duration < 2s, which would indicate timeout feature is working."
     exit 1
 fi
