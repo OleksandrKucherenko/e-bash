@@ -16,6 +16,11 @@ A comprehensive guide for transforming legacy Bash scripts into modern, maintain
     - [Manual Installation (Git Subtree)](#manual-installation-git-subtree)
     - [Global vs Project Installation](#global-vs-project-installation)
     - [Verification](#verification)
+  - [Minimal Migration Path (10 Minutes)](#minimal-migration-path-10-minutes)
+    - [Quick Start Template](#quick-start-template)
+    - [Usage](#usage)
+    - [What This Gives You](#what-this-gives-you)
+    - [Need More?](#need-more)
   - [Why Migrate to e-bash? Top 25 Reasons](#why-migrate-to-e-bash-top-25-reasons)
   - [The Idealistic Script Structure](#the-idealistic-script-structure)
   - [Step-by-Step Migration](#step-by-step-migration)
@@ -167,6 +172,93 @@ source .scripts/_colors.sh && echo -e "${cl_green}✓ e-bash installed successfu
 ```
 
 For detailed installation scenarios and troubleshooting, see the [Installation Guide](./installation.md).
+
+---
+
+## Minimal Migration Path (10 Minutes)
+
+**For most scripts, you only need these 5 core capabilities:**
+
+1. **Bootstrap** - Discover e-bash location
+2. **Dependencies** - Fail fast if required tools are missing
+3. **Logger** - Add filterable tagged output
+4. **Traps** - Reliable cleanup on exit/interruption
+5. **Dry-run** - Preview risky commands before execution
+
+### Quick Start Template
+
+```bash
+#!/usr/bin/env bash
+## Copyright (C) 2026-present, YOUR NAME
+## Version: 1.0.0 | License: MIT
+
+# 1. Bootstrap e-bash (discovers E_BASH location)
+[ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
+. "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
+
+# 2. Dependencies (fail fast if tools missing)
+source "$E_BASH/_dependencies.sh"
+dependency bash "5.*.*" "brew install bash"
+dependency jq "1.6" "brew install jq"
+
+# 3. Logging (filterable by DEBUG env var)
+DEBUG=${DEBUG:-"main"}
+source "$E_BASH/_logger.sh"
+source "$E_BASH/_colors.sh"
+logger:init main "[${cl_cyan}Main]${cl_reset} " ">&2"
+
+# 4. Cleanup (runs on exit, Ctrl+C, or kill)
+source "$E_BASH/_traps.sh"
+trap:on "rm -rf /tmp/$$" EXIT INT TERM
+
+# 5. Dry-run (optional - for risky commands)
+source "$E_BASH/_dryrun.sh"
+dryrun rm git docker
+
+# Your logic here
+main() {
+  echo:Main "Starting script..."
+
+  # Your business logic
+  local files=$(find . -name "*.txt")
+  echo:Main "Found $(echo "$files" | wc -l) files"
+
+  echo:Main "Done!"
+}
+
+main "$@"
+```
+
+### Usage
+
+```bash
+# Normal execution
+./my-script.sh
+
+# With logging enabled
+DEBUG=main ./my-script.sh
+
+# Preview mode (dry-run for risky commands)
+DRY_RUN=true ./my-script.sh
+
+# Rollback mode (execute rollback: prefixed commands)
+UNDO_RUN=true ./my-script.sh
+```
+
+### What This Gives You
+
+✅ **Fail fast** - Script stops immediately if dependencies are missing
+✅ **Observability** - Enable/disable logging with `DEBUG=main`
+✅ **Safety** - Cleanup always runs, even on Ctrl+C
+✅ **Preview** - Test risky commands before executing
+✅ **Cross-platform** - Works on macOS and Linux (GNU tools auto-configured)
+
+### Need More?
+
+- **Argument parsing?** See [Step 7: Arguments](#step-7-add-argument-parsing-_argumentssh)
+- **Hooks/extensibility?** See [Step 5: Hooks](#step-5-add-hooks-for-extensibility-_hookssh)
+- **Commons utilities?** See [Step 8: Commons](#step-8-add-commons-utilities-_commonssh)
+- **Full template?** See [The Idealistic Script Structure](#the-idealistic-script-structure)
 
 ---
 
