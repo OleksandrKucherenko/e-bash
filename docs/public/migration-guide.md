@@ -11,6 +11,11 @@ A comprehensive guide for transforming legacy Bash scripts into modern, maintain
   - [Overview](#overview)
     - [Migration Benefits](#migration-benefits)
     - [Strict Mode Compatibility](#strict-mode-compatibility)
+  - [Installation](#installation)
+    - [Quick Installation (Recommended)](#quick-installation-recommended)
+    - [Manual Installation (Git Subtree)](#manual-installation-git-subtree)
+    - [Global vs Project Installation](#global-vs-project-installation)
+    - [Verification](#verification)
   - [Why Migrate to e-bash? Top 25 Reasons](#why-migrate-to-e-bash-top-25-reasons)
   - [The Idealistic Script Structure](#the-idealistic-script-structure)
   - [Step-by-Step Migration](#step-by-step-migration)
@@ -82,6 +87,86 @@ set -euo pipefail
 ```
 
 **Note:** Some e-bash modules intentionally disable strict mode internally for certain operations (like trap management). This is intentional and safe—the modules re-enable strict mode before returning.
+
+---
+
+## Installation
+
+Before you can migrate your scripts to use e-bash, you need to install the library. Choose the installation method that best fits your workflow.
+
+### Quick Installation (Recommended)
+
+Install e-bash into your current project:
+
+```bash
+# Install/upgrade to latest version in current directory
+curl -sSL https://git.new/e-bash | bash -s --
+
+# OR: Install to global location (~/.e-bash) for use across all projects
+curl -sSL https://git.new/e-bash | bash -s -- --global install
+```
+
+**Alternative methods:**
+
+```bash
+# Using wget
+wget -qO- https://git.new/e-bash | bash -s -- install
+
+# Using httpie
+http -b https://git.new/e-bash | bash -s -- install
+
+# Install specific version
+curl -sSL https://git.new/e-bash | bash -s -- install v1.16.0
+```
+
+### Manual Installation (Git Subtree)
+
+For more control over the installation, use git subtree:
+
+```bash
+git remote add -f e-bash https://github.com/OleksandrKucherenko/e-bash.git
+git checkout -b e-bash-temp e-bash/master
+git subtree split -P .scripts -b e-bash-scripts
+git checkout master  # or your main branch
+git subtree merge --prefix .scripts e-bash-scripts --squash
+```
+
+**Upgrading manually:**
+
+```bash
+git fetch e-bash master
+git checkout e-bash-temp && git reset --hard e-bash/master
+git subtree split -P .scripts -b e-bash-scripts
+git checkout master  # or your main branch
+git subtree pull --prefix .scripts e-bash-scripts --squash
+```
+
+### Global vs Project Installation
+
+| Installation Type | Location            | Use Case                                    |
+| ----------------- | ------------------- | ------------------------------------------- |
+| **Project**       | `./scripts/`       | Scripts specific to one project             |
+| **Global**        | `~/.e-bash/.scripts` | Scripts you want available system-wide      |
+
+The bootstrap code (shown in Step 1 below) automatically detects both locations, trying project-local first, then falling back to global.
+
+### Verification
+
+After installation, verify e-bash is available:
+
+```bash
+# Check installed modules
+ls -la .scripts/
+
+# Expected output: _arguments.sh, _colors.sh, _commons.sh, _dependencies.sh,
+# _dryrun.sh, _gnu.sh, _hooks.sh, _logger.sh, _self-update.sh, _semver.sh,
+# _tmux.sh, _traps.sh
+
+# Test by sourcing a module
+source .scripts/_colors.sh && echo -e "${cl_green}✓ e-bash installed successfully${cl_reset}"
+```
+
+For detailed installation scenarios and troubleshooting, see the [Installation Guide](./installation.md).
 
 ---
 
@@ -664,152 +749,77 @@ echo:Main "Your message"  # Change echo → echo:Main
 
 ## The Idealistic Script Structure
 
-After migration, your script should follow this structure:
+After migration, your script should follow this structure (see inline comments for explanations):
 
 ```bash
 #!/usr/bin/env bash
 ## Copyright (C) YEAR-present, YOUR NAME
-## Last revisit: YYYY-MM-DD
-## Version: 1.0.0
-## License: MIT
+## Version: 1.0.0 | License: MIT
 
-# ============================================================================
-# 1. BOOTSTRAP - E_BASH Discovery
-# ============================================================================
+# 1. BOOTSTRAP - E_BASH discovery & GNU tools
 [ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
 . "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
 
-# ============================================================================
-# 2. CONFIGURATION - Set DEBUG before loading modules
-# ============================================================================
-DEBUG=${DEBUG:-"main,-loader,-parser"}  # Enable main logs, disable internals
+# 2. CONFIGURATION - Set DEBUG tags
+DEBUG=${DEBUG:-"main,-loader"}
 
-# ============================================================================
-# 3. DEPENDENCIES - What this script needs (fail fast!)
-# ============================================================================
+# 3. DEPENDENCIES - Fail fast if missing
 source "$E_BASH/_dependencies.sh"
 dependency bash "5.*.*" "brew install bash"
-dependency jq "1.6" "brew install jq"  # if your script uses jq
-optional kcov "43" "brew install kcov"  # optional tools
+dependency jq "1.6" "brew install jq"
 
-# ============================================================================
-# 4. LOGGING - Initialize tagged loggers (before arguments)
-# ============================================================================
+# 4. LOGGING - Initialize tagged loggers
 source "$E_BASH/_logger.sh"
 source "$E_BASH/_colors.sh"
+logger:init main "[${cl_cyan}Main]${cl_reset} " ">&2"
+logger:init error "[${cl_red}Error]${cl_reset} " ">&2"
 
-logger main "$@" && logger:redirect main ">&2" && logger:prefix main "${cl_cyan}[Main]${cl_reset} "
-logger error "$@" && logger:prefix error "${cl_red}[Error]${cl_reset} " && logger:redirect error ">&2"
-
-# ============================================================================
-# 5. DRYRUN - Enable safe command execution
-# ============================================================================
+# 5. DRYRUN - Safe command execution
 source "$E_BASH/_dryrun.sh"
 dryrun git docker rm
 
-# Map CLI flags to dry-run modes (will be parsed later)
-[[ "${dry_run:-}" == "1" ]] && export DRY_RUN=true
-
-# ============================================================================
-# 6. HOOKS - Declare extension points
-# ============================================================================
+# 6. HOOKS - Extension points
 source "$E_BASH/_hooks.sh"
-hooks:declare begin end validate process cleanup
+hooks:declare begin end validate process
 
-# Optional: Implement inline hooks
-hook:begin() {
-  echo:Main "Starting script..."
-}
-
-hook:end() {
-  echo:Main "Script completed successfully"
-}
-
-# ============================================================================
-# 7. TRAPS - Register cleanup handlers
-# ============================================================================
+# 7. TRAPS - Cleanup handlers
 source "$E_BASH/_traps.sh"
+trap:on "rm -rf ${TEMP_DIR:-/tmp/$$}" EXIT INT TERM
 
-cleanup_temp() {
-  echo:Main "Cleaning temporary files..."
-  [[ -n "$TEMP_DIR" ]] && rm -rf "$TEMP_DIR"
-}
-
-trap:on cleanup_temp EXIT INT TERM
-
-# ============================================================================
-# 8. ARGUMENTS - Declare and parse CLI arguments
-# ============================================================================
-export SKIP_ARGS_PARSING=1  # Skip parsing during module loading
-declare help version verbose dry_run
-
-ARGS_DEFINITION=""
-ARGS_DEFINITION+=" -h,--help"
-ARGS_DEFINITION+=" --version=version:1.0.0"
-ARGS_DEFINITION+=" -v,--verbose=verbose"
-ARGS_DEFINITION+=" -n,--dry-run"
-
+# 8. ARGUMENTS - Parse CLI flags
+export SKIP_ARGS_PARSING=1
+declare help verbose dry_run
+ARGS_DEFINITION=" -h,--help --version=:1.0.0 -v,--verbose=verbose -n,--dry-run=dry_run"
 source "$E_BASH/_arguments.sh"
 parse:arguments "$@"
 
-args:d '-h' 'Show help and exit.' "global" 1
-args:d '--version' 'Show version and exit.' "global" 2
-args:d '-v' 'Enable verbose output.'
-
 [[ "$help" == "1" ]] && { print:help; exit 0; }
-
-# Map verbose to DEBUG (safe concatenation)
 [[ "$verbose" == "1" ]] && DEBUG="${DEBUG:+$DEBUG,}verbose"
-# Map dry_run to DRY_RUN (already set above, but re-check after parsing)
 [[ "$dry_run" == "1" ]] && export DRY_RUN=true
 
-# ============================================================================
-# 9. COMMONS - Access utilities (secrets, config, UI)
-# ============================================================================
+# 9. COMMONS - Utilities (config, secrets, UI)
 source "$E_BASH/_commons.sh"
 
-# ============================================================================
-# 10. OPTIONAL MODULES - Semver, Tmux, IPv6 (as needed)
-# ============================================================================
-# source "$E_BASH/_semver.sh"   # For version-aware operations
-# source "$E_BASH/_tmux.sh"     # For progress displays in tmux
-# source "$E_BASH/_ipv6.sh"     # For IPv6 address coloring in output
+# 10. OPTIONAL MODULES (uncomment as needed)
+# source "$E_BASH/_semver.sh"   # Version management
+# source "$E_BASH/_tmux.sh"     # Progress displays
 
-# ============================================================================
-# 11. SCRIPT FUNCTIONS
-# ============================================================================
-
-# Your business logic functions here
-function process_file() {
-  local file="$1"
-  echo:Main "Processing: $file"
-  # Your logic
+# 11. SCRIPT FUNCTIONS - Your business logic
+process_file() {
+  echo:Main "Processing: $1"
+  # Your implementation
 }
 
-# ============================================================================
 # 12. MAIN EXECUTION
-# ============================================================================
-
 main() {
-  # Run begin hooks
   hooks:do begin
-
-  # Run validation hooks
   hooks:do validate || { echo:Error "Validation failed"; return 1; }
-
-  # Your main logic
   process_file "$@"
-
-  # Run process hooks
   hooks:do process
-
-  # Run end hooks
   hooks:do end
 }
 
-# Run main
 main "$@"
-exit $?
 ```
 
 **Why This Order?**
@@ -949,14 +959,11 @@ DEBUG=${DEBUG:-"deploy,-loader"}
 source "$E_BASH/_logger.sh"
 source "$E_BASH/_colors.sh"
 
-# Option 1: Using the helper function (recommended)
+# Initialize loggers (concise pattern)
 logger:init deploy "[${cl_cyan}Deploy]${cl_reset} " ">&2"
-logger:init error "[${cl_red}[Error]${cl_reset} " ">&2"
+logger:init error "[${cl_red}Error]${cl_reset} " ">&2"
 
-# Option 2: Manual setup (equivalent to above)
-logger deploy "$@" && logger:redirect deploy ">&2" && logger:prefix deploy "${cl_cyan}[Deploy]${cl_reset} "
-
-# Now use the loggers
+# Use the loggers
 echo:Deploy "Starting deployment..."
 echo:Deploy "Deploying to production"
 echo:Error "Failed to connect"
@@ -964,28 +971,24 @@ echo:Error "Failed to connect"
 
 #### The `logger:init` Helper Function
 
-Instead of chaining three commands, use `logger:init` for cleaner code:
+**Signature:** `logger:init <tag> "<prefix>" "<redirect>"`
+
+Instead of chaining three commands (`logger`, `logger:prefix`, `logger:redirect`), use one:
 
 ```bash
-# Old way (verbose)
-logger deploy "$@" && logger:redirect deploy ">&2" && logger:prefix deploy "${cl_cyan}[Deploy]${cl_reset} "
-
-# New way (concise)
+# Concise one-liner
 logger:init deploy "[${cl_cyan}Deploy]${cl_reset} " ">&2"
+
+# Equivalent verbose version (avoid this)
+logger deploy "$@" && logger:redirect deploy ">&2" && logger:prefix deploy "${cl_cyan}[Deploy]${cl_reset} "
 ```
 
-**Signature:**
-```bash
-logger:init <tag> "<prefix>" "<redirect>"
-```
-
-**Examples:**
+**Common patterns:**
 
 ```bash
 logger:init main "[Main] " ">&2"
-logger:init error "[${cl_red}Error]${cl_reset} ">&2"
-logger:init verbose "[${cl_gray}[Verbose]${cl_reset} ">&2"
-logger:init debug "[DBG] ">&2"
+logger:init error "[${cl_red}Error]${cl_reset} " ">&2"
+logger:init debug "[DBG] " ">&2"
 ```
 
 **Benefits:**
@@ -1811,48 +1814,27 @@ done
 echo "Done!"
 ```
 
-**After:**
+**After:** (Adds logging, dry-run, cleanup - only ~25 lines)
 ```bash
 #!/usr/bin/env bash
 
-# Bootstrap
+# Bootstrap & configure
 [ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
 . "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
-
-# Configure
-DEBUG=${DEBUG:-"main,-loader"}
-
-# Dependencies
-source "$E_BASH/_dependencies.sh"
-
-# Arguments
-export SKIP_ARGS_PARSING=1
-declare help verbose dry_run
-ARGS_DEFINITION+=" -h,--help -v,--verbose=verbose -n,--dry-run=dry_run"
-source "$E_BASH/_arguments.sh"
-parse:arguments "$@"
-
-args:d '-h' 'Show help.'
+DEBUG=${DEBUG:-"main"}
 
 # Logging
 source "$E_BASH/_logger.sh"
 source "$E_BASH/_colors.sh"
-logger main "$@" && logger:redirect main ">&2" && logger:prefix main "${cl_cyan}[Main]${cl_reset} "
+logger:init main "[${cl_cyan}Main]${cl_reset} " ">&2"
 
-# Dry-run
+# Dry-run & cleanup
 source "$E_BASH/_dryrun.sh"
-dryrun cat
-
-# Map flags (safe DEBUG concatenation)
-[[ "$verbose" == "1" ]] && DEBUG="${DEBUG:+$DEBUG,}verbose"
-[[ "$dry_run" == "1" ]] && export DRY_RUN=true
-
-# Traps
 source "$E_BASH/_traps.sh"
-cleanup() { echo:Main "Cleaning temp files..."; rm -f output_*.txt; }
-trap:on cleanup EXIT
+dryrun cat
+trap:on "rm -f output_*.txt" EXIT
 
-# Main logic
+# Main logic (minimal changes to original)
 echo:Main "Processing files..."
 for file in *.txt; do
   echo:Main "Processing: $file"
@@ -1884,54 +1866,35 @@ if [[ "$ROLLBACK" == "true" ]]; then
   docker-compose up -d
 else
   echo "Deploying..."
-  if [[ "$DRY_RUN" != "true" ]]; then
-    git pull origin main
-  fi
-  if [[ "$DRY_RUN" != "true" ]]; then
-    docker-compose build
-  fi
-  if [[ "$DRY_RUN" != "true" ]]; then
-    docker-compose up -d
-  fi
+  if [[ "$DRY_RUN" != "true" ]]; then git pull origin main; fi
+  if [[ "$DRY_RUN" != "true" ]]; then docker-compose build; fi
+  if [[ "$DRY_RUN" != "true" ]]; then docker-compose up -d; fi
 fi
 ```
 
-**After:**
+**After:** (Adds dependency checks, logging, proper dry-run/rollback modes)
 ```bash
 #!/usr/bin/env bash
 
-# Bootstrap
+# Bootstrap & dependencies
 [ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
 . "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
 
-# Dependencies
 source "$E_BASH/_dependencies.sh"
 dependency docker "24.*.*" "brew install docker"
 dependency git "2.*.*" "brew install git"
 
-# Arguments
-export SKIP_ARGS_PARSING=1
-declare help rollback
-ARGS_DEFINITION+=" -h,--help --rollback=rollback"
-source "$E_BASH/_arguments.sh"
-parse:arguments "$@"
-
-# Logging
+# Logging & dry-run
 source "$E_BASH/_logger.sh"
 source "$E_BASH/_colors.sh"
-logger deploy "$@" && logger:redirect deploy ">&2" && logger:prefix deploy "${cl_cyan}[Deploy]${cl_reset} "
-
-# Dry-run
 source "$E_BASH/_dryrun.sh"
+logger:init deploy "[${cl_cyan}Deploy]${cl_reset} " ">&2"
 dryrun git docker
 
-# Traps
-source "$E_BASH/_traps.sh"
-
-# Main logic
-if [[ "$rollback" == "1" ]]; then
+# Main logic - cleaner, no scattered if-checks
+if [[ "${ROLLBACK:-}" == "true" ]]; then
   echo:Deploy "Rolling back..."
-  rollback:git reset --hard HEAD~1    # Only executes if UNDO_RUN=true
+  rollback:git reset --hard HEAD~1
   rollback:docker-compose down
   rollback:docker-compose up -d
 else
@@ -1940,20 +1903,13 @@ else
   dry:docker-compose build
   dry:docker-compose up -d
 fi
-
-echo:Deploy "Done!"
 ```
 
 **Usage:**
 ```bash
-# Normal deployment
-./deploy.sh
-
-# Preview deployment
-DRY_RUN=true ./deploy.sh
-
-# Execute rollback
-UNDO_RUN=true ./deploy.sh
+./deploy.sh                    # Normal deployment
+DRY_RUN=true ./deploy.sh       # Preview (dry-run mode)
+ROLLBACK=true UNDO_RUN=true ./deploy.sh  # Execute rollback
 ```
 
 ---
@@ -1962,38 +1918,30 @@ UNDO_RUN=true ./deploy.sh
 
 ### Module Loading Order
 
+**Standard pattern** (copy-paste template):
+
 ```bash
-# 1. Bootstrap (always first)
+# 1. Bootstrap
 [ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
 . "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
 
-# 2. Dependencies (early fail)
-source "$E_BASH/_dependencies.sh"
-
-# 3. Logging (configure before other modules)
+# 2. Configuration
 DEBUG=${DEBUG:-"main,-loader"}
+
+# 3. Core modules (most scripts need these)
+source "$E_BASH/_dependencies.sh"
 source "$E_BASH/_logger.sh"
-
-# 4. Dry-run (safe command execution)
+source "$E_BASH/_colors.sh"
 source "$E_BASH/_dryrun.sh"
-
-# 5. Hooks (extensibility points)
-source "$E_BASH/_hooks.sh"
-
-# 6. Traps (cleanup handlers)
 source "$E_BASH/_traps.sh"
-
-# 7. Arguments (parse CLI flags)
-export SKIP_ARGS_PARSING=1
 source "$E_BASH/_arguments.sh"
-
-# 8. Commons (utilities)
 source "$E_BASH/_commons.sh"
 
-# 9. Optional modules (add as needed)
-source "$E_BASH/_semver.sh"   # For version-aware operations
-source "$E_BASH/_tmux.sh"     # For progress displays in tmux
-source "$E_BASH/../bin/ipv6.sh"  # For IPv6 address coloring
+# 4. Optional modules (uncomment as needed)
+# source "$E_BASH/_hooks.sh"     # Extension points
+# source "$E_BASH/_semver.sh"    # Version management
+# source "$E_BASH/_tmux.sh"      # Progress displays
+# source "$E_BASH/_self-update.sh" # Auto-update
 ```
 
 ### Environment Variables
@@ -2012,105 +1960,66 @@ source "$E_BASH/../bin/ipv6.sh"  # For IPv6 address coloring
 ### Logger Quick Start
 
 ```bash
-# Initialize
-source "$E_BASH/_logger.sh"
-logger myapp "$@" && logger:redirect myapp ">&2" && logger:prefix myapp "[MyApp] "
+source "$E_BASH/_logger.sh" "$E_BASH/_colors.sh"
+logger:init main "[${cl_cyan}Main]${cl_reset} " ">&2"
+echo:Main "Hello world"
 
-# Use
-echo:Myapp "Hello world"
-
-# Enable
-DEBUG=myapp ./script.sh
-DEBUG=*,-loader ./script.sh
+# Run with: DEBUG=main ./script.sh
+# Or enable all: DEBUG=* ./script.sh
 ```
 
 ### Dry-run Quick Start
 
 ```bash
-# Initialize
 source "$E_BASH/_dryrun.sh"
 dryrun git docker rm
 
-# Use
-dry:git pull
-run:ls -la          # Same as dry:
-rollback:rm -rf /tmp
+dry:git pull                 # Normal: execute, Dry-run: preview
+rollback:rm -rf /tmp         # Normal: preview, Undo: execute
 
-# Modes
-DRY_RUN=true ./script.sh     # Preview
-UNDO_RUN=true ./script.sh    # Rollback
+# DRY_RUN=true ./script.sh     # Preview mode
+# UNDO_RUN=true ./script.sh    # Rollback mode
 ```
 
 ### Hooks Quick Start
 
 ```bash
-# Declare
 source "$E_BASH/_hooks.sh"
 hooks:declare begin end
+hooks:do begin && your_logic && hooks:do end
 
-# Execute
-hooks:do begin
-# ... your code ...
-hooks:do end
-
-# Implement
-# Method 1: Function
-hook:begin() { echo "Starting"; }
-
-# Method 2: External script
-# ci-cd/begin-01_init.sh
+# Optional inline: hook:begin() { echo "Starting"; }
+# Or external: ci-cd/begin-*.sh
 ```
 
 ### Traps Quick Start
 
 ```bash
-# Initialize
 source "$E_BASH/_traps.sh"
-
-# Register
-cleanup() { echo "Cleaning..."; }
-trap:on cleanup EXIT INT TERM
-
-# List
-trap:list EXIT
+trap:on "rm -rf /tmp/$$" EXIT INT TERM
+# Multiple handlers: trap:on another_handler EXIT
 ```
 
 ### Tmux Quick Start
 
 ```bash
-# Initialize
 source "$E_BASH/_tmux.sh"
-
-# Ensure session and setup progress
 tmux:ensure_session "$@"
 tmux:init_progress
 
-# Show progress bar
-tmux:show_progress_bar 50 100 "Processing"
-
-# Custom messages
-tmux:update_progress "Step complete"
-
-# Cleanup (automatic via trap)
-tmux:cleanup_progress
+for i in {1..100}; do
+  tmux:show_progress_bar $i 100 "Processing"
+done
+# Cleanup automatic via trap
 ```
 
 ### IPv6 Quick Start
 
 ```bash
-# Initialize (note: in bin/, not .scripts/)
+# Note: ipv6.sh is in bin/, not .scripts/
 source "$E_BASH/../bin/ipv6.sh"
-
-# Colorize IPv6 addresses in output
 color:ipv6 "Server at 2001:db8::1 is ready"
-
-# Compress/expand notation
-ipv6:compress "2001:0db8:0000:0000:0000:0000:0000:0001"
-ipv6:expand "2001:db8::1"
-
-# Get regex for matching
-ipv6_regex=$(ipv6:grep)
-grep -E "$ipv6_regex" network.log
+ipv6:compress "2001:0db8::1"  # → 2001:db8::1
 ```
 
 ---
