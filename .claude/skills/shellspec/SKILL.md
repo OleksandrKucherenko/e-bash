@@ -325,6 +325,50 @@ process_user_homes() {
 
 **Recommended action**: Extract every logical step into a named function
 
+### Pattern 3: Exit Call Interception for Testability
+
+**Problem**: Functions that call `exit 1` terminate the entire test suite, making them untestable.
+
+**Real Example**:
+```bash
+function check_working_tree_clean() {
+    if ! git diff-index --quiet HEAD --; then
+        echo "❌ You have uncommitted changes."
+        exit 1  # ❌ Terminates entire test suite
+    fi
+}
+```
+
+**Solution**: Function-specific mocking that preserves logic but replaces `exit` with `return`:
+
+```bash
+Describe 'git verification'
+  It 'prevents patching with uncommitted changes'
+    # Modify tracked file to create uncommitted changes
+    echo "modification" >> test_file.txt
+
+    # Mock the function to avoid test termination
+    check_working_tree_clean() {
+      if ! git diff-index --quiet HEAD --; then
+        echo "❌ You have uncommitted changes."
+        return 1  # Return 1 instead of exit 1
+      fi
+      return 0
+    }
+
+    When call check_working_tree_clean
+    The status should be failure
+    The stderr should include "uncommitted changes"
+  End
+End
+```
+
+**Key Learning**: Test what the function does (detect uncommitted changes) rather than how it does it (calling exit).
+
+**Pros**: Makes functions with exit calls testable without modifying production code
+**Cons**: Requires duplicating function logic in tests
+**Recommended action**: For new code, use `return` instead of `exit` in library functions. For existing code, use the mock pattern above.
+
 ## Dependency Isolation and Mocking
 
 ### Three-Tier Mocking Strategy
@@ -553,6 +597,87 @@ End
 
 **Recommended action**: Use `--quick` and `--focus` for rapid TDD cycles
 
+## Cross-Platform Testing
+
+### GNU vs BSD Tool Compatibility
+
+**Problem**: Shell scripts that work on Linux (GNU tools) often fail on macOS (BSD tools) due to command syntax differences.
+
+**Common Differences**:
+
+| Feature         | GNU (Linux)          | BSD (macOS)          | Portable Alternative    |
+| --------------- | -------------------- | -------------------- | ----------------------- |
+| Remove last line | `head -n -1`         | Not supported        | `sed '$d'`              |
+| Remove first line | `tail -n +2`        | Works differently    | `sed '1d'`              |
+| In-place editing | `sed -i 's/old/new'` | `sed -i '' 's/...'`  | Use `sponge` or temp file |
+
+**Real Example**: Function to display function body
+
+```bash
+# ❌ GNU-only - fails on macOS
+show_function() {
+  declare -f "$1" | tail -n +3 | head -n -1
+}
+
+# ✅ Cross-platform - works on both
+show_function() {
+  declare -f "$1" | tail -n +3 | sed '$d'
+}
+```
+
+**Test Detection Pattern**:
+```bash
+# Test failure on macOS looks like:
+head: illegal line count -- -1
+```
+
+**Best Practices**:
+
+1. **Use portable alternatives by default**:
+```bash
+# Instead of: head -n -1 (remove last N lines)
+Use: sed '$d'              # Delete last line
+
+# Instead of: tail -n +2 (skip first N lines)
+Use: sed '1d'              # Delete first line
+```
+
+2. **Test on multiple platforms**:
+```yaml
+# .github/workflows/test.yml
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: shellspec --kcov
+```
+
+3. **Use conditional logic only when necessary**:
+```bash
+# Detect platform when you must use different approaches
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  # BSD-specific code
+  sed -i '' 's/old/new' file
+else
+  # GNU-specific code
+  sed -i 's/old/new' file
+fi
+```
+
+4. **Document platform-specific requirements** in your README
+
+**Prevention Checklist**:
+- [ ] Avoid `head -n -N` (negative line counts)
+- [ ] Avoid `tail -n +N` for offset beyond first line
+- [ ] Use portable `sed '$d'` instead of `head -n -1`
+- [ ] Test on both Linux and macOS in CI
+- [ ] Document any platform-specific dependencies
+
+**Recommended action**: Always prefer portable commands, use platform detection only when unavoidable
+
 ## CI/CD Integration
 
 ### JUnit Reports
@@ -609,6 +734,80 @@ End
 ```
 
 ### Common Issues
+
+**Problem**: File assertion fails even though code works correctly
+**Solution**: This is caused by ShellSpec's execution order - `After` hooks run BEFORE file assertions
+
+**Critical: ShellSpec Execution Order Violation**
+
+ShellSpec's execution order violates the expected "setup → test → cleanup" flow:
+
+```
+# Expected flow: setup → test → cleanup
+# Actual flow: setup → test → After hooks → assertions → cleanup
+```
+
+**The Problem**: `After` hooks run **BEFORE** file assertions are evaluated. Any file cleanup in `After` will delete files before assertions can check them.
+
+**Pattern**: Negative assertions can mask cleanup issues, while positive assertions expose them.
+
+```bash
+# ✅ Negative assertions often pass (deleted file doesn't contain content)
+The file ".config" should not include "removed_setting"
+
+# ❌ Positive assertions fail (file no longer exists after cleanup)
+The file ".config" should include "preserved_setting"
+```
+
+**The Fix**: Capture file content in the same execution as the command:
+
+```bash
+# ❌ WRONG - File assertion happens AFTER After hooks
+It 'should check file content after command'
+  When run ./my_script.sh
+  The file ".config" should include "important_setting"
+End
+
+# ✅ CORRECT - Capture content in same execution
+It 'should check file content after command'
+  When run sh -c './my-script.sh && cat .config'
+  The output should include "important_setting"
+End
+
+# ✅ EVEN BETTER - Use separator for clarity
+It 'should modify files and verify content'
+  When run sh -c './script.sh && echo "=== FILE: config ===" && cat config'
+  The output should include "=== FILE: config ==="
+  The output should include "important_setting"
+End
+```
+
+**When to Suspect This Issue**:
+- Test checks `The file "somefile" should include "content"`
+- Test runs a command that creates/modifies files
+- Test has `After` cleanup hooks
+- Manual verification shows the code works correctly
+
+**Problem**: "Evaluation has already been executed. Only one Evaluation allow per Example."
+**Solution**: ShellSpec enforces exactly one `When run` per example - chain commands instead
+
+**One-Evaluation Rule**
+
+```bash
+# ❌ WRONG - Multiple evaluations not allowed
+It 'should verify multiple things'
+  When run ./script.sh
+  When run cat result.txt  # ERROR: Evaluation already executed
+  The output should include "success"
+End
+
+# ✅ CORRECT - Chain commands in single execution
+It 'should verify multiple things'
+  When run sh -c './script.sh && echo "=== SEPARATOR ===" && cat result.txt'
+  The output should include "success"
+  The output should include "=== SEPARATOR ==="
+End
+```
 
 **Problem**: Test passes alone but fails in suite
 **Solution**: Check for global state leakage, ensure cleanup in `AfterEach`

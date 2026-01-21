@@ -210,6 +210,7 @@ No action needed, but validates existing choice.
 - Edge case is common
 - Others will likely hit it
 - The fix is non-obvious
+- Conflict with other tools or environment, or configurations found
 
 ### Personal Preference
 **Signal:** "I prefer doing it this way"

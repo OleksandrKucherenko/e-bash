@@ -1,6 +1,6 @@
 ---
 name: skill-learning-patterns
-description: Use when agents discover better patterns, find gaps or inaccuracies in existing skills, or need to contribute validated improvements to shared knowledge.
+description: Use when agents discover better patterns, find gaps or inaccuracies in existing skills, or need to contribute validated improvements to shared knowledge, or found unique experience that could be shared with others.
 ---
 
 # Skill Learning Patterns
