@@ -11,7 +11,7 @@ Progressive disclosure enables agents to work with arbitrarily large skill libra
 
 **Critical insight:** At scale, you're building a discovery system, not a documentation library.
 
-**Performance data:** 36.8% improvement with dynamic loading across 200+ tasks (Letta ContextBench). Discovery scales O(log n), browsing scales O(n) and fails beyond ~50 skills.
+**Performance data:** 36.8% improvement with dynamic loading across 200+ tasks (internal benchmark). Discovery scales O(log n), browsing scales O(n) and fails beyond ~50 skills.
 
 ---
 
@@ -51,21 +51,21 @@ Memory block contains:
 
 ```yaml
 # Top-level categories (always in memory)
-letta/          - Letta product ecosystem
-  ├─ agents/    - Agent development patterns
-  ├─ sdks/      - SDK integrations
-  └─ ops/       - Operations and deployment
+<example-category-a>/          - Product ecosystem
+  ├─ agents/                   - Agent development patterns
+  ├─ sdks/                     - SDK integrations
+  └─ ops/                      - Operations and deployment
 
-tools/          - External tool integrations
-  ├─ web/       - Web scraping, testing
-  ├─ data/      - Data processing
-  └─ ml/        - Machine learning tools
+<example-category-b>/          - External tool integrations
+  ├─ web/                      - Web scraping, testing
+  ├─ data/                     - Data processing
+  └─ ml/                       - Machine learning tools
 
 # Skill metadata (loaded per category)
-letta/agents/
-  - memory-architecture: Designing memory blocks...
-  - tool-patterns: Tool selection and configuration...
-  - multi-agent: Coordinating multiple agents...
+<example-category-a>/agents/
+  - <example-skill> (memory architecture): Designing memory blocks...
+  - <example-skill> (tool patterns): Tool selection and configuration...
+  - <example-skill> (multi-agent coordination): Coordinating multiple agents...
 ```
 
 **Implementation pattern:**
@@ -78,10 +78,10 @@ letta/agents/
 Task: "Set up memory blocks for a customer support agent"
 
 Agent reasoning:
-1. Scan categories → "letta/" relevant
-2. Load letta/ skill list → See "memory-architecture" 
-3. Load memory-architecture SKILL.md
-4. Navigate to references/customer-support-patterns.md
+1. Scan categories → "<example-category-a>/" relevant
+2. Load <example-category-a>/ skill list → See "<example-skill> (memory architecture)" 
+3. Load <example-skill> (memory architecture) SKILL.md
+4. Navigate to references/<example-reference>.md (customer support patterns)
 5. Execute task
 ```
 
@@ -103,21 +103,21 @@ Agent reasoning:
 ```markdown
 # Agent Development Skills
 
-Use these skills when building, configuring, or debugging Letta agents.
+Use these skills when building, configuring, or debugging product agents.
 
 ## Available Skills
 
-- **memory-architecture** - Use when designing memory blocks and data flow
-- **tool-patterns** - Use when selecting and configuring tools
-- **model-selection** - Use when choosing LLMs for specific workloads
-- **multi-agent** - Use when coordinating multiple agents
+- **<example-skill> (memory architecture)** - Use when designing memory blocks and data flow
+- **<example-skill> (tool patterns)** - Use when selecting and configuring tools
+- **<example-skill> (model selection)** - Use when choosing model tiers for specific workloads
+- **<example-skill> (multi-agent coordination)** - Use when coordinating multiple agents
 
 ## Quick Decision Tree
 
-Building new agent? → Start with memory-architecture
-Debugging tool issues? → See tool-patterns
-Performance problems? → Check model-selection
-Multiple agents? → Read multi-agent
+Building new agent? → Start with <example-skill> (memory architecture)
+Debugging tool issues? → See <example-skill> (tool patterns)
+Performance problems? → Check <example-skill> (model selection)
+Multiple agents? → Read <example-skill> (multi-agent coordination)
 ```
 
 **Key insight:** CATEGORY.md is metadata for a group of skills. Agents load it to decide which skill to load next.
@@ -154,17 +154,17 @@ skill-name/
 ```
 Agent: "I need to test a web application"
 System: Scans all skill metadata
-Result: Finds "webapp-testing"
+Result: Finds "<example-skill> (web UI testing)"
 ```
 
 **Complex query at scale (500+ skills):**
 ```
 Agent: "I need to test a web application"
 System: 
-  1. Identify domain: tools/web/
-  2. Load tools/web/CATEGORY.md
+  1. Identify domain: <example-category-b>/web/
+  2. Load <example-category-b>/web/CATEGORY.md
   3. Scan category skills
-  4. Find webapp-testing
+  4. Find <example-skill> (web UI testing)
 Result: 3 steps instead of 1, but scales to 10,000 skills
 ```
 
@@ -186,13 +186,13 @@ interface SkillDiscovery {
 
 // Agent flow:
 1. categories = selectCategories("test web application")
-   // Returns: [tools/web/, tools/testing/]
+   // Returns: [<example-category-b>/web/, <example-category-b>/testing/]
 
-2. skills = selectSkills(tools/web/, "test web application")  
-   // Loads tools/web/CATEGORY.md
-   // Returns: [webapp-testing, web-scraping]
+2. skills = selectSkills(<example-category-b>/web/, "test web application")  
+   // Loads <example-category-b>/web/CATEGORY.md
+   // Returns: [<example-skill> (web UI testing), <example-skill> (web scraping)]
 
-3. content = loadSkill(webapp-testing)
+3. content = loadSkill("<example-skill>")
    // Loads full SKILL.md
 ```
 
@@ -235,16 +235,16 @@ keywords: [keyword1, keyword2, keyword3]  # Optional but helpful at scale
 
 **Example - Good metadata at scale:**
 ```yaml
-name: playwright-web-testing
-category: tools/web
+name: <example-skill>
+category: <example-category-b>/web
 description: |
-  Use when testing web UIs in a real browser using Playwright.
+  Use when testing web UIs in a real browser using an automation tool.
   Provides page navigation, element interaction, screenshot capture, network 
   interception. Covers both headless and headed testing.
-  Does NOT cover API testing (see rest-api-testing) or load testing 
-  (see load-testing).
-  See also: puppeteer-testing for Chrome-only testing.
-keywords: [playwright, browser, testing, ui, e2e, screenshots]
+  Does NOT cover API testing (see <example-skill> (API testing)) or load testing 
+  (see <example-skill> (load testing)).
+  See also: <example-skill> (Chrome-only testing).
+keywords: [browser, testing, ui, e2e, screenshots]
 ```
 
 **Example - Poor metadata at scale:**
@@ -259,19 +259,19 @@ description: Helpful utilities for web development
 **Problem:** Multiple similar skills, agent picks wrong one
 
 **Example collision:**
-- `api-testing` - REST API testing with requests library
-- `api-integration` - Integrating third-party APIs
-- `api-design` - Designing RESTful APIs
-- `graphql-testing` - Testing GraphQL APIs
+- `<example-skill>` (REST API testing) - Testing APIs with an HTTP client
+- `<example-skill>` (API integration) - Integrating third-party APIs
+- `<example-skill>` (API design) - Designing RESTful APIs
+- `<example-skill>` (GraphQL testing) - Testing GraphQL APIs
 
 **Solution: Explicit differentiation in metadata**
 ```yaml
-name: api-testing
+name: <example-skill>
 description: |
-  Use when testing REST APIs (not GraphQL - see graphql-testing).
+  Use when testing REST APIs (not GraphQL - see <example-skill> (GraphQL testing)).
   Provides HTTP request testing, response validation, mock servers.
-  For API integration patterns, see api-integration.
-  For API design guidance, see api-design.
+  For API integration patterns, see <example-skill> (API integration).
+  For API design guidance, see <example-skill> (API design).
 ```
 
 ---
@@ -282,8 +282,8 @@ description: |
 
 **By domain (recommended for 100-500 skills):**
 ```
-letta/          - Letta ecosystem
-tools/          - General tools
+<example-category-a>/          - Product ecosystem
+<example-category-b>/          - General tools
 templates/      - Reusable templates
 domain-X/       - Specific domains
 ```
@@ -304,12 +304,12 @@ databases/      - Database skills
 
 **Hybrid (necessary at 500+ skills):**
 ```
-letta/
+<example-category-a>/
   ├── agents/           # By function within domain
   ├── sdks/
   └── ops/
 
-tools/
+<example-category-b>/
   ├── web/             # By technology within domain
   ├── data/
   └── ml/
@@ -329,18 +329,18 @@ templates/
 
 **Example of good sizing:**
 ```
-tools/web/                    # 18 skills - good size
-  - playwright-testing
-  - puppeteer-testing
-  - selenium-testing
-  - web-scraping
-  - browser-automation
+<example-category-b>/web/      # 18 skills - good size
+  - <example-skill> (browser UI testing)
+  - <example-skill> (browser automation)
+  - <example-skill> (web scraping)
+  - <example-skill> (e2e testing)
+  - <example-skill> (page performance checks)
   - ... (13 more)
 
-tools/web/testing/            # Bad: Over-categorization
-  - playwright/              # 3 skills
-  - puppeteer/               # 2 skills
-  - selenium/                # 4 skills
+<example-category-b>/web/testing/  # Bad: Over-categorization
+  - <example-skill> (browser tools) # 3 skills
+  - <example-skill> (automation)   # 2 skills
+  - <example-skill> (drivers)      # 4 skills
 # Better to keep flat with good metadata
 ```
 
@@ -376,15 +376,15 @@ Agent loads on demand:
 memoryBlock.skills = formatCategories(categories);
 
 // Agent identifies relevant category
-loadCategory('tools/web/');
-memoryBlock.skills += formatCategorySkills('tools/web/');
+loadCategory('<example-category-b>/web/');
+memoryBlock.skills += formatCategorySkills('<example-category-b>/web/');
 
 // Agent selects specific skill
-loadSkill('webapp-testing');
+loadSkill('<example-skill>');
 memoryBlock.loaded_skills += skillContent;
 
 // Agent unloads when done
-memoryBlock.loaded_skills = removeSkill('webapp-testing');
+memoryBlock.loaded_skills = removeSkill('<example-skill>');
 ```
 
 **Key insight:** Memory block is dynamic, updated during task execution.
@@ -394,20 +394,20 @@ memoryBlock.loaded_skills = removeSkill('webapp-testing');
 ```yaml
 # Always present
 categories:
-  - letta/ : Letta product ecosystem (agents, SDKs, ops)
-  - tools/ : External tool integrations (web, data, ml)
+  - <example-category-a>/ : Product ecosystem (agents, SDKs, ops)
+  - <example-category-b>/ : External tool integrations (web, data, ml)
   - templates/ : Reusable templates and patterns
   
 # Loaded on demand (category exploration)
-current_category: tools/web/
+current_category: <example-category-b>/web/
 category_skills:
-  - webapp-testing: Testing web UIs with Playwright...
-  - web-scraping: Extracting data from websites...
-  - rest-api-testing: Testing REST APIs with requests...
+  - <example-skill> (web UI testing): Testing web UIs with a browser automation tool...
+  - <example-skill> (web scraping): Extracting data from websites...
+  - <example-skill> (REST API testing): Testing REST APIs with an HTTP client...
   
 # Loaded on demand (active work)  
 loaded_skills:
-  - webapp-testing: [full SKILL.md content]
+  - <example-skill> (web UI testing): [full SKILL.md content]
 ```
 
 ---
@@ -434,8 +434,8 @@ interface SkillSearch {
 ```
 Agent: I need to test a web application
 Tool call: search("test web application")
-Result: [webapp-testing, web-scraping, api-testing]
-Agent: Load webapp-testing
+Result: [<example-skill> (web UI testing), <example-skill> (web scraping), <example-skill> (API testing)]
+Agent: Load <example-skill> (web UI testing)
 ```
 
 ### Skill Registry (500+ skills)
@@ -447,18 +447,18 @@ Agent: Load webapp-testing
 {
   "skills": [
     {
-      "id": "webapp-testing",
-      "category": "tools/web",
-      "path": "tools/web/webapp-testing",
-      "name": "Web Application Testing",
-      "description": "Testing web UIs with Playwright...",
-      "keywords": ["playwright", "testing", "browser"],
+      "id": "<example-skill>",
+      "category": "<example-category-b>/web",
+      "path": "<example-category-b>/web/<example-skill>",
+      "name": "Web UI Testing",
+      "description": "Testing web UIs with a browser automation tool...",
+      "keywords": ["browser", "testing", "ui"],
       "updated": "2025-12-15"
     }
   ],
   "categories": [
     {
-      "id": "tools/web",
+      "id": "<example-category-b>/web",
       "name": "Web Tools",
       "description": "Tools for web development and testing",
       "skill_count": 18
@@ -533,9 +533,9 @@ async preloadCategory(categoryId: string) {
 **Problem:** Some skills reference other skills
 
 ```yaml
-# In api-integration/SKILL.md
-Prerequisites: Load api-authentication skill first
-Related skills: error-handling, rate-limiting
+# In <example-skill> (API integration) SKILL.md
+Prerequisites: Load <example-skill> (API authentication) first
+Related skills: <example-skill> (error handling), <example-skill> (rate limiting)
 ```
 
 **Implementation:**
@@ -607,8 +607,8 @@ changelog:
 ```yaml
 # Mark as deprecated
 deprecated: true
-deprecated_message: "Use api-testing-v2 instead"
-replacement: api-testing-v2
+deprecated_message: "Use <example-skill>-v2 instead"
+replacement: <example-skill>-v2
 sunset_date: 2026-03-15
 ```
 

@@ -6,42 +6,42 @@ Real-world examples of good contributions to help you understand what makes an e
 
 ### The Situation
 
-Agent followed `letta-memory-architect` guidance to use `memory_rethink` for updating shared memory blocks. Result: Data loss when two agents wrote simultaneously.
+Agent followed `<example-skill>` (shared state updates) guidance to use full rewrites for updating shared memory blocks. Result: Data loss when two agents wrote simultaneously.
 
 ### The Investigation
 
 ```
-1. Checked references/concurrency.md
-2. Found memory_insert is safer for concurrent writes
+1. Checked references/<example-reference>.md (concurrency guidance)
+2. Found append-only updates are safer for concurrent writes
 3. Realized warning existed but wasn't prominent
-4. Tested memory_insert with concurrent writes - no data loss
+4. Tested append-only updates with concurrent writes - no data loss
 5. Identified that warning needs to be more visible
 ```
 
-###PR Created
+### PR Created
 
-**Title:** "Emphasize memory_insert for concurrent writes"
+**Title:** "Emphasize append-only updates for concurrent writes"
 
 **Description:**
 ```markdown
 ## What
 
-Makes the concurrent write warning more prominent in letta-memory-architect 
+Makes the concurrent write warning more prominent in `<example-skill>` (shared state updates) 
 and adds concrete example of data loss scenario.
 
 ## Why
 
-I followed the skill's guidance and used memory_rethink for updates in a 
+I followed the skill's guidance and used full rewrites for updates in a 
 multi-agent scenario. Result: Data loss when two agents wrote simultaneously.
 
-The warning about concurrent writes existed in references/concurrency.md but 
+The warning about concurrent writes existed in references/<example-reference>.md but 
 wasn't prominent in the main SKILL.md. This led me to miss it.
 
 ## Evidence
 
-- Reproduced data loss with memory_rethink (7/10 concurrent writes lost data)
-- Tested memory_insert with same scenario (0/10 data loss)
-- Confirmed in references/concurrency.md that this is documented behavior
+- Reproduced data loss with full rewrites (7/10 concurrent writes lost data)
+- Tested append-only updates with same scenario (0/10 data loss)
+- Confirmed in references/<example-reference>.md that this is documented behavior
 - Pattern is clear: append-only is safer for concurrency
 
 ## Impact
@@ -69,13 +69,13 @@ clear and illustrative. Checked that warning now appears in main skill body.
 
 ### The Situation
 
-Agent hit API rate limiting 5 times across different projects (OpenRouter, Anthropic, OpenAI). Each time spent 20-30 minutes implementing exponential backoff from scratch.
+Agent hit API rate limiting 5 times across different projects and providers. Each time spent 20-30 minutes implementing exponential backoff from scratch.
 
 ### The Investigation
 
 ```
 1. Searched skills repository for rate limiting patterns - not found
-2. Checked ai/models/ and ai/tools/ - no coverage
+2. Checked the skills catalog categories - no coverage
 3. Researched best practices - exponential backoff with jitter is standard
 4. Validated pattern works across all three APIs
 5. Determined this is generalizable, not project-specific
@@ -89,22 +89,22 @@ Agent hit API rate limiting 5 times across different projects (OpenRouter, Anthr
 ```markdown
 ## What
 
-Creates new skill `ai/models/api-rate-limiting` covering exponential backoff, 
+Creates new skill `<example-skill>` (API rate limiting patterns) covering exponential backoff, 
 jitter, and retry strategies for HTTP APIs.
 
 ## Why
 
 Encountered rate limiting 5 times across different projects:
-- OpenRouter (2 times)
-- Anthropic API (2 times)
-- OpenAI API (1 time)
+- Provider A (2 times)
+- Provider B (2 times)
+- Provider C (1 time)
 
 Each time spent 20-30 minutes implementing retry logic from scratch. This is a 
 common pattern that should be documented.
 
 ## Evidence
 
-- Tested pattern across all three APIs successfully
+- Tested pattern across all three providers successfully
 - Pattern is HTTP standard (RFC 6585 for 429 responses)
 - Exponential backoff with jitter is documented best practice
 - Saved ~25 minutes per instance after documenting
@@ -124,11 +124,11 @@ Created test scenarios with intentional rate limiting. Verified:
 ```
 
 **Changes:**
-- New skill: `ai/models/api-rate-limiting/SKILL.md`
+- New skill: `.claude/skills/<example-skill>/SKILL.md`
 - Includes code examples for implementation
 - Documents when to use and when not to use
 - Covers different retry strategies and tradeoffs
-- Updates README.md to list new skill
+- Updates a skill index/catalog if present
 
 **Outcome:** Merged. Now saves time for all agents working with APIs.
 
@@ -138,7 +138,7 @@ Created test scenarios with intentional rate limiting. Verified:
 
 ### The Situation
 
-Agent working on code review task. Skill said "use appropriate model" but didn't define criteria. Tried GPT-4o, then Claude Sonnet, then GPT-4o-mini before finding GPT-4o was best fit.
+Agent working on code review task. Skill said "use appropriate model" but didn't define criteria. Tried premium, balanced, then budget model tiers before finding the premium tier was best fit.
 
 ### The Investigation
 
@@ -146,25 +146,25 @@ Agent working on code review task. Skill said "use appropriate model" but didn't
 1. Noted that "appropriate model" is ambiguous
 2. Through testing, identified factors: task complexity, budget, latency
 3. Compared three models systematically on code review task
-4. Found GPT-4o caught all issues, GPT-4o-mini missed subtle ones
+4. Found the premium model caught all issues, the budget model missed subtle ones
 5. Determined decision tree would have prevented trial-and-error
 ```
 
 ### PR Created
 
-**Title:** "Add model selection decision tree to letta-agent-designer"
+**Title:** "Add model selection decision tree to `<example-skill>` (agent design)"
 
 **Description:**
 ```markdown
 ## What
 
-Adds decision tree to references/model-recommendations.md for choosing 
-between GPT-4o, GPT-4o-mini, and Claude Sonnet based on task requirements.
+Adds decision tree to references/<example-reference>.md (model recommendations) for choosing 
+between premium, budget, and balanced model tiers based on task requirements.
 
 ## Why
 
 Skill said "use appropriate model" without criteria. Spent 1 hour testing 
-three models for code review before finding GPT-4o was needed.
+three model tiers for code review before finding the premium tier was needed.
 
 Decision criteria weren't clear:
 - When is cost-savings worth quality trade-off?
@@ -175,9 +175,9 @@ Decision criteria weren't clear:
 
 Tested systematically on code review task:
 
-GPT-4o-mini: Fast, cheap, missed 2/10 subtle issues
-Claude Sonnet: Good quality, caught 9/10 issues
-GPT-4o: Caught all 10 issues, worth cost for code review
+Budget model: Fast, cheap, missed 2/10 subtle issues
+Balanced model: Good quality, caught 9/10 issues
+Premium model: Caught all 10 issues, worth cost for code review
 
 Clear pattern: Task criticality and complexity drive choice.
 
@@ -193,7 +193,7 @@ led to correct model choice. Validated criteria with team.
 ```
 
 **Changes:**
-- Add decision tree flowchart to model-recommendations.md
+- Add decision tree flowchart to <example-reference>.md (model recommendations)
 - Include examples: "For X task → Y model because Z"
 - Document factors: complexity, budget, latency, criticality
 - Link from main SKILL.md to decision tree
@@ -206,12 +206,12 @@ led to correct model choice. Validated criteria with team.
 
 ### The Situation
 
-Agent tried to use `git add -i` (interactive add) as documented in git-workflows skill. Command failed: "interactive mode not supported".
+Agent tried to use `git add -i` (interactive add) as documented in `<example-skill>` (git workflows). Command failed: "interactive mode not supported".
 
 ### The Investigation
 
 ```
-1. Tested command - consistently fails in Bash tool
+1. Tested command - consistently fails in a non-interactive shell environment
 2. Reason: Non-interactive environment doesn't support -i flag
 3. Checked if other interactive commands fail - yes (git rebase -i also fails)
 4. Found alternative: git add <files> works fine
@@ -226,14 +226,14 @@ Agent tried to use `git add -i` (interactive add) as documented in git-workflows
 ```markdown
 ## What
 
-Adds warning to git-workflows about non-interactive environment limitations.
+Adds warning to `<example-skill>` (git workflows) about non-interactive environment limitations.
 
 ## Why
 
 Followed skill guidance to use `git add -i` for selective staging.
 Command failed: "interactive mode not supported"
 
-Root cause: Bash tool environment doesn't support interactive commands.
+Root cause: Non-interactive shell environments don't support interactive commands.
 This affects any git command with -i flag.
 
 ## Evidence
@@ -258,11 +258,11 @@ Verified non-interactive alternatives work:
 - git rebase with commit count
 - Other non-interactive git operations
 
-All work correctly in Bash tool environment.
+All work correctly in a non-interactive shell environment.
 ```
 
 **Changes:**
-- Add warning box at top of git-workflows SKILL.md
+- Add warning box at top of `<example-skill>` (git workflows) SKILL.md
 - Document which commands don't work (-i flag commands)
 - Provide non-interactive alternatives
 - Explain environment limitation
@@ -275,12 +275,12 @@ All work correctly in Bash tool environment.
 
 ### The Situation
 
-Agent working on multi-agent coordination. `letta-agent-designer` mentions multi-agent briefly but doesn't cover coordination patterns in detail. Agent discovered 3 patterns that keep recurring.
+Agent working on multi-agent coordination. `<example-skill>` (agent design) mentions multi-agent briefly but doesn't cover coordination patterns in detail. Agent discovered 3 patterns that keep recurring.
 
 ### The Investigation
 
 ```
-1. Reviewed letta-agent-designer - covers basics but not coordination
+1. Reviewed `<example-skill>` (agent design) - covers basics but not coordination
 2. Worked on 4 different multi-agent projects
 3. Identified 3 recurring patterns:
    - Supervisor-worker
@@ -292,18 +292,18 @@ Agent working on multi-agent coordination. `letta-agent-designer` mentions multi
 
 ### PR Created
 
-**Title:** "Add letta-multi-agent-coordinator skill"
+**Title:** "Add `<example-skill>` (multi-agent coordination) skill"
 
 **Description:**
 ```markdown
 ## What
 
-Creates new skill `letta/multi-agent-coordinator` covering 
+Creates new skill `.claude/skills/<example-skill>` (multi-agent coordination) covering 
 coordination patterns for multi-agent systems.
 
 ## Why
 
-letta-agent-designer mentions multi-agent capabilities but doesn't detail 
+`<example-skill>` (agent design) mentions multi-agent capabilities but doesn't detail 
 coordination patterns. Worked on 4 multi-agent projects and found 3 patterns 
 recurring:
 
@@ -336,12 +336,12 @@ fits specific use cases. Documented when to use each pattern and why.
 ```
 
 **Changes:**
-- New skill: `letta/multi-agent-coordinator/SKILL.md`
+- New skill: `.claude/skills/<example-skill>/SKILL.md`
 - Three pattern reference files, one per coordination pattern
 - Examples for each pattern
 - Decision criteria for pattern selection
-- Links from letta-agent-designer to new skill
-- Updates README.md
+- Links from `<example-skill>` (agent design) to new skill
+- Updates a skill index/catalog if present
 
 **Outcome:** Merged. Complements existing skill with deeper coverage.
 

@@ -17,7 +17,7 @@ Valuable learnings often reveal themselves through specific signals during your 
 ```
 Spent 45 minutes figuring out why Playwright tests were flaky. 
 Root cause: Need to wait for network idle, not just element presence.
-Pattern documented? No. Should be? Yes - common issue with webapp-testing.
+Pattern documented? No. Should be? Yes - common issue with `<example-skill>` (web app testing).
 ```
 
 ### Trial and Error
@@ -33,7 +33,7 @@ Pattern documented? No. Should be? Yes - common issue with webapp-testing.
 Tried git rebase -i (failed - interactive not supported)
 Tried git reset (lost work)
 Finally: git rebase HEAD~3 worked
-Could this be documented in git-workflows? Yes.
+Could this be documented in `<example-skill>` (git workflows)? Yes.
 ```
 
 ### "Wish I Had Known"
@@ -48,7 +48,7 @@ Could this be documented in git-workflows? Yes.
 ```
 Spent hour implementing custom retry logic for API calls.
 Later discovered: Most API libraries have built-in retry with backoff.
-Should be in api-integration skill: "Check library features first"
+Should be in `<example-skill>` (API integration): "Check library features first"
 ```
 
 ## Repetition Signals
@@ -65,9 +65,9 @@ Should be in api-integration skill: "Check library features first"
 
 **Example:**
 ```
-Third time setting up Letta agent with file system access.
+Third time setting up an agent with file system access.
 Same steps each time: attach folder, verify tools appear, test read access.
-Create quick-start pattern in letta-agent-designer.
+Create quick-start pattern in `<example-skill>` (agent setup quick start).
 ```
 
 ### Deja Vu Moments
@@ -97,9 +97,9 @@ Extract: Common env var patterns, framework-specific loading details.
 
 **Example:**
 ```
-Explained memory_insert vs memory_replace to user with concurrent scenario.
+Explained append-only updates vs in-place replacements to user with concurrent scenario.
 User understood immediately with the example.
-Capture example in letta-memory-architect for future clarity.
+Capture example in `<example-skill>` (shared state updates) for future clarity.
 ```
 
 ## Correction Signals
@@ -116,9 +116,9 @@ Capture example in letta-memory-architect for future clarity.
 
 **Example:**
 ```
-Skill said: "Use GPT-4 for complex tasks"
-But: GPT-4o is newer, faster, same quality, lower cost
-Skill needs update: GPT-4o is now preferred over GPT-4
+Skill said: "Use the premium model for complex tasks"
+But: the balanced model is newer, faster, same quality, lower cost
+Skill needs update: the balanced model is now preferred over the premium model
 ```
 
 ### Approach Failed
@@ -131,9 +131,9 @@ Skill needs update: GPT-4o is now preferred over GPT-4
 
 **Example:**
 ```
-Followed git-workflows to use git add -i (interactive add)
-Failed: Interactive mode not supported in Bash tool
-Add warning to skill about non-interactive environment
+Followed `<example-skill>` (git workflows) to use git add -i (interactive add)
+Failed: Interactive mode not supported in a non-interactive shell environment
+Add warning to skill about non-interactive environments
 ```
 
 ### Misunderstanding Caused Issue
@@ -149,7 +149,7 @@ Add warning to skill about non-interactive environment
 **Example:**
 ```
 Skill said: "Use appropriate model for task"
-I chose GPT-4 (expensive) when GPT-4o-mini would've worked
+I chose a premium model (expensive) when a budget model would've worked
 Add decision criteria: task complexity, budget, latency needs
 ```
 

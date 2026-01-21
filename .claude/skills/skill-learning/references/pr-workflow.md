@@ -40,7 +40,7 @@ clarify/skill-name-section  # Improve clarity
 
 **Example:**
 ```bash
-git checkout -b add/api-rate-limiting
+git checkout -b add/<example-skill>
 ```
 
 ### 2. Make Your Changes
@@ -49,7 +49,7 @@ git checkout -b add/api-rate-limiting
 - Edit SKILL.md files
 - Add/update reference files
 - Include examples if helpful
-- Update README if adding new skill
+- Update a skill index/catalog if your repo has one
 
 **Test your changes:**
 - Read through as if you're seeing it for first time
@@ -75,7 +75,7 @@ git add path/to/changed/files
 git commit -m "Add exponential backoff pattern to API integration
 
 Includes retry logic with jitter for rate limiting scenarios.
-Tested across OpenRouter, Anthropic, and OpenAI APIs."
+Tested across multiple API providers."
 ```
 
 **Commit message format:**
@@ -90,7 +90,7 @@ Tested across OpenRouter, Anthropic, and OpenAI APIs."
 
 **First time pushing branch:**
 ```bash
-git push -u origin add/api-rate-limiting
+git push -u origin add/<example-skill>
 ```
 
 **Subsequent pushes:**
@@ -116,7 +116,7 @@ common pattern.
 
 ## Evidence
 
-- Tested on OpenRouter, Anthropic API, OpenAI API
+- Tested on multiple API providers
 - 100% success rate across 20 test scenarios
 - Pattern aligns with HTTP RFC recommendations
 - Prevents 429 errors with minimal latency addition
@@ -216,7 +216,7 @@ Changes automatically appear in the PR.
 
 **Good - Single focused improvement:**
 ```
-PR: "Add memory_insert safety warning to concurrency section"
+PR: "Add append-only update warning to concurrency section"
 Changes: 1 file, clear improvement, easy to review
 ```
 
@@ -231,8 +231,8 @@ Better: Split into 3 separate PRs
 
 **Good titles:**
 - "Add exponential backoff pattern to API integration"
-- "Fix incorrect memory_rethink guidance in concurrency section"
-- "Clarify model selection criteria in letta-agent-designer"
+- "Fix incorrect full rewrite guidance in concurrency section"
+- "Clarify model selection criteria in `<example-skill>` (agent design)"
 
 **Bad titles:**
 - "Updates" 
@@ -275,45 +275,45 @@ Better: Split into 3 separate PRs
 
 ```bash
 # Create branch
-git checkout -b fix/memory-concurrency-warning
+git checkout -b fix/<example-skill>-concurrency-warning
 
 # Edit file
 # ... make changes ...
 
 # Commit
-git add ai/agents/letta/letta-memory-architect/SKILL.md
+git add .claude/skills/<example-skill>/SKILL.md
 git commit -m "Make concurrent write warning more prominent
 
 Data loss occurred when following guidance. Warning existed but 
 wasn't prominent enough. Moving to top of section with clear example."
 
 # Push and create PR
-git push -u origin fix/memory-concurrency-warning
-gh pr create --title "Emphasize memory_insert for concurrent writes" --body "..."
+git push -u origin fix/<example-skill>-concurrency-warning
+gh pr create --title "Emphasize append-only updates for concurrent writes" --body "..."
 ```
 
 ### Scenario 2: New Skill Addition
 
 ```bash
 # Create branch
-git checkout -b add/api-rate-limiting
+git checkout -b add/<example-skill>
 
 # Create skill structure
-mkdir -p ai/models/api-rate-limiting
+mkdir -p .claude/skills/<example-skill>
 # ... create SKILL.md and references ...
 
-# Update README
+# Update skill index if present
 # ... add skill to list ...
 
 # Commit
-git add ai/models/api-rate-limiting README.md
+git add .claude/skills/<example-skill>
 git commit -m "Add API rate limiting skill
 
 Covers exponential backoff, jitter, retry strategies for HTTP APIs.
 Common pattern not previously documented."
 
 # Push and create PR
-git push -u origin add/api-rate-limiting
+git push -u origin add/<example-skill>
 gh pr create --title "Add API rate limiting patterns" --body "..."
 ```
 
@@ -321,21 +321,21 @@ gh pr create --title "Add API rate limiting patterns" --body "..."
 
 ```bash
 # Create branch  
-git checkout -b refactor/memory-architecture-split
+git checkout -b refactor/<example-skill>-split
 
 # Make changes across multiple files
 # ... restructure skill ...
 
 # Commit incrementally
-git add ai/agents/letta/letta-memory-architect/SKILL.md
+git add .claude/skills/<example-skill>/SKILL.md
 git commit -m "Split memory types into separate reference file"
 
-git add letta/agent-development/references/memory-architecture.md
-git commit -m "Create memory-types reference with detailed comparison"
+git add .claude/skills/<example-skill>/references/<example-reference>.md
+git commit -m "Create update-methods reference with detailed comparison"
 
 # Push and create PR
-git push -u origin refactor/memory-architecture-split
-gh pr create --title "Restructure memory-architect for clarity" --body "..."
+git push -u origin refactor/<example-skill>-split
+gh pr create --title "Restructure shared state guidance for clarity" --body "..."
 ```
 
 **Note:** For major changes, consider discussing approach before doing work. Open issue or forum thread to validate direction first.
@@ -394,7 +394,7 @@ gh pr create --title "Restructure memory-architect for clarity" --body "..."
 **If unsure about contribution:**
 - Open issue describing proposed change
 - Ask for feedback before doing work
-- Discuss in Letta forum
+- Discuss in a project forum or issue tracker
 
 **If disagreement with reviewer:**
 - Discuss respectfully

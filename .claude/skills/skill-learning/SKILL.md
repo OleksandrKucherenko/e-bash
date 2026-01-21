@@ -1,7 +1,6 @@
 ---
 name: skill-learning-patterns
-description: Meta-skill for recognizing learnings, validating improvements, and contributing back to the collective knowledge base. Use when agents discover better patterns, find gaps in existing skills, or want to improve shared knowledge.
-license: MIT
+description: Use when agents discover better patterns, find gaps or inaccuracies in existing skills, or need to contribute validated improvements to shared knowledge.
 ---
 
 # Skill Learning Patterns
@@ -59,7 +58,7 @@ Consult `references/recognizing-learnings.md` for detailed patterns.
 Before proposing changes, validate based on contribution type:
 
 **For Tool/SDK Documentation:**
-- ✅ Tool is widely-used (1000+ GitHub stars, top search result, or Letta product)
+- ✅ Tool is widely-used (1000+ GitHub stars, top search result, or first-party product)
 - ✅ Shares battle-tested insights beyond official docs (what you struggled with, not basic usage)
 - ✅ Well-documented with working examples
 - ✅ Accurate and up-to-date
@@ -84,7 +83,7 @@ See `references/validation-criteria.md` for detailed guidance.
 - Examples would help but are missing
 
 **Create new skill** when:
-- Tool/SDK: Widely-used tool (1000+ stars/top search result/Letta product) with battle-tested insights
+- Tool/SDK: Widely-used tool (1000+ stars/top search result/first-party product) with battle-tested insights
 - Pattern: Appears frequently (3+ times) across different contexts and isn't documented
 - Knowledge would benefit many agents across different projects (not just your specific setup)
 
@@ -120,15 +119,15 @@ Consult `references/pr-workflow.md` for detailed process.
 
 **Clear rationale:**
 ```
-"I encountered rate limiting with OpenRouter 5 times. Added exponential 
+"I encountered rate limiting with multiple API providers 5 times. Added exponential 
 backoff pattern with jitter which resolved all instances. This pattern 
-isn't documented anywhere in ai/models/."
+isn't documented anywhere in the skills catalog."
 ```
 
 **Before/after comparison:**
 ```
-Before: "Use memory_rethink for updates"
-After: "Use memory_insert for concurrent writes (safer), memory_rethink 
+Before: "Use full rewrites for updates"
+After: "Use append-only updates for concurrent writes (safer), use full rewrites 
 only for single-agent exclusive access"
 Why: Prevents data loss in multi-agent scenarios
 ```
@@ -136,7 +135,7 @@ Why: Prevents data loss in multi-agent scenarios
 **Evidence of validation:**
 ```
 "Tested across 3 different projects, pattern held. Also confirmed in 
-Letta docs. Previous approach caused data loss 2/3 times."
+product docs. Previous approach caused data loss 2/3 times."
 ```
 
 **Preserved existing knowledge:**
@@ -166,14 +165,14 @@ Even well-intentioned contributions can miss the mark. Here are patterns to watc
 
 **Example - TOO SPECIFIC:**
 ```
-Skill: git-workflow-manager
-Content: "Always end commits with: Written by Cameron ◯ Letta Code"
-Problem: This is Cameron's personal preference, not general knowledge
+Skill: `<example-skill>` (git workflow conventions)
+Content: "Always end commits with: Written by <name> ◯ <organization>"
+Problem: This is a personal preference, not general knowledge
 ```
 
 **Example - APPROPRIATELY GENERAL:**
 ```
-Skill: git-workflow-manager (revised concept)
+Skill: `<example-skill>` (revised concept for discovering repo conventions)
 Content: "Check repository for commit conventions in CONTRIBUTING.md or recent commits"
 Better: Teaches pattern of discovering conventions, applies to any repository
 ```
@@ -196,8 +195,8 @@ Problem: This is standard git knowledge available everywhere
 
 **Example - SPECIALIZED KNOWLEDGE:**
 ```
-Skill: "mcp-builder" (in this repository)
-Content: Patterns for creating MCP servers - not just "how to use the MCP protocol" 
+Skill: `<example-skill>` (protocol server builder in this repository)
+Content: Patterns for creating servers - not just "how to use the protocol" 
 but specific guidance on tool design, error handling patterns, testing strategies
 Better: Takes general protocol knowledge and adds specialized patterns for building quality servers
 ```
@@ -213,7 +212,7 @@ Better: Takes general protocol knowledge and adds specialized patterns for build
 
 **Real example from this repository (November 2025):**
 ```
-Observation: One agent submitted overly-specific git-workflow-manager skill
+Observation: One agent submitted overly-specific `<example-skill>` (git workflow conventions)
 Initial reaction: "We need CULTURE.md + 3 new skills (knowledge-curation, 
 agent-human-collaboration, pattern-recognition) + extended documentation"
 Correction: Another agent called this out as the exact over-generalization we warn against
@@ -270,7 +269,7 @@ managed auth services vs. self-hosted, security considerations, user experience"
 ```
 "Always use arrow functions in JavaScript"
 "Always put API calls in src/api/ directory"  
-"Always use Claude Sonnet over GPT-4o"
+"Always use the premium model over the balanced model"
 → These are preferences without objective evidence of superiority
 ```
 
@@ -341,18 +340,18 @@ See `references/contribution-examples.md` for real examples.
 ### Workflow 1: Correcting Existing Skill
 
 ```
-During task: "Following letta-memory-architect, I used memory_rethink for 
-concurrent updates. Result: data loss when two agents wrote simultaneously."
+During task: "Following `<example-skill>` (shared state updates), I used full-rewrite updates for 
+concurrent writes. Result: data loss when two agents wrote simultaneously."
 
-Validation: "Checked references/concurrency.md - it says memory_insert is 
-safer but warning wasn't prominent. Tested memory_insert with concurrent 
+Validation: "Checked references/<example-reference>.md (concurrency guidance) - it says append-only updates are 
+safer but warning wasn't prominent. Tested append-only updates with concurrent 
 writes - no data loss."
 
 Action: 
-1. Create feature branch: fix/memory-concurrency-warning
+1. Create feature branch: fix/<example-skill>-concurrency-warning
 2. Update SKILL.md to make warning more prominent
 3. Add concrete example of data loss scenario
-4. Create PR: "Emphasize memory_insert for concurrent writes"
+4. Create PR: "Emphasize append-only updates for concurrent writes"
 5. Explain in PR: "Misread the guidance, led to data loss. Making warning 
    more visible to prevent this for other agents."
 ```
@@ -360,15 +359,15 @@ Action:
 ### Workflow 2: Adding Missing Pattern
 
 ```
-During task: "Hit OpenRouter rate limits 5 times across different projects. 
+During task: "Hit API rate limits 5 times across different projects. 
 Spent 30min each time figuring out exponential backoff."
 
-Validation: "Pattern works consistently. Checked ai/models/ - not documented. 
+Validation: "Pattern works consistently. Checked the skills catalog - not documented. 
 This is generalizable beyond my specific use case."
 
 Action:
-1. Create feature branch: add/api-rate-limiting-skill
-2. Create new skill: ai/models/api-rate-limiting/
+1. Create feature branch: add/<example-skill>-rate-limiting
+2. Create new skill: .claude/skills/<example-skill>/ (API rate limiting patterns)
 3. Document exponential backoff pattern with code examples
 4. Create PR: "Add API rate limiting patterns"
 5. Explain: "Common pattern that caused repeated debugging time. Validated 
@@ -379,14 +378,14 @@ Action:
 
 ```
 During task: "Skill said 'use appropriate model' but didn't define criteria. 
-Tried GPT-4o, Claude Sonnet, GPT-4o-mini before finding best fit."
+Tried premium, balanced, and budget model tiers before finding best fit."
 
 Validation: "Through testing, identified that task complexity + budget 
 constraints should guide model choice. This clarification would have saved 
 1 hour."
 
 Action:
-1. Create feature branch: clarify/model-selection-criteria  
+1. Create feature branch: clarify/<example-skill>-selection-criteria  
 2. Add decision tree to skill
 3. Include examples: "For X task → Y model because Z"
 4. Create PR: "Add model selection decision tree"

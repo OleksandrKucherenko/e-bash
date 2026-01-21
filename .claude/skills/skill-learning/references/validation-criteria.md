@@ -10,7 +10,7 @@ Before contributing changes to the repository, validate that your learning is so
 **What qualifies as "widely-used":**
 - Has 1000+ GitHub stars OR
 - Appears in top search results for its problem domain OR  
-- Is a Letta product
+- Is a first-party product
 
 **Validation standards:**
 - Shares battle-tested insights beyond official docs (what you struggled with, not basic usage)
@@ -20,7 +20,7 @@ Before contributing changes to the repository, validate that your learning is so
 - NOT just "getting started" guides (official docs already cover that)
 
 **Examples:** 
-- ✅ Claude SDK: Common pitfalls when streaming responses
+- ✅ LLM provider SDK: Common pitfalls when streaming responses
 - ✅ Playwright: Testing patterns for AI-driven web apps  
 - ✅ MCP servers: Integration patterns for tool calling
 - ❌ "How to install FastAPI" (just use official docs)
@@ -52,17 +52,17 @@ The questions below apply primarily to **pattern contributions**. Tool/SDK docum
 
 **Example - PASS:**
 ```
-Old approach: memory_rethink for all updates
-New approach: memory_insert for concurrent writes
+Old approach: full rewrites for all updates
+New approach: append-only updates for concurrent writes
 Test: Ran 10 concurrent update scenarios
-Result: 0 data loss with memory_insert vs 7/10 data loss with memory_rethink
+Result: 0 data loss with append-only updates vs 7/10 data loss with full rewrites
 Validated: Yes, objectively better for concurrent scenarios
 ```
 
 **Example - FAIL:**
 ```
-Old approach: Use GPT-4o
-New approach: Use Claude Sonnet  
+Old approach: Use the balanced model
+New approach: Use the premium model  
 Test: Tried once, seemed fine
 Result: Personal preference, no systematic comparison
 Validated: No, insufficient evidence
@@ -81,10 +81,10 @@ Validated: No, insufficient evidence
 **Example - PASS (General pattern):**
 ```
 Pattern: API rate limiting with exponential backoff
-Context tested: OpenRouter, Anthropic API, OpenAI API
-Result: Pattern worked across all three
+Context tested: multiple API providers
+Result: Pattern worked across all contexts
 Generalizable: Yes, applies to most HTTP APIs
-Why general: HTTP rate limiting is universal problem with standard solution
+Why general: HTTP rate limiting is a universal problem with a standard solution
 ```
 
 **Example - FAIL (Too specific):**
@@ -167,16 +167,16 @@ Real gap: No, just preference
 
 **Example - PASS:**
 ```
-Approach: Use memory_insert for concurrent writes
-Tradeoff: Block grows faster, need monitoring
-Edge case: Single-agent can still use memory_replace for precision
+Approach: Use append-only updates for concurrent writes
+Tradeoff: The block grows faster, needs monitoring
+Edge case: Single-agent can still use in-place replacement for precision
 Documented: Yes, included both benefits and tradeoffs
 ```
 
 **Example - FAIL:**
 ```
-Approach: Always use GPT-4o-mini for cost savings
-Tradeoff: Not considered - some tasks need GPT-4o
+Approach: Always use the budget model for cost savings
+Tradeoff: Not considered - some tasks need the premium model
 Edge case: Not identified - complex reasoning suffers
 Documented: No, presented as universal solution
 ```
@@ -297,17 +297,17 @@ Why good: Principles apply regardless of specific testing framework
 ```
 Testing model selection for code review task:
 
-GPT-4o-mini:
+Budget model:
 - Time: 2.3s average
 - Cost: $0.002 per review
 - Quality: Missed 2/10 subtle issues
 
-GPT-4o:
+Premium model:
 - Time: 3.1s average  
 - Cost: $0.012 per review
 - Quality: Caught all issues
 
-Conclusion: GPT-4o worth cost for code review quality
+Conclusion: Premium model worth cost for code review quality
 ```
 
 ### Method 2: Comparative Analysis
@@ -320,19 +320,19 @@ Conclusion: GPT-4o worth cost for code review quality
 
 **Example:**
 ```
-Analyzing memory update tools:
+Analyzing update methods:
 
-memory_insert:
+append-only updates:
 + Safe for concurrent writes
 + Simple append operation
 - Block grows unbounded
 
-memory_replace:
+in-place replacement:
 + Precise edits
 + Control over size
 - Race conditions possible
 
-memory_rethink:
+full rewrites:
 + Complete reorganization
 + Can consolidate/summarize
 - Highest concurrency risk
@@ -350,12 +350,12 @@ Recommendation: Choose based on concurrency needs and update patterns
 
 **Example:**
 ```
-Pattern: Streaming responses from OpenAI
+Pattern: Streaming responses from a provider API
 
 Verified:
-- OpenAI docs show stream=true parameter
-- Letta forum has 3 threads about streaming
-- Pattern documented in OpenAI cookbook
+- Provider docs show stream=true parameter
+- Project forum has 3 threads about streaming
+- Pattern documented in provider examples
 
 Confidence: High, community-validated pattern
 ```
@@ -442,7 +442,7 @@ If <5 checked → More validation needed
 
 ### Example 2: Needs More Work
 
-**Contribution:** Always use Claude Sonnet instead of GPT-4o
+**Contribution:** Always use the premium model instead of the balanced model
 
 **Validation:**
 - ❌ Only tried on one type of task
@@ -459,10 +459,10 @@ If <5 checked → More validation needed
 **Contribution:** Add warning about interactive git commands
 
 **Validation:**
-- ✅ git add -i failed consistently in Bash tool
+- ✅ git add -i failed consistently in a non-interactive shell environment
 - ✅ Clear reason why (non-interactive environment)
 - ✅ Helps others avoid same error
-- ⚠️ Only tested in Letta Code Bash tool environment
+- ⚠️ Only tested in a non-interactive shell environment
 - ✅ Documented the limitation clearly
 - ✅ Provided alternative approach
 
