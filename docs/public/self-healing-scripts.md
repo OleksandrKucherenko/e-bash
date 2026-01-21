@@ -96,8 +96,8 @@ We provide **two elegant bootstrap implementations**, each optimized for differe
 
 | Version | Output Level | Best For | Demo File |
 |---------|--------------|----------|-----------|
-| **Educational** | Verbose explanations | Learning, tutorials, onboarding | `demos/bootstrap-educational.sh` |
-| **Minimal** | Quiet, clean | Production, CI/CD, automation | `demos/bootstrap-minimal.sh` |
+| **Educational** | Verbose explanations | Learning, tutorials, onboarding | `demos/demo.bootstrap-educational.sh` |
+| **Minimal** | Quiet, clean | Production, CI/CD, automation | `demos/demo.bootstrap-minimal.sh` |
 
 **Educational Bootstrap:**
 - ✅ Detailed explanations of what's happening
@@ -128,7 +128,7 @@ Both versions follow **elegant-code principles**:
 
 #### Option A: Educational Bootstrap (Recommended for Learning)
 
-Use when you want detailed explanations and feedback. See full implementation in `demos/bootstrap-educational.sh`.
+Use when you want detailed explanations and feedback. See full implementation in `demos/demo.bootstrap-educational.sh`.
 
 **Key Features:**
 - Detailed detection messages
@@ -142,7 +142,7 @@ Use when you want detailed explanations and feedback. See full implementation in
 
 #### Option B: Minimal Bootstrap (Recommended for Production)
 
-Use for clean, quiet operation. See full implementation in `demos/bootstrap-minimal.sh`.
+Use for clean, quiet operation. See full implementation in `demos/demo.bootstrap-minimal.sh`.
 
 **Key Features:**
 - Silent when e-bash exists
@@ -357,17 +357,17 @@ When e-bash is not found:
 
 ## Complete Example
 
-See `demos/self-healing-script.sh` for a working example:
+See `demos/demo.self-healing.sh` for a working example:
 
 ```bash
 # Run the demo
-./demos/self-healing-script.sh
+./demos/demo.self-healing.sh
 
 # Try it in dry-run mode
-DRY_RUN=true ./demos/self-healing-script.sh
+DRY_RUN=true ./demos/demo.self-healing.sh
 
 # Enable debug logging
-DEBUG=* ./demos/self-healing-script.sh
+DEBUG=* ./demos/demo.self-healing.sh
 ```
 
 The demo showcases:
@@ -604,7 +604,7 @@ Periodically update the bootstrap function from the latest e-bash release:
 
 ```bash
 # Check for updates to ebash:bootstrap function
-curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/demos/self-healing-script.sh | grep -A 100 "function ebash:bootstrap"
+curl -sSL https://raw.githubusercontent.com/OleksandrKucherenko/e-bash/master/demos/demo.self-healing.sh | grep -A 100 "function ebash:bootstrap"
 ```
 
 ### DO: Test in Clean Environment
@@ -764,4 +764,4 @@ Self-healing scripts represent the pinnacle of script portability:
 
 **Copy the bootstrap function, add it to your scripts, and never worry about e-bash installation again!**
 
-For a working example, see: `demos/self-healing-script.sh`
+For a working example, see: `demos/demo.self-healing.sh`
