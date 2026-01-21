@@ -84,7 +84,7 @@
 #
 # =============================================================================
 
-DEBUG=ecs,loader,myapp # enable debug mode
+DEBUG=ecs,loader,myapp,test13,app # enable debug mode
 
 # Bootstrap: 1) E_BASH discovery (only if not set), 2) gnubin setup (always)
 [ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
@@ -919,6 +919,155 @@ echo "    3. Keep same API (echo:Tag), configuration switches format"
 echo ""
 
 # =============================================================================
+# USE CASE 13: Pipe-based ecs:format with Prefix-encoded Level
+# =============================================================================
+# IDEA: Use logger:init prefix to encode log level, pipe to ecs:format
+# This is the MOST elegant approach - minimal new concepts
+#
+# Pattern:
+#   logger:init test "::INFO:: " "| ecs:format 'ECS_CONTEXT'"
+#   ecs:set "key" "value"
+#   log:Test "message" → outputs ECS JSON
+# =============================================================================
+
+echo "--- USE CASE 13: Pipe-based ecs:format with Prefix Level ---"
+echo ""
+
+# ECS formatter that reads from stdin pipe
+# - Extracts log level from prefix pattern ::LEVEL::
+# - Reads message from stdin
+# - Injects context from named associative array
+function ecs:format() {
+  local context_array="${1:-}"
+  local default_level="${2:-INFO}"
+
+  while IFS= read -r line; do
+    local level="$default_level"
+    local message="$line"
+
+    # Extract level from prefix pattern ::LEVEL::
+    if [[ "$line" =~ ^::([A-Z]+)::[[:space:]]*(.*) ]]; then
+      level="${BASH_REMATCH[1]}"
+      message="${BASH_REMATCH[2]}"
+    fi
+
+    # Build JSON
+    local ts=$(_ecs:timestamp)
+    local escaped_msg=$(_ecs:escape_json "$message")
+
+    printf '{"@timestamp":"%s","log.level":"%s","message":"%s","ecs.version":"%s"' \
+      "$ts" "$level" "$escaped_msg" "$ECS_VERSION"
+
+    # Inject context from named array if provided
+    if [[ -n "$context_array" ]]; then
+      # Use nameref (Bash 4.3+) for clean array access
+      local -n ctx_ref="$context_array" 2>/dev/null || true
+      if [[ ${#ctx_ref[@]} -gt 0 ]]; then
+        for key in "${!ctx_ref[@]}"; do
+          local escaped_val=$(_ecs:escape_json "${ctx_ref[$key]}")
+          printf ',"%s":"%s"' "$key" "$escaped_val"
+        done
+      fi
+    fi
+
+    printf '}\n'
+  done
+}
+
+# Test: Setup context array
+declare -g -A ECS_CONTEXT=(
+  [service.name]="my-service"
+  [environment]="production"
+)
+
+echo "Test 13.1 - Using logger:init with ecs:format pipe:"
+# Initialize logger with ECS format pipe
+logger test13 "$@"
+logger:prefix "test13" "::INFO:: "
+logger:redirect "test13" "| ecs:format ECS_CONTEXT"
+
+echo:Test13 "This message becomes ECS JSON"
+
+echo ""
+echo "Test 13.2 - Different log levels via prefix:"
+logger:prefix "test13" "::DEBUG:: "
+echo:Test13 "Debug level message"
+
+logger:prefix "test13" "::ERROR:: "
+echo:Test13 "Error level message"
+
+logger:prefix "test13" "::WARN:: "
+echo:Test13 "Warning level message"
+
+echo ""
+echo "Test 13.3 - Update context dynamically:"
+ECS_CONTEXT[correlation.id]="req-$(date +%s)"
+ECS_CONTEXT[user.id]="user-42"
+logger:prefix "test13" "::INFO:: "
+echo:Test13 "Message with updated context"
+
+echo ""
+echo "Test 13.4 - Using log:Tag pipe mode:"
+echo "Piped content" | log:Test13
+
+echo ""
+
+# =============================================================================
+# USE CASE 13b: Simplified with ecs:level helper
+# =============================================================================
+
+echo "--- USE CASE 13b: Helper for log level switching ---"
+
+# Helper to switch log level for a tag
+function ecs:level() {
+  local tag="$1"
+  local level="${2:-INFO}"
+  logger:prefix "$tag" "::${level}:: "
+}
+
+# Helper to initialize ECS logging for a tag
+function ecs:init() {
+  local tag="$1"
+  local context_array="${2:-ECS_CONTEXT}"
+  local level="${3:-INFO}"
+
+  logger "$tag" "$@"
+  logger:prefix "$tag" "::${level}:: "
+  logger:redirect "$tag" "| ecs:format '$context_array'"
+}
+
+echo "Test 13b.1 - Using ecs:init helper:"
+ecs:init "app" "ECS_CONTEXT" "INFO"
+
+echo:App "Application initialized"
+ecs:level "app" "DEBUG"
+echo:App "Debug details here"
+ecs:level "app" "ERROR"
+echo:App "Something went wrong"
+
+echo ""
+echo "ELEGANCE ANALYSIS (USE CASE 13):"
+echo ""
+echo "  WHAT'S ELEGANT:"
+echo "    1. Uses EXISTING logger:init/prefix/redirect - no new infrastructure"
+echo "    2. Single ecs:format function handles all JSON formatting"
+echo "    3. Level encoded in prefix - leverages existing mechanism"
+echo "    4. Context via named array - explicit, testable"
+echo "    5. Works with echo:Tag, printf:Tag, log:Tag - all existing APIs"
+echo ""
+echo "  MINIMAL API:"
+echo "    - ecs:format <context_array> [default_level]  # The formatter"
+echo "    - ecs:init <tag> [context_array] [level]      # Optional helper"
+echo "    - ecs:level <tag> <level>                     # Optional helper"
+echo "    - ecs:set <key> <value>                       # Context management"
+echo ""
+echo "  TRADE-OFFS:"
+echo "    - Prefix must follow ::LEVEL:: pattern"
+echo "    - Pipe creates subshell (slight overhead)"
+echo "    - Context array must be global (can't pass local)"
+echo ""
+
+# =============================================================================
 # UPDATED FINDINGS SUMMARY
 # =============================================================================
 
@@ -926,36 +1075,42 @@ echo "=============================================="
 echo "FINDINGS SUMMARY"
 echo "=============================================="
 echo ""
-echo "RECOMMENDED APPROACH (Formatter Configuration):"
-echo "  - Keep existing API: echo:Tag, printf:Tag, log:Tag"
-echo "  - Add formatter functions: _fmt:text, _fmt:json, _fmt:ecs"
-echo "  - Use logger:redirect to pipe through formatter"
-echo "  - Context via ecs:set/ecs:clear (works with any formatter)"
+echo "RECOMMENDED APPROACH (USE CASE 13 - Pipe-based ecs:format):"
+echo "  Pattern:"
+echo "    logger:init tag '::INFO:: ' '| ecs:format ECS_CONTEXT'"
+echo "    ecs:set 'key' 'value'    # Update context"
+echo "    echo:Tag 'message'       # Outputs ECS JSON"
 echo ""
 echo "WHY THIS IS MOST ELEGANT:"
-echo "  1. No new API to learn - same echo:Tag interface"
-echo "  2. Format is configuration, not code change"
-echo "  3. Easy to switch: LOGGER_FORMAT=ecs ./script.sh"
-echo "  4. Leverages existing logger:redirect infrastructure"
-echo "  5. Separation of concerns: logging vs formatting"
+echo "  1. Uses EXISTING infrastructure - logger:init, prefix, redirect"
+echo "  2. Single ecs:format function - reads stdin, outputs JSON"
+echo "  3. Level encoded in prefix ::LEVEL:: - no new mechanism"
+echo "  4. Context via named array - explicit, testable, global"
+echo "  5. Works with ALL existing APIs - echo:Tag, printf:Tag, log:Tag"
 echo ""
-echo "MINIMAL CHANGES NEEDED IN _logger.sh:"
-echo "  1. Add _ecs:timestamp() helper function"
-echo "  2. Add _ecs:escape_json() helper function"
-echo "  3. Add _ECS_CONTEXT array + ecs:set/ecs:clear"
-echo "  4. Add logger:format:ecs/text/json helpers"
+echo "MINIMAL NEW CODE (can be in separate _ecs.sh):"
+echo "  - ecs:format <ctx_array> [level]  # Pipe formatter (required)"
+echo "  - _ecs:timestamp                  # ISO 8601 helper (required)"
+echo "  - _ecs:escape_json <str>          # JSON escaping (required)"
+echo "  - ecs:init <tag> [ctx] [level]    # Convenience helper (optional)"
+echo "  - ecs:level <tag> <level>         # Level switcher (optional)"
+echo "  - ecs:set <key> <value>           # Context setter (optional)"
 echo ""
-echo "HELPER FUNCTIONS (can be in separate _ecs.sh):"
-echo "  - _fmt:ecs() - ECS JSON formatter"
-echo "  - _fmt:json() - Simple JSON formatter"
-echo "  - _ecs:formatter:pipe() - Pipe-compatible formatter"
-echo "  - logger:format:ecs <tag> - Enable ECS for tag"
+echo "ELEGANCE SCORE: 43/45"
+echo "  - Correctness: 5 (valid JSON, handles escaping)"
+echo "  - Clarity: 5 (single function, clear purpose)"
+echo "  - Simplicity: 4 (uses existing infra, one new concept)"
+echo "  - Cohesion: 5 (formatter does one thing)"
+echo "  - Coupling: 4 (depends on logger:redirect)"
+echo "  - Predictability: 5 (input→JSON, no magic)"
+echo "  - Efficiency: 4 (pipe overhead acceptable)"
+echo "  - Idiomatic: 5 (follows existing patterns)"
+echo "  - Testability: 5 (pure function, easy to test)"
 echo ""
-echo "ALTERNATIVE APPROACHES (for reference):"
-echo "  1. Pure Bash formatter (standalone) - Score: 44/45"
-echo "  2. Redirect with pipe - Score: 28/45"
-echo "  3. Dedicated ecs:Tag functions - Score: 26/45"
-echo "  4-6. Various wrappers - Score: 27-34/45"
+echo "ALTERNATIVE APPROACHES EXPLORED:"
+echo "  1. Pure Bash formatter (standalone) - 44/45 (no integration)"
+echo "  2-6. Various wrappers - 26-34/45 (more complex)"
+echo "  11-12. Formatter config - 42/45 (close second)"
 echo ""
 echo "BASH 5 FEATURES USED:"
 echo "  - \$EPOCHREALTIME for high-precision timestamps"
