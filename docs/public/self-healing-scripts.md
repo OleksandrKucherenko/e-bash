@@ -90,17 +90,75 @@ source "$E_BASH/_logger.sh"
 
 ---
 
+## Choosing the Right Bootstrap Version
+
+We provide **two elegant bootstrap implementations**, each optimized for different use cases:
+
+| Version | Output Level | Best For | Demo File |
+|---------|--------------|----------|-----------|
+| **Educational** | Verbose explanations | Learning, tutorials, onboarding | `demos/bootstrap-educational.sh` |
+| **Minimal** | Quiet, clean | Production, CI/CD, automation | `demos/bootstrap-minimal.sh` |
+
+**Educational Bootstrap:**
+- ✅ Detailed explanations of what's happening
+- ✅ Clear progress indicators (Step 1/3, 2/3, 3/3)
+- ✅ Helpful error messages with solutions
+- ✅ Educational content about e-bash
+- 📚 Perfect for tutorials, onboarding, learning scripts
+
+**Minimal Bootstrap:**
+- ✅ Silent when e-bash already exists
+- ✅ One-line output when installing: `→ Installing e-bash... ✓ e-bash installed`
+- ✅ Clean, production-ready
+- ✅ Fast and efficient
+- 🚀 Perfect for automation, CI/CD, cron jobs
+
+Both versions follow **elegant-code principles**:
+- Correctness first (handles all edge cases)
+- Clear separation of concerns (detection, installation, setup)
+- Minimal complexity (straightforward control flow)
+- Easy to test and modify
+- Self-documenting code structure
+
+---
+
 ## Quick Start
 
-### Step 1: Copy the Bootstrap Function
+### Step 1: Choose Your Bootstrap Version
 
-Add this function to the top of your script (after shebang and comments):
+#### Option A: Educational Bootstrap (Recommended for Learning)
+
+Use when you want detailed explanations and feedback. See full implementation in `demos/bootstrap-educational.sh`.
+
+**Key Features:**
+- Detailed detection messages
+- Step-by-step installation progress
+- Comprehensive error explanations
+- Educational content about e-bash
+
+**Copy this version** when creating tutorials, onboarding scripts, or debugging installation issues.
+
+---
+
+#### Option B: Minimal Bootstrap (Recommended for Production)
+
+Use for clean, quiet operation. See full implementation in `demos/bootstrap-minimal.sh`.
+
+**Key Features:**
+- Silent when e-bash exists
+- Minimal output on installation
+- Production-ready
+- Fast and efficient
+
+**Copy this version** for automation scripts, CI/CD pipelines, and production deployments.
+
+---
+
+### Step 2: Add Bootstrap to Your Script
 
 ```bash
 #!/usr/bin/env bash
 ## Your script header here
-
-set -euo pipefail
 
 # ============================================================================
 # SELF-HEALING BOOTSTRAP
