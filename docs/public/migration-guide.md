@@ -10,6 +10,7 @@ A comprehensive guide for transforming legacy Bash scripts into modern, maintain
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
     - [Migration Benefits](#migration-benefits)
+    - [Beyond Migration: Self-Healing Scripts](#beyond-migration-self-healing-scripts)
     - [Strict Mode Compatibility](#strict-mode-compatibility)
   - [Installation](#installation)
     - [Quick Installation (Recommended)](#quick-installation-recommended)
@@ -44,6 +45,7 @@ A comprehensive guide for transforming legacy Bash scripts into modern, maintain
       - [9.1 Semantic Versioning (\_semver.sh)](#91-semantic-versioning-_semversh)
       - [9.2 Tmux Progress Displays (\_tmux.sh)](#92-tmux-progress-displays-_tmuxsh)
       - [9.3 IPv6 Address Coloring (\_ipv6.sh)](#93-ipv6-address-coloring-_ipv6sh)
+    - [Step 10 (Optional): Make Your Script Self-Healing](#step-10-optional-make-your-script-self-healing)
   - [Before/After Comparisons](#beforeafter-comparisons)
     - [Example 1: Simple File Processing Script](#example-1-simple-file-processing-script)
     - [Example 2: Deployment Script with Rollback](#example-2-deployment-script-with-rollback)
@@ -74,6 +76,32 @@ The e-bash library provides a comprehensive framework for professional Bash scri
 | Fragile cleanup           | Multiple trap handlers per signal         |
 | Missing dependency checks | Version-aware dependency validation       |
 | Scattered utilities       | Centralized commons (secrets, config, UI) |
+
+### Beyond Migration: Self-Healing Scripts
+
+**🚀 The Next Level:** After mastering basic e-bash migration, consider the **Self-Healing Scripts** pattern for maximum portability and zero-setup deployment.
+
+Traditional e-bash scripts assume e-bash is already installed. **Self-healing scripts** go one step further—they automatically detect and install e-bash if it's missing, making your scripts truly portable across any environment.
+
+| Traditional e-bash Script | Self-Healing Script |
+|--------------------------|---------------------|
+| Requires e-bash pre-installed | Auto-installs e-bash if missing |
+| Fails with "E_BASH not found" | Shows friendly install message |
+| Needs README setup instructions | Zero setup - just run the script |
+| CI requires e-bash setup step | CI works immediately (zero config) |
+
+**Perfect for:**
+- 📤 **Shared scripts** - Email/Slack scripts that work immediately for recipients
+- 🏢 **Internal tooling** - CLI tools that "just work" on any developer's machine
+- 🔄 **CI/CD pipelines** - No manual e-bash installation in workflow configs
+- 🌍 **Multi-environment** - Same script works on dev/staging/prod without setup
+- 👥 **Open source** - Contributors can run scripts without reading setup docs
+
+**Learn more:** See the [Self-Healing Scripts Pattern](./self-healing-scripts.md) guide with POC demos in `demos/demo.bootstrap-*.sh`.
+
+This pattern represents the pinnacle of script portability, combining e-bash's power with automatic installation. It's the difference between "install e-bash, then run this script" and "just run this script."
+
+---
 
 ### Strict Mode Compatibility
 
@@ -258,6 +286,7 @@ UNDO_RUN=true ./my-script.sh
 - **Hooks/extensibility?** See [Step 5: Hooks](#step-5-add-hooks-for-extensibility-_hookssh)
 - **Commons utilities?** See [Step 8: Commons](#step-8-add-commons-utilities-_commonssh)
 - **Full template?** See [The Idealistic Script Structure](#the-idealistic-script-structure)
+- **Maximum portability?** See [Step 10: Self-Healing Scripts](#step-10-optional-make-your-script-self-healing) 🚀
 
 ---
 
@@ -816,6 +845,34 @@ SILENT_RSYNC=true ./sync.sh  # Only rsync silenced
 ```
 
 **Impact:** Clean cron logs, email only on errors, reduced noise.
+
+---
+
+### 🚀 Next Level: Zero-Setup Portability
+
+#### 29. **Self-Healing Scripts (Advanced Pattern)**
+**Problem:** Scripts require e-bash pre-installed, setup instructions get lost, onboarding friction
+**Solution:** Scripts auto-detect and install e-bash if missing
+
+```bash
+# Before: Manual setup required
+# README: "First install e-bash: curl https://git.new/e-bash | bash -s --"
+# Then run: ./deploy.sh
+
+# After: Self-healing bootstrap
+function ebash:bootstrap() {
+  # Detects e-bash or auto-installs globally
+  # (copy from demos/demo.bootstrap-minimal.sh)
+}
+ebash:bootstrap  # Zero setup - just works!
+
+source "$E_BASH/_dependencies.sh"
+# ... rest of script
+```
+
+**Impact:** True portability, zero onboarding, works in any environment without setup, CI/CD ready.
+
+**Learn more:** [Self-Healing Scripts Pattern](./self-healing-scripts.md) with POC demos
 
 ---
 
@@ -1981,6 +2038,85 @@ ipv6:expand "2001:db8::1"
 - Configuration file validation
 - Network debugging tools
 - Server inventory management
+
+---
+
+### Step 10 (Optional): Make Your Script Self-Healing
+
+**For Maximum Portability:** Transform your migrated script into a **self-healing script** that auto-installs e-bash if missing.
+
+This is an **optional advanced pattern** that makes scripts truly portable—they work on any machine without requiring manual e-bash installation.
+
+#### When to Use Self-Healing Scripts
+
+✅ **Use when:**
+- Sharing scripts with colleagues via email/Slack
+- Distributing internal tooling across teams
+- Building CI/CD scripts for multiple environments
+- Creating open source project scripts
+- Onboarding new developers (zero setup friction)
+
+❌ **Skip when:**
+- Scripts run in controlled environments (e-bash always installed)
+- You want to enforce specific e-bash versions
+- Running in air-gapped systems (no internet for auto-install)
+
+#### How to Make a Script Self-Healing
+
+1. **Choose a bootstrap version:**
+   - **Educational** - Verbose, great for tutorials (`demos/demo.bootstrap-educational.sh`)
+   - **Minimal** - Quiet, great for production (`demos/demo.bootstrap-minimal.sh`)
+
+2. **Copy the `ebash:bootstrap()` function** from the demo into your script
+
+3. **Call `ebash:bootstrap`** before loading e-bash modules
+
+#### Quick Example
+
+```bash
+#!/usr/bin/env bash
+## Your migrated script (now self-healing!)
+
+# ============================================================================
+# SELF-HEALING BOOTSTRAP (copied from demo.bootstrap-minimal.sh)
+# ============================================================================
+function ebash:bootstrap() {
+  # ... copy the entire function from demo ...
+}
+
+ebash:bootstrap  # Auto-installs e-bash if needed
+
+# ============================================================================
+# YOUR MIGRATED SCRIPT (unchanged from Steps 1-9)
+# ============================================================================
+
+# Now load e-bash modules as usual
+source "$E_BASH/_dependencies.sh"
+source "$E_BASH/_logger.sh"
+# ... rest of your migrated script ...
+```
+
+#### Benefits
+
+| Regular e-bash Script | Self-Healing Script |
+|----------------------|---------------------|
+| Requires manual e-bash install | Auto-installs if missing |
+| Fails with error if e-bash missing | Shows friendly install message |
+| Needs README instructions | Zero instructions needed |
+| CI needs e-bash setup | CI works immediately |
+
+**Learn more:** See the complete [Self-Healing Scripts Pattern](./self-healing-scripts.md) guide.
+
+**Try the demos:**
+```bash
+# Educational version (verbose feedback)
+./demos/demo.bootstrap-educational.sh
+
+# Minimal version (quiet, production-ready)
+./demos/demo.bootstrap-minimal.sh
+```
+
+This optional step elevates your scripts from "requires e-bash" to "installs own dependencies automatically."
 
 ---
 
