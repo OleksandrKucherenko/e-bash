@@ -65,13 +65,22 @@
       "Read(//home/linuxbrew/.linuxbrew/Cellar/shellspec/0.28.1/lib/shellspec/lib/**)",
       "Bash(array:qsort \"compare:versions\" \"2.0.0\" \"1.0.0\" \"1.5.0\")",
       "Skill(shellspec)",
-      "Skill(shellspec:*)"
+      "Skill(shellspec:*)",
+      "WebFetch(domain:docs.brew.sh)",
+      "WebFetch(domain:zread.ai)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "mcp__web-reader__webReader",
+      "Bash(gh repo view:*)",
+      "Bash(curl:*)",
+      "mcp__web-search-prime__webSearchPrime"
     ],
     "deny": [],
     "ask": []
   },
+  "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "zai-mcp-server",
-    "web-search-prime"
+    "web-search-prime",
+    "web-reader"
   ]
 }
