@@ -2102,6 +2102,10 @@ ROLLBACK=true UNDO_RUN=true ./deploy.sh  # Execute rollback
 
 **Use Case:** Development machine setup script that auto-installs all required tools.
 
+> **Note:** For truly portable scripts that auto-install e-bash itself, see the
+> [Self-Healing Scripts Pattern](./self-healing-scripts.md) documentation with
+> POC demos in `demos/demo.bootstrap-*.sh`.
+
 ```bash
 #!/usr/bin/env bash
 ## bootstrap.sh - One-command development environment setup

@@ -2,6 +2,12 @@
 
 A comprehensive guide to creating truly portable, self-sufficient Bash scripts that automatically resolve their own dependencies, including the e-bash library itself.
 
+> **Status:** Proof of Concept / Demo
+>
+> This is an experimental pattern demonstrated through example scripts in `demos/`.
+> The bootstrap functions are designed to be copied into your scripts as needed.
+> After field validation and feedback, this pattern may be promoted to core library modules.
+
 ---
 
 ## Table of Contents
@@ -92,7 +98,11 @@ source "$E_BASH/_logger.sh"
 
 ## Choosing the Right Bootstrap Version
 
-We provide **two elegant bootstrap implementations**, each optimized for different use cases:
+We provide **two elegant bootstrap implementations** as **proof-of-concept demos**, each optimized for different use cases:
+
+> **Note:** These are demo/POC implementations showcasing the self-healing pattern.
+> Copy the bootstrap function from these demos into your scripts as needed.
+> Once battle-tested, these may be promoted to core library modules.
 
 | Version | Output Level | Best For | Demo File |
 |---------|--------------|----------|-----------|
@@ -154,14 +164,16 @@ Use for clean, quiet operation. See full implementation in `demos/demo.bootstrap
 
 ---
 
-### Step 2: Add Bootstrap to Your Script
+### Step 2: Copy Bootstrap Function into Your Script
+
+**Important:** This is a copy-paste approach. Copy the entire `ebash:bootstrap()` function from the demo file into your script.
 
 ```bash
 #!/usr/bin/env bash
 ## Your script header here
 
 # ============================================================================
-# SELF-HEALING BOOTSTRAP
+# SELF-HEALING BOOTSTRAP (copied from demo)
 # ============================================================================
 
 function ebash:bootstrap() {
