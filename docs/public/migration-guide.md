@@ -39,8 +39,7 @@ A comprehensive guide for transforming legacy Bash scripts into modern, maintain
       - [Argument Definition Syntax Reference](#argument-definition-syntax-reference)
       - [The `args:i` Composer Pattern (Recommended for Complex Scripts)](#the-argsi-composer-pattern-recommended-for-complex-scripts)
     - [Step 8: Add Commons Utilities (\_commons.sh)](#step-8-add-commons-utilities-_commonssh)
-- [Manual config discovery](#manual-config-discovery)
-- [Manual git root detection](#manual-git-root-detection)
+      - [Manual config discovery](#manual-config-discovery)
     - [Step 9: Optional Modules (Semver, Tmux, IPv6)](#step-9-optional-modules-semver-tmux-ipv6)
       - [9.1 Semantic Versioning (\_semver.sh)](#91-semantic-versioning-_semversh)
       - [9.2 Tmux Progress Displays (\_tmux.sh)](#92-tmux-progress-displays-_tmuxsh)
@@ -1613,6 +1612,7 @@ parse:arguments "$@"
 5. **Easier to maintain**: Add/remove arguments without touching others
 
 **Real-World Example (from `bin/version-up.v2.sh`):**
+
 ```bash
 export COMPOSER="
 	$(args:i help -a "-h,--help" -h "Show help and exit." -g global)
@@ -1641,19 +1641,16 @@ parse:arguments "$@"
 | Scripts with grouped arguments | Use `args:i` with `-g` flag         |
 | Team-maintained scripts        | Use `args:i` for better readability |
 
-
----
-
-
-
----
-
 ### Step 8: Add Commons Utilities (_commons.sh)
 
 **Before (Legacy):**
+```bash
 read -p "Enter password: " PASSWORD
+```
 
-# Manual config discovery
+#### Manual config discovery
+
+```bash
 CONFIG_FILE=""
 if [[ -f "./config.yml" ]]; then
   CONFIG_FILE="./config.yml"
