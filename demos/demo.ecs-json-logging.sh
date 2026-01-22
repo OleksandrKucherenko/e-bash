@@ -928,13 +928,17 @@ echo ""
 #   logger:init test "::INFO:: " "| ecs:format 'ECS_CONTEXT'"
 #   ecs:set "key" "value"
 #   log:Test "message" → outputs ECS JSON
+#
+# INSIGHT: Level can be overridden IN the message itself!
+#   echo:Tag "::ERROR:: something went wrong"
+#   → extracts ERROR level, strips prefix from message
 # =============================================================================
 
 echo "--- USE CASE 13: Pipe-based ecs:format with Prefix Level ---"
 echo ""
 
 # ECS formatter that reads from stdin pipe
-# - Extracts log level from prefix pattern ::LEVEL::
+# - Extracts log level from prefix pattern ::LEVEL:: (can be in prefix OR message)
 # - Reads message from stdin
 # - Injects context from named associative array
 function ecs:format() {
@@ -945,10 +949,18 @@ function ecs:format() {
     local level="$default_level"
     local message="$line"
 
-    # Extract level from prefix pattern ::LEVEL::
+    # Extract level from prefix pattern ::LEVEL:: (at start of line)
+    # This handles prefix-based default level
     if [[ "$line" =~ ^::([A-Z]+)::[[:space:]]*(.*) ]]; then
       level="${BASH_REMATCH[1]}"
       message="${BASH_REMATCH[2]}"
+
+      # Check if message ALSO starts with ::LEVEL:: (inline override)
+      # This allows: prefix "::INFO:: " + message "::ERROR:: something"
+      if [[ "$message" =~ ^::([A-Z]+)::[[:space:]]*(.*) ]]; then
+        level="${BASH_REMATCH[1]}"
+        message="${BASH_REMATCH[2]}"
+      fi
     fi
 
     # Build JSON
@@ -980,59 +992,54 @@ declare -g -A ECS_CONTEXT=(
   [environment]="production"
 )
 
-echo "Test 13.1 - Using logger:init with ecs:format pipe:"
-# Initialize logger with ECS format pipe
+echo "Test 13.1 - Initialize with default INFO level in prefix:"
+# Initialize logger with ECS format pipe (default level in prefix)
 logger test13 "$@"
 logger:prefix "test13" "::INFO:: "
 logger:redirect "test13" "| ecs:format ECS_CONTEXT"
 
-echo:Test13 "This message becomes ECS JSON"
+echo:Test13 "This message uses default INFO level"
 
 echo ""
-echo "Test 13.2 - Different log levels via prefix:"
-logger:prefix "test13" "::DEBUG:: "
-echo:Test13 "Debug level message"
-
-logger:prefix "test13" "::ERROR:: "
-echo:Test13 "Error level message"
-
-logger:prefix "test13" "::WARN:: "
-echo:Test13 "Warning level message"
+echo "Test 13.2 - Override level INLINE in the message:"
+echo:Test13 "::ERROR:: This overrides to ERROR level"
+echo:Test13 "::DEBUG:: This overrides to DEBUG level"
+echo:Test13 "::WARN:: This overrides to WARN level"
+echo:Test13 "Back to default INFO (no override)"
 
 echo ""
 echo "Test 13.3 - Update context dynamically:"
 ECS_CONTEXT[correlation.id]="req-$(date +%s)"
 ECS_CONTEXT[user.id]="user-42"
-logger:prefix "test13" "::INFO:: "
 echo:Test13 "Message with updated context"
+echo:Test13 "::ERROR:: Error with context"
 
 echo ""
 echo "Test 13.4 - Using log:Tag pipe mode:"
 echo "Piped content" | log:Test13
+echo "::FATAL:: Piped fatal error" | log:Test13
 
+echo ""
+echo "ELEGANCE INSIGHT:"
+echo "  Level override is INLINE - no configuration change needed!"
+echo "  echo:Tag '::ERROR:: message'  → ERROR level"
+echo "  echo:Tag 'message'            → default INFO level"
 echo ""
 
 # =============================================================================
-# USE CASE 13b: Simplified with ecs:level helper
+# USE CASE 13b: Simplified helpers (optional)
 # =============================================================================
 
-echo "--- USE CASE 13b: Helper for log level switching ---"
-
-# Helper to switch log level for a tag
-function ecs:level() {
-  local tag="$1"
-  local level="${2:-INFO}"
-  logger:prefix "$tag" "::${level}:: "
-}
+echo "--- USE CASE 13b: Optional helpers ---"
 
 # Helper to initialize ECS logging for a tag
 function ecs:init() {
   local tag="$1"
   local context_array="${2:-ECS_CONTEXT}"
-  local level="${3:-INFO}"
+  local default_level="${3:-INFO}"
 
-  logger "$tag" "$@"
-  logger:prefix "$tag" "::${level}:: "
+  logger "$tag" "${@:4}"
+  logger:prefix "$tag" "::${default_level}:: "
   logger:redirect "$tag" "| ecs:format '$context_array'"
 }
 
@@ -1040,31 +1047,33 @@ echo "Test 13b.1 - Using ecs:init helper:"
 ecs:init "app" "ECS_CONTEXT" "INFO"
 
 echo:App "Application initialized"
-ecs:level "app" "DEBUG"
-echo:App "Debug details here"
-ecs:level "app" "ERROR"
-echo:App "Something went wrong"
+echo:App "::DEBUG:: Debug details here"
+echo:App "::ERROR:: Something went wrong"
+echo:App "Normal info message"
 
 echo ""
-echo "ELEGANCE ANALYSIS (USE CASE 13):"
+echo "FINAL ELEGANCE ANALYSIS:"
 echo ""
 echo "  WHAT'S ELEGANT:"
 echo "    1. Uses EXISTING logger:init/prefix/redirect - no new infrastructure"
 echo "    2. Single ecs:format function handles all JSON formatting"
-echo "    3. Level encoded in prefix - leverages existing mechanism"
+echo "    3. Level can be: default (from prefix) OR inline override (in message)"
 echo "    4. Context via named array - explicit, testable"
 echo "    5. Works with echo:Tag, printf:Tag, log:Tag - all existing APIs"
 echo ""
 echo "  MINIMAL API:"
-echo "    - ecs:format <context_array> [default_level]  # The formatter"
+echo "    - ecs:format <context_array> [default_level]  # The pipe formatter"
 echo "    - ecs:init <tag> [context_array] [level]      # Optional helper"
-echo "    - ecs:level <tag> <level>                     # Optional helper"
-echo "    - ecs:set <key> <value>                       # Context management"
 echo ""
-echo "  TRADE-OFFS:"
-echo "    - Prefix must follow ::LEVEL:: pattern"
-echo "    - Pipe creates subshell (slight overhead)"
-echo "    - Context array must be global (can't pass local)"
+echo "  USAGE PATTERNS:"
+echo "    echo:Tag 'message'              # Uses default level"
+echo "    echo:Tag '::ERROR:: message'    # Override to ERROR"
+echo "    echo:Tag '::DEBUG:: message'    # Override to DEBUG"
+echo ""
+echo "  NO LONGER NEEDED:"
+echo "    - ecs:level helper (level is inline!)"
+echo "    - Multiple prefix changes"
+echo "    - Level-specific functions (ecs:error, ecs:info)"
 echo ""
 
 # =============================================================================
