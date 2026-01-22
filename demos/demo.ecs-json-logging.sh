@@ -125,21 +125,42 @@ function _ecs:escape_json() {
   echo "$str"
 }
 
-# ISO 8601 timestamp with microseconds (Bash 5 feature: $EPOCHREALTIME)
+# ISO 8601 timestamp with microseconds - PURE BASH (no subprocess!)
+# Uses Howard Hinnant's civil_from_days algorithm for date conversion
 function _ecs:timestamp() {
-  # $EPOCHREALTIME gives us: 1706612470.123456
-  # We need: 2024-01-30T12:34:30.123456Z
-  if [[ -n "$EPOCHREALTIME" ]]; then
-    # Bash 5.0+ - high precision
-    local epoch_sec="${EPOCHREALTIME%.*}"
-    local micro="${EPOCHREALTIME#*.}"
-    # Use printf for date formatting (GNU date)
-    date -u -d "@${epoch_sec}" "+%Y-%m-%dT%H:%M:%S.${micro:0:6}Z" 2>/dev/null || \
-      date -u "+%Y-%m-%dT%H:%M:%S.000000Z"
-  else
-    # Fallback for older Bash
-    date -u "+%Y-%m-%dT%H:%M:%S.000000Z"
-  fi
+  local ts="${1:-$EPOCHREALTIME}"
+
+  # Handle integer vs float timestamps
+  local sec=${ts%.*}
+  local usec=${ts#*.}
+  [[ "$ts" == *.* ]] || usec=0
+  usec=${usec:0:6}
+  usec=$(( 10#$usec ))
+  while (( ${#usec} < 6 )); do usec="${usec}0"; done
+
+  # Time of day calculation
+  local s=$(( sec ))
+  local days=$(( s / 86400 ))
+  local sod=$(( s % 86400 ))   # seconds of day
+
+  local hh=$(( sod / 3600 ))
+  local mm=$(( (sod % 3600) / 60 ))
+  local ss=$(( sod % 60 ))
+
+  # civil_from_days (Howard Hinnant), with days since 1970-01-01
+  local z=$(( days + 719468 ))
+  local era=$(( (z >= 0 ? z : z - 146096) / 146097 ))
+  local doe=$(( z - era*146097 ))                       # [0, 146096]
+  local yoe=$(( (doe - doe/1460 + doe/36524 - doe/146096) / 365 ))  # [0, 399]
+  local y=$(( yoe + era*400 ))
+  local doy=$(( doe - (365*yoe + yoe/4 - yoe/100) ))    # [0, 365]
+  local mp=$(( (5*doy + 2) / 153 ))                     # [0, 11]
+  local d=$(( doy - (153*mp + 2)/5 + 1 ))               # [1, 31]
+  local m=$(( mp + (mp < 10 ? 3 : -9) ))                # [1, 12]
+  y=$(( y + (m <= 2 ? 1 : 0) ))
+
+  printf "%04d-%02d-%02dT%02d:%02d:%02d.%06dZ\n" \
+    "$y" "$m" "$d" "$hh" "$mm" "$ss" "$usec"
 }
 
 # Core ECS JSON formatter - minimal fields
