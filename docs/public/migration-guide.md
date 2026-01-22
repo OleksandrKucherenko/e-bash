@@ -10,6 +10,7 @@ A comprehensive guide for transforming legacy Bash scripts into modern, maintain
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
     - [Migration Benefits](#migration-benefits)
+    - [Beyond Migration: Self-Healing Scripts](#beyond-migration-self-healing-scripts)
     - [Strict Mode Compatibility](#strict-mode-compatibility)
   - [Installation](#installation)
     - [Quick Installation (Recommended)](#quick-installation-recommended)
@@ -44,6 +45,7 @@ A comprehensive guide for transforming legacy Bash scripts into modern, maintain
       - [9.1 Semantic Versioning (\_semver.sh)](#91-semantic-versioning-_semversh)
       - [9.2 Tmux Progress Displays (\_tmux.sh)](#92-tmux-progress-displays-_tmuxsh)
       - [9.3 IPv6 Address Coloring (\_ipv6.sh)](#93-ipv6-address-coloring-_ipv6sh)
+    - [Step 10 (Optional): Make Your Script Self-Healing](#step-10-optional-make-your-script-self-healing)
   - [Before/After Comparisons](#beforeafter-comparisons)
     - [Example 1: Simple File Processing Script](#example-1-simple-file-processing-script)
     - [Example 2: Deployment Script with Rollback](#example-2-deployment-script-with-rollback)
@@ -74,6 +76,32 @@ The e-bash library provides a comprehensive framework for professional Bash scri
 | Fragile cleanup           | Multiple trap handlers per signal         |
 | Missing dependency checks | Version-aware dependency validation       |
 | Scattered utilities       | Centralized commons (secrets, config, UI) |
+
+### Beyond Migration: Self-Healing Scripts
+
+**🚀 The Next Level:** After mastering basic e-bash migration, consider the **Self-Healing Scripts** pattern for maximum portability and zero-setup deployment.
+
+Traditional e-bash scripts assume e-bash is already installed. **Self-healing scripts** go one step further—they automatically detect and install e-bash if it's missing, making your scripts truly portable across any environment.
+
+| Traditional e-bash Script | Self-Healing Script |
+|--------------------------|---------------------|
+| Requires e-bash pre-installed | Auto-installs e-bash if missing |
+| Fails with "E_BASH not found" | Shows friendly install message |
+| Needs README setup instructions | Zero setup - just run the script |
+| CI requires e-bash setup step | CI works immediately (zero config) |
+
+**Perfect for:**
+- 📤 **Shared scripts** - Email/Slack scripts that work immediately for recipients
+- 🏢 **Internal tooling** - CLI tools that "just work" on any developer's machine
+- 🔄 **CI/CD pipelines** - No manual e-bash installation in workflow configs
+- 🌍 **Multi-environment** - Same script works on dev/staging/prod without setup
+- 👥 **Open source** - Contributors can run scripts without reading setup docs
+
+**Learn more:** See the [Self-Healing Scripts Pattern](./self-healing-scripts.md) guide with POC demos in `demos/demo.bootstrap-*.sh`.
+
+This pattern represents the pinnacle of script portability, combining e-bash's power with automatic installation. It's the difference between "install e-bash, then run this script" and "just run this script."
+
+---
 
 ### Strict Mode Compatibility
 
@@ -258,6 +286,7 @@ UNDO_RUN=true ./my-script.sh
 - **Hooks/extensibility?** See [Step 5: Hooks](#step-5-add-hooks-for-extensibility-_hookssh)
 - **Commons utilities?** See [Step 8: Commons](#step-8-add-commons-utilities-_commonssh)
 - **Full template?** See [The Idealistic Script Structure](#the-idealistic-script-structure)
+- **Maximum portability?** See [Step 10: Self-Healing Scripts](#step-10-optional-make-your-script-self-healing) 🚀
 
 ---
 
@@ -303,7 +332,29 @@ trap:on close_db_connection EXIT
 
 ---
 
-#### 3. **Environment Validation with Version-Aware Dependencies**
+#### 3. **Self-Installing Scripts (CI-Ready)**
+**Problem:** CI pipelines fail with cryptic "command not found" errors, README instructions drift
+**Solution:** Scripts declare their own dependencies and auto-install in CI
+
+```bash
+# Before: Manual installation in CI config + README
+# README.md: "Install jq and yq before running..."
+# .github/workflows/ci.yml:
+#   - run: brew install jq yq
+#   - run: ./deploy.sh
+
+# After: Script is self-describing and self-installing
+source "$E_BASH/_dependencies.sh"
+dependency jq "1.6" "brew install jq"
+dependency yq "4.*.*" "brew install yq"
+# In CI: automatically installs if missing!
+```
+
+**Impact:** Zero CI setup, scripts document their own requirements, no README drift.
+
+---
+
+#### 4. **Environment Validation with Version-Aware Dependencies**
 **Problem:** Scripts fail mid-execution due to missing tools or wrong versions
 **Solution:** Fail fast with clear error messages before any work starts
 
@@ -317,11 +368,11 @@ dependency jq "1.6" "brew install jq"  # Checks on line 1
 dependency git "2.*.*" "brew install git"  # Clear install instructions
 ```
 
-**Impact:** No partial executions, clear error messages, auto-install in CI.
+**Impact:** No partial executions, clear error messages, semantic version validation.
 
 ---
 
-#### 4. **Rollback Destructive Operations**
+#### 5. **Rollback Destructive Operations**
 **Problem:** No undo for database migrations, file deletions, config changes
 **Solution:** Built-in rollback mode for reverting changes
 
@@ -341,7 +392,7 @@ rollback:docker-compose down
 
 ---
 
-#### 5. **Scoped Cleanup for Function-Level Resource Management**
+#### 6. **Scoped Cleanup for Function-Level Resource Management**
 **Problem:** Temporary resources in functions leak when function exits early
 **Solution:** Push/pop cleanup handlers per function scope
 
@@ -372,7 +423,7 @@ process_data() {
 
 ### 🔍 Observability & Debugging (Visibility Improved)
 
-#### 6. **Tag-Based Logging with Visual Filtering**
+#### 7. **Tag-Based Logging with Visual Filtering**
 **Problem:** Debug logs mixed with user output, no way to control verbosity
 **Solution:** Color-coded, filterable logs - enable only what you need
 
@@ -391,7 +442,7 @@ echo:Debug "Checking connection..."  # Only if DEBUG=debug
 
 ---
 
-#### 7. **Command Execution Visibility**
+#### 8. **Command Execution Visibility**
 **Problem:** Silent commands, no idea what script is doing
 **Solution:** Automatic command logging with dry-run preview
 
@@ -409,7 +460,7 @@ dry:git pull origin main
 
 ---
 
-#### 8. **Progress Displays for Long-Running Operations**
+#### 9. **Progress Displays for Long-Running Operations**
 **Problem:** Users think script is frozen, no feedback on progress
 **Solution:** Visual progress bars in tmux sessions
 
@@ -431,7 +482,7 @@ done
 
 ---
 
-#### 9. **Pipe Mode Logging for Command Output Capture**
+#### 10. **Pipe Mode Logging for Command Output Capture**
 **Problem:** Want to log command output without losing formatting
 **Solution:** Pipe commands directly to loggers
 
@@ -448,7 +499,7 @@ find . -name "*.sh" | log:Files
 
 ---
 
-#### 10. **Separate Loggers for Different Concerns**
+#### 11. **Separate Loggers for Different Concerns**
 **Problem:** Error messages mixed with info, hard to filter in logs
 **Solution:** Multiple loggers with different prefixes and redirects
 
@@ -797,6 +848,34 @@ SILENT_RSYNC=true ./sync.sh  # Only rsync silenced
 
 ---
 
+### 🚀 Next Level: Zero-Setup Portability
+
+#### 29. **Self-Healing Scripts (Advanced Pattern)**
+**Problem:** Scripts require e-bash pre-installed, setup instructions get lost, onboarding friction
+**Solution:** Scripts auto-detect and install e-bash if missing
+
+```bash
+# Before: Manual setup required
+# README: "First install e-bash: curl https://git.new/e-bash | bash -s --"
+# Then run: ./deploy.sh
+
+# After: Self-healing bootstrap
+function ebash:bootstrap() {
+  # Detects e-bash or auto-installs globally
+  # (copy from demos/demo.bootstrap-minimal.sh)
+}
+ebash:bootstrap  # Zero setup - just works!
+
+source "$E_BASH/_dependencies.sh"
+# ... rest of script
+```
+
+**Impact:** True portability, zero onboarding, works in any environment without setup, CI/CD ready.
+
+**Learn more:** [Self-Healing Scripts Pattern](./self-healing-scripts.md) with POC demos
+
+---
+
 ### 📊 Summary: Migration ROI
 
 | Metric | Before e-bash | After e-bash | Improvement |
@@ -968,6 +1047,10 @@ The bootstrap snippet assumes your script is in a subdirectory (e.g., `bin/deplo
 
 ### Step 2: Add Dependency Management (_dependencies.sh)
 
+**The Key Insight: Self-Describing, Self-Installing Scripts**
+
+The `_dependencies.sh` module transforms your scripts into **self-documenting executables** that know exactly what they need to run. The third parameter isn't just a "hint"—it's the **actual installation command** that can be executed automatically in CI environments.
+
 **Before (Legacy):**
 ```bash
 #!/usr/bin/env bash
@@ -986,6 +1069,7 @@ GIT_VERSION=$(git --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
 source "$E_BASH/_dependencies.sh"
 
 # Required dependencies with version constraints
+# Syntax: dependency <tool> <version-pattern> <install-command> [version-flag]
 dependency bash "5.*.*" "brew install bash"
 dependency git "2.*.*" "brew install git"
 dependency jq "1.6" "brew install jq"
@@ -995,25 +1079,95 @@ dependency yq "4.13.2" "brew install yq"
 optional kcov "43" "brew install kcov"
 optional shellcheck "0.11.*" "brew install shellcheck"
 
-# Custom version flag
+# Custom version flag (for tools not using --version)
 dependency go "1.17.*" "brew install go" "version"
 
 # Ignore version check (any version ok)
 dependency buildozer "*" "go get github.com/bazelbuild/buildtools/buildozer" "-version"
 
-# Auto-install in CI
-export CI_E_BASH_INSTALL_DEPENDENCIES=1  # Set in CI environment
+# Enable auto-install in CI (add to .github/workflows or CI config)
+export CI_E_BASH_INSTALL_DEPENDENCIES=1
+```
+
+**Installation Modes:**
+
+The `dependency` function supports three modes for handling missing dependencies:
+
+| Mode | How to Enable | When to Use |
+|------|---------------|-------------|
+| **Check only** (default) | Normal usage | Development - just validate dependencies |
+| **CI Auto-install** | `CI_E_BASH_INSTALL_DEPENDENCIES=1` | CI/CD pipelines - auto-setup environments |
+| **Force install** | Add `--exec` flag | Manual install - force immediate installation |
+
+**Mode 1: Check Only (Default)**
+```bash
+dependency jq "1.6" "brew install jq"
+# Missing: Shows error with install command hint, exits with code 1
+# Wrong version: Shows error, exits with code 1
+# Correct: Validates and continues
+```
+
+**Mode 2: CI Auto-Install**
+```bash
+export CI_E_BASH_INSTALL_DEPENDENCIES=1  # In CI environment
+dependency jq "1.6" "brew install jq"
+# Missing: Executes "brew install jq", continues on success
+# Wrong version: Executes install command to upgrade/downgrade
+# Correct: Validates and continues
+```
+
+**Mode 3: Force Install (--exec flag)**
+```bash
+dependency jq "1.6" "brew install jq" --exec
+# Missing: Executes "brew install jq" immediately (even outside CI)
+# Wrong version: Executes install command to upgrade/downgrade
+# Correct: Validates and continues
+```
+
+**Example CI Configuration:**
+```yaml
+# .github/workflows/build.yml
+env:
+  CI_E_BASH_INSTALL_DEPENDENCIES: 1
+
+steps:
+  - name: Run deployment script
+    run: ./bin/deploy.sh
+    # Script auto-installs missing dependencies!
+```
+
+**Example Force Install Script:**
+```bash
+#!/usr/bin/env bash
+# bootstrap.sh - Sets up development environment
+
+source "$E_BASH/_dependencies.sh"
+
+# Force install all required tools (useful for dev machine setup)
+dependency node "18.*.*" "brew install node" --exec
+dependency docker "24.*.*" "brew install docker" --exec
+dependency kubectl "1.28.*" "brew install kubectl" --exec
+
+echo "Development environment ready!"
 ```
 
 **Version Patterns:**
-| Pattern                | Description                      |
-| ---------------------- | -------------------------------- |
-| `"5.*.*"`              | Major version 5, any minor/patch |
-| `"5.0.*"`              | Version 5.0.x                    |
-| `"5.0.18"`             | Exact version                    |
-| `"[45].*.*"`           | Major version 4 or 5             |
-| `"HEAD-[a-f0-9]{1,8}"` | Git HEAD revision                |
-| `"*"`                  | Any version (skip check)         |
+| Pattern                | Description                      | Example Match         |
+| ---------------------- | -------------------------------- | --------------------- |
+| `"5.*.*"`              | Major version 5, any minor/patch | 5.0.0, 5.2.18, 5.9.99 |
+| `"5.0.*"`              | Version 5.0.x                    | 5.0.0, 5.0.18         |
+| `"5.0.18"`             | Exact version                    | 5.0.18 only           |
+| `"[45].*.*"`           | Major version 4 or 5             | 4.0.0, 5.3.1          |
+| `"1.[6-9]"`            | Minor version 6-9                | 1.6, 1.7, 1.8, 1.9    |
+| `"HEAD-[a-f0-9]{1,8}"` | Git HEAD revision                | HEAD-a1b2c3d          |
+| `"*"`                  | Any version (skip check)         | (all versions)        |
+
+**Benefits:**
+- **Self-documenting**: Anyone can see what the script needs by reading the dependency declarations
+- **Fail-fast**: Scripts check requirements before doing any work
+- **CI-friendly**: Automatically installs missing dependencies in CI environments
+- **Version-aware**: Validates semantic versions, not just presence
+- **Cross-platform**: Install commands can adapt to OS (use `uname` checks if needed)
 
 ---
 
@@ -1887,6 +2041,85 @@ ipv6:expand "2001:db8::1"
 
 ---
 
+### Step 10 (Optional): Make Your Script Self-Healing
+
+**For Maximum Portability:** Transform your migrated script into a **self-healing script** that auto-installs e-bash if missing.
+
+This is an **optional advanced pattern** that makes scripts truly portable—they work on any machine without requiring manual e-bash installation.
+
+#### When to Use Self-Healing Scripts
+
+✅ **Use when:**
+- Sharing scripts with colleagues via email/Slack
+- Distributing internal tooling across teams
+- Building CI/CD scripts for multiple environments
+- Creating open source project scripts
+- Onboarding new developers (zero setup friction)
+
+❌ **Skip when:**
+- Scripts run in controlled environments (e-bash always installed)
+- You want to enforce specific e-bash versions
+- Running in air-gapped systems (no internet for auto-install)
+
+#### How to Make a Script Self-Healing
+
+1. **Choose a bootstrap version:**
+   - **Educational** - Verbose, great for tutorials (`demos/demo.bootstrap-educational.sh`)
+   - **Minimal** - Quiet, great for production (`demos/demo.bootstrap-minimal.sh`)
+
+2. **Copy the `ebash:bootstrap()` function** from the demo into your script
+
+3. **Call `ebash:bootstrap`** before loading e-bash modules
+
+#### Quick Example
+
+```bash
+#!/usr/bin/env bash
+## Your migrated script (now self-healing!)
+
+# ============================================================================
+# SELF-HEALING BOOTSTRAP (copied from demo.bootstrap-minimal.sh)
+# ============================================================================
+function ebash:bootstrap() {
+  # ... copy the entire function from demo ...
+}
+
+ebash:bootstrap  # Auto-installs e-bash if needed
+
+# ============================================================================
+# YOUR MIGRATED SCRIPT (unchanged from Steps 1-9)
+# ============================================================================
+
+# Now load e-bash modules as usual
+source "$E_BASH/_dependencies.sh"
+source "$E_BASH/_logger.sh"
+# ... rest of your migrated script ...
+```
+
+#### Benefits
+
+| Regular e-bash Script | Self-Healing Script |
+|----------------------|---------------------|
+| Requires manual e-bash install | Auto-installs if missing |
+| Fails with error if e-bash missing | Shows friendly install message |
+| Needs README instructions | Zero instructions needed |
+| CI needs e-bash setup | CI works immediately |
+
+**Learn more:** See the complete [Self-Healing Scripts Pattern](./self-healing-scripts.md) guide.
+
+**Try the demos:**
+```bash
+# Educational version (verbose feedback)
+./demos/demo.bootstrap-educational.sh
+
+# Minimal version (quiet, production-ready)
+./demos/demo.bootstrap-minimal.sh
+```
+
+This optional step elevates your scripts from "requires e-bash" to "installs own dependencies automatically."
+
+---
+
 ## Before/After Comparisons
 
 ### Example 1: Simple File Processing Script
@@ -2001,6 +2234,86 @@ DRY_RUN=true ./deploy.sh       # Preview (dry-run mode)
 ROLLBACK=true UNDO_RUN=true ./deploy.sh  # Execute rollback
 ```
 
+### Example 3: Self-Installing Bootstrap Script
+
+**Use Case:** Development machine setup script that auto-installs all required tools.
+
+> **Note:** For truly portable scripts that auto-install e-bash itself, see the
+> [Self-Healing Scripts Pattern](./self-healing-scripts.md) documentation with
+> POC demos in `demos/demo.bootstrap-*.sh`.
+
+```bash
+#!/usr/bin/env bash
+## bootstrap.sh - One-command development environment setup
+
+# Bootstrap e-bash
+[ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
+. "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
+
+source "$E_BASH/_dependencies.sh"
+source "$E_BASH/_logger.sh"
+source "$E_BASH/_colors.sh"
+
+logger:init setup "[${cl_cyan}Setup]${cl_reset} " ">&2"
+
+echo:Setup "Setting up development environment..."
+echo:Setup ""
+
+# Force install all required tools using --exec flag
+# Platform detection for install commands
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  PKG_MGR="brew install"
+elif command -v apt-get >/dev/null; then
+  PKG_MGR="sudo apt-get install -y"
+elif command -v yum >/dev/null; then
+  PKG_MGR="sudo yum install -y"
+else
+  echo:Setup "${cl_red}Error: Unsupported package manager${cl_reset}"
+  exit 1
+fi
+
+# Runtime dependencies (force install if missing)
+echo:Setup "Installing runtime dependencies..."
+dependency node "18.*.*" "$PKG_MGR nodejs" --exec
+dependency docker "24.*.*" "$PKG_MGR docker" --exec
+dependency kubectl "1.28.*" "$PKG_MGR kubectl" --exec
+
+# Development tools (force install if missing)
+echo:Setup "Installing development tools..."
+dependency git "2.*.*" "$PKG_MGR git" --exec
+dependency jq "1.6" "$PKG_MGR jq" --exec
+dependency yq "4.*.*" "$PKG_MGR yq" --exec
+
+# Optional tools (warn but don't force install)
+echo:Setup "Checking optional tools..."
+optional shellcheck "0.11.*" "$PKG_MGR shellcheck"
+optional kcov "43" "$PKG_MGR kcov"
+
+echo:Setup ""
+echo:Setup "${cl_green}✓${cl_reset} Development environment ready!"
+echo:Setup "You can now run: ${cl_yellow}./build.sh${cl_reset}"
+```
+
+**Benefits:**
+- **One command setup**: New developers run `./bootstrap.sh` and they're ready
+- **Idempotent**: Safe to run multiple times - skips already-installed tools
+- **Cross-platform**: Adapts to macOS/Ubuntu/RHEL via package manager detection
+- **Self-documenting**: Anyone can see exactly what tools are required
+- **Version enforcement**: Ensures consistent versions across team
+
+**Usage:**
+```bash
+# First time setup
+./bootstrap.sh
+
+# Update tools after dependency changes
+./bootstrap.sh
+
+# Check what would be installed (without installing)
+# Remove --exec flag from dependency calls or use:
+grep "dependency\|optional" bootstrap.sh
+```
+
 ---
 
 ## Quick Reference
@@ -2035,16 +2348,17 @@ source "$E_BASH/_commons.sh"
 
 ### Environment Variables
 
-| Variable                         | Purpose                     | Default         |
-| -------------------------------- | --------------------------- | --------------- |
-| `E_BASH`                         | Path to .scripts directory  | Auto-discovered |
-| `DEBUG`                          | Comma-separated logger tags | (unset)         |
-| `DRY_RUN`                        | Enable dry-run mode         | `false`         |
-| `UNDO_RUN`                       | Enable rollback mode        | `false`         |
-| `SILENT`                         | Suppress command output     | `false`         |
-| `HOOKS_DIR`                      | Hook scripts directory      | `ci-cd`         |
-| `HOOKS_EXEC_MODE`                | Hook execution mode         | `exec`          |
-| `CI_E_BASH_INSTALL_DEPENDENCIES` | Auto-install deps           | `false`         |
+| Variable                         | Purpose                                              | Default         |
+| -------------------------------- | ---------------------------------------------------- | --------------- |
+| `E_BASH`                         | Path to .scripts directory                           | Auto-discovered |
+| `DEBUG`                          | Comma-separated logger tags                          | (unset)         |
+| `DRY_RUN`                        | Enable dry-run mode                                  | `false`         |
+| `UNDO_RUN`                       | Enable rollback mode                                 | `false`         |
+| `SILENT`                         | Suppress command output                              | `false`         |
+| `HOOKS_DIR`                      | Hook scripts directory                               | `ci-cd`         |
+| `HOOKS_EXEC_MODE`                | Hook execution mode                                  | `exec`          |
+| `CI_E_BASH_INSTALL_DEPENDENCIES` | Auto-install missing dependencies (CI only)          | `false`         |
+| `CI`                             | CI environment indicator (set by GitHub Actions/etc) | (unset)         |
 
 ### Logger Quick Start
 
