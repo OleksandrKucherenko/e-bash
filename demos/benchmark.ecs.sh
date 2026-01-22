@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-01-22
-## Version: 1.1.0
+## Version: 2.7.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -30,6 +30,21 @@
 #   12. Integration via redirect (logger:format:ecs)
 #   13. Pipe-based ecs:format with prefix level (RECOMMENDED)
 # =============================================================================
+
+# Bootstrap: 1) E_BASH discovery (only if not set), 2) gnubin setup (always)
+[ "$E_BASH" ] || {
+  _src=${BASH_SOURCE:-$0}
+  E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts)
+  readonly E_BASH
+}
+#shellcheck source=../.scripts/_gnu.sh
+. "$E_BASH/_gnu.sh"
+PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
+
+# shellcheck disable=SC1090 source=../.scripts/_dependencies.sh
+source "$E_BASH/_dependencies.sh"
+
+dependency "hyperfine" "1.20.*" "brew install hyperfine" --exec
 
 set -o pipefail
 
@@ -65,27 +80,27 @@ _ecs:timestamp() {
   local usec=${ts#*.}
   [[ "$ts" == *.* ]] || usec=0
   usec=${usec:0:6}
-  usec=$(( 10#$usec ))
-  while (( ${#usec} < 6 )); do usec="${usec}0"; done
+  usec=$((10#$usec))
+  while ((${#usec} < 6)); do usec="${usec}0"; done
 
-  local s=$(( sec ))
-  local days=$(( s / 86400 ))
-  local sod=$(( s % 86400 ))
+  local s=$((sec))
+  local days=$((s / 86400))
+  local sod=$((s % 86400))
 
-  local hh=$(( sod / 3600 ))
-  local mm=$(( (sod % 3600) / 60 ))
-  local ss=$(( sod % 60 ))
+  local hh=$((sod / 3600))
+  local mm=$(((sod % 3600) / 60))
+  local ss=$((sod % 60))
 
-  local z=$(( days + 719468 ))
-  local era=$(( (z >= 0 ? z : z - 146096) / 146097 ))
-  local doe=$(( z - era*146097 ))
-  local yoe=$(( (doe - doe/1460 + doe/36524 - doe/146096) / 365 ))
-  local y=$(( yoe + era*400 ))
-  local doy=$(( doe - (365*yoe + yoe/4 - yoe/100) ))
-  local mp=$(( (5*doy + 2) / 153 ))
-  local d=$(( doy - (153*mp + 2)/5 + 1 ))
-  local m=$(( mp + (mp < 10 ? 3 : -9) ))
-  y=$(( y + (m <= 2 ? 1 : 0) ))
+  local z=$((days + 719468))
+  local era=$(((z >= 0 ? z : z - 146096) / 146097))
+  local doe=$((z - era * 146097))
+  local yoe=$(((doe - doe / 1460 + doe / 36524 - doe / 146096) / 365))
+  local y=$((yoe + era * 400))
+  local doy=$((doe - (365 * yoe + yoe / 4 - yoe / 100)))
+  local mp=$(((5 * doy + 2) / 153))
+  local d=$((doy - (153 * mp + 2) / 5 + 1))
+  local m=$((mp + (mp < 10 ? 3 : -9)))
+  y=$((y + (m <= 2 ? 1 : 0)))
 
   printf "%04d-%02d-%02dT%02d:%02d:%02d.%06dZ" "$y" "$m" "$d" "$hh" "$mm" "$ss" "$usec"
 }
@@ -111,7 +126,7 @@ approach1_log() {
 }
 approach1_run() {
   approach1_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach1_log "Test message $i" >/dev/null
   done
 }
@@ -144,7 +159,7 @@ approach1b_log() {
 }
 approach1b_run() {
   approach1b_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach1b_log "Test message $i" >/dev/null
   done
 }
@@ -173,7 +188,7 @@ approach2_log() {
 }
 approach2_run() {
   approach2_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach2_log "Test message $i" >/dev/null 2>&1
   done
 }
@@ -201,7 +216,7 @@ approach3_log() {
 }
 approach3_run() {
   approach3_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach3_log "Test message $i" >/dev/null
   done
 }
@@ -230,7 +245,7 @@ approach4_log() {
 }
 approach4_run() {
   approach4_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach4_log "Test message $i" >/dev/null
   done
 }
@@ -256,7 +271,7 @@ approach5_log() {
 }
 approach5_run() {
   approach5_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach5_log "Test message $i" >/dev/null
   done
 }
@@ -281,7 +296,7 @@ approach6_log() {
 }
 approach6_run() {
   approach6_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach6_log "Test message $i" >/dev/null
   done
 }
@@ -312,7 +327,7 @@ approach7_log() {
 approach7_run() {
   approach7_setup
   _ECS_CONTEXT=()
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach7_log "Test message $i" >/dev/null
   done
 }
@@ -335,7 +350,7 @@ approach8_log() {
 }
 approach8_run() {
   approach8_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach8_log "Test message $i" >/dev/null
   done
 }
@@ -359,7 +374,7 @@ approach9_log() {
 }
 approach9_run() {
   approach9_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach9_log "Test message $i" >/dev/null
   done
 }
@@ -376,12 +391,12 @@ approach10_log() {
   local ts=$(_ecs:timestamp)
   local escaped_msg=$(_ecs:escape_json "$message")
   printf '{"@timestamp":"%s","log.level":"%s","message":"%s","ecs.version":"%s"}\n' \
-    "$ts" "$level" "$escaped_msg" "$ECS_VERSION" >> "$ECS_OUTPUT"
+    "$ts" "$level" "$escaped_msg" "$ECS_VERSION" >>"$ECS_OUTPUT"
 }
 approach10_run() {
   approach10_setup
   ECS_OUTPUT="/dev/null"
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach10_log "Test message $i"
   done
 }
@@ -411,14 +426,15 @@ _fmt:ecs() {
 
 approach11_setup() { LOGGER_FORMAT="ecs"; }
 approach11_log() {
-  local level="INFO" tag="myapp"; shift 0
+  local level="INFO" tag="myapp"
+  shift 0
   local message="$1"
   local formatter="${_LOGGER_FORMATTERS[$LOGGER_FORMAT]:-_fmt:text}"
   "$formatter" "$level" "$tag" "$message"
 }
 approach11_run() {
   approach11_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach11_log "Test message $i" >/dev/null
   done
 }
@@ -448,7 +464,7 @@ approach12_log() {
 }
 approach12_run() {
   approach12_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach12_log "Test message $i" >/dev/null 2>&1
   done
 }
@@ -486,8 +502,8 @@ approach13_log() {
   echo:Bench13 "$1"
 }
 approach13_run() {
-  approach13_setup
-  for ((i=0; i<ITERATIONS; i++)); do
+  approach13_setup "$@"
+  for ((i = 0; i < ITERATIONS; i++)); do
     approach13_log "Test message $i" >/dev/null 2>&1
   done
 }
@@ -517,7 +533,7 @@ verify_approaches() {
   )
 
   for entry in "${approaches[@]}"; do
-    IFS=':' read -r num name prefix <<< "$entry"
+    IFS=':' read -r num name prefix <<<"$entry"
     echo "Approach $num ($name):"
     "${prefix}_setup" 2>/dev/null
     local out=$("${prefix}_log" "Test message" 2>&1)
@@ -561,33 +577,33 @@ run_benchmark() {
     --export-markdown "$report_file" \
     --export-json "$json_file" \
     -n "01: Pure Bash formatter" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach1" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach1" \
     -n "1b: Context/MDC support" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach1b" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach1b" \
     -n "02: Redirect pipe" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach2" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach2" \
     -n "03: Eval functions" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach3" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach3" \
     -n "04: Logger init helper" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach4" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach4" \
     -n "05: Per-tag context" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach5" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach5" \
     -n "06: Pipe mode" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach6" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach6" \
     -n "07: Level filtering" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach7" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach7" \
     -n "08: Error fields" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach8" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach8" \
     -n "09: Convenience aliases" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach9" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach9" \
     -n "10: Output destinations" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach10" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach10" \
     -n "11: Formatter config" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach11" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach11" \
     -n "12: Logger redirect" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach12" \
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach12" \
     -n "13: Prefix level (RECOMMENDED)" \
-      "$SCRIPT_DIR/$SCRIPT_NAME --approach13"
+    "$SCRIPT_DIR/$SCRIPT_NAME --approach13"
 
   {
     echo "# ECS JSON Logging Benchmark (All 13 Approaches)"
@@ -627,7 +643,7 @@ run_benchmark() {
     echo "- **For context/correlation:** Use Approach 1b or 13 with context support"
     echo ""
     echo "The pipe overhead (~2-6x slower) is acceptable for most logging scenarios."
-  } > "${report_file}.tmp"
+  } >"${report_file}.tmp"
   mv "${report_file}.tmp" "$report_file"
 
   echo ""
@@ -690,26 +706,26 @@ EOF
 # Main
 # =============================================================================
 case "${1:-}" in
-  --approach1)  approach1_run ;;
-  --approach1b) approach1b_run ;;
-  --approach2)  approach2_run ;;
-  --approach3)  approach3_run ;;
-  --approach4)  approach4_run ;;
-  --approach5)  approach5_run ;;
-  --approach6)  approach6_run ;;
-  --approach7)  approach7_run ;;
-  --approach8)  approach8_run ;;
-  --approach9)  approach9_run ;;
-  --approach10) approach10_run ;;
-  --approach11) approach11_run ;;
-  --approach12) approach12_run ;;
-  --approach13) approach13_run ;;
-  --verify)     verify_approaches ;;
-  --help|-h)    show_help ;;
-  "")           run_benchmark ;;
-  *)
-    echo "Unknown option: $1"
-    echo "Use --help for usage information"
-    exit 1
-    ;;
+--approach1) approach1_run ;;
+--approach1b) approach1b_run ;;
+--approach2) approach2_run ;;
+--approach3) approach3_run ;;
+--approach4) approach4_run ;;
+--approach5) approach5_run ;;
+--approach6) approach6_run ;;
+--approach7) approach7_run ;;
+--approach8) approach8_run ;;
+--approach9) approach9_run ;;
+--approach10) approach10_run ;;
+--approach11) approach11_run ;;
+--approach12) approach12_run ;;
+--approach13) approach13_run "$@" ;;
+--verify) verify_approaches ;;
+--help | -h) show_help ;;
+"") run_benchmark ;;
+*)
+  echo "Unknown option: $1"
+  echo "Use --help for usage information"
+  exit 1
+  ;;
 esac
