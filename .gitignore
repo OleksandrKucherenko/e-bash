@@ -73,3 +73,7 @@ mise.toml
 bun.lock*
 package-lock.json
 yarn.lock
+
+# Benchmark output files (generated)
+docs/benchmarks/*.json
+docs/benchmarks/*.md
