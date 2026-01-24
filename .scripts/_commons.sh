@@ -20,12 +20,44 @@ source "$E_BASH/_colors.sh"
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
 
+##
+## Get current epoch timestamp with microsecond precision
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: EPOCHREALTIME
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes timestamp string
+##
+## Usage:
+## - start=$(time:now)
+## - time:diff "$start"
+##
 function time:now() {
   echo "$EPOCHREALTIME" # <~ bash 5.0
   #python -c 'import datetime; print datetime.datetime.now().strftime("%s.%f")'
 }
 
-# shellcheck disable=SC2155,SC2086
+##
+## Calculate time difference from given start timestamp
+##
+## Parameters:
+## - start - Start timestamp from time:now, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes time difference in seconds
+##
+## Usage:
+## - start=$(time:now); sleep 1; time:diff "$start"
+##
 function time:diff() {
   local diff="$(time:now) - $1"
   bc <<<$diff
@@ -33,7 +65,22 @@ function time:diff() {
 
 # ref: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
 
-# get cursor position in "row;col" format
+##
+## Get cursor position in "row;col" format
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes "row;col" position
+##
+## Usage:
+## - pos=$(cursor:position)
+##
 function cursor:position() {
   local CURPOS
   read -sdR -p $'\E[6n' CURPOS
@@ -41,7 +88,22 @@ function cursor:position() {
   echo "${CURPOS}"    # Return position in "row;col" format
 }
 
-# get cursor position in row
+##
+## Get cursor row position
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes row number
+##
+## Usage:
+## - row=$(cursor:position:row)
+##
 function cursor:position:row() {
   local COL
   local ROW
@@ -49,7 +111,22 @@ function cursor:position:row() {
   echo "${ROW#*[}"
 }
 
-# get cursor position in column
+##
+## Get cursor column position
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes column number
+##
+## Usage:
+## - col=$(cursor:position:col)
+##
 function cursor:position:col() {
   local COL
   local ROW
@@ -59,7 +136,26 @@ function cursor:position:col() {
 
 # ref: https://stackoverflow.com/questions/10679188/casing-arrow-keys-in-bash
 
-## Read user input with masked input
+##
+## Read user password input with masking and line editing
+##
+## Parameters:
+## - none (interactive input from terminal)
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Reads from terminal with arrow key navigation
+## - Masks input as asterisks
+##
+## Returns:
+## - Echoes entered password
+##
+## Usage:
+## - password=$(input:readpwd)
+##
 function input:readpwd() {
   # tput sc # Save cursor position
   local y_pos=$(cursor:position:row) x_pos=$(cursor:position:col) max_col=$(tput cols)
@@ -161,6 +257,28 @@ function input:readpwd() {
   echo "${PWORD}"
 }
 
+##
+## Generic input validation with prompt and retry
+##
+## Parameters:
+## - variable - Variable name to store result, string, required
+## - default - Default value to suggest, string, default: ""
+## - hint - Prompt text to display, string, default: ""
+##
+## Globals:
+## - reads/listen: use_macos_extensions, cl_purple, cl_reset, cl_blue
+## - mutate/publish: creates global variable named by first parameter
+##
+## Side effects:
+## - Sets trap for SIGINT during read operation
+##
+## Returns:
+## - 0 on success
+## - Sets variable to user input or default value
+##
+## Usage:
+## - validate:input result "default" "Enter value"
+##
 # shellcheck disable=SC2086
 function validate:input() {
   local variable=$1
@@ -191,6 +309,28 @@ function validate:input() {
   eval $__resultvar="'$user_in'"
 }
 
+##
+## Masked input validation (password-style prompt with asterisks)
+##
+## Parameters:
+## - variable - Variable name to store result, string, required
+## - default - Default value to suggest, string, default: ""
+## - hint - Prompt text to display, string, default: ""
+##
+## Globals:
+## - reads/listen: use_macos_extensions, cl_purple, cl_reset, cl_blue
+## - mutate/publish: creates global variable named by first parameter
+##
+## Side effects:
+## - Displays input as asterisks, supports arrow key navigation
+##
+## Returns:
+## - 0 on success
+## - Sets variable to user input (masked during entry)
+##
+## Usage:
+## - validate:input:masked password "" "Enter password"
+##
 # shellcheck disable=SC2086
 function validate:input:masked() {
   local variable=$1
@@ -210,26 +350,28 @@ function validate:input:masked() {
   local __resultvar=$variable
   eval $__resultvar="'$user_in'"
 }
+
+##
+## Prompt user for yes/no input and store as boolean value
+##
+## Parameters:
+## - variable - Variable name to store result (passed by reference), string, required
+## - default - Default value to suggest, string, default: ""
+## - hint - Prompt text to display, string, default: ""
+##
+## Globals:
+## - reads/listen: use_macos_extensions
+## - mutate/publish: creates global variable named by first parameter
+##
+## Returns:
+## - 0 on success
+## - Sets variable to 'true' for yes, 'false' for no/other
+##
+## Usage:
+## - validate:input:yn result "y" "Continue?"
+##
 # shellcheck disable=SC2086,SC2059
 function validate:input:yn() {
-  # Prompts the user for a yes/no input and stores the result as a boolean value
-  #
-  # Arguments:
-  #   $1 - variable: Name of the variable to store the result in (passed by reference)
-  #   $2 - default: Default value to suggest to the user (optional)
-  #   $3 - hint: Prompt text to display to the user (optional)
-  #
-  # Returns:
-  #   Sets the variable named in $1 to 'true' for yes responses or 'false' for no/other responses
-  #
-  # Example:
-  #   validate:input:yn result "y" "Do you want to continue?"
-  #   if $result; then
-  #     echo "User selected yes"
-  #   else
-  #     echo "User selected no"
-  #   fi
-
   local variable=$1
   local default=${2:-""}
   local hint=${3:-""}
@@ -263,15 +405,27 @@ function validate:input:yn() {
   eval $__resultvar="$user_in"
 }
 
+##
+## Get environment variable value or read from secret file (required)
+##
+## Parameters:
+## - name - Variable name to store result, string, required
+## - variable - Environment variable name to check, string, required
+## - filepath - Path to secret file as fallback, string, required
+## - fallback - User-friendly hint message, string, default: "No hints, check the documentation"
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates global variable named by first parameter
+##
+## Returns:
+## - 0 on success, 1 if neither env var nor file exists
+##
+## Usage:
+## - env:variable:or:secret:file value "API_KEY" ".secrets/api_key" "Set your API key"
+##
 # shellcheck disable=SC2086
 function env:variable:or:secret:file() {
-  #
-  # Usage:
-  #     env:variable:or:secret:file "new_value" \
-  #       "GITLAB_CI_INTEGRATION_TEST" \
-  #       ".secrets/gitlab_ci_integration_test" \
-  #       "{user friendly message}"
-  #
   local name=$1
   local variable=$2
   local filepath=$3
@@ -298,14 +452,26 @@ function env:variable:or:secret:file() {
   fi
 }
 
+##
+## Get environment variable value or read from secret file (optional)
+##
+## Parameters:
+## - name - Variable name to store result, string, required
+## - variable - Environment variable name to check, string, required
+## - filepath - Path to secret file as fallback, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates global variable named by first parameter
+##
+## Returns:
+## - 0 on success, 1 if neither env var nor file exists
+##
+## Usage:
+## - env:variable:or:secret:file:optional value "API_KEY" ".secrets/api_key"
+##
 # shellcheck disable=SC2086
 function env:variable:or:secret:file:optional() {
-  #
-  # Usage:
-  #     env:variable:or:secret:file:optional "new_value" \
-  #       "GITLAB_CI_INTEGRATION_TEST" \
-  #       ".secrets/gitlab_ci_integration_test"
-  #
   local name=$1
   local variable=$2
   local filepath=$3
@@ -332,43 +498,27 @@ function env:variable:or:secret:file:optional() {
   fi
 }
 
+##
+## Resolve {{env.VAR_NAME}} patterns to environment variable values
+##
+## Parameters:
+## - input_string - String with {{env.*}} patterns (optional if pipeline mode), string, default: stdin
+## - array_name - Associative array name for custom vars, string, default: none (env vars only)
+##
+## Globals:
+## - reads/listen: environment variables
+## - mutate/publish: none
+##
+## Returns:
+## - String with {{env.VAR_NAME}} patterns replaced
+## - Resolution priority: associative array > environment variables
+##
+## Usage:
+## - result=$(env:resolve "Path: {{env.HOME}}")
+## - echo "{{env.HOME}}" | env:resolve
+## - declare -A VARS=([x]="y"); result=$(env:resolve "{{env.x}}" "VARS")
+##
 function env:resolve() {
-  # Resolve {{env.VAR_NAME}} patterns in a string to their environment variable values
-  #
-  # Arguments:
-  #   $1 - input_string: The string containing {{env.*}} patterns to expand (optional in pipeline mode)
-  #   $2 - array_name: Name of a globally defined associative array for custom variable resolution (optional)
-  #
-  # Pipeline mode (when stdin is not a terminal):
-  #   echo "{{env.VAR}}" | env:resolve               # Read from stdin, use env vars
-  #   cat file.txt | env:resolve "CUSTOM_VARS"       # Read from stdin, use custom array + env vars
-  #
-  # Direct mode:
-  #   env:resolve "string"                           # Use env vars only
-  #   env:resolve "string" "CUSTOM_VARS"             # Use custom array + env vars
-  #
-  # Returns:
-  #   The string with all {{env.VAR_NAME}} patterns replaced with their values
-  #   Resolution priority: associative array > environment variables
-  #   If a variable is not found in either source, it will be replaced with an empty string
-  #
-  # Supports optional whitespace in patterns:
-  #   {{env.VAR}}, {{ env.VAR }}, {{  env.VAR  }} are all valid
-  #
-  # Example:
-  #   # Using environment variables
-  #   export MY_PATH="/usr/local/bin"
-  #   result=$(env:resolve "Path is: {{env.MY_PATH}}")  # Returns "Path is: /usr/local/bin"
-  #
-  #   # Using custom associative array
-  #   declare -A CONFIG=([API_HOST]="api.example.com" [VERSION]="v2")
-  #   result=$(env:resolve "https://{{env.API_HOST}}/{{env.VERSION}}" "CONFIG")
-  #   # Returns "https://api.example.com/v2"
-  #
-  #   # Pipeline mode
-  #   echo "Config: {{env.HOME}}/.config" | env:resolve
-  #   cat template.txt | env:resolve "VARS"
-
   local input_string="$1"
   local array_name="$2"
 
@@ -405,8 +555,24 @@ function env:resolve() {
   fi
 }
 
-# Internal helper function to resolve a single string
-# Follows naming convention: _domain:purpose for internal functions
+##
+## Internal helper to resolve {{env.VAR}} patterns in a single string
+##
+## Parameters:
+## - str - String containing {{env.*}} patterns, string, required
+## - arr_name - Associative array name for custom vars, string, default: none
+##
+## Globals:
+## - reads/listen: environment variables
+## - mutate/publish: none
+##
+## Returns:
+## - 0 on success, 1 on infinite loop detected
+## - Echoes string with all {{env.VAR}} patterns replaced
+##
+## Usage:
+## - _env:resolve:string "Path: {{env.HOME}}" "CUSTOM_VARS"
+##
 function _env:resolve:string() {
   local str="$1"
   local arr_name="$2"
@@ -499,6 +665,29 @@ function _env:resolve:string() {
   echo "$expanded_string"
 }
 
+##
+## Cascading confirmation with fallback to input prompts
+##
+## Parameters:
+## - hint - Prompt message, string, required
+## - variable - Variable name to store result, string, required
+## - fallback - Default value, string, required
+## - top - First value to use, string, default: "" (triggers prompt)
+## - second - Second value to use, string, default: "" (uses fallback)
+## - third - Third value to use, string, default: "" (uses input prompt)
+## - masked - Display value instead of prompting, string, default: ""
+##
+## Globals:
+## - reads/listen: cl_purple, cl_reset, cl_blue
+## - mutate/publish: creates global variable named by second parameter
+##
+## Returns:
+## - 0 on success
+## - Sets variable to: top if set, second if set, third if set, or prompts for input
+##
+## Usage:
+## - confirm:by:input "Continue?" result "y" "" "" ""
+##
 function confirm:by:input() {
   local hint=$1
   local variable=$2
@@ -532,21 +721,24 @@ function confirm:by:input() {
   fi
 }
 
+##
+## Get variable value or fallback to default (variable coalescing level 0)
+##
+## Parameters:
+## - variable_name - Name of variable to check, string, required
+## - default - Default value if variable is empty/unset, string, required
+##
+## Globals:
+## - reads/listen: variables by name
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes variable value if set and non-empty, otherwise default
+##
+## Usage:
+## - MY_VAR="hello"; result=$(var:l0 "MY_VAR" "default")
+##
 function var:l0() {
-  # Use variable name value, otherwise fallback to default
-  #
-  # Arguments:
-  #   $1 - variable_name: Name of the variable to check
-  #   $2 - default: Default value to use if variable is empty or unset
-  #
-  # Returns:
-  #   The value of the variable if set and non-empty, otherwise the default value
-  #
-  # Example:
-  #   MY_VAR="hello"
-  #   result=$(var:l0 "MY_VAR" "default_value")  # Returns "hello"
-  #   result=$(var:l0 "UNSET_VAR" "default_value")  # Returns "default_value"
-
   local variable_name=$1
   local default=$2
   local value="${!variable_name}"
@@ -558,24 +750,25 @@ function var:l0() {
   fi
 }
 
+##
+## Get variable value from var1, var2, or default (variable coalescing level 1)
+##
+## Parameters:
+## - var1 - Name of first variable to check, string, required
+## - var2 - Name of second variable to check, string, required
+## - default - Default value if both variables empty/unset, string, required
+##
+## Globals:
+## - reads/listen: variables by name
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes var1 if set, var2 if set, otherwise default
+##
+## Usage:
+## - result=$(var:l1 "VAR1" "VAR2" "default")
+##
 function var:l1() {
-  # Try var1 variable value, otherwise fallback to var2 value, otherwise fallback to default
-  #
-  # Arguments:
-  #   $1 - var1: Name of the first variable to check
-  #   $2 - var2: Name of the second variable to check
-  #   $3 - default: Default value to use if both variables are empty or unset
-  #
-  # Returns:
-  #   The value of var1 if set and non-empty, otherwise var2 if set and non-empty, otherwise default
-  #
-  # Example:
-  #   VAR1="first"
-  #   VAR2="second"
-  #   result=$(var:l1 "VAR1" "VAR2" "default")  # Returns "first"
-  #   result=$(var:l1 "UNSET" "VAR2" "default")  # Returns "second"
-  #   result=$(var:l1 "UNSET1" "UNSET2" "default")  # Returns "default"
-
   local var1=$1
   local var2=$2
   local default=$3
@@ -591,20 +784,24 @@ function var:l1() {
   fi
 }
 
+##
+## Get value or fallback to default (value coalescing level 0)
+##
+## Parameters:
+## - value - Value to check, string, required
+## - default - Default value if value is empty, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes value if non-empty, otherwise default
+##
+## Usage:
+## - result=$(val:l0 "hello" "default")
+##
 function val:l0() {
-  # Try value, fallback to default
-  #
-  # Arguments:
-  #   $1 - value: The value to check
-  #   $2 - default: Default value to use if value is empty
-  #
-  # Returns:
-  #   The value if non-empty, otherwise the default
-  #
-  # Example:
-  #   result=$(val:l0 "hello" "default")  # Returns "hello"
-  #   result=$(val:l0 "" "default")  # Returns "default"
-
   local value=$1
   local default=$2
 
@@ -615,22 +812,25 @@ function val:l0() {
   fi
 }
 
+##
+## Get value from value1, value2, or default (value coalescing level 1)
+##
+## Parameters:
+## - value1 - First value to check, string, required
+## - value - Second value to check, string, required
+## - default - Default value if both values empty, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes value1 if non-empty, value if non-empty, otherwise default
+##
+## Usage:
+## - result=$(val:l1 "first" "second" "default")
+##
 function val:l1() {
-  # Try value1, otherwise try value, fallback to default
-  #
-  # Arguments:
-  #   $1 - value1: The first value to check
-  #   $2 - value: The second value to check
-  #   $3 - default: Default value to use if both values are empty
-  #
-  # Returns:
-  #   value1 if non-empty, otherwise value if non-empty, otherwise default
-  #
-  # Example:
-  #   result=$(val:l1 "first" "second" "default")  # Returns "first"
-  #   result=$(val:l1 "" "second" "default")  # Returns "second"
-  #   result=$(val:l1 "" "" "default")  # Returns "default"
-
   local value1=$1
   local value=$2
   local default=$3
@@ -644,7 +844,23 @@ function val:l1() {
   fi
 }
 
-# Helper function for cross-platform hash generation (used by to:slug)
+##
+## Generate cross-platform hash for slug generation (internal helper)
+##
+## Parameters:
+## - input - String to hash, string, required
+## - length - Hash length to return, number, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes hash of specified length
+##
+## Usage:
+## - hash=$(to:slug:hash "input" 7)
+##
 function to:slug:hash() {
   local input=$1
   local length=$2
@@ -664,27 +880,29 @@ function to:slug:hash() {
   echo "$hash"
 }
 
+##
+## Convert string to filesystem-safe slug
+##
+## Parameters:
+## - string - String to convert, string, required
+## - separator - Separator character, string, default: "_"
+## - trim - Maximum length or "always" for hash, string/number, default: 20
+##   - Number: Max length, add hash if exceeded
+##   - "always": Always append hash for deterministic IDs
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes filesystem-safe slug trimmed to length with optional hash
+## - Returns "__" + hash (7 chars) if input only special characters
+##
+## Usage:
+## - result=$(to:slug "Hello World!" "_" 20)
+## - result=$(to:slug "Hello World!" "_" "always")
+##
 function to:slug() {
-  # Convert any string to a filesystem-safe slug
-  #
-  # Arguments:
-  #   $1 - string: The string to convert to slug
-  #   $2 - separator: The separator to use (default: "_")
-  #   $3 - trim: Maximum length OR strategy (default: 20)
-  #       - number: Maximum length, add hash if exceeded
-  #       - "always": Always append hash (for deterministic IDs)
-  #
-  # Returns:
-  #   A filesystem-safe slug, trimmed to specified length with hash if needed
-  #   If input contains only special characters, returns "__" + hash (7 chars)
-  #
-  # Example:
-  #   result=$(to:slug "Hello World!" "_" 20)       # Returns "hello_world"
-  #   result=$(to:slug "Hello World!" "_" "always") # Returns "hello_world_fc3ff98"
-  #   result=$(to:slug "Very Long String" "_" 20)   # Returns "very_long_st_a1b2c3d"
-  #   result=$(to:slug "Test__Multiple" "_" 50)     # Returns "test_multiple"
-  #   result=$(to:slug '!@#$%^&*()' "_" 20)         # Returns "__a1b2c3d" (hash-only)
-
   local string=$1
   local separator=${2:-"_"}
   local trim_param=${3:-20}
@@ -760,33 +978,51 @@ function to:slug() {
   echo "$slug"
 }
 
+##
+## Check if --help flag is present in arguments
+##
+## Parameters:
+## - args - Arguments to check, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - "true" if --help present, "false" otherwise
+##
+## Usage:
+## - if args:isHelp "$@"; then ...; fi
+##
 function args:isHelp() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--help" ]]; then echo true; else echo false; fi
 }
 
+##
+## Find git repository root directory (handles regular repos, worktrees, submodules)
+##
+## Parameters:
+## - start_path - Starting directory path, string, default: "."
+## - output_type - Output format, string, default: "path"
+##   - "path": Return the root path
+##   - "type": Return repo type (regular|worktree|submodule)
+##   - "both": Return "type:path" format
+##   - "all": Return "type:path:git_dir" format
+##
+## Globals:
+## - reads/listen: use_macos_extensions
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if git root found, 1 otherwise
+## - Echoes based on output_type
+##
+## Usage:
+## - root=$(git:root)
+## - type=$(git:root "." "type")  # "regular" or "worktree" or "submodule"
+##
 function git:root() {
-  # Find the Git repository root folder from the current folder by searching upward for .git
-  # Properly detects regular repos, worktrees, and submodules
-  #
-  # Arguments:
-  #   $1 - start_path: Starting directory path (default: current directory)
-  #   $2 - output_type: Type of output to return (default: "path")
-  #       - "path": Return the root path
-  #       - "type": Return the git repository type (regular|worktree|submodule|none)
-  #       - "both": Return "type:path" format
-  #       - "all": Return detailed info as "type:path:git_dir"
-  #
-  # Returns:
-  #   0 if git root found, 1 otherwise
-  #   STDOUT: Based on output_type parameter
-  #
-  # Example:
-  #   root=$(git:root)                           # Returns "/path/to/repo"
-  #   type=$(git:root "." "type")                # Returns "regular" or "worktree" or "submodule"
-  #   info=$(git:root "." "both")                # Returns "regular:/path/to/repo"
-  #   details=$(git:root "/some/path" "all")     # Returns "worktree:/path/to/repo:/path/to/.git/worktrees/name"
-
   local start_path="${1:-.}"
   local output_type="${2:-path}"
   local current_dir git_type git_dir root_path
@@ -910,32 +1146,34 @@ function git:root() {
   return 1
 }
 
+##
+## Find configuration file hierarchy by searching upward from current folder
+##
+## Parameters:
+## - config_name - Config file name(s), comma-separated, string, default: ".config"
+## - start_path - Starting directory, string, default: "."
+## - stop_at - Where to stop searching, string, default: "git"
+##   - "git": Stop at git repository root
+##   - "home": Stop at user home directory
+##   - "root": Stop at filesystem root
+##   - "/path": Absolute path to stop at
+## - extensions - Comma-separated extensions, string, default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc"
+##   - Empty string "" means exact match only
+##
+## Globals:
+## - reads/listen: HOME, git:root()
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if at least one config file found, 1 otherwise
+## - Echoes config paths, one per line, ordered root to current (bottom-up)
+##
+## Usage:
+## - config:hierarchy ".eslintrc"
+## - config:hierarchy "package.json" "." "home"
+## - config:hierarchy ".config" "." "git" ".json,.yaml"
+##
 function config:hierarchy() {
-  # Find hierarchy of configuration files by searching upward from current folder
-  # Similar to c12 (https://www.npmjs.com/package/c12) but only for declarative config files
-  #
-  # Arguments:
-  #   $1 - config_name: Base configuration file name(s), comma-separated (e.g., ".myrc,myconfig")
-  #   $2 - start_path: Starting directory path (default: current directory)
-  #   $3 - stop_at: Where to stop searching (default: "git")
-  #       - "git": Stop at git repository root
-  #       - "home": Stop at user home directory
-  #       - "root": Stop at filesystem root /
-  #       - "/custom/path": Stop at specific absolute path
-  #   $4 - extensions: Comma-separated list of extensions to check (default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc")
-  #       - Empty string "" means exact match only
-  #       - List with extensions tries all combinations
-  #
-  # Returns:
-  #   0 if at least one config file found, 1 otherwise
-  #   STDOUT: List of config file paths, one per line, ordered from root to current (bottom-up)
-  #
-  # Example:
-  #   config:hierarchy ".eslintrc"                          # Find .eslintrc* files up to git root
-  #   config:hierarchy "package.json" "." "home"            # Find package.json up to home
-  #   config:hierarchy ".config" "." "git" ".json,.yaml"    # Find .config.json and .config.yaml
-  #   config:hierarchy "tsconfig.json,jsconfig.json"        # Find multiple config files
-
   local config_names="${1:-.config}"
   local start_path="${2:-.}"
   local stop_at="${3:-git}"
@@ -1049,33 +1287,36 @@ function config:hierarchy() {
   fi
 }
 
+##
+## Find config files following XDG Base Directory Specification
+##
+## Parameters:
+## - app_name - Application name for XDG dirs, string, required
+## - config_name - Config file name(s), comma-separated, string, default: "config"
+## - start_path - Starting directory, string, default: "."
+## - stop_at - Where to stop hierarchical search, string, default: "home"
+## - extensions - Comma-separated extensions, string, default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc"
+##
+## Globals:
+## - reads/listen: HOME, XDG_CONFIG_HOME, XDG_CONFIG_DIRS
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if at least one config file found, 1 otherwise
+## - Echoes config paths, one per line, ordered by priority (highest to lowest)
+##
+## Search order:
+## - 1. Hierarchical from current_dir to stop_path
+## - 2. $XDG_CONFIG_HOME/<app_name>/
+## - 3. ~/.config/<app_name>/
+## - 4. /etc/xdg/<app_name>/
+## - 5. /etc/<app_name>/
+##
+## Usage:
+## - config:hierarchy:xdg "myapp" "config"
+## - config:hierarchy:xdg "nvim" "init.vim,.nvimrc"
+##
 function config:hierarchy:xdg() {
-  # Find configuration files following XDG Base Directory Specification
-  # Combines hierarchical search with XDG-compliant directories
-  #
-  # Arguments:
-  #   $1 - app_name: Application name for XDG directories (e.g., "myapp" -> ~/.config/myapp/)
-  #   $2 - config_name: Config file name(s), comma-separated (e.g., "config,.myapprc")
-  #   $3 - start_path: Starting directory path (default: current directory)
-  #   $4 - stop_at: Where to stop hierarchical search (default: "home")
-  #   $5 - extensions: Comma-separated extensions (default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc")
-  #
-  # Returns:
-  #   0 if at least one config file found, 1 otherwise
-  #   STDOUT: List of config file paths, one per line, ordered by priority (highest to lowest)
-  #
-  # Search order (highest priority first):
-  #   1. Hierarchical search from current_dir up to stop_path
-  #   2. $XDG_CONFIG_HOME/<app_name>/ (if XDG_CONFIG_HOME is set)
-  #   3. ~/.config/<app_name>/ (XDG default user config)
-  #   4. /etc/xdg/<app_name>/ (XDG system-wide config)
-  #   5. /etc/<app_name>/ (traditional system config)
-  #
-  # Example:
-  #   config:hierarchy:xdg "myapp" "config"                    # Full XDG + hierarchy search
-  #   config:hierarchy:xdg "nvim" "init.vim,.nvimrc"           # Find nvim configs
-  #   config:hierarchy:xdg "git" "config" "." "home" ""        # Git config hierarchy
-
   local app_name="${1}"
   local config_names="${2:-config}"
   local start_path="${3:-.}"
@@ -1184,6 +1425,28 @@ function config:hierarchy:xdg() {
   fi
 }
 
+##
+## Interactive menu selector from associative array
+##
+## Parameters:
+## - sourceVariableName - Name of associative array to read from, string, required
+## - keyOrValue - Return "key" or "value" from array, string, default: "key"
+##
+## Globals:
+## - reads/listen: cursor:position:row, cursor:position:col
+## - mutate/publish: none
+##
+## Side effects:
+## - Hides/shows cursor during selection
+##
+## Returns:
+## - 0 on success, 1 on escape/abort
+## - Echoes selected key or value from array
+##
+## Usage:
+## - declare -A MENU=([1]="Option 1" [2]="Option 2")
+## - selected=$(input:selector "MENU" "value")
+##
 function input:selector() {
   local sourceVariableName=$1
   local keyOrValue=${2:-"key"}
@@ -1317,3 +1580,63 @@ alias validate_yn_input=validate:input:yn
 alias env_variable_or_secret_file=env:variable:or:secret:file
 alias optional_env_variable_or_secret_file=env:variable:or:secret:file:optional
 alias isHelp=args:isHelp
+
+##
+## Module: Common Utilities and Helper Functions
+##
+## This module provides a collection of frequently used utility functions
+## for time handling, cursor position, input validation, git operations,
+## config file discovery, and user interaction.
+#
+## References:
+## - demo: demo.readpswd.sh, demo.selector.sh
+## - bin: git.semantic-version.sh, ci.validate-envrc.sh
+## - documentation: docs/public/commons.md
+## - tests: spec/commons_spec.sh
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - use_macos_extensions - Enable macOS-specific features, boolean, default: based on OSTYPE
+##
+## Categories:
+##
+## Time Functions:
+## - time:now() - Get current epoch timestamp with microseconds
+## - time:diff(start) - Calculate time difference
+##
+## Cursor/Position Functions:
+## - cursor:position() - Get "row;col" position
+## - cursor:position:row() - Get row number
+## - cursor:position:col() - Get column number
+##
+## Input Functions:
+## - input:readpwd() - Read password with masking and line editing
+## - input:selector() - Interactive menu selector from array
+## - validate:input() - Generic input validation
+## - validate:input:masked() - Masked input validation
+## - validate:input:yn() - Yes/no input validation
+## - confirm:by:input() - Cascading default confirmation
+##
+## Environment Functions:
+## - env:variable:or:secret:file() - Get env var or read from secret file
+## - env:variable:or:secret:file:optional() - Optional version
+## - env:resolve() - Expand {{env.VAR}} templates
+##
+## Value Coalescing Functions:
+## - var:l0() - Get variable or default
+## - var:l1() - Try var1, var2, or default
+## - val:l0() - Try value or default
+## - val:l1() - Try value1, value2, or default
+##
+## String/Slug Functions:
+## - to:slug:hash() - Generate hash for slug
+## - to:slug() - Convert string to filesystem-safe slug
+##
+## Git Functions:
+## - git:root() - Find git repository root (handles worktrees, submodules)
+## - args:isHelp() - Check if --help flag present
+##
+## Config Discovery Functions:
+## - config:hierarchy() - Find config files upward in directory tree
+## - config:hierarchy:xdg() - XDG-compliant config discovery
+##

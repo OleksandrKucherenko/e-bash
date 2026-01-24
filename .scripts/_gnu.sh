@@ -6,11 +6,6 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-#
-# This script creates symbolic links in the bin directory for GNU tools
-# when running on Linux, providing ggrep/gsed commands for compatibility
-#
-
 # Determine gnubin directory path
 BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/bin/gnubin"
 
@@ -29,3 +24,20 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     fi
   done
 fi
+
+##
+## This script creates symbolic links in the bin directory for GNU tools
+## when running on Linux, providing ggrep/gsed commands for compatibility
+##
+## References:
+## - demo: (not directly used, but bin/gnubin/ is used by many scripts)
+## - bin: All scripts that require GNU tools (grep, sed, awk, etc.)
+## - documentation: Referenced in docs/public/installation.md
+#
+## Globals:
+## - BIN_DIR - Path to bin/gnubin directory
+#
+## Platform:
+## - Linux: Creates symlinks for ggrep, gsed, gawk, gfind, gmv, gcp, gln, greadlink, gdate
+## - macOS: Does nothing (GNU tools are already available with 'g' prefix)
+##

@@ -35,12 +35,27 @@ __TRAPS_MODULE_INITIALIZED="yes"
 # Public API
 # -----------------------------------------------------------------------------
 
-#
-# Register handler for signal(s)
-# Usage: trap:on [--allow-duplicates] <handler_function> <signal> [signal2] ...
-# Example: trap:on cleanup_temp EXIT
-#          trap:on handle_interrupt INT TERM
-#
+##
+## Register handler function for one or more signals
+##
+## Parameters:
+## - --allow-duplicates - Allow duplicate handler registration, flag, optional
+## - handler_function - Function to call when signal triggers, string, required
+## - signals - Signal names (EXIT, INT, TERM, ERR, etc.), string array, variadic
+##
+## Globals:
+## - reads/listen: __TRAP_PREFIX, __TRAP_INIT_PREFIX
+## - mutate/publish: __TRAP_HANDLERS_SIG_{signal} array, __TRAP_INITIALIZED_SIG_{signal}
+##
+## Side effects:
+## - Creates trap on signal using Trap::dispatch
+## - Initializes signal state on first registration
+##
+## Usage:
+## - trap:on cleanup_temp EXIT
+## - trap:on handle_interrupt INT TERM
+## - trap:on --allow-duplicates log_event ERR
+##
 function trap:on() {
   local allow_duplicates=false
 
@@ -103,11 +118,21 @@ function trap:on() {
   return 0
 }
 
-#
-# Unregister handler from signal(s)
-# Usage: trap:off <handler_function> <signal> [signal2] ...
-# Example: trap:off cleanup_temp EXIT
-#
+##
+## Unregister handler function from signal(s)
+##
+## Parameters:
+## - handler_function - Function to remove, string, required
+## - signals - Signal names, string array, variadic
+##
+## Globals:
+## - reads/listen: __TRAP_PREFIX
+## - mutate/publish: __TRAP_HANDLERS_SIG_{signal} array
+##
+## Usage:
+## - trap:off cleanup_temp EXIT
+## - trap:off handle_interrupt INT TERM
+##
 function trap:off() {
   local handler="${1?Handler function required}"
   shift
@@ -135,12 +160,23 @@ function trap:off() {
   return 0
 }
 
-#
-# List all registered handlers for signal(s)
-# Usage: trap:list [signal] ...
-# Example: trap:list EXIT INT
-#          trap:list  # all signals
-#
+##
+## List all registered handlers for signal(s)
+##
+## Parameters:
+## - signals - Signal names (empty to list all), string array, optional
+##
+## Globals:
+## - reads/listen: __TRAP_PREFIX, __TRAP_LEGACY_PREFIX
+## - mutate/publish: none
+##
+## Usage:
+## - trap:list EXIT INT
+## - trap:list    # all signals
+##
+## Returns:
+## - 0, prints handlers to stdout
+##
 function trap:list() {
   local signals=("$@")
 
@@ -183,11 +219,20 @@ function trap:list() {
   return 0
 }
 
-#
-# Clear all handlers for signal(s) (keeps legacy trap)
-# Usage: trap:clear <signal> [signal2] ...
-# Example: trap:clear EXIT
-#
+##
+## Clear all handlers for signal(s) (keeps legacy trap intact)
+##
+## Parameters:
+## - signals - Signal names to clear, string array, variadic
+##
+## Globals:
+## - reads/listen: __TRAP_PREFIX
+## - mutate/publish: __TRAP_HANDLERS_SIG_{signal} array (empties)
+##
+## Usage:
+## - trap:clear EXIT
+## - trap:clear INT TERM ERR
+##
 function trap:clear() {
   local signals=("$@")
 
@@ -212,11 +257,22 @@ function trap:clear() {
   return 0
 }
 
-#
-# Restore original trap configuration (before trap module loaded)
-# Usage: trap:restore <signal> [signal2] ...
-# Example: trap:restore EXIT
-#
+##
+## Restore original trap configuration from before module loaded
+##
+## Parameters:
+## - signals - Signal names to restore, string array, variadic
+##
+## Globals:
+## - reads/listen: __TRAP_LEGACY_PREFIX
+## - mutate/publish: __TRAP_HANDLERS_SIG_{signal} array (removes trap)
+##
+## Usage:
+## - trap:restore EXIT
+##
+## Side effects:
+## - Removes trap module's trap, restores original if existed
+##
 function trap:restore() {
   local signals=("$@")
 
@@ -256,12 +312,20 @@ function trap:restore() {
   return 0
 }
 
-#
-# Push current handler state (create snapshot)
-# Usage: trap:push [signal] ...
-# Example: trap:push EXIT INT
-#          trap:push  # all active signals
-#
+##
+## Push current handler state to stack (create snapshot)
+##
+## Parameters:
+## - signals - Signal names to snapshot (empty for all), string array, optional
+##
+## Globals:
+## - reads/listen: __TRAP_PREFIX, __TRAP_STACK_PREFIX
+## - mutate/publish: __TRAP_STACK_LEVEL, creates __TRAP_STACK_{N} associative array
+##
+## Usage:
+## - trap:push EXIT INT
+## - trap:push    # all active signals
+##
 function trap:push() {
   local signals=()
 
@@ -300,12 +364,23 @@ function trap:push() {
   return 0
 }
 
-#
-# Pop and restore previous handler state
-# Usage: trap:pop [signal] ...
-# Example: trap:pop EXIT INT
-#          trap:pop  # all signals in last push
-#
+##
+## Pop and restore previous handler state from stack
+##
+## Parameters:
+## - signals - Signal names to restore (empty for last push's signals), string array, optional
+##
+## Globals:
+## - reads/listen: __TRAP_STACK_LEVEL, __TRAP_STACK_PREFIX, __TRAP_PREFIX
+## - mutate/publish: __TRAP_STACK_LEVEL, __TRAP_HANDLERS_SIG_{signal}, removes __TRAP_STACK_{N}
+##
+## Usage:
+## - trap:pop EXIT INT
+## - trap:pop    # all signals in last push
+##
+## Returns:
+## - 0 on success, 1 if stack is empty
+##
 function trap:pop() {
   if [[ $__TRAP_STACK_LEVEL -eq 0 ]]; then
     echo:Trap "${cl_red}✗${cl_reset} No trap state to pop"
@@ -353,18 +428,47 @@ function trap:pop() {
   return 0
 }
 
-#
-# Begin scoped trap section (alias for trap:push)
-# Usage: trap:scope:begin [signal] ...
-#
+##
+## Begin scoped trap section (alias for trap:push)
+##
+## Parameters:
+## - @ - Signal names to snapshot, string array, variadic
+##
+## Globals:
+## - reads/listen: (same as trap:push)
+## - mutate/publish: (same as trap:push)
+##
+## Usage:
+## - trap:scope:begin EXIT INT
+## - trap:scope:begin    # all active signals
+##
+## See Also:
+## - trap:push
+##
 function trap:scope:begin() {
   trap:push "$@"
 }
 
-#
-# End scoped trap section (alias for trap:pop)
-# Usage: trap:scope:end [signal] ...
-#
+##
+## End scoped trap section (alias for trap:pop)
+##
+## Parameters:
+## - @ - Signal names to restore, string array, variadic
+##
+## Globals:
+## - reads/listen: (same as trap:pop)
+## - mutate/publish: (same as trap:pop)
+##
+## Usage:
+## - trap:scope:end EXIT INT
+## - trap:scope:end    # all signals in last push
+##
+## Returns:
+## - 0 on success, 1 if stack is empty
+##
+## See Also:
+## - trap:pop
+##
 function trap:scope:end() {
   trap:pop "$@"
 }
@@ -373,10 +477,23 @@ function trap:scope:end() {
 # Internal Dispatcher (Called by OS trap mechanism)
 # -----------------------------------------------------------------------------
 
-#
-# Main dispatcher called by the OS trap mechanism
-# This function is set as the actual trap handler
-#
+##
+## Main dispatcher called by the OS trap mechanism
+##
+## Parameters:
+## - signal - Signal name being dispatched, string, automatic
+##
+## Globals:
+## - reads/listen: __TRAP_PREFIX, __TRAP_LEGACY_PREFIX, $?
+## - mutate/publish: none (calls registered handlers)
+##
+## Side effects:
+## - Executes all registered handlers in LIFO order
+## - Executes legacy trap before handlers
+##
+## Usage:
+## - Not called directly - set as trap by trap:on
+##
 function Trap::dispatch() {
   # CRITICAL: Capture exit code FIRST before ANY other commands
   # Even 'local x=...' can reset $? in some bash versions
@@ -420,10 +537,31 @@ function Trap::dispatch() {
 # Internal Helper Functions
 # -----------------------------------------------------------------------------
 
-#
-# Normalize signal name to standard format
-# Handles: SIGINT->INT, 0->EXIT, 2->INT, int->INT
-#
+##
+## Normalize signal name to standard format
+##
+## Handles various signal formats:
+## - SIGINT -> INT (remove SIG prefix)
+## - 0 -> EXIT (special case)
+## - 2 -> INT (numeric signals via kill -l)
+## - int -> INT (case normalization)
+##
+## Parameters:
+## - input - Raw signal name/number, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Usage:
+## - signal=$(_Trap::normalize_signal "SIGINT")      # -> "INT"
+## - signal=$(_Trap::normalize_signal "2")           # -> "INT"
+## - signal=$(_Trap::normalize_signal "0")           # -> "EXIT"
+## - signal=$(_Trap::normalize_signal "sigterm")     # -> "TERM"
+##
+## Returns:
+## - 0, echoes normalized signal name to stdout
+##
 function _Trap::normalize_signal() {
   local input="$1"
   local name
@@ -453,9 +591,31 @@ function _Trap::normalize_signal() {
   return 0
 }
 
-#
-# Initialize signal (capture legacy trap, set dispatcher)
-#
+##
+## Initialize signal (capture legacy trap, set dispatcher)
+##
+## Performs first-time initialization for a signal:
+## 1. Marks signal as initialized
+## 2. Captures any existing trap command (legacy)
+## 3. Sets native trap to our dispatcher
+## 4. Initializes the handler array
+##
+## Parameters:
+## - signal - Normalized signal name, string, required
+##
+## Globals:
+## - reads/listen: __TRAP_INIT_PREFIX, __TRAP_PREFIX
+## - mutate/publish: __TRAP_INITIALIZED_SIG_{signal}, __TRAP_HANDLERS_SIG_{signal}
+##
+## Side effects:
+## - Creates global array for handler storage
+## - Sets native trap using trap builtin
+## - Captures legacy trap command
+##
+## Usage:
+## - _Trap::initialize_signal "EXIT"
+## - _Trap::initialize_signal "INT"
+##
 function _Trap::initialize_signal() {
   local signal="$1"
 
@@ -474,9 +634,30 @@ function _Trap::initialize_signal() {
   printf:Trap "${cl_grey}Initialized signal: ${cl_cyan}%s${cl_reset}\n" "$signal"
 }
 
-#
-# Capture existing trap configuration before we override it
-#
+##
+## Capture existing trap configuration before we override it
+##
+## Parses the output of `trap -p` to extract the existing trap command
+## and stores it for later restoration. Skips capturing if the existing
+## trap is our own dispatcher.
+##
+## Parameters:
+## - signal - Normalized signal name, string, required
+##
+## Globals:
+## - reads/listen: __TRAP_LEGACY_PREFIX
+## - mutate/publish: __TRAP_LEGACY_SIG_{signal}
+##
+## Side effects:
+## - Stores legacy trap command in global variable
+##
+## Usage:
+## - _Trap::capture_legacy "EXIT"
+## - _Trap::capture_legacy "TERM"
+##
+## Trap output format parsed:
+##   trap -- 'command' SIGNAL
+##
 function _Trap::capture_legacy() {
   local signal="$1"
   local existing_trap_str
@@ -499,9 +680,28 @@ function _Trap::capture_legacy() {
   fi
 }
 
-#
-# Check if handler exists in list
-#
+##
+## Check if handler exists in list
+##
+## Tests whether a handler function name is present in a handler array.
+## Uses nameref for direct array access.
+##
+## Parameters:
+## - var_name - Name of the global array variable, string, required
+## - seeking - Handler function name to search for, string, required
+##
+## Globals:
+## - reads/listen: none (uses nameref to access array)
+## - mutate/publish: none
+##
+## Usage:
+## - if _Trap::contains "__TRAP_HANDLERS_SIG_EXIT" "cleanup"; then
+## - if _Trap::contains "$var_name" "my_handler"; then
+##
+## Returns:
+## - 0 if handler is found in the list
+## - 1 if handler is not found
+##
 function _Trap::contains() {
   local var_name="$1"
   local seeking="$2"
@@ -514,9 +714,27 @@ function _Trap::contains() {
   return 1
 }
 
-#
-# Remove handler from list
-#
+##
+## Remove handler from list
+##
+## Removes all occurrences of a handler function from a handler array.
+## Uses nameref for direct array modification.
+##
+## Parameters:
+## - var_name - Name of the global array variable, string, required
+## - target - Handler function name to remove, string, required
+##
+## Globals:
+## - reads/listen: none (uses nameref to access array)
+## - mutate/publish: modifies the array referenced by var_name
+##
+## Usage:
+## - _Trap::remove_handler "__TRAP_HANDLERS_SIG_EXIT" "cleanup"
+## - _Trap::remove_handler "$var_name" "my_handler"
+##
+## Returns:
+## - none
+##
 function _Trap::remove_handler() {
   local var_name="$1"
   local target="$2"
@@ -531,9 +749,26 @@ function _Trap::remove_handler() {
   list=("${keep[@]}")
 }
 
-#
-# List all initialized signals
-#
+##
+## List all initialized signals
+##
+## Scans global variables to find all signals that have been initialized
+## (i.e., have a handler array defined).
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __TRAP_PREFIX
+## - mutate/publish: none
+##
+## Usage:
+## - signals=($(_Trap::list_all_signals))
+## - _Trap::list_all_signals    # echoes space-separated list
+##
+## Returns:
+## - 0, echoes space-separated list of signal names to stdout
+##
 function _Trap::list_all_signals() {
   local signals=()
 
@@ -557,3 +792,42 @@ logger trap "$@" # declare echo:Trap & printf:Trap functions
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
+
+##
+## Module: Enhanced Signal Handling with Multiple Handlers per Signal
+##
+## This module provides a trap management system that supports multiple handlers
+## per signal, LIFO execution order, legacy trap preservation, and stack-based scoping.
+##
+## References:
+## - demo: demo.traps.sh
+## - bin: (used internally by _hooks.sh which many bin scripts depend on)
+## - documentation: docs/public/traps.md
+## - tests: spec/traps_spec.sh
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - __TRAP_PREFIX - Prefix for handler arrays ("__TRAP_HANDLERS_SIG_")
+## - __TRAP_LEGACY_PREFIX - Prefix for legacy trap storage ("__TRAP_LEGACY_SIG_")
+## - __TRAP_INIT_PREFIX - Prefix for initialization flags ("__TRAP_INITIALIZED_SIG_")
+## - __TRAP_STACK_PREFIX - Prefix for stack snapshots ("__TRAP_STACK_")
+## - __TRAP_STACK_LEVEL - Current stack depth counter, default: 0
+## - __TRAPS_MODULE_INITIALIZED - Module initialization flag
+## - __TRAP_HANDLERS_SIG_{signal} - Array of handler function names for each signal
+## - __TRAP_INITIALIZED_SIG_{signal} - Flag indicating signal has been initialized
+## - __TRAP_LEGACY_SIG_{signal} - Original trap command before module loaded
+## - __TRAP_STACK_{N} - Stack snapshot at level N (associative array)
+#
+## Key Features:
+## - Multiple handlers per signal: trap:on handler1 EXIT; trap:on handler2 EXIT
+## - LIFO execution: Last registered handler runs first
+## - Legacy trap preservation: Original traps are captured and executed
+## - Stack scoping: trap:push / trap:pop for scoped cleanup
+## - Signal normalization: Handles SIGINT, int, 2 -> INT consistently
+## - Duplicate detection: Warns or allows based on --allow-duplicates flag
+#
+## Usage Pattern:
+##   trap:on cleanup_temp_files EXIT
+##   trap:on save_state EXIT
+##   # Both execute on exit (cleanup runs first - LIFO)
+##

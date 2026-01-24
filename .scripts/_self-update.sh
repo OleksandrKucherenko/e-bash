@@ -6,38 +6,6 @@
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-##
-## Purpose:
-##   Self-update functionality for projects using e-bash scripts library.
-##   Allows automatic detection of e-bash source updates and file-by-file
-##   library updates. Designed for BASH scripts built on top of e-bash.
-##
-## Compatibility:
-##   Works with bin/install.e-bash.sh - both use ${HOME}/.e-bash/ global directory.
-##   - install.e-bash.sh: Supports local (project) and global (HOME) installations
-##   - self-update.sh: Works only with global part (manages ~/.e-bash/.versions/)
-##   Self-update creates symlinks from project files to versioned global files.
-##
-## Main Usage Pattern:
-##   The recommended approach is to invoke self-update on script exit:
-##     trap "self-update '^1.0.0'" EXIT
-##
-## How It Works:
-##   1. Maintains local git repo at ~/.e-bash/ with multiple version worktrees
-##   2. Creates symbolic links from project .scripts/ to version-specific files
-##   3. Performs file-by-file updates with automatic backup creation
-##   4. Verifies updates using SHA1 hash comparison
-##   5. Supports rollback to previous versions or backup files
-##
-## Supported Version Expressions:
-##   - 'latest'           - latest stable version (no pre-release tags)
-##   - '*' or 'next'      - highest version tag (including alpha, beta, rc)
-##   - 'branch:{name}'    - update from specific branch
-##   - 'tag:{name}'       - update to specific tag
-##   - '^1.0.0'           - minor and patch releases (>= 1.0.0 < 2.0.0)
-##   - '~1.0.0'           - patch releases only (>= 1.0.0 < 1.1.0)
-##   - '>1.0.0 <=1.5.0'   - version range with comparison operators
-##   - '1.0.0'            - exact version match
 
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -71,11 +39,45 @@ function self-update:dependencies() {
   dependency gcp "9.2" "brew install coreutils"
 }
 
-# compare two version strings
+##
+## Compare two version strings using semver constraints
+##
+## Parameters:
+## - $1 - First version string (for < comparison), string, required
+## - $2 - Second version string (for > comparison), string, required
+##
+## Globals:
+## - reads/listen: semver:constraints:simple
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if $1 < $2
+## - 1 otherwise
+##
+## Usage:
+## - compare:versions "1.0.0" "2.0.0"
+##
 function compare:versions() {
   (semver:constraints:simple "$1<$2") && return 0 || return 1
 }
 
+##
+## QuickSort implementation for array sorting
+##
+## Parameters:
+## - compare - Comparison function name, string, required
+## - array - Array elements to sort, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes sorted array elements
+##
+## Usage:
+## - array:qsort compare_func "item3" "item1" "item2"
+##
 # Quick-Sort implementation
 function array:qsort() {
   local compare=$1 && shift
@@ -108,6 +110,23 @@ function array:qsort() {
   array:qsort "$compare" "${right[@]}"
 }
 
+##
+## Resolve file path relative to caller script location
+##
+## Parameters:
+## - file - File path to resolve, string, required
+## - working_dir - Base directory for relative paths, string, default: $PWD
+##
+## Globals:
+## - reads/listen: BASH_SOURCE
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes absolute path to file
+##
+## Usage:
+## - path:resolve "../config.json" "$PWD"
+##
 # resolve provided path to absolute path, relative to caller script path
 function path:resolve() {
   local file="$1"
@@ -205,13 +224,25 @@ function self-update:version:find() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# find highest version tag in git repo
+##
+## Find highest version tag in git repo
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __REPO_VERSIONS, __REPO_MAPPING
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes highest version tag name
+##
+## Usage:
+## - latest=$(self-update:version:find:highest_tag)
+##
 function self-update:version:find:highest_tag() {
   # extract tags if they are not extracted yet
   [ ${#__REPO_VERSIONS[@]} -eq 0 ] && self-update:version:tags
-
-  # version tag pattern: v${MAJOR}.${MINOR}.${PATCH}[-${STAGE}[.${IDENTITY}]][+${METADATA}], based on https://semver.org/
-  # Example: 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0
 
   # last element of array is the highest version tag
   local last=${#__REPO_VERSIONS[@]} && ((last--))
@@ -223,12 +254,26 @@ function self-update:version:find:highest_tag() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# find latest stable version tag (no pre-release tags like alpha, beta, rc)
+##
+## Find latest stable version tag (no pre-release like alpha, beta, rc)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __REPO_VERSIONS, __REPO_MAPPING
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes highest stable version tag name
+## - Returns empty if no stable version found
+##
+## Usage:
+## - stable=$(self-update:version:find:latest_stable)
+##
 function self-update:version:find:latest_stable() {
   # extract tags if they are not extracted yet
   [ ${#__REPO_VERSIONS[@]} -eq 0 ] && self-update:version:tags
-
-  # iterate from highest to lowest to find first stable version (no pre-release)
   local version=""
   local last=${#__REPO_VERSIONS[@]} && ((last--))
   local iStable # FIXME: do not reuse `i` variable, its a global variable
@@ -638,12 +683,74 @@ function self-update() {
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
 
-logger git "$@"     # declare echo:Git, printf:Git
-logger version "$@" # declare echo:Version, printf:Version
-
-logger loader "$@" # initialize logger
-echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
-
 # Refs:
 # - https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
 # - https://stackoverflow.com/questions/3338030/multiple-bash-traps-for-the-same-signal
+
+##
+## Module: Self-Update System for e-bash Scripts
+##
+## This module provides automatic update detection and file-by-file library updates
+## for projects using e-bash scripts library.
+##
+## References:
+## - demo: demo.selfupdate.sh
+## - bin: install.e-bash.sh (uses self-update for upgrades)
+## - documentation: docs/public/version-up.md
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - __E_BASH - Home directory name (".e-bash")
+## - __E_ROOT - Full path to ~/.e-bash
+## - __REPO_URL - Repository URL (https://github.com/OleksandrKucherenko/e-bash.git)
+## - __REMO_REMOTE - Remote name ("e-bash")
+## - __REPO_MASTER - Master branch ("master")
+## - __REPO_V1 - First version tag ("v1.0.0")
+## - __WORKTREES - Worktrees directory (".versions")
+## - __VERSION_PATTERN - Version tag pattern ("v?${SEMVER}")
+## - __REPO_MAPPING - Associative array: version -> tag mapping
+## - __REPO_VERSIONS - Array of sorted versions
+#
+## Supported Version Expressions:
+## - 'latest' - Latest stable version (no pre-release tags)
+## - '*' or 'next' - Highest version including alpha/beta/rc
+## - 'branch:{name}' - Update from specific branch
+## - 'tag:{name}' - Update to specific tag
+## - '^1.0.0' - Minor and patch releases (>= 1.0.0 < 2.0.0)
+## - '~1.0.0' - Patch releases only (>= 1.0.0 < 1.1.0)
+## - '1.0.0' - Exact version match
+#
+## Recommended Usage Pattern:
+##   trap "self-update '^1.0.0'" EXIT
+##
+## Purpose:
+##   Self-update functionality for projects using e-bash scripts library.
+##   Allows automatic detection of e-bash source updates and file-by-file
+##   library updates. Designed for BASH scripts built on top of e-bash.
+##
+## Compatibility:
+##   Works with bin/install.e-bash.sh - both use ${HOME}/.e-bash/ global directory.
+##   - install.e-bash.sh: Supports local (project) and global (HOME) installations
+##   - self-update.sh: Works only with global part (manages ~/.e-bash/.versions/)
+##   Self-update creates symlinks from project files to versioned global files.
+##
+## Main Usage Pattern:
+##   The recommended approach is to invoke self-update on script exit:
+##     trap "self-update '^1.0.0'" EXIT
+##
+## How It Works:
+##   1. Maintains local git repo at ~/.e-bash/ with multiple version worktrees
+##   2. Creates symbolic links from project .scripts/ to version-specific files
+##   3. Performs file-by-file updates with automatic backup creation
+##   4. Verifies updates using SHA1 hash comparison
+##   5. Supports rollback to previous versions or backup files
+##
+## Supported Version Expressions:
+##   - 'latest'           - latest stable version (no pre-release tags)
+##   - '*' or 'next'      - highest version tag (including alpha, beta, rc)
+##   - 'branch:{name}'    - update from specific branch
+##   - 'tag:{name}'       - update to specific tag
+##   - '^1.0.0'           - minor and patch releases (>= 1.0.0 < 2.0.0)
+##   - '~1.0.0'           - patch releases only (>= 1.0.0 < 1.1.0)
+##   - '>1.0.0 <=1.5.0'   - version range with comparison operators
+##   - '1.0.0'            - exact version match

@@ -18,6 +18,23 @@ source "$E_BASH/_commons.sh"
 
 # array of script arguments cleaned from flags (e.g. --help)
 [ -z "$ARGS_NO_FLAGS" ] && export ARGS_NO_FLAGS=()
+
+##
+## Remove all flag arguments (starting with --) from arguments array
+##
+## Parameters:
+## - args - Array of arguments to filter, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: ARGS_NO_FLAGS
+##
+## Side effects:
+## - Sets ARGS_NO_FLAGS global array
+##
+## Usage:
+## - parse:exclude_flags_from_args "$@" && set -- "${ARGS_NO_FLAGS[@]}"
+##
 function parse:exclude_flags_from_args() {
   local args=("$@")
 
@@ -35,7 +52,23 @@ function parse:exclude_flags_from_args() {
 # pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 [ -z "$ARGS_DEFINITION" ] && export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
 
-# Utility function, that extract output definition for parse:arguments function
+##
+## Extract variable name, default value, and quantity from argument definition
+##
+## Parameters:
+## - definition - Argument key (e.g. "--cookies=first"), string, required
+## - full_definition - Full definition string, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none (outputs "variable|default|quantity")
+##
+## Usage:
+## - result=$(parse:extract_output_definition "--cookies" "--cookies=first:default:1")
+##
+## Returns:
+## - Echoes "variable_name|default_value|args_quantity"
+##
 function parse:extract_output_definition() {
   local definition=$1
 
@@ -71,7 +104,23 @@ function parse:extract_output_definition() {
   echo "$variable|$default|$args_qt"
 }
 
-# parse ARGS_DEFINITION string to global arrays: lookup_arguments, index_to_outputs, index_to_args_qt, index_to_default
+##
+## Parse ARGS_DEFINITION and build global lookup arrays for argument processing
+##
+## Parameters:
+## - args - Arguments array (unused except for logging), string array, variadic
+##
+## Globals:
+## - reads/listen: ARGS_DEFINITION
+## - mutate/publish: lookup_arguments, index_to_outputs, index_to_args_qt,
+##                  index_to_default, index_to_keys
+##
+## Side effects:
+## - Declares/initializes global associative arrays
+##
+## Usage:
+## - parse:mapping "$@"
+##
 function parse:mapping() {
   local args=("$@")
 
@@ -113,7 +162,31 @@ function parse:mapping() {
 
 }
 
-# pattern: "\${argument_index},-{short},--{alias}={output}:{init_value}:{args_quantity}"
+##
+## Parse command-line arguments and assign values to output variables
+##
+## This function iterates through arguments, handles flags with values via
+## skip-ahead buffering, and dynamically exports variables based on the
+## ARGS_DEFINITION pattern. It supports both flag-based (--flag value) and
+## positional ($1, $2) argument styles.
+##
+## Parameters:
+## - args - Script arguments to parse, string array, variadic
+##
+## Globals:
+## - reads/listen: lookup_arguments, index_to_outputs, index_to_args_qt, index_to_default
+## - mutate/publish: Creates exported variables for each parsed argument
+##
+## Side effects:
+## - Exports variables based on argument definitions
+## - May exit with error=1 if insufficient arguments provided
+##
+## Usage:
+## - export ARGS="--verbose --output=file.txt"
+## - parse:arguments $ARGS
+## - echo "$verbose" -> "1"
+## - echo "$output" -> "file.txt"
+##
 function parse:arguments() {
   local args=("$@")
 
@@ -236,7 +309,23 @@ function parse:arguments() {
 # argument to default value mapping
 [ -z "$args_to_defaults" ] && declare -A -g args_to_defaults=()
 
-# compose argument description
+##
+## Add description for an argument flag (for help output)
+##
+## Parameters:
+## - flag - Argument flag name, string, required
+## - description - Help text for the argument, string, required
+## - group - Group name for organization, string, default: "common"
+## - order - Display order within group, integer, default: 100
+##
+## Globals:
+## - reads/listen: group_to_order
+## - mutate/publish: args_to_description, args_to_group, group_to_order
+##
+## Usage:
+## - args:d "--verbose" "Enable verbose output" "options" 10
+## - args:d "-h" "Show help message"
+##
 function args:d() {
   local flag=$1
   local description=$2
@@ -253,7 +342,21 @@ function args:d() {
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
-# compose argument 'variable' mapping, function can be used in pipeline
+##
+## Map argument flag to environment variable name
+##
+## Parameters:
+## - flag - Argument flag name (or read from stdin), string, required
+## - env - Environment variable name (or read flag from stdin), string, optional
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: args_to_envs
+##
+## Usage:
+## - args:e "--config" "APP_CONFIG"           # direct mapping
+## - echo "--output" | args:e "OUTPUT_FILE"   # pipe mode
+##
 function args:e() {
   local flag=$1
   local env=$2
@@ -272,7 +375,21 @@ function args:e() {
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
-# compose argument "defaults" mapping, function can be used in pipeline
+##
+## Set default value for an argument flag
+##
+## Parameters:
+## - flag - Argument flag name (or read from stdin), string, required
+## - defaults - Default value (or read flag from stdin), string, optional
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: args_to_defaults
+##
+## Usage:
+## - args:v "--port" "8080"
+## - echo "--timeout" | args:v "30"
+##
 function args:v() {
   local flag=$1
   local defaults=$2
@@ -291,7 +408,25 @@ function args:v() {
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
-# Compose argument definition string by pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
+##
+## Compose argument definition string for ARGS_DEFINITION
+##
+## Parameters:
+## - output - Variable name for output, string, required
+## - -h, --help - Description text, string, optional
+## - -g, --group - Group name, string, optional
+## - -a, --alias - Comma-separated aliases, string, optional
+## - -q, --quantity - Number of arguments to consume, integer, optional
+## - -d, --default - Default value, string, optional
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none (outputs to stdout)
+##
+## Usage:
+## - args:i config -h "Config file" -a "-c,--config" -d "/etc/app.conf"
+## - # outputs: export ARGS_DEFINITION+=" -c,--config=config:/etc/app.conf"
+##
 function args:i() {
   local output="" description="" aliases=()
   local init_value="" args_quantity="" group="common"
@@ -396,7 +531,24 @@ function args:i() {
   echo "export ARGS_DEFINITION+=\" $(echo "$result" | sed 's/:\{1,\}$//g') \""
 }
 
-# print help for ARGS_DEFINITION parameters
+##
+## Print formatted help output for all defined arguments
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: args_to_description, args_to_group, group_to_order,
+##                 args_to_envs, args_to_defaults, lookup_arguments,
+##                 index_to_keys
+## - mutate/publish: none (outputs to stdout)
+##
+## Side effects:
+## - Prints grouped, formatted help to stdout
+##
+## Usage:
+## - print:help    # typically triggered by --help flag
+##
 function print:help() {
   # collect unique group names
   local groups=() group=""
@@ -494,3 +646,47 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 parse:exclude_flags_from_args "$@"                  # pre-filter arguments from flags
 [ -z "$SKIP_ARGS_PARSING" ] && parse:arguments "$@" # parse arguments and assign them to output variables
+
+##
+## Module: Declarative Command-Line Argument Parser
+##
+## This module provides a declarative argument parsing system with auto-generated help.
+##
+## References:
+## - demo: demo.args.sh
+## - bin: git.log.sh, git.verify-all-commits.sh, git.semantic-version.sh,
+##   version-up.v2.sh, vhd.sh, npm.versions.sh
+## - documentation: docs/public/arguments.md
+## - tests: spec/arguments_spec.sh
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - ARGS_NO_FLAGS - Array of arguments with flags removed
+## - ARGS_DEFINITION - Argument definitions string, default: "-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
+## - lookup_arguments - Associative array: flag name -> definition index
+## - index_to_outputs - Associative array: index -> variable name
+## - index_to_args_qt - Associative array: index -> argument quantity
+## - index_to_default - Associative array: index -> default value
+## - index_to_keys - Associative array: index -> flag keys
+## - args_to_description - Associative array: flag -> help text
+## - args_to_group - Associative array: flag -> group name
+## - group_to_order - Associative array: group -> display order
+## - args_to_envs - Associative array: flag -> environment variable
+## - args_to_defaults - Associative array: flag -> default value
+## - SKIP_ARGS_PARSING - Set to skip argument parsing during sourcing
+##
+## Definition Format:
+## - "{index}[,-{short},--{long}=]{output}[:{default}[:{quantity}]]"
+## - Examples:
+##   - "-h,--help"           -> boolean flag
+##   - "-v,--verbose"       -> boolean flag
+##   - "--port=:8080"       -> --port with default 8080
+##   - "--file=::1"         -> --file expects 1 argument
+##   - "$1,--output=::1"    -> first positional arg
+##   - "-c,--config=file:default:1" -> full definition
+##
+## Usage Pattern:
+##   export ARGS_DEFINITION="--verbose --output=file.txt --port=:8080"
+##   source "$E_BASH/_arguments.sh"
+##   # Variables $verbose, $output, $port are now set
+##

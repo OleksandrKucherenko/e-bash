@@ -29,10 +29,26 @@ declare -A -g __semver_parse_result=(
 declare -A -g __semver_compare_v1=()
 declare -A -g __semver_compare_v2=()
 
-# ref: https://regex101.com/r/vkijKf/1/,
-# ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
-# \d - any digit
-# ref: https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
+##
+## Generate semantic versioning regex pattern
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes extended regex pattern for semver matching
+##
+## Usage:
+## - pattern=$(semver:grep)
+##
+## ref: https://regex101.com/r/vkijKf/1/,
+## ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
+## \d - any digit
+## ref: https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
 function semver:grep() {
   #  <letter> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
   #             | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
@@ -117,7 +133,23 @@ function semver:grep() {
   # fi
 }
 
-# create version from parsed results
+##
+## Create version string from parsed semver components
+##
+## Parameters:
+## - sourceVariableName - Name of associative array with parsed parts, string, default: "__semver_parse_result"
+##
+## Globals:
+## - reads/listen: associative array with semver components
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes formatted version string (major.minor.patch-pre-release+build)
+##
+## Usage:
+## - semver:parse "1.2.3-alpha" "parsed"
+## - version=$(semver:recompose "parsed")
+##
 function semver:recompose() {
   local sourceVariableName=${1:-"__semver_parse_result"}
   declare -A parsed=()
@@ -138,7 +170,24 @@ function semver:recompose() {
   echo "${major}.${minor}.${patch}${pre_release}${build}"
 }
 
-# parse version code to segments
+##
+## Parse semantic version string into components
+##
+## Parameters:
+## - version - Version string to parse, string, required
+## - output_variable - Name of associative array to store results, string, default: "__semver_parse_result"
+##
+## Globals:
+## - reads/listen: SEMVER (regex pattern)
+## - mutate/publish: creates global associative array with components
+##
+## Returns:
+## - 0 if version matches semver pattern, 1 otherwise
+## - Populates output array with: version, version-core, major, minor, patch, pre-release, build
+##
+## Usage:
+## - semver:parse "1.2.3-alpha+build" "result"
+##
 function semver:parse() {
   local version="$1"
   local output_variable="${2:-"__semver_parse_result"}"
@@ -184,7 +233,22 @@ function semver:parse() {
   fi
 }
 
-# increase major part of the version core
+##
+## Increment major version number (resets minor and patch to 0)
+##
+## Parameters:
+## - version - Version string to increment, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __major associative array
+##
+## Returns:
+## - Echoes incremented version (major+1.0.0)
+##
+## Usage:
+## - semver:increase:major "1.2.3"  # Returns "2.0.0"
+##
 # shellcheck disable=SC2154
 function semver:increase:major() {
   local version="$1"
@@ -204,7 +268,22 @@ function semver:increase:major() {
   unset __major # clean up
 }
 
-# increase minor part of the version core
+##
+## Increment minor version number (resets patch to 0)
+##
+## Parameters:
+## - version - Version string to increment, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __minor associative array
+##
+## Returns:
+## - Echoes incremented version (major.minor+1.0)
+##
+## Usage:
+## - semver:increase:minor "1.2.3"  # Returns "1.3.0"
+##
 # shellcheck disable=SC2154
 function semver:increase:minor() {
   local version="$1"
@@ -223,7 +302,22 @@ function semver:increase:minor() {
   unset __minor # clean up
 }
 
-# increase patch part of the version core
+##
+## Increment patch version number
+##
+## Parameters:
+## - version - Version string to increment, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __patch associative array
+##
+## Returns:
+## - Echoes incremented version (major.minor.patch+1)
+##
+## Usage:
+## - semver:increase:patch "1.2.3"  # Returns "1.2.4"
+##
 # shellcheck disable=SC2154
 function semver:increase:patch() {
   local version="$1"
@@ -242,8 +336,28 @@ function semver:increase:patch() {
   unset __patch # clean up
 }
 
-# compare two versions and return 0 if equal, 1 if greater, 2 if less, 3 if error
-# implementation of https://semver.org/#spec-item-11 specs
+##
+## Compare two semantic versions
+##
+## Parameters:
+## - version1 - First version string, string, required
+## - version2 - Second version string, string, required
+##
+## Globals:
+## - reads/listen: __semver_compare_v1, __semver_compare_v2
+## - mutate/publish: creates temporary associative arrays for comparison
+##
+## Returns:
+## - 0 if versions are equal
+## - 1 if version1 > version2
+## - 2 if version1 < version2
+## - 3 if error (invalid version)
+##
+## Usage:
+## - semver:compare "1.2.3" "1.2.4"  # Returns 2
+## - semver:compare "2.0.0" "1.9.9"  # Returns 1
+##
+## Implementation of https://semver.org/#spec-item-11 specs
 function semver:compare() {
   local version1="$1"
   local version2="$2"
@@ -338,7 +452,23 @@ function semver:compare() {
   return 3 # error
 }
 
-# interpret result of semver:compare to operator string, separated by ` ` (space)
+##
+## Convert semver:compare result code to operator string
+##
+## Parameters:
+## - result - Result code from semver:compare (0, 1, 2, 3), number, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes operator string: "==", ">", "<", or "error"
+##
+## Usage:
+## - semver:compare "1.2.3" "1.2.3"
+## - operator=$(semver:compare:to:operator "$?")  # Returns "=="
+##
 function semver:compare:to:operator() {
   local result=$1
 
@@ -350,7 +480,23 @@ function semver:compare:to:operator() {
   esac
 }
 
-# convert compare results to human-readable output
+##
+## Generate human-readable version comparison output
+##
+## Parameters:
+## - version1 - First version string, string, required
+## - version2 - Second version string, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes formatted string: "version1 operators version2"
+##
+## Usage:
+## - semver:compare:readable "1.2.3" "1.2.4"  # Returns "1.2.3 < <= != 1.2.4"
+##
 function semver:compare:readable() {
   local version1="$1"
   local version2="$2"
@@ -361,14 +507,32 @@ function semver:compare:readable() {
   echo "$version1 $operators $version2 "
 }
 
-# The basic comparisons are:
-# =: equal (aliased to no operator)
-# !=: not equal
-# >: greater than
-# <: less than
-# >=: greater than or equal to
-# <=: less than or equal to
-# ref: https://github.com/Masterminds/semver?tab=readme-ov-file#basic-comparisons
+##
+## Simple semantic version constraint check
+##
+## Parameters:
+## - expression - Constraint expression (e.g., "1.2.3>=1.0.0"), string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if constraint satisfied
+## - 1 if constraint not satisfied
+## - 3 if expression invalid
+##
+## Usage:
+## - semver:constraints:simple "1.2.3>=1.0.0"  # Returns 0
+##
+## The basic comparisons are:
+## =: equal (aliased to no operator)
+## !=: not equal
+## >: greater than
+## <: less than
+## >=: greater than or equal to
+## <=: less than or equal to
+## ref: https://github.com/Masterminds/semver?tab=readme-ov-file#basic-comparisons
 function semver:constraints:simple() {
   # remove whitespaces during assigning to local variable
   local expression="${1//[[:space:]]/}"
@@ -406,7 +570,24 @@ function semver:constraints:simple() {
   return 1 # false
 }
 
-# resolve simple expression with '~' and '^' operators to simple expression
+##
+## Expand tilde (~) and caret (^) constraint operators to simple expressions
+##
+## Parameters:
+## - molecule - Constraint expression with ~ or ^ operators, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __semver_constraints_complex_atom array
+##
+## Returns:
+## - 0 on success, 1 on parse error
+## - Echoes one or two constraint expressions
+##
+## Usage:
+## - semver:constraints:complex "~1.2.3"  # Returns ">=1.2.3" and "<1.3.0"
+## - semver:constraints:complex "^1.0.0"  # Returns ">=1.0.0" and "<2.0.0"
+##
 function semver:constraints:complex() {
   local molecule="$1" atom="$1"
 
@@ -445,7 +626,24 @@ function semver:constraints:complex() {
   echo "$atom"
 }
 
-# verify that provided version matches constraints (v1)
+##
+## Verify version matches constraints (v1 - legacy behavior)
+##
+## Parameters:
+## - version - Version string to check, string, required
+## - expression - Constraint expression, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if version satisfies constraints
+## - 1 if version does not satisfy constraints
+##
+## Usage:
+## - semver:constraints:v1 "1.2.3" ">=1.0.0"
+##
 # NOTE: This version does not follow npm's default prerelease exclusion behavior.
 function semver:constraints:v1() {
   local version="$1"
@@ -504,7 +702,24 @@ function semver:constraints:v1() {
   return 1                            # false
 }
 
-# verify that provided version matches constraints (v2, npm-like)
+##
+## Verify version matches constraints (v2 - npm-like with prerelease handling)
+##
+## Parameters:
+## - version - Version string to check, string, required
+## - expression - Constraint expression, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __semver_constraints_v2_* arrays
+##
+## Returns:
+## - 0 if version satisfies constraints
+## - 1 if version does not satisfy constraints
+##
+## Usage:
+## - semver:constraints:v2 "1.2.3-alpha" ">=1.0.0"
+##
 # - prerelease versions are excluded unless the range includes a prerelease
 #   comparator with the same major.minor.patch as the candidate version.
 function semver:constraints:v2() {
@@ -600,7 +815,25 @@ function semver:constraints:v2() {
   return 1                            # false
 }
 
-# verify that provided version matches constraints (default)
+##
+## Main entry point for semantic version constraint checking
+##
+## Parameters:
+## - version - Version string to check, string, required
+## - expression - Constraint expression, string, required
+##
+## Globals:
+## - reads/listen: SEMVER_CONSTRAINTS_IMPL (v1 or v2, default: v2)
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if version satisfies constraints
+## - 1 if version does not satisfy constraints
+##
+## Usage:
+## - semver:constraints "1.2.3" ">=1.0.0 <2.0.0"
+## - SEMVER_CONSTRAINTS_IMPL=v1 semver:constraints "1.2.3" "^1.0.0"
+##
 # - SEMVER_CONSTRAINTS_IMPL=v1|v2 can be used to switch behavior (v1 deprecated).
 function semver:constraints() {
   case "${SEMVER_CONSTRAINTS_IMPL:-v2}" in
@@ -632,3 +865,43 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 # - https://www.baeldung.com/linux/bash-bitwise-operators
 
 #echo "semver:grep: $SEMVER"
+
+##
+## Module: Semantic Versioning (SemVer) Parser and Comparator
+##
+## This module provides semantic versioning (SemVer 2.0.0) support including
+## parsing, comparison, constraint checking, and version sorting.
+##
+## References:
+## - demo: demo.semver.sh, demo.sorting.sh, demo.sorting.v2.sh
+## - bin: git.semantic-version.sh, version-up.v2.sh, install.e-bash.sh
+## - documentation: Referenced in docs/public/version-up.md
+## - tests: spec/semver_spec.sh
+#
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - __semver_parse_result - Associative array template for parse results
+## - __semver_compare_v1 - Associative array for version 1 during comparison
+## - __semver_compare_v2 - Associative array for version 2 during comparison
+## - SEMVER - Semver regex pattern
+## - SEMVER_LINE - Anchored semver regex
+## - SEMVER_LINE_WITH_PREFIX - Anchored regex with optional 'v' prefix
+#
+## Main Functions:
+## - semver:grep() - Generate semver regex pattern
+## - semver:parse(version, output_array) - Parse version into components
+## - semver:recompose(output_array) - Create version from parsed parts
+## - semver:increase:major/minor/patch(version) - Bump version
+## - semver:compare(v1, v2) - Compare two versions (0=equal, 1=v1>v2, 2=v1<v2)
+## - semver:constraints:simple(version, constraint) - Simple constraint check
+## - semver:constraints:complex(version) - Expand ~/^ operators
+## - semver:constraints:v1/v2(version, constraints) - Check constraints
+## - semver:constraints() - Main constraints entry point
+#
+## Utility Functions:
+## - semver:compare:to:operator(result_code) - Convert result to operators
+## - semver:compare:readable(v1, v2) - Human-readable comparison
+## - array:qsort(compare_func, array) - QuickSort implementation
+## - array:msort(compare_func, array) - MergeSort implementation
+## - array:merge(compare_func, left, right) - Merge function for MergeSort
+##
