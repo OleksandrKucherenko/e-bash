@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-01-24
+## Version: 2.7.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -587,9 +587,9 @@ Describe "_dependencies.sh /"
       The error should eq ''
     End
 
-    It "returns '-V' for tmux"
+    It "returns '-VV' for tmux"
       When call dependency:known:flags "tmux" ""
-      The output should eq "-V"
+      The output should eq "-VV"
       The error should eq ''
     End
 
