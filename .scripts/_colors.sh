@@ -6,6 +6,7 @@
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
+## Description: Terminal color definitions and utilities for ANSI color support
 
 # shellcheck disable=SC2015 # one time initialization, CUID
 #[[ "${clr19adx10008og3819x1ipfv}" == "yes" ]] && return 0 || export clr19adx10008og3819x1ipfv="yes"
@@ -48,7 +49,28 @@ export st_underline=$(tput smul 2>/dev/null || echo "")
 export st_u="${st_underline}"
 export st_no_u=$(tput rmul 2>/dev/null || echo "")
 
-# unset colors, to prevent coloring in the output
+# Function: cl:unset
+#
+# Description:
+#   Unsets all color and style variables exported by this module.
+#   Use this to prevent colored output in contexts where ANSI codes are not desired.
+#
+# Arguments:
+#   None
+#
+# Returns:
+#   None (void function)
+#
+# Side Effects:
+#   - Unsets all cl_* color variables (cl_red, cl_green, cl_blue, etc.)
+#   - Unsets all st_* style variables (st_bold, st_italic, st_underline, etc.)
+#   - Unsets cl_reset and cl_selected
+#
+# Example:
+#   # Disable colors for log file output
+#   cl:unset
+#   echo "This output has no colors" > output.log
+#
 function cl:unset() {
   unset cl_reset cl_selected
   unset cl_red cl_green cl_yellow cl_blue cl_purple cl_cyan cl_white cl_grey cl_gray cl_black

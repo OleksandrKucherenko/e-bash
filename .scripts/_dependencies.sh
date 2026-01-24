@@ -7,6 +7,36 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+#
+# MODULE: Dependency Management System
+#
+# Provides comprehensive dependency validation, version checking, and optional auto-installation
+# for command-line tools. Uses semantic versioning patterns to validate tool versions and can
+# automatically install missing or outdated tools in CI environments.
+#
+# Key Features:
+#   - Semantic version constraint checking with wildcard support (5.*.*, [45].*.*)
+#   - Tool alias resolution (nodejs->node, golang->go, homebrew->brew, etc.)
+#   - CI auto-install mode (controlled via CI_E_BASH_INSTALL_DEPENDENCIES)
+#   - Optional dependencies (won't fail script if missing)
+#   - Custom version flag support for non-standard tools
+#   - Extensive exception handling for tools with non-standard version flags
+#
+# Environment Variables:
+#   CI - Set to 1/true/yes to enable CI mode
+#   CI_E_BASH_INSTALL_DEPENDENCIES - Set to 1/true/yes to enable auto-install in CI
+#   DEBUG - Comma-separated tags (use "dependencies" to enable debug logging)
+#   SKIP_DEALIAS - Set to 1 to bypass tool alias resolution
+#
+# Examples:
+#   dependency bash "5.*.*" "brew install bash"
+#   dependency go "1.17.*" "brew install go" "version"
+#   dependency java "11.*.*" "brew install openjdk@11" "-version"
+#   optional kcov "43" "brew install kcov"
+#
+# See demos/demo.dependencies.sh for comprehensive usage examples.
+#
+
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -17,28 +47,84 @@ source "$E_BASH/_logger.sh"
 
 #set -x # Uncomment to DEBUG
 
+#
+# Internal: Check if --debug flag is present in arguments
+#
+# Parameters:
+#   $@ - Arguments array to check
+#
+# Output:
+#   Prints "true" if --debug flag found, "false" otherwise
+#
 # shellcheck disable=SC2001,SC2155,SC2046,SC2116
 function isDebug() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--debug" ]]; then echo true; else echo false; fi
 }
 
+#
+# Internal: Check if --exec flag is present in arguments
+#
+# When --exec is set, install commands run automatically on version mismatch
+# instead of just displaying installation instructions.
+#
+# Parameters:
+#   $@ - Arguments array to check
+#
+# Output:
+#   Prints "true" if --exec flag found, "false" otherwise
+#
 function isExec() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--exec" ]]; then echo true; else echo false; fi
 }
 
+#
+# Internal: Check if --optional flag is present in arguments
+#
+# Optional dependencies won't cause script failure if missing or wrong version.
+# Useful for nice-to-have tools that aren't critical for script operation.
+#
+# Parameters:
+#   $@ - Arguments array to check
+#
+# Output:
+#   Prints "true" if --optional flag found, "false" otherwise
+#
 function isOptional() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--optional" ]]; then echo true; else echo false; fi
 }
 
+#
+# Internal: Check if --silent flag is present in arguments
+#
+# Silent mode suppresses non-critical output messages.
+#
+# Parameters:
+#   $@ - Arguments array to check
+#
+# Output:
+#   Prints "true" if --silent flag found, "false" otherwise
+#
 function isSilent() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--silent" ]]; then echo true; else echo false; fi
 }
 
-# Internal: Version flag exceptions - tools that don't use --version
+#
+# Internal: Version flag exceptions mapping
+#
+# Many tools use non-standard flags to display version information.
+# This associative array maps tool names to their correct version flags.
+#
+# Common patterns:
+#   --version (default) - Most GNU/Linux tools
+#   -version            - Java ecosystem tools
+#   -V                  - Some Unix utilities (ssh, tmux, etc.)
+#   -v                  - Rare cases (screen, unzip)
+#   version             - Go (no dash prefix)
+#
 # shellcheck disable=SC2034
 declare -gA __DEPS_VERSION_FLAGS_EXCEPTIONS
 
@@ -57,8 +143,36 @@ __DEPS_VERSION_FLAGS_EXCEPTIONS[composer]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[screen]="-v"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[unzip]="-v"
 
-# Resolve tool aliases to their canonical command names
-# Override: set SKIP_DEALIAS=1 to bypass alias resolution
+#
+# Internal: Resolve tool aliases to their canonical command names
+#
+# Many tools have multiple common names (e.g., nodejs vs node, golang vs go).
+# This function normalizes aliases to the actual executable command name.
+#
+# Supported Aliases:
+#   rust|rustc -> rustc
+#   golang|go -> go
+#   nodejs|node -> node
+#   jre|java -> java
+#   jdk|javac -> javac
+#   homebrew|brew -> brew
+#   awsebcli|eb -> eb
+#   awscli|aws -> aws
+#   postgresql|psql -> psql
+#   mongodb|mongo -> mongo
+#   openssh -> ssh
+#   goreplay|gor -> gor
+#   httpie|http -> http
+#
+# Parameters:
+#   $1 - Tool name or alias to resolve
+#
+# Output:
+#   Prints canonical command name
+#
+# Environment:
+#   SKIP_DEALIAS - Set to 1 to bypass alias resolution (returns input as-is)
+#
 function dependency:dealias() {
   # Skip dealiasing if requested (workaround for wrong resolutions)
   if [[ "${SKIP_DEALIAS:-}" == "1" ]]; then
@@ -86,7 +200,27 @@ function dependency:dealias() {
   esac
 }
 
-# Get version flag for a tool (exception or default --version)
+#
+# Internal: Get the appropriate version flag for a tool
+#
+# Resolves the correct flag to use for version checking, with priority:
+# 1. User-provided flag (parameter $2)
+# 2. Built-in exception from __DEPS_VERSION_FLAGS_EXCEPTIONS
+# 3. Default --version
+#
+# Parameters:
+#   $1 - Tool name (canonical, after dealias)
+#   $2 - Optional user-provided version flag (overrides built-in exceptions)
+#
+# Output:
+#   Prints the version flag to use
+#
+# Examples:
+#   dependency:known:flags "bash" ""          # outputs: --version
+#   dependency:known:flags "java" ""          # outputs: -version
+#   dependency:known:flags "go" ""            # outputs: version
+#   dependency:known:flags "custom" "-ver"    # outputs: -ver
+#
 function dependency:known:flags() {
   local tool="$1"
   local provided_flag="$2"
@@ -100,6 +234,28 @@ function dependency:known:flags() {
   fi
 }
 
+#
+# Internal: Check if CI auto-install mode is enabled
+#
+# Auto-install only activates when BOTH conditions are met:
+# 1. Running in CI environment (CI variable is set)
+# 2. Auto-install is explicitly enabled (CI_E_BASH_INSTALL_DEPENDENCIES=1/true/yes)
+#
+# This dual-gate prevents accidental installations in CI without explicit opt-in.
+#
+# Parameters:
+#   None
+#
+# Output:
+#   Prints "true" if auto-install enabled, "false" otherwise
+#
+# Environment Variables:
+#   CI - Must be set (any value) to indicate CI environment
+#   CI_E_BASH_INSTALL_DEPENDENCIES - Must be 1, true, or yes (case-insensitive)
+#
+# Returns:
+#   Always returns 0 (function outputs result via echo)
+#
 function isCIAutoInstallEnabled() {
   # Only enable auto-install if we're in a CI environment AND the flag is set
   if [[ -n "${CI:-}" ]]; then
@@ -115,6 +271,56 @@ function isCIAutoInstallEnabled() {
   fi
 }
 
+#
+# PUBLIC API: Validate tool dependency with version constraint
+#
+# Checks if a command-line tool exists and matches the required version pattern.
+# Supports semantic versioning wildcards, CI auto-installation, and custom version flags.
+#
+# Usage:
+#   dependency <tool> <version_pattern> [install_command] [version_flag] [--debug] [--exec] [--optional]
+#
+# Parameters:
+#   $1 - Tool name (supports aliases: nodejs, golang, homebrew, etc.)
+#   $2 - Version pattern (supports wildcards: 5.*.*, [45].*.*)
+#   $3 - Installation command or hint (default: "No details. Please google it.")
+#   $4 - Version flag override (default: auto-detected or --version)
+#   --debug    - Enable debug output for this dependency check
+#   --exec     - Execute install command on failure (instead of just showing hint)
+#   --optional - Mark as optional (won't fail script if missing/wrong version)
+#
+# Version Pattern Examples:
+#   "5.*.*"           - Any 5.x.x version
+#   "5.0.*"           - Any 5.0.x version
+#   "5.0.18"          - Exact version 5.0.18
+#   "[45].*.*"        - Version 4.x.x or 5.x.x
+#   "1.17.*"          - Any 1.17.x version
+#   "HEAD-[a-f0-9]*"  - Git HEAD with commit hash
+#
+# Output:
+#   Success: "Dependency [OK]: `tool` - version: X.Y.Z" (exit 0)
+#   Missing: Error message with install hint (exit 1, or 0 if --optional/CI auto-install)
+#   Wrong version: Error message with install hint (exit 1, or 0 if --optional/CI auto-install)
+#
+# Returns:
+#   0 - Dependency met, optional dependency (any status), or auto-installed successfully
+#   1 - Required dependency missing/wrong version and not auto-installed
+#
+# Environment:
+#   DEBUG - Add "dependencies" tag to enable debug logging for all checks
+#   CI + CI_E_BASH_INSTALL_DEPENDENCIES - Enable auto-install mode
+#
+# Examples:
+#   dependency bash "5.*.*" "brew install bash"
+#   dependency go "1.17.*" "brew install go" "version"
+#   dependency java "11.*.*" "brew install openjdk@11" "-version"
+#   dependency custom "1.0.*" "make install" "--ver" --debug
+#   dependency tool "2.*.*" "apt install tool" "" --exec
+#
+# See Also:
+#   optional() - Wrapper function for optional dependencies
+#   demos/demo.dependencies.sh - Comprehensive usage examples
+#
 # shellcheck disable=SC2001,SC2155,SC2086
 function dependency() {
   local tool_name=$1
@@ -229,6 +435,39 @@ function dependency() {
   fi
 }
 
+#
+# PUBLIC API: Declare an optional dependency
+#
+# Convenience wrapper around dependency() that automatically adds the --optional flag.
+# Optional dependencies won't cause script failure if missing or version doesn't match.
+#
+# Usage:
+#   optional <tool> <version_pattern> [install_command] [version_flag]
+#
+# Parameters:
+#   $1 - Tool name (supports aliases)
+#   $2 - Version pattern (supports wildcards)
+#   $3 - Installation command or hint (default: "No details. Please google it.")
+#   $4 - Version flag override (default: auto-detected or --version)
+#
+# Output:
+#   Success: "Optional [OK]: `tool` - version: X.Y.Z"
+#   Missing: "Optional [NO]: `tool` - not found! Try: <install_command>"
+#   Wrong:   "Optional [NO]: `tool` - wrong version! Try: <install_command>"
+#
+# Returns:
+#   Always returns 0 (success) - optional dependencies never fail
+#
+# Examples:
+#   optional kcov "43" "brew install kcov"
+#   optional shellcheck "0.11.*" "brew install shellcheck"
+#   optional watchman "2024.*" "brew install watchman"
+#
+# Notes:
+#   - Automatically fills in default values for missing parameters
+#   - Always appends --optional flag before calling dependency()
+#   - Useful for nice-to-have tools (code coverage, linters, formatters, etc.)
+#
 function optional() {
   local args=("$@")
 

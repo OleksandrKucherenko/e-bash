@@ -7,6 +7,25 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
+##
+## Common Utilities Module
+##
+## Provides a comprehensive collection of utility functions for Bash scripts:
+## - Time utilities: Current time and duration calculation
+## - Cursor control: Terminal cursor position detection
+## - User input: Validated input with masking support
+## - Environment/secrets: Load values from env vars or secret files
+## - Variable resolution: Template expansion with {{env.VAR}} patterns
+## - Value fallbacks: Multi-level fallback chains for variables/values
+## - String transformations: Filesystem-safe slug generation with hashing
+## - Git/Config discovery: Find git roots and config file hierarchies
+## - Interactive UI: Selector components for terminal interfaces
+##
+## This module depends on:
+## - _colors.sh: Terminal color support
+## - _logger.sh: Logging functionality
+##
+
 # is allowed to use macOS extensions (script can be executed in *nix second)
 use_macos_extensions=false
 if [[ "$OSTYPE" == "darwin"* ]]; then use_macos_extensions=true; fi
@@ -21,36 +40,99 @@ source "$E_BASH/_colors.sh"
 source "$E_BASH/_logger.sh"
 
 function time:now() {
+  # Get current time in epoch format with microsecond precision
+  #
+  # Arguments:
+  #   None
+  #
+  # Returns:
+  #   Current epoch time in seconds.microseconds format (e.g., "1706195423.456789")
+  #   Requires Bash 5.0+ for EPOCHREALTIME support
+  #
+  # Example:
+  #   start_time=$(time:now)  # Returns "1706195423.456789"
+  #   sleep 1
+  #   end_time=$(time:now)    # Returns "1706195424.456789"
+
   echo "$EPOCHREALTIME" # <~ bash 5.0
   #python -c 'import datetime; print datetime.datetime.now().strftime("%s.%f")'
 }
 
 # shellcheck disable=SC2155,SC2086
 function time:diff() {
+  # Calculate time difference between current time and a previous timestamp
+  #
+  # Arguments:
+  #   $1 - start_time: Starting epoch time (from time:now)
+  #
+  # Returns:
+  #   Time difference in seconds with microsecond precision
+  #   Requires bc command for floating-point arithmetic
+  #
+  # Example:
+  #   start=$(time:now)
+  #   sleep 2
+  #   duration=$(time:diff "$start")  # Returns "2.000123" (approximately)
+  #   echo "Operation took ${duration}s"
+
   local diff="$(time:now) - $1"
   bc <<<$diff
 }
 
 # ref: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
 
-# get cursor position in "row;col" format
 function cursor:position() {
+  # Get current cursor position in terminal
+  #
+  # Arguments:
+  #   None
+  #
+  # Returns:
+  #   Cursor position in "row;col" format (e.g., "15;32")
+  #   Uses ANSI escape sequence DSR (Device Status Report)
+  #
+  # Example:
+  #   position=$(cursor:position)  # Returns "15;32" (row 15, column 32)
+  #   echo "Cursor is at: $position"
+
   local CURPOS
   read -sdR -p $'\E[6n' CURPOS
   CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
   echo "${CURPOS}"    # Return position in "row;col" format
 }
 
-# get cursor position in row
 function cursor:position:row() {
+  # Get current cursor row position in terminal
+  #
+  # Arguments:
+  #   None
+  #
+  # Returns:
+  #   Row number where cursor is located (1-indexed)
+  #
+  # Example:
+  #   row=$(cursor:position:row)  # Returns "15"
+  #   echo "Cursor is at row $row"
+
   local COL
   local ROW
   IFS=';' read -sdR -p $'\E[6n' ROW COL
   echo "${ROW#*[}"
 }
 
-# get cursor position in column
 function cursor:position:col() {
+  # Get current cursor column position in terminal
+  #
+  # Arguments:
+  #   None
+  #
+  # Returns:
+  #   Column number where cursor is located (1-indexed)
+  #
+  # Example:
+  #   col=$(cursor:position:col)  # Returns "32"
+  #   echo "Cursor is at column $col"
+
   local COL
   local ROW
   IFS=';' read -sdR -p $'\E[6n' ROW COL
@@ -59,8 +141,33 @@ function cursor:position:col() {
 
 # ref: https://stackoverflow.com/questions/10679188/casing-arrow-keys-in-bash
 
-## Read user input with masked input
 function input:readpwd() {
+  # Read password input with masked characters and full editing support
+  # Internal function used by validate:input:masked
+  #
+  # Arguments:
+  #   None (reads from stdin)
+  #
+  # Returns:
+  #   The entered password/secret text (unmasked)
+  #   Characters are displayed as asterisks (*) during input
+  #
+  # Supported keys:
+  #   - Arrow keys: Left/Right for cursor movement, Up/Down for home/end
+  #   - Backspace/Delete: Remove character at cursor
+  #   - Ctrl+U: Clear entire line
+  #   - Escape: Reset to empty
+  #   - Enter: Submit input
+  #   - Regular characters: Insert at cursor position
+  #
+  # Example:
+  #   password=$(input:readpwd)  # User types "secret123" -> displays "**********"
+  #   echo "Password length: ${#password}"  # Returns "Password length: 9"
+  #
+  # Note:
+  #   Displays hint text: (→,←,↑,↓,↵,Esc,⌫,^U) during input
+  #   All output goes to stderr to keep stdout clean for the password value
+  #
   # tput sc # Save cursor position
   local y_pos=$(cursor:position:row) x_pos=$(cursor:position:col) max_col=$(tput cols)
   local PWORD='' pos=0 max_length=0
@@ -163,6 +270,30 @@ function input:readpwd() {
 
 # shellcheck disable=SC2086
 function validate:input() {
+  # Prompt user for validated text input with optional default value
+  # PUBLIC API - Ensures non-empty input before accepting
+  #
+  # Arguments:
+  #   $1 - variable: Name of variable to store result in (passed by reference)
+  #   $2 - default: Default value to suggest (optional, used on macOS only)
+  #   $3 - hint: Prompt text to display to user (optional)
+  #
+  # Returns:
+  #   Sets the named variable to the user's input
+  #   Continues prompting until non-empty input is provided
+  #   Exits with code 1 if user presses Ctrl+C
+  #
+  # Platform behavior:
+  #   - macOS: Shows default value in readline, allows arrow key editing
+  #   - Linux: Shows prompt, reads input (no default value pre-fill)
+  #
+  # Example:
+  #   validate:input username "" "Enter your username"
+  #   echo "Hello, $username"
+  #
+  #   validate:input email "user@example.com" "Your email"
+  #   echo "Email: $email"
+
   local variable=$1
   local default=${2:-""}
   local hint=${3:-""}
@@ -193,6 +324,32 @@ function validate:input() {
 
 # shellcheck disable=SC2086
 function validate:input:masked() {
+  # Prompt user for validated password/secret input with masked display
+  # PUBLIC API - Characters are shown as asterisks during input
+  #
+  # Arguments:
+  #   $1 - variable: Name of variable to store result in (passed by reference)
+  #   $2 - default: Default value (optional, not displayed)
+  #   $3 - hint: Prompt text to display to user (optional)
+  #
+  # Returns:
+  #   Sets the named variable to the user's input
+  #   Continues prompting until non-empty input is provided
+  #   Input is masked with asterisks (*) during typing
+  #
+  # Features:
+  #   - Full editing support (arrow keys, backspace, Ctrl+U)
+  #   - Visual feedback with asterisks
+  #   - Cursor movement and positioning
+  #
+  # Example:
+  #   validate:input:masked password "" "Enter password"
+  #   # User sees: ? Enter password ********* (typed "secret123")
+  #   echo "Password set (length: ${#password})"
+  #
+  #   validate:input:masked api_key "" "API Key"
+  #   curl -H "Authorization: Bearer $api_key" https://api.example.com
+
   local variable=$1
   local default=${2:-""}
   local hint=${3:-""}
@@ -265,13 +422,37 @@ function validate:input:yn() {
 
 # shellcheck disable=SC2086
 function env:variable:or:secret:file() {
+  # Load sensitive value from environment variable or secret file (REQUIRED)
+  # PUBLIC API - Ensures secrets are available from env or file, fails if neither exists
   #
-  # Usage:
-  #     env:variable:or:secret:file "new_value" \
-  #       "GITLAB_CI_INTEGRATION_TEST" \
-  #       ".secrets/gitlab_ci_integration_test" \
-  #       "{user friendly message}"
+  # Arguments:
+  #   $1 - name: Name of variable to store result in (passed by reference)
+  #   $2 - variable: Name of environment variable to check
+  #   $3 - filepath: Path to secret file to read if env var is empty
+  #   $4 - fallback: Hint message to display on error (default: "No hints, check the documentation")
   #
+  # Returns:
+  #   0 if value was loaded successfully
+  #   1 if neither env var nor file exists
+  #   Sets the named variable to the loaded value
+  #
+  # Priority:
+  #   1. Environment variable (if set and non-empty)
+  #   2. File contents (if file exists)
+  #   3. Error with hint message
+  #
+  # Example:
+  #   env:variable:or:secret:file "api_token" \
+  #     "GITLAB_CI_INTEGRATION_TEST" \
+  #     ".secrets/gitlab_ci_integration_test" \
+  #     "Create .secrets/gitlab_ci_integration_test with your token"
+  #   # Using var : $GITLAB_CI_INTEGRATION_TEST ~> api_token
+  #   curl -H "Authorization: Bearer $api_token" https://gitlab.com/api/v4/user
+  #
+  #   # If neither exists, shows:
+  #   # ERROR: bash env variable '$GITLAB_CI_INTEGRATION_TEST' or file '.secrets/gitlab_ci_integration_test' should be provided
+  #   # Hint: Create .secrets/gitlab_ci_integration_test with your token
+
   local name=$1
   local variable=$2
   local filepath=$3
@@ -300,12 +481,37 @@ function env:variable:or:secret:file() {
 
 # shellcheck disable=SC2086
 function env:variable:or:secret:file:optional() {
+  # Load sensitive value from environment variable or secret file (OPTIONAL)
+  # PUBLIC API - Similar to env:variable:or:secret:file but doesn't fail if neither exists
   #
-  # Usage:
-  #     env:variable:or:secret:file:optional "new_value" \
-  #       "GITLAB_CI_INTEGRATION_TEST" \
-  #       ".secrets/gitlab_ci_integration_test"
+  # Arguments:
+  #   $1 - name: Name of variable to store result in (passed by reference)
+  #   $2 - variable: Name of environment variable to check
+  #   $3 - filepath: Path to secret file to read if env var is empty
   #
+  # Returns:
+  #   0 if neither env var nor file exists (optional, no error)
+  #   1 if value was loaded from environment variable
+  #   2 if value was loaded from file
+  #   Sets the named variable to the loaded value (if found)
+  #
+  # Priority:
+  #   1. Environment variable (if set and non-empty)
+  #   2. File contents (if file exists)
+  #   3. Note message (no error, variable remains unset)
+  #
+  # Example:
+  #   env:variable:or:secret:file:optional "sentry_dsn" \
+  #     "SENTRY_DSN" \
+  #     ".secrets/sentry_dsn"
+  #   # Note: bash env variable '$SENTRY_DSN' or file '.secrets/sentry_dsn' can be provided.
+  #
+  #   if [[ -n "$sentry_dsn" ]]; then
+  #     echo "Sentry monitoring enabled"
+  #   else
+  #     echo "Sentry monitoring disabled (optional)"
+  #   fi
+
   local name=$1
   local variable=$2
   local filepath=$3
@@ -405,9 +611,27 @@ function env:resolve() {
   fi
 }
 
-# Internal helper function to resolve a single string
-# Follows naming convention: _domain:purpose for internal functions
 function _env:resolve:string() {
+  # Internal helper function to resolve {{env.VAR}} patterns in a single string
+  # Used by env:resolve for processing individual lines/strings
+  #
+  # Arguments:
+  #   $1 - str: The string to resolve
+  #   $2 - arr_name: Optional associative array name for custom variables
+  #
+  # Returns:
+  #   The string with all {{env.VAR}} patterns expanded
+  #   0 on success, 1 if infinite loop or self-reference detected
+  #
+  # Safety features:
+  #   - Maximum 10 iterations to prevent infinite loops
+  #   - Detects self-referential patterns (VAR='{{env.VAR}}')
+  #   - Safe substring replacement without eval vulnerabilities
+  #
+  # Note:
+  #   Internal function - use env:resolve instead
+  #   Follows naming convention: _domain:purpose for internal functions
+  #
   local str="$1"
   local arr_name="$2"
   local expanded_string="$str"
@@ -500,6 +724,36 @@ function _env:resolve:string() {
 }
 
 function confirm:by:input() {
+  # Confirm or prompt for a value with intelligent priority-based selection
+  # Chooses value from priority cascade or prompts user if all are empty
+  #
+  # Arguments:
+  #   $1 - hint: Prompt text to show user
+  #   $2 - variable: Name of variable to store result in (passed by reference)
+  #   $3 - fallback: Default/fallback value
+  #   $4 - top: Highest priority value (optional)
+  #   $5 - second: Second priority value (optional)
+  #   $6 - third: Third priority value (optional)
+  #   $7 - masked: Mask value in confirmation display (optional)
+  #
+  # Returns:
+  #   Sets the named variable to the selected/entered value
+  #   Displays confirmation message showing which value was used
+  #
+  # Priority (highest to lowest):
+  #   1. top (if provided) - Use immediately without prompting
+  #   2. second (if provided) - Use immediately without prompting
+  #   3. third (if provided) - Use fallback value
+  #   4. Prompt user (if all are empty) - Use masked input if masked parameter provided
+  #
+  # Example:
+  #   confirm:by:input "Enter username" username "default_user" "$CLI_USER" "$ENV_USER"
+  #   # If CLI_USER is set, uses that value without prompting
+  #   # Otherwise checks ENV_USER, then prompts with default_user
+  #
+  #   confirm:by:input "API Key" api_key "" "" "" "" "masked"
+  #   # Prompts with masked input: ? API Key *************
+
   local hint=$1
   local variable=$2
   local fallback=$3
@@ -644,8 +898,30 @@ function val:l1() {
   fi
 }
 
-# Helper function for cross-platform hash generation (used by to:slug)
 function to:slug:hash() {
+  # Generate cross-platform hash for slug generation (internal helper)
+  # Used by to:slug for creating deterministic short hashes
+  #
+  # Arguments:
+  #   $1 - input: String to hash
+  #   $2 - length: Number of characters to return from hash
+  #
+  # Returns:
+  #   Hex hash string truncated to specified length
+  #   Uses best available hash command (SHA-256 preferred, falls back to MD5)
+  #
+  # Platform support:
+  #   - Linux: sha256sum or md5sum
+  #   - macOS: shasum or md5
+  #   - Falls back gracefully through available commands
+  #
+  # Example:
+  #   hash=$(to:slug:hash "example string" 7)  # Returns "a1b2c3d"
+  #   hash=$(to:slug:hash "example string" 16) # Returns "a1b2c3d4e5f6a7b8"
+  #
+  # Note:
+  #   Internal function - use to:slug instead
+
   local input=$1
   local length=$2
   local hash=""
@@ -761,6 +1037,26 @@ function to:slug() {
 }
 
 function args:isHelp() {
+  # Check if --help flag is present in arguments
+  #
+  # Arguments:
+  #   $@ - All script arguments to check
+  #
+  # Returns:
+  #   "true" if --help is found in arguments
+  #   "false" otherwise
+  #
+  # Example:
+  #   if [[ $(args:isHelp "$@") == "true" ]]; then
+  #     show_help
+  #     exit 0
+  #   fi
+  #
+  #   # Or in a script:
+  #   ./script.sh --help           # Returns "true"
+  #   ./script.sh --verbose        # Returns "false"
+  #   ./script.sh --help --verbose # Returns "true"
+
   local args=("$@")
   if [[ "${args[*]}" =~ "--help" ]]; then echo true; else echo false; fi
 }
@@ -1185,6 +1481,48 @@ function config:hierarchy:xdg() {
 }
 
 function input:selector() {
+  # Interactive terminal selector for choosing from key-value pairs
+  # Creates a horizontal menu with arrow key navigation
+  #
+  # Arguments:
+  #   $1 - sourceVariableName: Name of associative array containing options
+  #   $2 - keyOrValue: What to return - "key" or "value" (default: "key")
+  #
+  # Returns:
+  #   Selected key or value from the associative array
+  #   Empty string if escaped or no selection made
+  #
+  # Interaction:
+  #   - Left/Right arrows: Navigate between options
+  #   - Enter: Select current option
+  #   - Escape: Cancel selection (returns empty)
+  #   - Type character: Jump to first matching value
+  #
+  # UI Features:
+  #   - Highlighted selection with background color
+  #   - Hint text showing available keys
+  #   - Cursor hidden during selection
+  #   - Clean output (erases menu after selection)
+  #
+  # Example:
+  #   declare -A environments=(
+  #     [dev]="Development"
+  #     [stg]="Staging"
+  #     [prd]="Production"
+  #   )
+  #
+  #   selection=$(input:selector "environments" "key")
+  #   # Shows: | Development | Staging | Production |
+  #   # User presses right arrow twice, then Enter
+  #   echo "Selected: $selection"  # Returns "prd"
+  #
+  #   value=$(input:selector "environments" "value")
+  #   # Returns "Production" (if prd was selected)
+  #
+  # Note:
+  #   Internal function used for building interactive UIs
+  #   Requires terminal with ANSI escape sequence support
+
   local sourceVariableName=$1
   local keyOrValue=${2:-"key"}
 
