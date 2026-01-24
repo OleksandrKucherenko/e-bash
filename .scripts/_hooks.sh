@@ -65,19 +65,21 @@ if [[ -z ${HOOKS_PREFIX+x} ]]; then declare -g HOOKS_PREFIX="hook:"; fi
 if [[ -z ${HOOKS_EXEC_MODE+x} ]]; then declare -g HOOKS_EXEC_MODE="exec"; fi
 if [[ -z ${HOOKS_AUTO_TRAP+x} ]]; then declare -g HOOKS_AUTO_TRAP="true"; fi
 
-# Define available hooks in the script
-#
-# Usage:
-#   hooks:declare begin end decide error rollback
-#   hooks:declare custom_hook another_hook
-#
-# Parameters:
-#   $@ - List of hook names to define
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid hook name
-#
+## 
+## Purpose: Provide the `hooks:declare` helper for hooks declare operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: Z0, __HOOKS_CONTEXTS, __HOOKS_DEFINED.
+## 
+## Usage:
+## - hooks:declare "$@"
+## - # Conditional usage pattern
+## - if hooks:declare "$@"; then :; fi
+## 
+## 
 function hooks:declare() {
   local hook_name
 
@@ -134,16 +136,21 @@ function hooks:declare() {
   return 0
 }
 
-#
-# Bootstrap default hooks and exit trap
-#
-# Usage:
-#   hooks:bootstrap
-#
-# Behavior:
-#   - declares begin/end hooks if missing
-#   - installs an EXIT trap to execute end hook (unless HOOKS_AUTO_TRAP=false)
-#
+## 
+## Purpose: Provide the `hooks:bootstrap` helper for hooks bootstrap operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: HOOKS_AUTO_TRAP.
+## 
+## Usage:
+## - hooks:bootstrap "$@"
+## - # Conditional usage pattern
+## - if hooks:bootstrap "$@"; then :; fi
+## 
+## 
 function hooks:bootstrap() {
   hooks:declare begin end
 
@@ -154,18 +161,42 @@ function hooks:bootstrap() {
   return 0
 }
 
-#
-# Exit handler for end hook
-#
+## 
+## Purpose: Provide the `_hooks:on_exit` helper for  hooks on exit operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - _hooks:on_exit "$@"
+## - # Conditional usage pattern
+## - if _hooks:on_exit "$@"; then :; fi
+## 
+## 
 function _hooks:on_exit() {
   local exit_code=$?
   hooks:do end "$exit_code"
   return "$exit_code"
 }
 
-#
-# Install EXIT trap for end hook (idempotent)
-#
+## 
+## Purpose: Provide the `_hooks:trap:end` helper for  hooks trap end operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: EXIT, __HOOKS_END_TRAP_INSTALLED.
+## 
+## Usage:
+## - _hooks:trap:end "$@"
+## - # Conditional usage pattern
+## - if _hooks:trap:end "$@"; then :; fi
+## 
+## 
 function _hooks:trap:end() {
   if [[ "${__HOOKS_END_TRAP_INSTALLED:-}" == "true" ]]; then
     return 0
@@ -177,19 +208,21 @@ function _hooks:trap:end() {
   return 0
 }
 
-#
-# Register file patterns to always execute in sourced mode
-#
-# Usage:
-#   hooks:pattern:source "begin-*-init.sh"
-#   hooks:pattern:source "env-*.sh" "config-*.sh"
-#
-# Parameters:
-#   $@ - File patterns (wildcards supported)
-#
-# Returns:
-#   0 - Success
-#
+## 
+## Purpose: Provide the `hooks:pattern:source` helper for hooks pattern source operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __HOOKS_SOURCE_PATTERNS.
+## 
+## Usage:
+## - hooks:pattern:source "$@"
+## - # Conditional usage pattern
+## - if hooks:pattern:source "$@"; then :; fi
+## 
+## 
 function hooks:pattern:source() {
   local pattern
 
@@ -201,19 +234,21 @@ function hooks:pattern:source() {
   return 0
 }
 
-#
-# Register file patterns to always execute as scripts
-#
-# Usage:
-#   hooks:pattern:script "end-datadog.sh"
-#   hooks:pattern:script "notify-*.sh"
-#
-# Parameters:
-#   $@ - File patterns (wildcards supported)
-#
-# Returns:
-#   0 - Success
-#
+## 
+## Purpose: Provide the `hooks:pattern:script` helper for hooks pattern script operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __HOOKS_SCRIPT_PATTERNS.
+## 
+## Usage:
+## - hooks:pattern:script "$@"
+## - # Conditional usage pattern
+## - if hooks:pattern:script "$@"; then :; fi
+## 
+## 
 function hooks:pattern:script() {
   local pattern
 
@@ -225,28 +260,23 @@ function hooks:pattern:script() {
   return 0
 }
 
-#
-# Register a function to be executed as part of a hook
-#
-# Usage:
-#   hooks:register deploy "10-backup" backup_database
-#   hooks:register deploy "20-update" update_code
-#   hooks:register build "metrics" track_build_metrics
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Friendly name (used for alphabetical sorting)
-#   $3 - Function name to execute
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid parameters or function doesn't exist
-#
-# Notes:
-#   - Functions are executed in alphabetical order by friendly name
-#   - Multiple functions can be registered for the same hook
-#   - Friendly names must be unique within a hook
-#
+## 
+## Purpose: Provide the `hooks:register` helper for hooks register operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: __HOOKS_DEFINED, __HOOKS_REGISTERED.
+## 
+## Usage:
+## - hooks:register "$@"
+## - # Conditional usage pattern
+## - if hooks:register "$@"; then :; fi
+## 
+## 
 function hooks:register() {
   local hook_name="$1"
   local friendly_name="$2"
@@ -289,21 +319,21 @@ function hooks:register() {
   return 0
 }
 
-#
-# Register middleware for a hook
-#
-# Usage:
-#   hooks:middleware begin my_middleware
-#   hooks:middleware begin          # reset to default
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Middleware function name (optional)
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid parameters or function doesn't exist
-#
+## 
+## Purpose: Provide the `hooks:middleware` helper for hooks middleware operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: __HOOKS_MIDDLEWARE.
+## 
+## Usage:
+## - hooks:middleware "$@"
+## - # Conditional usage pattern
+## - if hooks:middleware "$@"; then :; fi
+## 
+## 
 function hooks:middleware() {
   local hook_name="$1"
   local middleware_fn="${2:-}"
@@ -329,21 +359,22 @@ function hooks:middleware() {
   return 0
 }
 
-#
-# Unregister a function from a hook
-#
-# Usage:
-#   hooks:unregister deploy "10-backup"
-#   hooks:unregister build "metrics"
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Friendly name of the registration to remove
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid parameters or registration not found
-#
+## 
+## Purpose: Provide the `hooks:unregister` helper for hooks unregister operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: __HOOKS_REGISTERED.
+## 
+## Usage:
+## - hooks:unregister "$@"
+## - # Conditional usage pattern
+## - if hooks:unregister "$@"; then :; fi
+## 
+## 
 function hooks:unregister() {
   local hook_name="$1"
   local friendly_name="$2"
@@ -394,15 +425,21 @@ function hooks:unregister() {
   return 0
 }
 
-#
-# Determine execution mode for a specific script
-#
-# Parameters:
-#   $1 - Script filename (basename)
-#
-# Returns:
-#   Echoes "source" or "exec"
-#
+## 
+## Purpose: Provide the `hooks:exec:mode` helper for hooks exec mode operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: HOOKS_EXEC_MODE, __HOOKS_SCRIPT_PATTERNS, __HOOKS_SOURCE_PATTERNS.
+## 
+## Usage:
+## - hooks:exec:mode "$@"
+## - # Conditional usage pattern
+## - if hooks:exec:mode "$@"; then :; fi
+## 
+## 
 function hooks:exec:mode() {
   local script_name="$1"
   local pattern
@@ -430,20 +467,22 @@ function hooks:exec:mode() {
   return 0
 }
 
-#
-# Execute hook implementation with stdout/stderr capture (internal)
-#
-# Usage:
-#   _hooks:capture:run hook_name capture_var command args...
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Variable name to store capture array name
-#   $@ - Command and arguments to execute
-#
-# Returns:
-#   Exit code from the executed command
-#
+## 
+## Purpose: Provide the `_hooks:capture:run` helper for  hooks capture run operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: FIFO, __HOOKS_CAPTURE_SEQ.
+## 
+## Usage:
+## - _hooks:capture:run "$@"
+## - # Conditional usage pattern
+## - if _hooks:capture:run "$@"; then :; fi
+## 
+## 
 function _hooks:capture:run() {
   local hook_name="$1"
   local capture_var_name="$2"
@@ -496,15 +535,23 @@ function _hooks:capture:run() {
   return "$exit_code"
 }
 
-#
-# Default middleware for hook implementations (internal)
-#
-# Usage:
-#   _hooks:middleware:default <hook_name> <exit_code> <capture_var> -- <hook_args...>
-#
-# Returns:
-#   Exit code from implementation
-#
+## 
+## Purpose: Provide the `_hooks:middleware:default` helper for  hooks middleware default operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - _hooks:middleware:default "$@"
+## - # Conditional usage pattern
+## - if _hooks:middleware:default "$@"; then :; fi
+## 
+## 
 function _hooks:middleware:default() {
   local hook_name="$1"
   local exit_code="$2"
@@ -530,15 +577,21 @@ function _hooks:middleware:default() {
   return "$exit_code"
 }
 
-#
-# Apply contract env directive
-#
-# Supported forms:
-#   NAME=VALUE
-#   NAME+=VALUE (append)
-#   NAME^=VALUE (prepend)
-#   NAME-=VALUE (remove segment)
-#
+## 
+## Purpose: Provide the `_hooks:env:apply` helper for  hooks env apply operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: DEBUG.
+## 
+## Usage:
+## - _hooks:env:apply "$@"
+## - # Conditional usage pattern
+## - if _hooks:env:apply "$@"; then :; fi
+## 
+## 
 function _hooks:env:apply() {
   local expr="$1"
   local name op value
@@ -620,9 +673,21 @@ function _hooks:env:apply() {
   return 0
 }
 
-#
-# Refresh logger tags after DEBUG changes
-#
+## 
+## Purpose: Provide the `_hooks:logger:refresh` helper for  hooks logger refresh operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TAGS.
+## 
+## Usage:
+## - _hooks:logger:refresh "$@"
+## - # Conditional usage pattern
+## - if _hooks:logger:refresh "$@"; then :; fi
+## 
+## 
 function _hooks:logger:refresh() {
   local tag
   for tag in "${!TAGS[@]}"; do
@@ -633,12 +698,23 @@ function _hooks:logger:refresh() {
   done
 }
 
-#
-# Middleware: contract-based modes and flow directives (internal)
-#
-# Usage:
-#   _hooks:middleware:modes <hook_name> <exit_code> <capture_var> -- <hook_args...>
-#
+## 
+## Purpose: Provide the `_hooks:middleware:modes` helper for  hooks middleware modes operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: STDOUT, __HOOKS_FLOW_EXIT_CODE, __HOOKS_FLOW_ROUTE, __HOOKS_FLOW_TERMINATE.
+## 
+## Usage:
+## - _hooks:middleware:modes "$@"
+## - # Conditional usage pattern
+## - if _hooks:middleware:modes "$@"; then :; fi
+## 
+## 
 function _hooks:middleware:modes() {
   local hook_name="$1"
   local exit_code="$2"
@@ -691,12 +767,21 @@ function _hooks:middleware:modes() {
   return "$exit_code"
 }
 
-#
-# Apply flow directives from middleware (public)
-#
-# Usage:
-#   hooks:flow:apply
-#
+## 
+## Purpose: Provide the `hooks:flow:apply` helper for hooks flow apply operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __HOOKS_FLOW_EXIT_CODE, __HOOKS_FLOW_ROUTE, __HOOKS_FLOW_TERMINATE.
+## 
+## Usage:
+## - hooks:flow:apply "$@"
+## - # Conditional usage pattern
+## - if hooks:flow:apply "$@"; then :; fi
+## 
+## 
 function hooks:flow:apply() {
   if [[ "${__HOOKS_FLOW_TERMINATE:-}" != "true" ]]; then
     return 0
@@ -712,44 +797,21 @@ function hooks:flow:apply() {
   exit "${__HOOKS_FLOW_EXIT_CODE:-0}"
 }
 
-#
-# Execute a hook if it's defined and has an implementation
-#
-# Usage:
-#   hooks:do begin
-#   hooks:do decide param1 param2
-#   result=$(hooks:do decide "question")
-#
-# Parameters:
-#   $1 - Hook name
-#   $@ - Additional parameters passed to the hook
-#
-# Execution order:
-#   1. Check if hook is defined via hooks:declare
-#   2. Execute function hook:{name} if it exists
-#   3. Execute registered functions (hooks:register) in alphabetical order by friendly name
-#   4. Find and execute all matching scripts in ci-cd/{hook_name}-*.sh or ci-cd/{hook_name}_*.sh
-#   5. Scripts are executed in alphabetical order
-#
-# Script naming patterns:
-#   - {hook_name}-{purpose}.sh
-#   - {hook_name}_{NN}_{purpose}.sh (recommended for ordered execution)
-#
-# Execution modes (controlled by HOOKS_EXEC_MODE):
-#   - "exec" (default): Execute scripts directly in subprocess
-#   - "source": Source scripts and call hook:run function (runs in current shell)
-#
-# Logging:
-#   Enable with DEBUG=hooks or DEBUG=* to see:
-#   - Hook definitions and registrations
-#   - Hook execution flow
-#   - Script discovery and execution order
-#   - Exit codes for each implementation
-#
-# Returns:
-#   Last hook's exit code or 0 if not implemented
-#   All hooks' stdout is passed through
-#
+## 
+## Purpose: Provide the `hooks:do` helper for hooks do operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: HOOKS_DIR, HOOKS_PREFIX, __HOOKS_DEFINED, __HOOKS_MIDDLEWARE, __HOOKS_REGISTERED.
+## 
+## Usage:
+## - hooks:do "$@"
+## - # Conditional usage pattern
+## - if hooks:do "$@"; then :; fi
+## 
+## 
 function hooks:do() {
   local hook_name="$1"
   shift
@@ -894,20 +956,21 @@ function hooks:do() {
   return $last_exit_code
 }
 
-#
-# Execute a hook with scripts sourced (ignores HOOKS_EXEC_MODE for call-level override)
-#
-# Usage:
-#   hooks:do:source begin
-#   hooks:do:source deploy param1 param2
-#
-# Parameters:
-#   $1 - Hook name
-#   $@ - Additional parameters passed to the hook
-#
-# Returns:
-#   Last hook's exit code or 0 if not implemented
-#
+## 
+## Purpose: Provide the `hooks:do:source` helper for hooks do source operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: HOOKS_EXEC_MODE.
+## 
+## Usage:
+## - hooks:do:source "$@"
+## - # Conditional usage pattern
+## - if hooks:do:source "$@"; then :; fi
+## 
+## 
 function hooks:do:source() {
   local saved_mode="$HOOKS_EXEC_MODE"
   HOOKS_EXEC_MODE="source"
@@ -920,20 +983,21 @@ function hooks:do:source() {
   return $exit_code
 }
 
-#
-# Execute a hook with scripts executed as subprocesses (ignores HOOKS_EXEC_MODE for call-level override)
-#
-# Usage:
-#   hooks:do:script end
-#   hooks:do:script notify url status
-#
-# Parameters:
-#   $1 - Hook name
-#   $@ - Additional parameters passed to the hook
-#
-# Returns:
-#   Last hook's exit code or 0 if not implemented
-#
+## 
+## Purpose: Provide the `hooks:do:script` helper for hooks do script operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: HOOKS_EXEC_MODE.
+## 
+## Usage:
+## - hooks:do:script "$@"
+## - # Conditional usage pattern
+## - if hooks:do:script "$@"; then :; fi
+## 
+## 
 function hooks:do:script() {
   local saved_mode="$HOOKS_EXEC_MODE"
   HOOKS_EXEC_MODE="exec"
@@ -946,16 +1010,21 @@ function hooks:do:script() {
   return $exit_code
 }
 
-#
-# List all defined hooks
-#
-# Usage:
-#   hooks:list
-#
-# Returns:
-#   0 - Success
-#   Prints list of defined hooks to stdout
-#
+## 
+## Purpose: Provide the `hooks:list` helper for hooks list operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: HOOKS_DIR, HOOKS_PREFIX, __HOOKS_CONTEXTS, __HOOKS_DEFINED, __HOOKS_REGISTERED.
+## 
+## Usage:
+## - hooks:list "$@"
+## - # Conditional usage pattern
+## - if hooks:list "$@"; then :; fi
+## 
+## 
 function hooks:list() {
   local hook_name
 
@@ -1016,21 +1085,21 @@ function hooks:list() {
   return 0
 }
 
-#
-# Check if a hook is defined
-#
-# Usage:
-#   if hooks:known begin; then
-#     echo "begin hook is defined"
-#   fi
-#
-# Parameters:
-#   $1 - Hook name
-#
-# Returns:
-#   0 - Hook is defined
-#   1 - Hook is not defined
-#
+## 
+## Purpose: Provide the `hooks:known` helper for hooks known operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: __HOOKS_DEFINED.
+## 
+## Usage:
+## - hooks:known "$@"
+## - # Conditional usage pattern
+## - if hooks:known "$@"; then :; fi
+## 
+## 
 function hooks:known() {
   local hook_name="$1"
 
@@ -1041,21 +1110,21 @@ function hooks:known() {
   return 1
 }
 
-#
-# Check if a hook has an implementation
-#
-# Usage:
-#   if hooks:runnable begin; then
-#     echo "begin hook has implementation"
-#   fi
-#
-# Parameters:
-#   $1 - Hook name
-#
-# Returns:
-#   0 - Hook has implementation (function or script)
-#   1 - Hook has no implementation
-#
+## 
+## Purpose: Provide the `hooks:runnable` helper for hooks runnable operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: HOOKS_DIR, HOOKS_PREFIX.
+## 
+## Usage:
+## - hooks:runnable "$@"
+## - # Conditional usage pattern
+## - if hooks:runnable "$@"; then :; fi
+## 
+## 
 function hooks:runnable() {
   local hook_name="$1"
 
@@ -1083,9 +1152,24 @@ function hooks:runnable() {
   return 1
 }
 
-#
-# Cleanup function for tests
-#
+## 
+## Purpose: Provide the `hooks:reset` helper for hooks reset operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: HOOKS_AUTO_TRAP, HOOKS_DIR, HOOKS_EXEC_MODE, HOOKS_PREFIX, __HOOKS_CAPTURE_SEQ,
+##   __HOOKS_CONTEXTS, __HOOKS_DEFINED, __HOOKS_END_TRAP_INSTALLED, __HOOKS_MIDDLEWARE, __HOOKS_REGISTERED,
+##   __HOOKS_SCRIPT_PATTERNS, __HOOKS_SOURCE_PATTERNS.
+__HOOKS_CONTEXTS, __HOOKS_DEFINED, __HOOKS_END_TRAP_INSTALLED, ....
+## 
+## Usage:
+## - hooks:reset "$@"
+## - # Conditional usage pattern
+## - if hooks:reset "$@"; then :; fi
+## 
+## 
 function hooks:reset() {
   # Properly unset and re-declare arrays to ensure correct types
   unset __HOOKS_DEFINED
@@ -1137,3 +1221,11 @@ logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 : # Ensure successful exit code (echo:Loader returns 1 when debug disabled)
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/hooks.md.
+## - demos/demo.hooks-nested.sh.
+## - README.md (Hooks section).
+## - docs/public/functions-docgen.md.

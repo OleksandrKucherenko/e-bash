@@ -60,7 +60,21 @@ readonly __VERSION_PATTERN="v?${SEMVER}"
 declare -g -A __REPO_MAPPING=()  # version-to-tag mapping
 declare -g -a __REPO_VERSIONS=() # sorted array of versions
 
-# check if script dependencies are satisfied
+## 
+## Purpose: Provide the `self-update:dependencies` helper for self-update dependencies operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - self-update:dependencies "$@"
+## - # Conditional usage pattern
+## - if self-update:dependencies "$@"; then :; fi
+## 
+## 
 function self-update:dependencies() {
   dependency bash "5.*.*" "brew install bash"
   dependency git "2.*.*" "brew install git"
@@ -71,12 +85,41 @@ function self-update:dependencies() {
   dependency gcp "9.2" "brew install coreutils"
 }
 
-# compare two version strings
+## 
+## Purpose: Provide the `compare:versions` helper for compare versions operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - compare:versions "$@"
+## - # Conditional usage pattern
+## - if compare:versions "$@"; then :; fi
+## 
+## 
 function compare:versions() {
   (semver:constraints:simple "$1<$2") && return 0 || return 1
 }
 
-# Quick-Sort implementation
+## 
+## Purpose: Provide the `array:qsort` helper for array qsort operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - array:qsort "$@"
+## - # Conditional usage pattern
+## - if array:qsort "$@"; then :; fi
+## 
+## 
 function array:qsort() {
   local compare=$1 && shift
   local array=("$@")
@@ -108,7 +151,21 @@ function array:qsort() {
   array:qsort "$compare" "${right[@]}"
 }
 
-# resolve provided path to absolute path, relative to caller script path
+## 
+## Purpose: Provide the `path:resolve` helper for path resolve operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: ERROR, FALLBACK, NOTE.
+## 
+## Usage:
+## - path:resolve "$@"
+## - # Conditional usage pattern
+## - if path:resolve "$@"; then :; fi
+## 
+## 
 function path:resolve() {
   local file="$1"
   local working_dir=${2:-"$PWD"}
@@ -150,7 +207,21 @@ function path:resolve() {
   fi
 }
 
-# extract all version tags of the repo into global array
+## 
+## Purpose: Provide the `self-update:version:tags` helper for self-update version tags operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __E_ROOT, __REPO_MAPPING, __REPO_VERSIONS, __VERSION_PATTERN.
+## 
+## Usage:
+## - self-update:version:tags "$@"
+## - # Conditional usage pattern
+## - if self-update:version:tags "$@"; then :; fi
+## 
+## 
 function self-update:version:tags() {
   pushd "${__E_ROOT}" &>/dev/null || exit 1
 
@@ -178,7 +249,21 @@ function self-update:version:tags() {
   popd &>/dev/null || return 1
 }
 
-# find the highest version tag in git repo that matches version expression/constraints
+## 
+## Purpose: Provide the `self-update:version:find` helper for self-update version find operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: FIXME, __REPO_MAPPING, __REPO_VERSIONS.
+## 
+## Usage:
+## - self-update:version:find "$@"
+## - # Conditional usage pattern
+## - if self-update:version:find "$@"; then :; fi
+## 
+## 
 function self-update:version:find() {
   local constraints="$1"
 
@@ -205,7 +290,22 @@ function self-update:version:find() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# find highest version tag in git repo
+## 
+## Purpose: Provide the `self-update:version:find:highest_tag` helper for self-update version find highest tag
+operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: IDENTITY, MAJOR, METADATA, MINOR, PATCH, STAGE, __REPO_MAPPING, __REPO_VERSIONS.
+## 
+## Usage:
+## - self-update:version:find:highest_tag "$@"
+## - # Conditional usage pattern
+## - if self-update:version:find:highest_tag "$@"; then :; fi
+## 
+## 
 function self-update:version:find:highest_tag() {
   # extract tags if they are not extracted yet
   [ ${#__REPO_VERSIONS[@]} -eq 0 ] && self-update:version:tags
@@ -223,7 +323,22 @@ function self-update:version:find:highest_tag() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# find latest stable version tag (no pre-release tags like alpha, beta, rc)
+## 
+## Purpose: Provide the `self-update:version:find:latest_stable` helper for self-update version find latest stable
+operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: FIXME, __REPO_MAPPING, __REPO_VERSIONS.
+## 
+## Usage:
+## - self-update:version:find:latest_stable "$@"
+## - # Conditional usage pattern
+## - if self-update:version:find:latest_stable "$@"; then :; fi
+## 
+## 
 function self-update:version:find:latest_stable() {
   # extract tags if they are not extracted yet
   [ ${#__REPO_VERSIONS[@]} -eq 0 ] && self-update:version:tags
@@ -246,14 +361,41 @@ function self-update:version:find:latest_stable() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# check if version is already extracted on local disk
+## 
+## Purpose: Provide the `self-update:version:has` helper for self-update version has operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: __E_ROOT, __WORKTREES.
+## 
+## Usage:
+## - self-update:version:has "$@"
+## - # Conditional usage pattern
+## - if self-update:version:has "$@"; then :; fi
+## 
+## 
 function self-update:version:has() {
   local tag_or_branch="$1"
   [ -d "${__E_ROOT}/${__WORKTREES}/${tag_or_branch}" ]
 }
 
-# extract specified version from git repo to local disk VERSIONS_DIR folder
-# shellcheck disable=SC2088
+## 
+## Purpose: Provide the `self-update:version:get` helper for self-update version get operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: __E_BASH, __E_ROOT, __WORKTREES.
+## 
+## Usage:
+## - self-update:version:get "$@"
+## - # Conditional usage pattern
+## - if self-update:version:get "$@"; then :; fi
+## 
+## 
 function self-update:version:get() {
   local tag_or_branch="$1"
   local worktree="./${__WORKTREES}/${tag_or_branch}"
@@ -269,21 +411,66 @@ function self-update:version:get() {
   echo:Version "e-bash version ${cl_blue}${tag_or_branch}${cl_reset} ~ ${cl_yellow}${worktree_home}${cl_reset}"
 }
 
-# extract first/rollback version to local disk
+## 
+## Purpose: Provide the `self-update:version:get:first` helper for self-update version get first operations within
+this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __REPO_V1.
+## 
+## Usage:
+## - self-update:version:get:first "$@"
+## - # Conditional usage pattern
+## - if self-update:version:get:first "$@"; then :; fi
+## 
+## 
 function self-update:version:get:first() {
   local version="${__REPO_V1}"
   echo:Version "Extract first version: ${cl_blue}${version}${cl_reset}"
   self-update:version:has "${version}" || self-update:version:get "${version}"
 }
 
-# extract latest version from git repo to local disk VERSIONS_DIR folder
+## 
+## Purpose: Provide the `self-update:version:get:latest` helper for self-update version get latest operations within
+this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - self-update:version:get:latest "$@"
+## - # Conditional usage pattern
+## - if self-update:version:get:latest "$@"; then :; fi
+## 
+## 
 function self-update:version:get:latest() {
   local version=$(self-update:version:find:highest_tag)
   echo:Version "Extract latest version: ${cl_blue}${version}${cl_reset}"
   self-update:version:has "${version}" || self-update:version:get "${version}"
 }
 
-# remove version from local disk VERSIONS_DIR folder
+## 
+## Purpose: Provide the `self-update:version:remove` helper for self-update version remove operations within this
+module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: REMOVED, __E_ROOT, __WORKTREES.
+## 
+## Usage:
+## - self-update:version:remove "$@"
+## - # Conditional usage pattern
+## - if self-update:version:remove "$@"; then :; fi
+## 
+## 
 function self-update:version:remove() {
   local version="$1"
 
@@ -299,8 +486,21 @@ function self-update:version:remove() {
   echo:Version "e-bash version ${cl_blue}${version}${cl_reset} - ${cl_red}REMOVED${cl_reset}"
 }
 
-# bind script file to a specified version of the script
-# shellcheck disable=SC2088
+## 
+## Purpose: Provide the `self-update:version:bind` helper for self-update version bind operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: NOTE, __E_ROOT, __WORKTREES.
+## 
+## Usage:
+## - self-update:version:bind "$@"
+## - # Conditional usage pattern
+## - if self-update:version:bind "$@"; then :; fi
+## 
+## 
 function self-update:version:bind() {
   local version="$1"
   local filepath=${2:-"${BASH_SOURCE[0]}"}      # can be full or relative path
@@ -359,7 +559,21 @@ function self-update:version:bind() {
     "~>" "${cl_yellow}${version_dir_home}/${file_name}${cl_reset}"
 }
 
-# extract executable script version
+## 
+## Purpose: Provide the `self-update:self:version` helper for self-update self version operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __REPO_V1, __VERSION_PATTERN.
+## 
+## Usage:
+## - self-update:self:version "$@"
+## - # Conditional usage pattern
+## - if self-update:self:version "$@"; then :; fi
+## 
+## 
 function self-update:self:version() {
   local file=${1:-"${BASH_SOURCE[0]}"}
   local script_file="$(basename "${file}")"
@@ -395,7 +609,21 @@ function self-update:self:version() {
   # TODO (olku): should we try to extract version from git tags if file is a part of repo?
 }
 
-# calculate hash of the script file content, create a *.sha1 file for caching
+## 
+## Purpose: Provide the `self-update:file:hash` helper for self-update file hash operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: SHA1.
+## 
+## Usage:
+## - self-update:file:hash "$@"
+## - # Conditional usage pattern
+## - if self-update:file:hash "$@"; then :; fi
+## 
+## 
 function self-update:file:hash() {
   local filepath=${1:-"${BASH_SOURCE[0]}"}
 
@@ -425,9 +653,21 @@ function self-update:file:hash() {
   echo "${hash}"
 }
 
-# calculate hash of the script file content, create a *.sha1 file for caching
-# but use version folder as a source of file content
-# shellcheck disable=SC2088
+## 
+## Purpose: Provide the `self-update:version:hash` helper for self-update version hash operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: NOTE, __E_ROOT, __WORKTREES.
+## 
+## Usage:
+## - self-update:version:hash "$@"
+## - # Conditional usage pattern
+## - if self-update:version:hash "$@"; then :; fi
+## 
+## 
 function self-update:version:hash() {
   local filepath=${1:-"${BASH_SOURCE[0]}"} # can be full or relative path
   local version=${2}
@@ -454,7 +694,22 @@ function self-update:version:hash() {
   self-update:file:hash "${version_file}"
 }
 
-# restore script file from LN backup file
+## 
+## Purpose: Provide the `self-update:rollback:backup` helper for self-update rollback backup operations within this
+module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: BSD, GNU.
+## 
+## Usage:
+## - self-update:rollback:backup "$@"
+## - # Conditional usage pattern
+## - if self-update:rollback:backup "$@"; then :; fi
+## 
+## 
 function self-update:rollback:backup() {
   local file=${1:-"${BASH_SOURCE[0]}"}
 
@@ -472,7 +727,22 @@ function self-update:rollback:backup() {
   fi
 }
 
-# rollback to specified version or if version not provided to ${ROLLBACK_VERSION}
+## 
+## Purpose: Provide the `self-update:rollback:version` helper for self-update rollback version operations within
+this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: NOTE, __REPO_V1.
+## 
+## Usage:
+## - self-update:rollback:version "$@"
+## - # Conditional usage pattern
+## - if self-update:rollback:version "$@"; then :; fi
+## 
+## 
 function self-update:rollback:version() {
   local version=${1:-"${__REPO_V1}"}
   local file=${2:-"${BASH_SOURCE[0]}"}
@@ -485,7 +755,21 @@ function self-update:rollback:version() {
   # NOTE: rollback to specific version does not remove backup files, it will actually create a new one
 }
 
-# convert current file symbolic link to a file copy
+## 
+## Purpose: Provide the `self-update:unlink` helper for self-update unlink operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: LINK, NOT, WARNING.
+## 
+## Usage:
+## - self-update:unlink "$@"
+## - # Conditional usage pattern
+## - if self-update:unlink "$@"; then :; fi
+## 
+## 
 function self-update:unlink() {
   local filepath=${1:-"${BASH_SOURCE[0]}"}
 
@@ -516,8 +800,21 @@ function self-update:unlink() {
   fi
 }
 
-# initialize git repo in local disk that helps to manage versions of the script(s)
-# in addition: extract first version of the script files on disk;
+## 
+## Purpose: Provide the `self-update:initialize` helper for self-update initialize operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: VERSIONS_DIR, __E_BASH, __E_ROOT, __REMO_REMOTE, __REPO_MASTER, __REPO_URL, __WORKTREES.
+## 
+## Usage:
+## - self-update:initialize "$@"
+## - # Conditional usage pattern
+## - if self-update:initialize "$@"; then :; fi
+## 
+## 
 function self-update:initialize() {
   # create folder if it does not exist
   mkdir -p "${__E_ROOT}"
@@ -560,8 +857,22 @@ function self-update:initialize() {
   self-update:version:get:first
 }
 
-# Resolve version expression to actual version/tag/branch
-# This function handles all supported version notation patterns
+## 
+## Purpose: Provide the `self-update:version:resolve` helper for self-update version resolve operations within this
+module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: BASH_REMATCH.
+## 
+## Usage:
+## - self-update:version:resolve "$@"
+## - # Conditional usage pattern
+## - if self-update:version:resolve "$@"; then :; fi
+## 
+## 
 function self-update:version:resolve() {
   local version_expression="$1"
   local resolved_version=""
@@ -587,7 +898,21 @@ function self-update:version:resolve() {
   echo "$resolved_version"
 }
 
-# Entry point for self-update
+## 
+## Purpose: Provide the `self-update` helper for self-update operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - self-update "$@"
+## - # Conditional usage pattern
+## - if self-update "$@"; then :; fi
+## 
+## 
 function self-update() {
   local version_expression="$1"
   local file=${2:-"${BASH_SOURCE[0]}"}
@@ -605,7 +930,21 @@ function self-update() {
   self-update:version:has "${upgrade_version}" || self-update:version:get "${upgrade_version}"
 
   local current_version=$(self-update:self:version "${file}")
-
+## 
+## Purpose: Provide the `do_upgrade` helper for do upgrade operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - do_upgrade "$@"
+## - # Conditional usage pattern
+## - if do_upgrade "$@"; then :; fi
+## 
+## 
   function do_upgrade() {
     echo:Version "e-bash is outdated: ${cl_blue}${current_version}${cl_reset} -> ${cl_yellow}${upgrade_version}${cl_reset}"
     self-update:version:bind "${upgrade_version}" "${file}"
@@ -647,3 +986,10 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 # Refs:
 # - https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
 # - https://stackoverflow.com/questions/3338030/multiple-bash-traps-for-the-same-signal
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/version-up.md.
+## - docs/public/version-up-scenarios.md.
+## - docs/public/functions-docgen.md.

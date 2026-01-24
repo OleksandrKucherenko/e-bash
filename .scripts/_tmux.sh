@@ -35,14 +35,21 @@ readonly TMUX_PROGRESS_PANE=1
 # FIFO path for progress display
 : ${TMUX_FIFO_PATH:=}
 
-# Start a new tmux session if not already in one
-# Arguments:
-#   $@: script start parameters
-# Returns:
-#   0 on success, 1 on failure
-# Side Effects:
-#   Listens: TMUX_SESSION_NAME
-#   Modifies: TMUX_STARTED_BY_SCRIPT, TMUX_SESSION_NAME
+## 
+## Purpose: Provide the `tmux:ensure_session` helper for tmux ensure session operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TMUX, TMUX_SESSION_NAME, TMUX_STARTED_BY_SCRIPT.
+## 
+## Usage:
+## - tmux:ensure_session "$@"
+## - # Conditional usage pattern
+## - if tmux:ensure_session "$@"; then :; fi
+## 
+## 
 function tmux:ensure_session() {
   local session_name="${TMUX_SESSION_NAME:-"tmux_session_$$"}"
   
@@ -64,13 +71,23 @@ function tmux:ensure_session() {
   return 0
 }
 
-# Initialize progress display in a tmux pane
-# Arguments:
-#   $1: fifo_path (string, optional) - Path for the named pipe
-# Returns:
-#   0 on success, 1 on failure
-# Side Effects:
-#   Modifies: TMUX_FIFO_PATH, TMUX_PROGRESS_ACTIVE
+## 
+## Purpose: Provide the `tmux:init_progress` helper for tmux init progress operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: FIFO, TMUX_FIFO_PATH, TMUX_MAIN_PANE, TMUX_PROGRESS_ACTIVE, TMUX_PROGRESS_HEIGHT,
+##   TMUX_PROGRESS_PANE.
+TMUX_PROGRESS_PANE.
+## 
+## Usage:
+## - tmux:init_progress "$@"
+## - # Conditional usage pattern
+## - if tmux:init_progress "$@"; then :; fi
+## 
+## 
 function tmux:init_progress() {
   local fifo_path="${1:-"$(mktemp --dry-run -t 'tmux_progress')"}"
   
@@ -106,11 +123,21 @@ function tmux:init_progress() {
   return 0
 }
 
-# Update progress display
-# Arguments:
-#   $1: message (string) - Progress message to display
-# Returns:
-#   0 on success, 1 on failure
+## 
+## Purpose: Provide the `tmux:update_progress` helper for tmux update progress operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: DEBUG, TMUX_FIFO_PATH, TMUX_PROGRESS_ACTIVE.
+## 
+## Usage:
+## - tmux:update_progress "$@"
+## - # Conditional usage pattern
+## - if tmux:update_progress "$@"; then :; fi
+## 
+## 
 function tmux:update_progress() {
   local message="$1"
 
@@ -125,14 +152,22 @@ function tmux:update_progress() {
   return 1
 }
 
-# Show percentage-based progress bar
-# Arguments:
-#   $1: current (number) - Current progress value
-#   $2: total (number) - Total progress value
-#   $3: prefix (string, optional) - Prefix for the progress bar
-#   $4: width (number, optional) - Width of the progress bar
-# Returns:
-#   0 on success, 1 on failure
+## 
+## Purpose: Provide the `tmux:show_progress_bar` helper for tmux show progress bar operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - tmux:show_progress_bar "$@"
+## - # Conditional usage pattern
+## - if tmux:show_progress_bar "$@"; then :; fi
+## 
+## 
 function tmux:show_progress_bar() {
   local current=$1
   local total=$2
@@ -167,9 +202,21 @@ function tmux:show_progress_bar() {
   return 0
 }
 
-# Clean up tmux progress display resources
-# Returns:
-#   0 on success, otherwise tmux error code
+## 
+## Purpose: Provide the `tmux:cleanup_progress` helper for tmux cleanup progress operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: FIFO, TMUX_FIFO_PATH, TMUX_MAIN_PANE, TMUX_PROGRESS_ACTIVE, TMUX_PROGRESS_PANE.
+## 
+## Usage:
+## - tmux:cleanup_progress "$@"
+## - # Conditional usage pattern
+## - if tmux:cleanup_progress "$@"; then :; fi
+## 
+## 
 function tmux:cleanup_progress() {
   # Only clean up if progress is active, quick exit
   if [ "$TMUX_PROGRESS_ACTIVE" = false ]; then return 0; fi
@@ -190,11 +237,21 @@ function tmux:cleanup_progress() {
   return 0
 }
 
-# Final cleanup and exit from tmux if needed
-# Arguments:
-#   $1: exit_session (boolean, optional) - Whether to exit the tmux session if we started it
-# Returns:
-#   None, may exit the process
+## 
+## Purpose: Provide the `tmux:cleanup_all` helper for tmux cleanup all operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TMUX_SESSION_NAME, TMUX_STARTED_BY_SCRIPT.
+## 
+## Usage:
+## - tmux:cleanup_all "$@"
+## - # Conditional usage pattern
+## - if tmux:cleanup_all "$@"; then :; fi
+## 
+## 
 function tmux:cleanup_all() {
   local exit_session="${1:-true}"
   
@@ -209,11 +266,21 @@ function tmux:cleanup_all() {
   fi
 }
 
-# Set up trap to catch interrupt and clean up resources
-# Arguments:
-#   $1: exit_session (boolean, optional) - Whether to exit the tmux session on cleanup
-# Returns:
-#   None
+## 
+## Purpose: Provide the `tmux:setup_trap` helper for tmux setup trap operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: EXIT, INT, TERM.
+## 
+## Usage:
+## - tmux:setup_trap "$@"
+## - # Conditional usage pattern
+## - if tmux:setup_trap "$@"; then :; fi
+## 
+## 
 function tmux:setup_trap() {
   local exit_session="${1:-true}"
   
@@ -223,10 +290,21 @@ function tmux:setup_trap() {
 }
 
 
-# Check and enable mouse support if needed
-# Arguments: none
-# Returns:
-#   None
+## 
+## Purpose: Provide the `tmux:check_mouse_support` helper for tmux check mouse support operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - tmux:check_mouse_support "$@"
+## - # Conditional usage pattern
+## - if tmux:check_mouse_support "$@"; then :; fi
+## 
+## 
 function tmux:check_mouse_support() {
   # Get tmux version
   local tmux_version
@@ -259,3 +337,11 @@ dependency tmux "3.5a" "brew install tmux" "-VV" >&2
 
 # Check mouse support when script is sourced
 tmux:check_mouse_support
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/conventions.md.
+## - README.md (project documentation).
+## - docs/public/functions-docgen.md.
+## - docs/public/functions-docgen.md.

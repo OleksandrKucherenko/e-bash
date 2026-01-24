@@ -48,7 +48,21 @@ export st_underline=$(tput smul 2>/dev/null || echo "")
 export st_u="${st_underline}"
 export st_no_u=$(tput rmul 2>/dev/null || echo "")
 
-# unset colors, to prevent coloring in the output
+## 
+## Purpose: Provide the `cl:unset` helper for cl unset operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - cl:unset "$@"
+## - # Conditional usage pattern
+## - if cl:unset "$@"; then :; fi
+## 
+## 
 function cl:unset() {
   unset cl_reset cl_selected
   unset cl_red cl_green cl_yellow cl_blue cl_purple cl_cyan cl_white cl_grey cl_gray cl_black
@@ -61,3 +75,11 @@ function cl:unset() {
 ${__SOURCED__:+return}
 
 # logger is not available in this script!
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/conventions.md.
+## - README.md (project documentation).
+## - docs/public/functions-docgen.md.
+## - docs/public/functions-docgen.md.

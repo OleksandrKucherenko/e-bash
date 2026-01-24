@@ -21,7 +21,23 @@ export DRY_RUN=${DRY_RUN:-false}
 export UNDO_RUN=${UNDO_RUN:-false}
 export SILENT=${SILENT:-false}
 
-# Shared execution function
+## 
+## Purpose: Provide the `_dryrun:exec` helper for  dryrun exec operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - _dryrun:exec "$@"
+## - # Conditional usage pattern
+## - if _dryrun:exec "$@"; then :; fi
+## 
+## 
 function _dryrun:exec() {
   local logger_suffix="$1"
   local is_silent="$2"
@@ -58,7 +74,21 @@ function _dryrun:exec() {
   return $result
 }
 
-# Function to generate wrappers for given commands
+## 
+## Purpose: Provide the `dryrun` helper for dryrun operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: DRY_RUN, SILENT, UNDO_RUN, Z_.
+## 
+## Usage:
+## - dryrun "$@"
+## - # Conditional usage pattern
+## - if dryrun "$@"; then :; fi
+## 
+## 
 function dryrun() {
   local cmd suffix dry_var undo_var silent_var
   while [ $# -gt 0 ]; do
@@ -117,10 +147,38 @@ function dryrun() {
   done
 }
 
-# Backward compatibility alias
+## 
+## Purpose: Provide the `dry-run` helper for dry-run operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - dry-run "$@"
+## - # Conditional usage pattern
+## - if dry-run "$@"; then :; fi
+## 
+## 
 function dry-run() { dryrun "$@"; }
 
-# Complex undo handler
+## 
+## Purpose: Provide the `undo:func` helper for undo func operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: DRY_RUN, SILENT, UNDO_RUN.
+## 
+## Usage:
+## - undo:func "$@"
+## - # Conditional usage pattern
+## - if undo:func "$@"; then :; fi
+## 
+## 
 function undo:func() {
   local func_name="$1"
   shift
@@ -142,7 +200,21 @@ function undo:func() {
   _dryrun:exec Undo "$is_silent" "$func_name" "$@"
 }
 
-# Backward compatibility alias
+## 
+## Purpose: Provide the `rollback:func` helper for rollback func operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - rollback:func "$@"
+## - # Conditional usage pattern
+## - if rollback:func "$@"; then :; fi
+## 
+## 
 function rollback:func() { undo:func "$@"; }
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
@@ -158,3 +230,11 @@ logger:init output "${cl_gray}| ${cl_reset}" ">&2"
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/dryrun-wrapper.md.
+## - demos/demo.dryrun-modes.sh.
+## - README.md (Dry-Run Wrapper System section).
+## - docs/public/functions-docgen.md.

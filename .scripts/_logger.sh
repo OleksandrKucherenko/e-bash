@@ -21,9 +21,21 @@ if [[ -z $TAGS_PIPE ]]; then declare -g -A TAGS_PIPE; fi
 if [[ -z $TAGS_REDIRECT ]]; then declare -g -A TAGS_REDIRECT; fi
 if [[ -z $TAGS_STACK ]]; then declare -g TAGS_STACK="0"; fi
 
-#
-# Create a dynamic functions with a Tag name as a suffix
-#
+## 
+## Purpose: Provide the `logger:compose` helper for logger compose operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: EOF, TAGS, TAGS_PREFIX, TAGS_REDIRECT.
+## 
+## Usage:
+## - logger:compose "$@"
+## - # Conditional usage pattern
+## - if logger:compose "$@"; then :; fi
+## 
+## 
 function logger:compose() {
   local tag=${1}
   local suffix=${2}
@@ -44,9 +56,21 @@ function logger:compose() {
 EOF
 }
 
-#
-# Create a dynamic helper functions with a Tag name as a suffix
-#
+## 
+## Purpose: Provide the `logger:compose:helpers` helper for logger compose helpers operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: DEBUG, EOF, TAGS, TAGS_PIPE.
+## 
+## Usage:
+## - logger:compose:helpers "$@"
+## - # Conditional usage pattern
+## - if logger:compose:helpers "$@"; then :; fi
+## 
+## 
 function logger:compose:helpers() {
   local tag=${1}
   local suffix=${2}
@@ -79,9 +103,21 @@ function logger:compose:helpers() {
 EOF
 }
 
-#
-# Create dynamic function that listen to parent process and delete named pipe on parent process exit/kill
-#
+## 
+## Purpose: Provide the `pipe:killer:compose` helper for pipe killer compose operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: ABRT, BASHPID, EOF, EXIT, HUP, INT, KILL, QUIT, TERM.
+## 
+## Usage:
+## - pipe:killer:compose "$@"
+## - # Conditional usage pattern
+## - if pipe:killer:compose "$@"; then :; fi
+## 
+## 
 function pipe:killer:compose() {
   local pipe=${1}
   local myPid=${2:-"${BASHPID}"}
@@ -92,9 +128,21 @@ function pipe:killer:compose() {
 EOF
 }
 
-#
-# Register debug logger functions that are controlled by DEBUG= environment variable
-#
+## 
+## Purpose: Provide the `logger` helper for logger operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: DEBUG, EOF, SCRIPT_DIR, TAGS, TAGS_PIPE, __SESSION.
+## 
+## Usage:
+## - logger "$@"
+## - # Conditional usage pattern
+## - if logger "$@"; then :; fi
+## 
+## 
 function logger() {
   #
   # Usage:
@@ -141,8 +189,21 @@ function logger() {
   return 0 # force exit code success
 }
 
-# save current $TAGS state
-# bashsupport disable=BP2001
+## 
+## Purpose: Provide the `logger:push` helper for logger push operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TAGS, TAGS_STACK, __TAGS_STACK_.
+## 
+## Usage:
+## - logger:push "$@"
+## - # Conditional usage pattern
+## - if logger:push "$@"; then :; fi
+## 
+## 
 function logger:push() {
   TAGS_STACK=$((TAGS_STACK + 1))
   local new_stack="__TAGS_STACK_$TAGS_STACK"
@@ -154,7 +215,21 @@ function logger:push() {
   done
 }
 
-# recover previous $TAGS state
+## 
+## Purpose: Provide the `logger:pop` helper for logger pop operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TAGS, TAGS_STACK, __TAGS_STACK_.
+## 
+## Usage:
+## - logger:pop "$@"
+## - # Conditional usage pattern
+## - if logger:pop "$@"; then :; fi
+## 
+## 
 function logger:pop() {
   local stacked="__TAGS_STACK_$TAGS_STACK"
   TAGS_STACK=$((TAGS_STACK - 1))
@@ -167,7 +242,21 @@ function logger:pop() {
   unset "$stacked"
 }
 
-# cleanup all named pipes
+## 
+## Purpose: Provide the `logger:cleanup` helper for logger cleanup operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TAGS_PIPE.
+## 
+## Usage:
+## - logger:cleanup "$@"
+## - # Conditional usage pattern
+## - if logger:cleanup "$@"; then :; fi
+## 
+## 
 function logger:cleanup() {
   # iterate TAGS_PIPE and remove all named pipes
   for pipe in "${TAGS_PIPE[@]}"; do
@@ -178,7 +267,21 @@ function logger:cleanup() {
   TAGS_PIPE=()
 }
 
-# run background process to listen the named pipe
+## 
+## Purpose: Provide the `logger:listen` helper for logger listen operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TAGS_PIPE, TTY.
+## 
+## Usage:
+## - logger:listen "$@"
+## - # Conditional usage pattern
+## - if logger:listen "$@"; then :; fi
+## 
+## 
 function logger:listen() {
   local tag=${1}
   local pipe=${TAGS_PIPE[$tag]}
@@ -187,7 +290,21 @@ function logger:listen() {
   cat <"${pipe}" >/dev/tty &
 }
 
-# force logger redirections
+## 
+## Purpose: Provide the `logger:redirect` helper for logger redirect operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TAGS_REDIRECT.
+## 
+## Usage:
+## - logger:redirect "$@"
+## - # Conditional usage pattern
+## - if logger:redirect "$@"; then :; fi
+## 
+## 
 function logger:redirect() {
   local tag=${1}
   local redirect=${2:-""}
@@ -200,7 +317,21 @@ function logger:redirect() {
   eval "$(logger:compose "$tag" "$suffix")"
 }
 
-# force logger prefix
+## 
+## Purpose: Provide the `logger:prefix` helper for logger prefix operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: TAGS_PREFIX.
+## 
+## Usage:
+## - logger:prefix "$@"
+## - # Conditional usage pattern
+## - if logger:prefix "$@"; then :; fi
+## 
+## 
 function logger:prefix() {
   local tag=${1}
   local prefix=${2:-""}
@@ -216,8 +347,21 @@ function logger:prefix() {
   fi
 }
 
-# initialization helper, allows to setup prefix and redirect in one line
-# By default prefix will the tag name in '[]' and redirect will be to STDERR
+## 
+## Purpose: Provide the `logger:init` helper for logger init operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - logger:init "$@"
+## - # Conditional usage pattern
+## - if logger:init "$@"; then :; fi
+## 
+## 
 function logger:init() {
   local tag=${1}
   local prefix=${2:-"[${tag}] "}
@@ -240,3 +384,11 @@ logger:redirect "loader" ">&2" # redirect to STDERR
 [ -f "${E_BASH}/_colors.sh" ] && source "${E_BASH}/_colors.sh" # load if available
 
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/logger.md.
+## - demos/demo.logger.sh.
+## - README.md (Quick Start Guide).
+## - docs/public/functions-docgen.md.

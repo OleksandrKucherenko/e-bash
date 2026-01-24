@@ -17,22 +17,78 @@ source "$E_BASH/_logger.sh"
 
 #set -x # Uncomment to DEBUG
 
-# shellcheck disable=SC2001,SC2155,SC2046,SC2116
+## 
+## Purpose: Provide the `isDebug` helper for isDebug operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - isDebug "$@"
+## - # Conditional usage pattern
+## - if isDebug "$@"; then :; fi
+## 
+## 
 function isDebug() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--debug" ]]; then echo true; else echo false; fi
 }
-
+## 
+## Purpose: Provide the `isExec` helper for isExec operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - isExec "$@"
+## - # Conditional usage pattern
+## - if isExec "$@"; then :; fi
+## 
+## 
 function isExec() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--exec" ]]; then echo true; else echo false; fi
 }
-
+## 
+## Purpose: Provide the `isOptional` helper for isOptional operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - isOptional "$@"
+## - # Conditional usage pattern
+## - if isOptional "$@"; then :; fi
+## 
+## 
 function isOptional() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--optional" ]]; then echo true; else echo false; fi
 }
-
+## 
+## Purpose: Provide the `isSilent` helper for isSilent operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - isSilent "$@"
+## - # Conditional usage pattern
+## - if isSilent "$@"; then :; fi
+## 
+## 
 function isSilent() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--silent" ]]; then echo true; else echo false; fi
@@ -57,8 +113,21 @@ __DEPS_VERSION_FLAGS_EXCEPTIONS[composer]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[screen]="-v"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[unzip]="-v"
 
-# Resolve tool aliases to their canonical command names
-# Override: set SKIP_DEALIAS=1 to bypass alias resolution
+## 
+## Purpose: Provide the `dependency:dealias` helper for dependency dealias operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: SKIP_DEALIAS.
+## 
+## Usage:
+## - dependency:dealias "$@"
+## - # Conditional usage pattern
+## - if dependency:dealias "$@"; then :; fi
+## 
+## 
 function dependency:dealias() {
   # Skip dealiasing if requested (workaround for wrong resolutions)
   if [[ "${SKIP_DEALIAS:-}" == "1" ]]; then
@@ -86,7 +155,22 @@ function dependency:dealias() {
   esac
 }
 
-# Get version flag for a tool (exception or default --version)
+## 
+## Purpose: Provide the `dependency:known:flags` helper for dependency known flags operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: __DEPS_VERSION_FLAGS_EXCEPTIONS.
+## 
+## Usage:
+## - dependency:known:flags "$@"
+## - # Conditional usage pattern
+## - if dependency:known:flags "$@"; then :; fi
+## 
+## 
 function dependency:known:flags() {
   local tool="$1"
   local provided_flag="$2"
@@ -99,7 +183,21 @@ function dependency:known:flags() {
     echo "--version"
   fi
 }
-
+## 
+## Purpose: Provide the `isCIAutoInstallEnabled` helper for isCIAutoInstallEnabled operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: AND, CI_E_BASH_INSTALL_DEPENDENCIES.
+## 
+## Usage:
+## - isCIAutoInstallEnabled "$@"
+## - # Conditional usage pattern
+## - if isCIAutoInstallEnabled "$@"; then :; fi
+## 
+## 
 function isCIAutoInstallEnabled() {
   # Only enable auto-install if we're in a CI environment AND the flag is set
   if [[ -n "${CI:-}" ]]; then
@@ -115,7 +213,22 @@ function isCIAutoInstallEnabled() {
   fi
 }
 
-# shellcheck disable=SC2001,SC2155,SC2086
+## 
+## Purpose: Provide the `dependency` helper for dependency operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: BAD, NO, OK, YEP.
+## 
+## Usage:
+## - dependency "$@"
+## - # Conditional usage pattern
+## - if dependency "$@"; then :; fi
+## 
+## 
 function dependency() {
   local tool_name=$1
   local tool_name_resolved=$(dependency:dealias "$tool_name")
@@ -228,7 +341,21 @@ function dependency() {
     echo "[${cl_green}OK${cl_reset}]: \`$tool_name\` - version: $version_cleaned"
   fi
 }
-
+## 
+## Purpose: Provide the `optional` helper for optional operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - optional "$@"
+## - # Conditional usage pattern
+## - if optional "$@"; then :; fi
+## 
+## 
 function optional() {
   local args=("$@")
 
@@ -260,3 +387,11 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 #  https://docs.gradle.org/current/userguide/single_versions.html
 #  https://github.com/qzb/sh-semver
 #  https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/conventions.md.
+## - README.md (project documentation).
+## - docs/public/functions-docgen.md.
+## - docs/public/functions-docgen.md.

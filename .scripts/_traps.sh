@@ -35,12 +35,21 @@ __TRAPS_MODULE_INITIALIZED="yes"
 # Public API
 # -----------------------------------------------------------------------------
 
-#
-# Register handler for signal(s)
-# Usage: trap:on [--allow-duplicates] <handler_function> <signal> [signal2] ...
-# Example: trap:on cleanup_temp EXIT
-#          trap:on handle_interrupt INT TERM
-#
+## 
+## Purpose: Provide the `trap:on` helper for trap on operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: __TRAP_PREFIX.
+## 
+## Usage:
+## - trap:on "$@"
+## - # Conditional usage pattern
+## - if trap:on "$@"; then :; fi
+## 
+## 
 function trap:on() {
   local allow_duplicates=false
 
@@ -103,11 +112,21 @@ function trap:on() {
   return 0
 }
 
-#
-# Unregister handler from signal(s)
-# Usage: trap:off <handler_function> <signal> [signal2] ...
-# Example: trap:off cleanup_temp EXIT
-#
+## 
+## Purpose: Provide the `trap:off` helper for trap off operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __TRAP_PREFIX.
+## 
+## Usage:
+## - trap:off "$@"
+## - # Conditional usage pattern
+## - if trap:off "$@"; then :; fi
+## 
+## 
 function trap:off() {
   local handler="${1?Handler function required}"
   shift
@@ -135,12 +154,21 @@ function trap:off() {
   return 0
 }
 
-#
-# List all registered handlers for signal(s)
-# Usage: trap:list [signal] ...
-# Example: trap:list EXIT INT
-#          trap:list  # all signals
-#
+## 
+## Purpose: Provide the `trap:list` helper for trap list operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __TRAP_LEGACY_PREFIX, __TRAP_PREFIX.
+## 
+## Usage:
+## - trap:list "$@"
+## - # Conditional usage pattern
+## - if trap:list "$@"; then :; fi
+## 
+## 
 function trap:list() {
   local signals=("$@")
 
@@ -183,11 +211,21 @@ function trap:list() {
   return 0
 }
 
-#
-# Clear all handlers for signal(s) (keeps legacy trap)
-# Usage: trap:clear <signal> [signal2] ...
-# Example: trap:clear EXIT
-#
+## 
+## Purpose: Provide the `trap:clear` helper for trap clear operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __TRAP_PREFIX.
+## 
+## Usage:
+## - trap:clear "$@"
+## - # Conditional usage pattern
+## - if trap:clear "$@"; then :; fi
+## 
+## 
 function trap:clear() {
   local signals=("$@")
 
@@ -212,11 +250,21 @@ function trap:clear() {
   return 0
 }
 
-#
-# Restore original trap configuration (before trap module loaded)
-# Usage: trap:restore <signal> [signal2] ...
-# Example: trap:restore EXIT
-#
+## 
+## Purpose: Provide the `trap:restore` helper for trap restore operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __TRAP_LEGACY_PREFIX, __TRAP_PREFIX.
+## 
+## Usage:
+## - trap:restore "$@"
+## - # Conditional usage pattern
+## - if trap:restore "$@"; then :; fi
+## 
+## 
 function trap:restore() {
   local signals=("$@")
 
@@ -256,12 +304,21 @@ function trap:restore() {
   return 0
 }
 
-#
-# Push current handler state (create snapshot)
-# Usage: trap:push [signal] ...
-# Example: trap:push EXIT INT
-#          trap:push  # all active signals
-#
+## 
+## Purpose: Provide the `trap:push` helper for trap push operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __TRAP_PREFIX, __TRAP_STACK_LEVEL, __TRAP_STACK_PREFIX.
+## 
+## Usage:
+## - trap:push "$@"
+## - # Conditional usage pattern
+## - if trap:push "$@"; then :; fi
+## 
+## 
 function trap:push() {
   local signals=()
 
@@ -300,12 +357,21 @@ function trap:push() {
   return 0
 }
 
-#
-# Pop and restore previous handler state
-# Usage: trap:pop [signal] ...
-# Example: trap:pop EXIT INT
-#          trap:pop  # all signals in last push
-#
+## 
+## Purpose: Provide the `trap:pop` helper for trap pop operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __TRAP_PREFIX, __TRAP_STACK_LEVEL, __TRAP_STACK_PREFIX.
+## 
+## Usage:
+## - trap:pop "$@"
+## - # Conditional usage pattern
+## - if trap:pop "$@"; then :; fi
+## 
+## 
 function trap:pop() {
   if [[ $__TRAP_STACK_LEVEL -eq 0 ]]; then
     echo:Trap "${cl_red}✗${cl_reset} No trap state to pop"
@@ -353,18 +419,40 @@ function trap:pop() {
   return 0
 }
 
-#
-# Begin scoped trap section (alias for trap:push)
-# Usage: trap:scope:begin [signal] ...
-#
+## 
+## Purpose: Provide the `trap:scope:begin` helper for trap scope begin operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - trap:scope:begin "$@"
+## - # Conditional usage pattern
+## - if trap:scope:begin "$@"; then :; fi
+## 
+## 
 function trap:scope:begin() {
   trap:push "$@"
 }
 
-#
-# End scoped trap section (alias for trap:pop)
-# Usage: trap:scope:end [signal] ...
-#
+## 
+## Purpose: Provide the `trap:scope:end` helper for trap scope end operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - trap:scope:end "$@"
+## - # Conditional usage pattern
+## - if trap:scope:end "$@"; then :; fi
+## 
+## 
 function trap:scope:end() {
   trap:pop "$@"
 }
@@ -373,10 +461,21 @@ function trap:scope:end() {
 # Internal Dispatcher (Called by OS trap mechanism)
 # -----------------------------------------------------------------------------
 
-#
-# Main dispatcher called by the OS trap mechanism
-# This function is set as the actual trap handler
-#
+## 
+## Purpose: Provide the `Trap::dispatch` helper for Trap  dispatch operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: ANY, CRITICAL, EXIT, FIRST, __TRAP_LEGACY_PREFIX, __TRAP_PREFIX.
+## 
+## Usage:
+## - Trap::dispatch "$@"
+## - # Conditional usage pattern
+## - if Trap::dispatch "$@"; then :; fi
+## 
+## 
 function Trap::dispatch() {
   # CRITICAL: Capture exit code FIRST before ANY other commands
   # Even 'local x=...' can reset $? in some bash versions
@@ -420,10 +519,21 @@ function Trap::dispatch() {
 # Internal Helper Functions
 # -----------------------------------------------------------------------------
 
-#
-# Normalize signal name to standard format
-# Handles: SIGINT->INT, 0->EXIT, 2->INT, int->INT
-#
+## 
+## Purpose: Provide the `_Trap::normalize_signal` helper for  Trap  normalize signal operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: EXIT, INT, SIG, SIGINT.
+## 
+## Usage:
+## - _Trap::normalize_signal "$@"
+## - # Conditional usage pattern
+## - if _Trap::normalize_signal "$@"; then :; fi
+## 
+## 
 function _Trap::normalize_signal() {
   local input="$1"
   local name
@@ -453,9 +563,21 @@ function _Trap::normalize_signal() {
   return 0
 }
 
-#
-# Initialize signal (capture legacy trap, set dispatcher)
-#
+## 
+## Purpose: Provide the `_Trap::initialize_signal` helper for  Trap  initialize signal operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: __TRAP_INIT_PREFIX, __TRAP_PREFIX.
+## 
+## Usage:
+## - _Trap::initialize_signal "$@"
+## - # Conditional usage pattern
+## - if _Trap::initialize_signal "$@"; then :; fi
+## 
+## 
 function _Trap::initialize_signal() {
   local signal="$1"
 
@@ -474,9 +596,21 @@ function _Trap::initialize_signal() {
   printf:Trap "${cl_grey}Initialized signal: ${cl_cyan}%s${cl_reset}\n" "$signal"
 }
 
-#
-# Capture existing trap configuration before we override it
-#
+## 
+## Purpose: Provide the `_Trap::capture_legacy` helper for  Trap  capture legacy operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: SIGNAL, __TRAP_LEGACY_PREFIX, for.
+## 
+## Usage:
+## - _Trap::capture_legacy "$@"
+## - # Conditional usage pattern
+## - if _Trap::capture_legacy "$@"; then :; fi
+## 
+## 
 function _Trap::capture_legacy() {
   local signal="$1"
   local existing_trap_str
@@ -499,9 +633,22 @@ function _Trap::capture_legacy() {
   fi
 }
 
-#
-# Check if handler exists in list
-#
+## 
+## Purpose: Provide the `_Trap::contains` helper for  Trap  contains operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - _Trap::contains "$@"
+## - # Conditional usage pattern
+## - if _Trap::contains "$@"; then :; fi
+## 
+## 
 function _Trap::contains() {
   local var_name="$1"
   local seeking="$2"
@@ -514,9 +661,22 @@ function _Trap::contains() {
   return 1
 }
 
-#
-# Remove handler from list
-#
+## 
+## Purpose: Provide the `_Trap::remove_handler` helper for  Trap  remove handler operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - _Trap::remove_handler "$@"
+## - # Conditional usage pattern
+## - if _Trap::remove_handler "$@"; then :; fi
+## 
+## 
 function _Trap::remove_handler() {
   local var_name="$1"
   local target="$2"
@@ -531,9 +691,21 @@ function _Trap::remove_handler() {
   list=("${keep[@]}")
 }
 
-#
-# List all initialized signals
-#
+## 
+## Purpose: Provide the `_Trap::list_all_signals` helper for  Trap  list all signals operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: __TRAP_PREFIX.
+## 
+## Usage:
+## - _Trap::list_all_signals "$@"
+## - # Conditional usage pattern
+## - if _Trap::list_all_signals "$@"; then :; fi
+## 
+## 
 function _Trap::list_all_signals() {
   local signals=()
 
@@ -557,3 +729,10 @@ logger trap "$@" # declare echo:Trap & printf:Trap functions
 
 logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/traps.md.
+## - README.md (trap usage examples).
+## - docs/public/functions-docgen.md.

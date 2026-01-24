@@ -18,6 +18,22 @@ source "$E_BASH/_commons.sh"
 
 # array of script arguments cleaned from flags (e.g. --help)
 [ -z "$ARGS_NO_FLAGS" ] && export ARGS_NO_FLAGS=()
+## 
+## Purpose: Provide the `parse:exclude_flags_from_args` helper for parse exclude flags from args operations within
+this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: ARGS_NO_FLAGS.
+## 
+## Usage:
+## - parse:exclude_flags_from_args "$@"
+## - # Conditional usage pattern
+## - if parse:exclude_flags_from_args "$@"; then :; fi
+## 
+## 
 function parse:exclude_flags_from_args() {
   local args=("$@")
 
@@ -35,7 +51,23 @@ function parse:exclude_flags_from_args() {
 # pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 [ -z "$ARGS_DEFINITION" ] && export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
 
-# Utility function, that extract output definition for parse:arguments function
+## 
+## Purpose: Provide the `parse:extract_output_definition` helper for parse extract output definition operations
+within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - parse:extract_output_definition "$@"
+## - # Conditional usage pattern
+## - if parse:extract_output_definition "$@"; then :; fi
+## 
+## 
 function parse:extract_output_definition() {
   local definition=$1
 
@@ -71,7 +103,24 @@ function parse:extract_output_definition() {
   echo "$variable|$default|$args_qt"
 }
 
-# parse ARGS_DEFINITION string to global arrays: lookup_arguments, index_to_outputs, index_to_args_qt, index_to_default
+## 
+## Purpose: Provide the `parse:mapping` helper for parse mapping operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: ARGS_DEFINITION, index_to_args_qt, index_to_default, index_to_keys, index_to_outputs,
+##   lookup_arguments.
+## 
+## Usage:
+## - parse:mapping "$@"
+## - # Conditional usage pattern
+## - if parse:mapping "$@"; then :; fi
+## 
+## 
 function parse:mapping() {
   local args=("$@")
 
@@ -113,7 +162,22 @@ function parse:mapping() {
 
 }
 
-# pattern: "\${argument_index},-{short},--{alias}={output}:{init_value}:{args_quantity}"
+## 
+## Purpose: Provide the `parse:arguments` helper for parse arguments operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: DEFAULT, DEFAULTS, L1, L2, L3, L4, index_to_args_qt, index_to_default, index_to_outputs,
+##   lookup_arguments.
+## 
+## Usage:
+## - parse:arguments "$@"
+## - # Conditional usage pattern
+## - if parse:arguments "$@"; then :; fi
+## 
+## 
 function parse:arguments() {
   local args=("$@")
 
@@ -236,7 +300,22 @@ function parse:arguments() {
 # argument to default value mapping
 [ -z "$args_to_defaults" ] && declare -A -g args_to_defaults=()
 
-# compose argument description
+## 
+## Purpose: Provide the `args:d` helper for args d operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: args_to_description, args_to_group, group_to_order.
+## 
+## Usage:
+## - args:d "$@"
+## - # Conditional usage pattern
+## - if args:d "$@"; then :; fi
+## 
+## 
 function args:d() {
   local flag=$1
   local description=$2
@@ -253,7 +332,22 @@ function args:d() {
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
-# compose argument 'variable' mapping, function can be used in pipeline
+## 
+## Purpose: Provide the `args:e` helper for args e operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: STDIN, args_to_envs.
+## 
+## Usage:
+## - args:e "$@"
+## - # Conditional usage pattern
+## - if args:e "$@"; then :; fi
+## 
+## 
 function args:e() {
   local flag=$1
   local env=$2
@@ -272,7 +366,22 @@ function args:e() {
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
-# compose argument "defaults" mapping, function can be used in pipeline
+## 
+## Purpose: Provide the `args:v` helper for args v operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: STDIN, args_to_defaults.
+## 
+## Usage:
+## - args:v "$@"
+## - # Conditional usage pattern
+## - if args:v "$@"; then :; fi
+## 
+## 
 function args:v() {
   local flag=$1
   local defaults=$2
@@ -291,7 +400,21 @@ function args:v() {
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
 }
 
-# Compose argument definition string by pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
+## 
+## Purpose: Provide the `args:i` helper for args i operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: ARGS_DEFINITION, CSV.
+## 
+## Usage:
+## - args:i "$@"
+## - # Conditional usage pattern
+## - if args:i "$@"; then :; fi
+## 
+## 
 function args:i() {
   local output="" description="" aliases=()
   local init_value="" args_quantity="" group="common"
@@ -396,7 +519,22 @@ function args:i() {
   echo "export ARGS_DEFINITION+=\" $(echo "$result" | sed 's/:\{1,\}$//g') \""
 }
 
-# print help for ARGS_DEFINITION parameters
+## 
+## Purpose: Provide the `print:help` helper for print help operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: args_to_defaults, args_to_description, args_to_envs, args_to_group, group_to_order,
+##   index_to_keys, lookup_arguments.
+## 
+## Usage:
+## - print:help "$@"
+## - # Conditional usage pattern
+## - if print:help "$@"; then :; fi
+## 
+## 
 function print:help() {
   # collect unique group names
   local groups=() group=""
@@ -494,3 +632,11 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 parse:exclude_flags_from_args "$@"                  # pre-filter arguments from flags
 [ -z "$SKIP_ARGS_PARSING" ] && parse:arguments "$@" # parse arguments and assign them to output variables
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/arguments.md.
+## - demos/demo.args.sh.
+## - README.md (Arguments Parsing section).
+## - docs/public/functions-docgen.md.

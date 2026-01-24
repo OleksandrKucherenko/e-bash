@@ -29,3 +29,11 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     fi
   done
 fi
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/conventions.md.
+## - README.md (project documentation).
+## - docs/public/functions-docgen.md.
+## - docs/public/functions-docgen.md.

@@ -19,13 +19,41 @@ source "$E_BASH/_colors.sh"
 
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
-
+## 
+## Purpose: Provide the `time:now` helper for time now operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: EPOCHREALTIME.
+## 
+## Usage:
+## - time:now "$@"
+## - # Conditional usage pattern
+## - if time:now "$@"; then :; fi
+## 
+## 
 function time:now() {
   echo "$EPOCHREALTIME" # <~ bash 5.0
   #python -c 'import datetime; print datetime.datetime.now().strftime("%s.%f")'
 }
 
-# shellcheck disable=SC2155,SC2086
+## 
+## Purpose: Provide the `time:diff` helper for time diff operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - time:diff "$@"
+## - # Conditional usage pattern
+## - if time:diff "$@"; then :; fi
+## 
+## 
 function time:diff() {
   local diff="$(time:now) - $1"
   bc <<<$diff
@@ -33,7 +61,21 @@ function time:diff() {
 
 # ref: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
 
-# get cursor position in "row;col" format
+## 
+## Purpose: Provide the `cursor:position` helper for cursor position operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: CURPOS, ESC.
+## 
+## Usage:
+## - cursor:position "$@"
+## - # Conditional usage pattern
+## - if cursor:position "$@"; then :; fi
+## 
+## 
 function cursor:position() {
   local CURPOS
   read -sdR -p $'\E[6n' CURPOS
@@ -41,7 +83,21 @@ function cursor:position() {
   echo "${CURPOS}"    # Return position in "row;col" format
 }
 
-# get cursor position in row
+## 
+## Purpose: Provide the `cursor:position:row` helper for cursor position row operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: COL, ROW.
+## 
+## Usage:
+## - cursor:position:row "$@"
+## - # Conditional usage pattern
+## - if cursor:position:row "$@"; then :; fi
+## 
+## 
 function cursor:position:row() {
   local COL
   local ROW
@@ -49,7 +105,21 @@ function cursor:position:row() {
   echo "${ROW#*[}"
 }
 
-# get cursor position in column
+## 
+## Purpose: Provide the `cursor:position:col` helper for cursor position col operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: COL, ROW.
+## 
+## Usage:
+## - cursor:position:col "$@"
+## - # Conditional usage pattern
+## - if cursor:position:col "$@"; then :; fi
+## 
+## 
 function cursor:position:col() {
   local COL
   local ROW
@@ -57,9 +127,21 @@ function cursor:position:col() {
   echo "${COL}"
 }
 
-# ref: https://stackoverflow.com/questions/10679188/casing-arrow-keys-in-bash
-
-## Read user input with masked input
+## 
+## Purpose: Provide the `input:readpwd` helper for input readpwd operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: ALL, EOF, EOL, NULL, PWORD.
+## 
+## Usage:
+## - input:readpwd "$@"
+## - # Conditional usage pattern
+## - if input:readpwd "$@"; then :; fi
+## 
+## 
 function input:readpwd() {
   # tput sc # Save cursor position
   local y_pos=$(cursor:position:row) x_pos=$(cursor:position:col) max_col=$(tput cols)
@@ -69,25 +151,99 @@ function input:readpwd() {
   local hint="${cl_grey}(→,←,↑,↓,↵,Esc,⌫,^U)${cl_reset}"
   local distance=$((max_col - x_pos - ${#hint} - 4))
   local filler=$(printf ' %.0s' $(seq 1 $distance))
-
+## 
+## Purpose: Provide the `home` helper for home operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - home "$@"
+## - # Conditional usage pattern
+## - if home "$@"; then :; fi
+## 
+## 
   function home() {
     tput cup $((y_pos - 1)) $((x_pos - 1)) 1>&2
     pos=0
   }
+## 
+## Purpose: Provide the `endline` helper for endline operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads/mutates: PWORD.
+## 
+## Usage:
+## - endline "$@"
+## - # Conditional usage pattern
+## - if endline "$@"; then :; fi
+## 
+## 
   function endline() {
     tput cup $((y_pos - 1)) $((x_pos + ${#PWORD} - 1)) 1>&2
     pos=${#PWORD}
   }
+## 
+## Purpose: Provide the `reprint` helper for reprint operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - reprint "$@"
+## - # Conditional usage pattern
+## - if reprint "$@"; then :; fi
+## 
+## 
   function reprint() {
     tput cup $((y_pos - 1)) $((x_pos - 1)) 1>&2
     echo -n "$1" 1>&2
     tput cup $((y_pos - 1)) $((x_pos + pos - 1)) 1>&2
   }
+## 
+## Purpose: Provide the `add` helper for add operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads/mutates: PWORD.
+## 
+## Usage:
+## - add "$@"
+## - # Conditional usage pattern
+## - if add "$@"; then :; fi
+## 
+## 
   function add() {
     PWORD+="$1"
     echo -n "$(echo "$1" | sed 's/./\*/g')" 1>&2
     pos=$((pos + ${#1}))
   }
+## 
+## Purpose: Provide the `delete` helper for delete operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads/mutates: PWORD.
+## 
+## Usage:
+## - delete "$@"
+## - # Conditional usage pattern
+## - if delete "$@"; then :; fi
+## 
+## 
   function delete() {
     # pos is more than 0
     if [ "$pos" -gt 0 ]; then
@@ -97,17 +253,62 @@ function input:readpwd() {
       reprint "$(echo "$PWORD" | sed 's/./\*/g')"
     fi
   }
+## 
+## Purpose: Provide the `reset` helper for reset operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads/mutates: PWORD.
+## 
+## Usage:
+## - reset "$@"
+## - # Conditional usage pattern
+## - if reset "$@"; then :; fi
+## 
+## 
   function reset() {
     reprint "$filler$hint"
     PWORD='' && pos=0
     reprint "$(echo "$PWORD" | sed 's/./\*/g')"
   }
+## 
+## Purpose: Provide the `left` helper for left operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - left "$@"
+## - # Conditional usage pattern
+## - if left "$@"; then :; fi
+## 
+## 
   function left() {
     if [ "$pos" -gt 0 ]; then
       pos=$((pos - 1))
       tput cub 1 1>&2
     fi
   }
+## 
+## Purpose: Provide the `right` helper for right operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads/mutates: PWORD.
+## 
+## Usage:
+## - right "$@"
+## - # Conditional usage pattern
+## - if right "$@"; then :; fi
+## 
+## 
   function right() {
     if [ "$pos" -lt "${#PWORD}" ]; then
       pos=$((pos + 1))
@@ -161,7 +362,21 @@ function input:readpwd() {
   echo "${PWORD}"
 }
 
-# shellcheck disable=SC2086
+## 
+## Purpose: Provide the `validate:input` helper for validate input operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: SIGINT.
+## 
+## Usage:
+## - validate:input "$@"
+## - # Conditional usage pattern
+## - if validate:input "$@"; then :; fi
+## 
+## 
 function validate:input() {
   local variable=$1
   local default=${2:-""}
@@ -191,7 +406,21 @@ function validate:input() {
   eval $__resultvar="'$user_in'"
 }
 
-# shellcheck disable=SC2086
+## 
+## Purpose: Provide the `validate:input:masked` helper for validate input masked operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - validate:input:masked "$@"
+## - # Conditional usage pattern
+## - if validate:input:masked "$@"; then :; fi
+## 
+## 
 function validate:input:masked() {
   local variable=$1
   local default=${2:-""}
@@ -210,7 +439,23 @@ function validate:input:masked() {
   local __resultvar=$variable
   eval $__resultvar="'$user_in'"
 }
-# shellcheck disable=SC2086,SC2059
+## 
+## Purpose: Provide the `validate:input:yn` helper for validate input yn operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - validate:input:yn "$@"
+## - # Conditional usage pattern
+## - if validate:input:yn "$@"; then :; fi
+## 
+## 
 function validate:input:yn() {
   # Prompts the user for a yes/no input and stores the result as a boolean value
   #
@@ -263,7 +508,24 @@ function validate:input:yn() {
   eval $__resultvar="$user_in"
 }
 
-# shellcheck disable=SC2086
+## 
+## Purpose: Provide the `env:variable:or:secret:file` helper for env variable or secret file operations within this
+module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: ERROR, GITLAB_CI_INTEGRATION_TEST.
+## 
+## Usage:
+## - env:variable:or:secret:file "$@"
+## - # Conditional usage pattern
+## - if env:variable:or:secret:file "$@"; then :; fi
+## 
+## 
 function env:variable:or:secret:file() {
   #
   # Usage:
@@ -298,7 +560,24 @@ function env:variable:or:secret:file() {
   fi
 }
 
-# shellcheck disable=SC2086
+## 
+## Purpose: Provide the `env:variable:or:secret:file:optional` helper for env variable or secret file optional
+operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: GITLAB_CI_INTEGRATION_TEST, NO, __SOURCED__.
+## 
+## Usage:
+## - env:variable:or:secret:file:optional "$@"
+## - # Conditional usage pattern
+## - if env:variable:or:secret:file:optional "$@"; then :; fi
+## 
+## 
 function env:variable:or:secret:file:optional() {
   #
   # Usage:
@@ -331,7 +610,22 @@ function env:variable:or:secret:file:optional() {
     ${__SOURCED__:+x} && return 0 || return 1
   fi
 }
-
+## 
+## Purpose: Provide the `env:resolve` helper for env resolve operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: AND, API_HOST, CONFIG, CUSTOM_VARS, MY_PATH, OR, VAR, VARS, VAR_NAME, VERSION, Z0, Z_.
+## 
+## Usage:
+## - env:resolve "$@"
+## - # Conditional usage pattern
+## - if env:resolve "$@"; then :; fi
+## 
+## 
 function env:resolve() {
   # Resolve {{env.VAR_NAME}} patterns in a string to their environment variable values
   #
@@ -405,8 +699,22 @@ function env:resolve() {
   fi
 }
 
-# Internal helper function to resolve a single string
-# Follows naming convention: _domain:purpose for internal functions
+## 
+## Purpose: Provide the `_env:resolve:string` helper for  env resolve string operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: BASH_REMATCH, ERROR, VAR, VAR_NAME, __NOTFOUND__.
+## 
+## Usage:
+## - _env:resolve:string "$@"
+## - # Conditional usage pattern
+## - if _env:resolve:string "$@"; then :; fi
+## 
+## 
 function _env:resolve:string() {
   local str="$1"
   local arr_name="$2"
@@ -498,7 +806,23 @@ function _env:resolve:string() {
 
   echo "$expanded_string"
 }
-
+## 
+## Purpose: Provide the `confirm:by:input` helper for confirm by input operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - confirm:by:input "$@"
+## - # Conditional usage pattern
+## - if confirm:by:input "$@"; then :; fi
+## 
+## 
 function confirm:by:input() {
   local hint=$1
   local variable=$2
@@ -531,7 +855,22 @@ function confirm:by:input() {
     print:confirmation "${masked:-$top}"
   fi
 }
-
+## 
+## Purpose: Provide the `var:l0` helper for var l0 operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: MY_VAR, UNSET_VAR.
+## 
+## Usage:
+## - var:l0 "$@"
+## - # Conditional usage pattern
+## - if var:l0 "$@"; then :; fi
+## 
+## 
 function var:l0() {
   # Use variable name value, otherwise fallback to default
   #
@@ -557,7 +896,23 @@ function var:l0() {
     echo "$default"
   fi
 }
-
+## 
+## Purpose: Provide the `var:l1` helper for var l1 operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: UNSET, UNSET1, UNSET2, VAR1, VAR2.
+## 
+## Usage:
+## - var:l1 "$@"
+## - # Conditional usage pattern
+## - if var:l1 "$@"; then :; fi
+## 
+## 
 function var:l1() {
   # Try var1 variable value, otherwise fallback to var2 value, otherwise fallback to default
   #
@@ -590,7 +945,22 @@ function var:l1() {
     echo "$default"
   fi
 }
-
+## 
+## Purpose: Provide the `val:l0` helper for val l0 operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - val:l0 "$@"
+## - # Conditional usage pattern
+## - if val:l0 "$@"; then :; fi
+## 
+## 
 function val:l0() {
   # Try value, fallback to default
   #
@@ -614,7 +984,23 @@ function val:l0() {
     echo "$default"
   fi
 }
-
+## 
+## Purpose: Provide the `val:l1` helper for val l1 operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - val:l1 "$@"
+## - # Conditional usage pattern
+## - if val:l1 "$@"; then :; fi
+## 
+## 
 function val:l1() {
   # Try value1, otherwise try value, fallback to default
   #
@@ -644,7 +1030,22 @@ function val:l1() {
   fi
 }
 
-# Helper function for cross-platform hash generation (used by to:slug)
+## 
+## Purpose: Provide the `to:slug:hash` helper for to slug hash operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - to:slug:hash "$@"
+## - # Conditional usage pattern
+## - if to:slug:hash "$@"; then :; fi
+## 
+## 
 function to:slug:hash() {
   local input=$1
   local length=$2
@@ -663,7 +1064,23 @@ function to:slug:hash() {
 
   echo "$hash"
 }
-
+## 
+## Purpose: Provide the `to:slug` helper for to slug operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: OR.
+## 
+## Usage:
+## - to:slug "$@"
+## - # Conditional usage pattern
+## - if to:slug "$@"; then :; fi
+## 
+## 
 function to:slug() {
   # Convert any string to a filesystem-safe slug
   #
@@ -759,12 +1176,41 @@ function to:slug() {
 
   echo "$slug"
 }
-
+## 
+## Purpose: Provide the `args:isHelp` helper for args isHelp operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - args:isHelp "$@"
+## - # Conditional usage pattern
+## - if args:isHelp "$@"; then :; fi
+## 
+## 
 function args:isHelp() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--help" ]]; then echo true; else echo false; fi
 }
-
+## 
+## Purpose: Provide the `git:root` helper for git root operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: BASH_REMATCH, STDOUT, WARNING.
+## 
+## Usage:
+## - git:root "$@"
+## - # Conditional usage pattern
+## - if git:root "$@"; then :; fi
+## 
+## 
 function git:root() {
   # Find the Git repository root folder from the current folder by searching upward for .git
   # Properly detects regular repos, worktrees, and submodules
@@ -909,7 +1355,23 @@ function git:root() {
 
   return 1
 }
-
+## 
+## Purpose: Provide the `config:hierarchy` helper for config hierarchy operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: STDOUT, WARNING.
+## 
+## Usage:
+## - config:hierarchy "$@"
+## - # Conditional usage pattern
+## - if config:hierarchy "$@"; then :; fi
+## 
+## 
 function config:hierarchy() {
   # Find hierarchy of configuration files by searching upward from current folder
   # Similar to c12 (https://www.npmjs.com/package/c12) but only for declarative config files
@@ -1048,7 +1510,23 @@ function config:hierarchy() {
     return 1
   fi
 }
-
+## 
+## Purpose: Provide the `config:hierarchy:xdg` helper for config hierarchy xdg operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## - $3 - tertiary argument.
+## 
+## Globals:
+## - Reads and mutates: ERROR, STDOUT, XDG, XDG_CONFIG_DIRS, XDG_CONFIG_HOME, XDG_ETC_DIR.
+## 
+## Usage:
+## - config:hierarchy:xdg "$@"
+## - # Conditional usage pattern
+## - if config:hierarchy:xdg "$@"; then :; fi
+## 
+## 
 function config:hierarchy:xdg() {
   # Find configuration files following XDG Base Directory Specification
   # Combines hierarchical search with XDG-compliant directories
@@ -1183,7 +1661,21 @@ function config:hierarchy:xdg() {
     return 1
   fi
 }
-
+## 
+## Purpose: Provide the `input:selector` helper for input selector operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: ALL, EOF, EOL, KEY, NULL, VALUE.
+## 
+## Usage:
+## - input:selector "$@"
+## - # Conditional usage pattern
+## - if input:selector "$@"; then :; fi
+## 
+## 
 function input:selector() {
   local sourceVariableName=$1
   local keyOrValue=${2:-"key"}
@@ -1199,7 +1691,21 @@ function input:selector() {
   local distance=$((max_col - x_pos - ${#hint} - 4))
   local filler=$(printf ' %.0s' $(seq 1 $distance))
   local eraser=$(printf ' %.0s' $(seq 1 $((max_col - x_pos - 1))))
-
+## 
+## Purpose: Provide the `selections` helper for selections operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - selections "$@"
+## - # Conditional usage pattern
+## - if selections "$@"; then :; fi
+## 
+## 
   function selections() {
     local highlight=${1:-""}
     local output="" bg="" seperator="" counter=0 value=""
@@ -1212,28 +1718,103 @@ function input:selector() {
     done
     echo "$output"
   }
+## 
+## Purpose: Provide the `reprint` helper for reprint operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - reprint "$@"
+## - # Conditional usage pattern
+## - if reprint "$@"; then :; fi
+## 
+## 
   function reprint() {
     tput cup $((y_pos - 1)) $((x_pos - 1)) 1>&2
     echo -n -e "$1" 1>&2
     tput cup $((y_pos - 1)) $((x_pos + pos - 1)) 1>&2
   }
+## 
+## Purpose: Provide the `reset` helper for reset operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - reset "$@"
+## - # Conditional usage pattern
+## - if reset "$@"; then :; fi
+## 
+## 
   function reset() {
     reprint "$filler$hint"
     pos=0
     reprint "$(selections)"
   }
+## 
+## Purpose: Provide the `left` helper for left operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - left "$@"
+## - # Conditional usage pattern
+## - if left "$@"; then :; fi
+## 
+## 
   function left() {
     if [ "$pos" -gt 0 ]; then
       pos=$((pos - 1))
       reprint "$(selections)"
     fi
   }
+## 
+## Purpose: Provide the `right` helper for right operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - right "$@"
+## - # Conditional usage pattern
+## - if right "$@"; then :; fi
+## 
+## 
   function right() {
     if [ "$pos" -lt "$max" ]; then
       pos=$((pos + 1))
       reprint "$(selections)"
     fi
   }
+## 
+## Purpose: Provide the `search` helper for search operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - None detected beyond module configuration.
+## 
+## Usage:
+## - search "$@"
+## - # Conditional usage pattern
+## - if search "$@"; then :; fi
+## 
+## 
   function search() {
     # find first value that contains the search char
     local search=$1 index=0
@@ -1317,3 +1898,10 @@ alias validate_yn_input=validate:input:yn
 alias env_variable_or_secret_file=env:variable:or:secret:file
 alias optional_env_variable_or_secret_file=env:variable:or:secret:file:optional
 alias isHelp=args:isHelp
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/commons.md.
+## - README.md (Common helpers section).
+## - docs/public/functions-docgen.md.

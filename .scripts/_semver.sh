@@ -29,10 +29,21 @@ declare -A -g __semver_parse_result=(
 declare -A -g __semver_compare_v1=()
 declare -A -g __semver_compare_v2=()
 
-# ref: https://regex101.com/r/vkijKf/1/,
-# ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
-# \d - any digit
-# ref: https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions
+## 
+## Purpose: Provide the `semver:grep` helper for semver grep operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:grep "$@"
+## - # Conditional usage pattern
+## - if semver:grep "$@"; then :; fi
+## 
+## 
 function semver:grep() {
   #  <letter> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
   #             | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T"
@@ -117,7 +128,21 @@ function semver:grep() {
   # fi
 }
 
-# create version from parsed results
+## 
+## Purpose: Provide the `semver:recompose` helper for semver recompose operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:recompose "$@"
+## - # Conditional usage pattern
+## - if semver:recompose "$@"; then :; fi
+## 
+## 
 function semver:recompose() {
   local sourceVariableName=${1:-"__semver_parse_result"}
   declare -A parsed=()
@@ -138,7 +163,21 @@ function semver:recompose() {
   echo "${major}.${minor}.${patch}${pre_release}${build}"
 }
 
-# parse version code to segments
+## 
+## Purpose: Provide the `semver:parse` helper for semver parse operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: BASH_REMATCH, SEMVER, SEMVER_REGEX.
+## 
+## Usage:
+## - semver:parse "$@"
+## - # Conditional usage pattern
+## - if semver:parse "$@"; then :; fi
+## 
+## 
 function semver:parse() {
   local version="$1"
   local output_variable="${2:-"__semver_parse_result"}"
@@ -184,8 +223,21 @@ function semver:parse() {
   fi
 }
 
-# increase major part of the version core
-# shellcheck disable=SC2154
+## 
+## Purpose: Provide the `semver:increase:major` helper for semver increase major operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:increase:major "$@"
+## - # Conditional usage pattern
+## - if semver:increase:major "$@"; then :; fi
+## 
+## 
 function semver:increase:major() {
   local version="$1"
 
@@ -204,8 +256,21 @@ function semver:increase:major() {
   unset __major # clean up
 }
 
-# increase minor part of the version core
-# shellcheck disable=SC2154
+## 
+## Purpose: Provide the `semver:increase:minor` helper for semver increase minor operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:increase:minor "$@"
+## - # Conditional usage pattern
+## - if semver:increase:minor "$@"; then :; fi
+## 
+## 
 function semver:increase:minor() {
   local version="$1"
 
@@ -223,8 +288,21 @@ function semver:increase:minor() {
   unset __minor # clean up
 }
 
-# increase patch part of the version core
-# shellcheck disable=SC2154
+## 
+## Purpose: Provide the `semver:increase:patch` helper for semver increase patch operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:increase:patch "$@"
+## - # Conditional usage pattern
+## - if semver:increase:patch "$@"; then :; fi
+## 
+## 
 function semver:increase:patch() {
   local version="$1"
 
@@ -242,8 +320,22 @@ function semver:increase:patch() {
   unset __patch # clean up
 }
 
-# compare two versions and return 0 if equal, 1 if greater, 2 if less, 3 if error
-# implementation of https://semver.org/#spec-item-11 specs
+## 
+## Purpose: Provide the `semver:compare` helper for semver compare operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: LC_ALL, META, MUST.
+## 
+## Usage:
+## - semver:compare "$@"
+## - # Conditional usage pattern
+## - if semver:compare "$@"; then :; fi
+## 
+## 
 function semver:compare() {
   local version1="$1"
   local version2="$2"
@@ -338,7 +430,22 @@ function semver:compare() {
   return 3 # error
 }
 
-# interpret result of semver:compare to operator string, separated by ` ` (space)
+## 
+## Purpose: Provide the `semver:compare:to:operator` helper for semver compare to operator operations within this
+module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:compare:to:operator "$@"
+## - # Conditional usage pattern
+## - if semver:compare:to:operator "$@"; then :; fi
+## 
+## 
 function semver:compare:to:operator() {
   local result=$1
 
@@ -350,7 +457,22 @@ function semver:compare:to:operator() {
   esac
 }
 
-# convert compare results to human-readable output
+## 
+## Purpose: Provide the `semver:compare:readable` helper for semver compare readable operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:compare:readable "$@"
+## - # Conditional usage pattern
+## - if semver:compare:readable "$@"; then :; fi
+## 
+## 
 function semver:compare:readable() {
   local version1="$1"
   local version2="$2"
@@ -361,14 +483,21 @@ function semver:compare:readable() {
   echo "$version1 $operators $version2 "
 }
 
-# The basic comparisons are:
-# =: equal (aliased to no operator)
-# !=: not equal
-# >: greater than
-# <: less than
-# >=: greater than or equal to
-# <=: less than or equal to
-# ref: https://github.com/Masterminds/semver?tab=readme-ov-file#basic-comparisons
+## 
+## Purpose: Provide the `semver:constraints:simple` helper for semver constraints simple operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: BASH_REMATCH, NF.
+## 
+## Usage:
+## - semver:constraints:simple "$@"
+## - # Conditional usage pattern
+## - if semver:constraints:simple "$@"; then :; fi
+## 
+## 
 function semver:constraints:simple() {
   # remove whitespaces during assigning to local variable
   local expression="${1//[[:space:]]/}"
@@ -406,7 +535,22 @@ function semver:constraints:simple() {
   return 1 # false
 }
 
-# resolve simple expression with '~' and '^' operators to simple expression
+## 
+## Purpose: Provide the `semver:constraints:complex` helper for semver constraints complex operations within this
+module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## 
+## Globals:
+## - Reads and mutates: no module globals detected.
+## 
+## Usage:
+## - semver:constraints:complex "$@"
+## - # Conditional usage pattern
+## - if semver:constraints:complex "$@"; then :; fi
+## 
+## 
 function semver:constraints:complex() {
   local molecule="$1" atom="$1"
 
@@ -445,8 +589,22 @@ function semver:constraints:complex() {
   echo "$atom"
 }
 
-# verify that provided version matches constraints (v1)
-# NOTE: This version does not follow npm's default prerelease exclusion behavior.
+## 
+## Purpose: Provide the `semver:constraints:v1` helper for semver constraints v1 operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: BASH, FALSE, TRUE.
+## 
+## Usage:
+## - semver:constraints:v1 "$@"
+## - # Conditional usage pattern
+## - if semver:constraints:v1 "$@"; then :; fi
+## 
+## 
 function semver:constraints:v1() {
   local version="$1"
   local expression="$2"
@@ -504,9 +662,22 @@ function semver:constraints:v1() {
   return 1                            # false
 }
 
-# verify that provided version matches constraints (v2, npm-like)
-# - prerelease versions are excluded unless the range includes a prerelease
-#   comparator with the same major.minor.patch as the candidate version.
+## 
+## Purpose: Provide the `semver:constraints:v2` helper for semver constraints v2 operations within this module.
+## 
+## Parameters:
+## - $1 - primary argument (see usage samples).
+## - $2 - secondary argument.
+## 
+## Globals:
+## - Reads and mutates: AND, FALSE, OR, TRUE.
+## 
+## Usage:
+## - semver:constraints:v2 "$@"
+## - # Conditional usage pattern
+## - if semver:constraints:v2 "$@"; then :; fi
+## 
+## 
 function semver:constraints:v2() {
   local version="$1"
   local expression="$2"
@@ -600,8 +771,21 @@ function semver:constraints:v2() {
   return 1                            # false
 }
 
-# verify that provided version matches constraints (default)
-# - SEMVER_CONSTRAINTS_IMPL=v1|v2 can be used to switch behavior (v1 deprecated).
+## 
+## Purpose: Provide the `semver:constraints` helper for semver constraints operations within this module.
+## 
+## Parameters:
+## - (varargs) - forwards all arguments to internal helpers.
+## 
+## Globals:
+## - Reads and mutates: SEMVER_CONSTRAINTS_IMPL.
+## 
+## Usage:
+## - semver:constraints "$@"
+## - # Conditional usage pattern
+## - if semver:constraints "$@"; then :; fi
+## 
+## 
 function semver:constraints() {
   case "${SEMVER_CONSTRAINTS_IMPL:-v2}" in
   v1) semver:constraints:v1 "$@" ;;
@@ -632,3 +816,11 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 # - https://www.baeldung.com/linux/bash-bitwise-operators
 
 #echo "semver:grep: $SEMVER"
+
+
+## Module notes: global variables, docs, and usage references.
+## Links:
+## - docs/public/conventions.md.
+## - README.md (project documentation).
+## - docs/public/functions-docgen.md.
+## - docs/public/functions-docgen.md.
