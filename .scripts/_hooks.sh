@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-24
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -597,11 +597,34 @@ function _hooks:middleware:default() {
 ##
 ## Apply contract env directive
 ##
+##
+## Apply contract environment directive (internal)
+##
+## Processes contract:env:* directives from hook implementations.
+##
+## Parameters:
+## - expr - Environment directive expression, string, required
+##
+## Globals:
+## - reads/listen: DEBUG
+## - mutate/publish: exports/updates environment variables
+##
 ## Supported forms:
-##   NAME=VALUE
-##   NAME+=VALUE (append)
-##   NAME^=VALUE (prepend)
-##   NAME-=VALUE (remove segment)
+## - NAME=VALUE - Set variable
+## - NAME+=VALUE - Append to PATH-like variable
+## - NAME^=VALUE - Prepend to PATH-like variable
+## - NAME-=VALUE - Remove segment from PATH-like variable
+##
+## Side effects:
+## - Exports environment variable
+## - Calls _hooks:logger:refresh if DEBUG modified
+##
+## Usage:
+## - _hooks:env:apply "PATH+=/new/path"
+## - _hooks:env:apply "MY_VAR=value"
+##
+## Returns:
+## - 0 on success, 1 on invalid expression or variable name
 ##
 function _hooks:env:apply() {
   local expr="$1"
