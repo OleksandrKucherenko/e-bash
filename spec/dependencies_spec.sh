@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-24
-## Version: 2.7.0
+## Last revisit: 2026-01-25
+## Version: 2.8.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -699,6 +699,128 @@ Describe "_dependencies.sh /"
       The status should be success
       The output should include "Dependency [OK]: \`openssh\` - version:"
       The error should include ""
+    End
+  End
+
+  Describe "Cache Functions /"
+    BeforeEach '_cache:clear'
+
+    It "_cache:key generates path-based keys"
+      When call _cache:key "/usr/bin/bash" "5.*.*" "--version"
+      The output should eq "/usr/bin/bash:5.*.*:--version"
+      The error should eq ''
+    End
+
+    It "_cache:key supports multiple paths for same tool"
+      # Simulates brew vs OS versions
+      key1=$(_cache:key "/usr/bin/bash" "3.*.*" "--version")
+      key2=$(_cache:key "/opt/homebrew/bin/bash" "5.*.*" "--version")
+      When call test "$key1" != "$key2"
+      The status should be success
+    End
+
+    It "_cache:set and _cache:get work together"
+      _cache:set "/usr/bin/test:1.0:--version" 0 "1.0.0" "/usr/bin/test"
+      When call _cache:get "/usr/bin/test:1.0:--version"
+      The status should be success
+      The variable __DEPS_CACHE_STATUS should eq "0"
+      The variable __DEPS_CACHE_VERSION should eq "1.0.0"
+      The variable __DEPS_CACHE_PATH should eq "/usr/bin/test"
+    End
+
+    It "_cache:get returns failure for missing key"
+      When call _cache:get "/nonexistent/path:1.0:--version"
+      The status should be failure
+    End
+
+    It "_cache:clear removes all cached entries"
+      _cache:set "/bin/key1:1.0:--version" 0 "1.0.0" "/bin/key1"
+      _cache:set "/bin/key2:2.0:--version" 0 "2.0.0" "/bin/key2"
+      _cache:clear
+      When call _cache:get "/bin/key1:1.0:--version"
+      The status should be failure
+    End
+
+    It "isNoCache returns true when --no-cache flag is provided"
+      When call isNoCache --no-cache
+      The status should be success
+      The output should eq true
+      The error should eq ''
+    End
+
+    It "isNoCache returns false when --no-cache flag is not provided"
+      When call isNoCache --debug --optional
+      The status should be success
+      The output should eq false
+      The error should eq ''
+    End
+  End
+
+  Describe "Short Form (Existence Check) /"
+    It "dependency:exists returns success for installed tool"
+      When call dependency:exists bash
+      The status should be success
+    End
+
+    It "dependency:exists returns failure for non-existent tool"
+      When call dependency:exists nonexistent_tool_xyz
+      The status should be failure
+    End
+
+    It "dependency:exists resolves aliases"
+      When call dependency:exists golang
+      The status should be success
+    End
+
+    It "dependency with empty version pattern checks existence only"
+      When call dependency bash "" ""
+      The status should be success
+      The output should include "Dependency [OK]: \`bash\` - found"
+      The error should eq ''
+    End
+
+    It "dependency with empty version pattern fails for missing tool"
+      When call dependency nonexistent_tool_xyz "" ""
+      The status should be failure
+      The output should include "Dependency [NO]: \`nonexistent_tool_xyz\` - not found"
+      The error should eq ''
+    End
+
+    It "dependency with --silent suppresses output for short form"
+      When call dependency bash "" "" --silent
+      The status should be success
+      The output should eq ''
+      The error should eq ''
+    End
+  End
+
+  Describe "Cache Integration /"
+    BeforeEach '_cache:clear'
+
+    It "caches successful dependency verification"
+      # First call - should verify and cache
+      dependency bash "5.*.*" "brew install bash"
+      # Second call - should use cache
+      When call dependency bash "5.*.*" "brew install bash"
+      The status should be success
+      The output should include "(cached)"
+    End
+
+    It "cache is bypassed with --no-cache flag"
+      # First call - should verify and cache
+      dependency bash "5.*.*" "brew install bash"
+      # Second call with --no-cache - should NOT show cached
+      When call dependency bash "5.*.*" "brew install bash" --version --no-cache
+      The status should be success
+      The output should not include "(cached)"
+    End
+
+    It "caches failure for missing tool"
+      dependency nonexistent_tool_abc "1.*.*"
+      # Verify cache was set with failure
+      When call _cache:get "nonexistent_tool_abc:1.*.*:--version"
+      The status should be success
+      The variable __DEPS_CACHE_STATUS should eq "1"
     End
   End
 End
