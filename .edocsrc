@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# e-docs configuration file
+# Sourced by bin/e-docs.sh
+
+# Output directory for generated documentation
+EDOCS_OUTPUT_DIR="docs/public/lib"
+
+# Source directories to scan for scripts (space-separated)
+EDOCS_SOURCE_DIRS=".scripts"
+
+# Output style: github, minimal
+EDOCS_STYLE="github"
+
+# Generate Table of Contents
+EDOCS_TOC="true"
+
+# Include internal/private functions (starting with _)
+EDOCS_INCLUDE_PRIVATE="false"
+
+# File extensions to process
+EDOCS_EXTENSIONS="sh"
