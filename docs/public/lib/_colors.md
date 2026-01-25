@@ -12,6 +12,22 @@ All variables use tput for terminal capability detection.
   npm.versions.sh, tree.sh, vhd.sh
 - documentation: colors are referenced throughout docs/public/*.md
 
+## Module Globals
+
+- TERM - Terminal type (set to xterm-256color if empty)
+- cl_reset - Reset all attributes (\e[0m)
+- cl_red, cl_green, cl_yellow, cl_blue, cl_purple, cl_cyan, cl_white,
+  cl_grey, cl_gray - Standard colors (0-7)
+- cl_lred, cl_lgreen, cl_lyellow, cl_lblue, cl_lpurple, cl_lcyan,
+  cl_lwhite, cl_black - Light/bright colors (8-16)
+- cl_selected - Selected background (blue highlight)
+- st_bold, st_b - Bold text
+- st_no_b - Reset bold
+- st_italic, st_i - Italic text
+- st_no_i - Reset italic
+- st_underline, st_u - Underline
+- st_no_u - Reset underline
+
 ## Index
 
 * [`cl:unset`](#cl-unset)

@@ -13,6 +13,17 @@ pipe/redirect support, and dynamic function creation.
 - documentation: docs/public/logger.md
 - tests: spec/logger_spec.sh
 
+## Module Globals
+
+- __SESSION - Unique session ID (uuidgen or "session-$$-$RANDOM")
+- __TTY - TTY device path or "notty"
+- DEBUG - Comma-separated tags to enable (supports wildcards: *, negation: -tag)
+- TAGS - Associative array of tag enable state (0=disabled, 1=enabled)
+- TAGS_PREFIX - Associative array of tag to prefix string
+- TAGS_PIPE - Associative array of tag to named pipe path
+- TAGS_REDIRECT - Associative array of tag to redirection string
+- TAGS_STACK - Stack level counter for push/pop operations
+
 ## Index
 
 * [`logger`](#logger)
@@ -42,7 +53,7 @@ Register a tag-based logger that creates dynamic logging functions
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `tag` | string | required, e.g. "debug" | Logger tag name (lowercase) |
-| `@` | "--debug") | string, default: none | Optional flags for initial tag enablement (e.g. |
+| `@` | string | default: none | Optional flags for initial tag enablement (e.g., "--debug") |
 
 #### Globals
 

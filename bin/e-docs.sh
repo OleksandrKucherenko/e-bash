@@ -37,9 +37,14 @@ source "$E_BASH/_colors.sh"
 DEBUG="${DEBUG:-edocs,err,ok,warn}"
 # shellcheck disable=SC1091
 source "$E_BASH/_logger.sh"
+# shellcheck disable=SC2154
+# Note: cl_* variables are exported by _colors.sh above
 logger:init edocs "[${cl_blue}e-docs${cl_reset}] " ">&2"
+# shellcheck disable=SC2154
 logger:init ok "[${cl_green}OK${cl_reset}] " ">&2"
+# shellcheck disable=SC2154
 logger:init warn "[${cl_yellow}WARN${cl_reset}] " ">&2"
+# shellcheck disable=SC2154
 logger:init err "[${cl_red}ERROR${cl_reset}] " ">&2"
 
 # Dependency checking (must be after _logger.sh)
@@ -462,7 +467,7 @@ generate_header() {
 
   if [[ -n "$module_summary" ]]; then
     # Extract module title and description
-    local title description
+    local title
     title=$(echo "$module_summary" | grep -o 'Module: .*' | head -1 | sed 's/Module: //')
 
     if [[ -n "$title" ]]; then
@@ -470,49 +475,108 @@ generate_header() {
       echo ""
     fi
 
-    # Extract description (lines after Module: until next section)
-    local in_desc=false
-    local in_refs=false
+    # State machine for parsing sections
+    local current_section=""
+    local desc_content=""
     local refs_content=""
+    local globals_content=""
+    local extra_sections=""
+    local current_extra_name=""
+    local current_extra_content=""
+
     while IFS= read -r line; do
       local content="${line#*##}"
       content="${content# }"
 
-      if [[ "$content" =~ ^Module: ]]; then
-        in_desc=true
+      # Skip horizontal dividers and empty decorative lines
+      if [[ "$content" =~ ^-{3,}$ ]] || [[ "$content" =~ ^={3,}$ ]]; then
         continue
       fi
 
-      if $in_desc; then
-        if [[ "$content" =~ ^References: ]]; then
-          in_desc=false
-          in_refs=true
-          continue
+      # Detect section headers
+      if [[ "$content" =~ ^Module: ]]; then
+        current_section="module"
+        continue
+      elif [[ "$content" =~ ^Purpose: ]]; then
+        current_section="purpose"
+        continue
+      elif [[ "$content" =~ ^References: ]]; then
+        current_section="references"
+        continue
+      elif [[ "$content" =~ ^(Globals|Globals[[:space:]]Introduced): ]]; then
+        current_section="globals"
+        continue
+      elif [[ "$content" =~ ^(Categories|Key[[:space:]]Features|Function[[:space:]]Categories): ]]; then
+        current_section="categories"
+        continue
+      elif [[ "$content" =~ ^([A-Z][a-zA-Z[:space:]]+): ]]; then
+        # Other section headers (Platform Behavior:, Execution Modes:, etc.)
+        # Save previous extra section if any
+        if [[ -n "$current_extra_name" && -n "$current_extra_content" ]]; then
+          extra_sections+="### ${current_extra_name}"$'\n\n'
+          extra_sections+="${current_extra_content}"$'\n'
         fi
-        if [[ "$content" =~ ^(Globals|Categories|Key[[:space:]]Features): ]]; then
-          break
-        fi
-        if [[ -n "$content" ]]; then
-          echo "$content"
-        fi
+        current_extra_name="${BASH_REMATCH[1]}"
+        current_extra_content=""
+        current_section="extra"
+        continue
       fi
 
-      if $in_refs; then
-        if [[ "$content" =~ ^(Globals|Categories|Key[[:space:]]Features): ]]; then
-          break
+      # Accumulate content based on current section
+      case "$current_section" in
+      module | purpose)
+        if [[ -n "$content" ]]; then
+          desc_content+="$content"$'\n'
         fi
+        ;;
+      references)
         if [[ -n "$content" ]]; then
           refs_content+="$content"$'\n'
         fi
-      fi
+        ;;
+      globals)
+        if [[ -n "$content" ]]; then
+          globals_content+="$content"$'\n'
+        fi
+        ;;
+      extra)
+        if [[ -n "$content" ]]; then
+          current_extra_content+="$content"$'\n'
+        fi
+        ;;
+      esac
     done <<<"$module_summary"
-    echo ""
 
-    # Output references section if found
+    # Save last extra section if any
+    if [[ -n "$current_extra_name" && -n "$current_extra_content" ]]; then
+      extra_sections+="### ${current_extra_name}"$'\n\n'
+      extra_sections+="${current_extra_content}"$'\n'
+    fi
+
+    # Output description
+    if [[ -n "$desc_content" ]]; then
+      echo "$desc_content"
+    fi
+
+    # Output references section
     if [[ -n "$refs_content" ]]; then
       echo "## References"
       echo ""
       echo "$refs_content"
+    fi
+
+    # Output globals section from module summary
+    if [[ -n "$globals_content" ]]; then
+      echo "## Module Globals"
+      echo ""
+      echo "$globals_content"
+    fi
+
+    # Output extra sections (Platform Behavior, etc.)
+    if [[ -n "$extra_sections" ]]; then
+      echo "## Additional Information"
+      echo ""
+      echo "$extra_sections"
     fi
   fi
 }
@@ -533,18 +597,63 @@ generate_toc() {
 # Format a parameter line as table row
 # Input: "- name - description, type, default"
 # Output: Markdown table row or empty if parsing fails
+# Note: Uses smarter parsing to handle commas in descriptions/examples
 format_parameter_row() {
   local line="$1"
 
-  # Guard: must match expected format
+  # Guard: must match expected format (- name - rest)
   [[ ! "$line" =~ ^-[[:space:]]*([^[:space:]]+)[[:space:]]*-[[:space:]]*(.*) ]] && return
 
   local name="${BASH_REMATCH[1]}"
   local rest="${BASH_REMATCH[2]}"
 
-  # Split on commas: description, type, default
+  # Smart comma parsing: find type/default at the END of the line
+  # Expected format: "description text, type, default" or "description, type"
+  # But description may contain commas like: "First arg (e.g., \"hello\"), string, required"
+
   local desc type default
-  IFS=',' read -r desc type default <<<"$rest"
+
+  # Try to extract from the end using known type/default patterns
+  # Common types: string, integer, number, boolean, array, variadic, flag
+  # Common defaults: required, optional, default: X, "value"
+
+  # Check for pattern: ", type, default" at end
+  if [[ "$rest" =~ ^(.+),[[:space:]]*(string|integer|number|boolean|array|variadic|flag|[a-z]+[[:space:]]array)[[:space:]]*,[[:space:]]*(.+)$ ]]; then
+    desc="${BASH_REMATCH[1]}"
+    type="${BASH_REMATCH[2]}"
+    default="${BASH_REMATCH[3]}"
+  # Check for pattern: ", type" at end (no explicit default)
+  elif [[ "$rest" =~ ^(.+),[[:space:]]*(string|integer|number|boolean|array|variadic|flag|[a-z]+[[:space:]]array)$ ]]; then
+    desc="${BASH_REMATCH[1]}"
+    type="${BASH_REMATCH[2]}"
+    default="required"
+  # Check for pattern: ", default: value" (type implied as string)
+  elif [[ "$rest" =~ ^(.+),[[:space:]]*(default:[[:space:]]*.+|optional|required)$ ]]; then
+    desc="${BASH_REMATCH[1]}"
+    type="string"
+    default="${BASH_REMATCH[2]}"
+  else
+    # Fallback: simple split on last two commas
+    local count
+    count=$(echo "$rest" | tr -cd ',' | wc -c)
+    if [[ $count -ge 2 ]]; then
+      # Split keeping description intact (may have commas)
+      default="${rest##*, }"
+      local without_default="${rest%, *}"
+      type="${without_default##*, }"
+      desc="${without_default%, *}"
+    elif [[ $count -eq 1 ]]; then
+      # Just one comma: description, type
+      type="${rest##*, }"
+      desc="${rest%, *}"
+      default="required"
+    else
+      # No commas: just description
+      desc="$rest"
+      type="string"
+      default="required"
+    fi
+  fi
 
   # Clean up whitespace using trim
   desc=$(trim "$desc")
@@ -669,6 +778,11 @@ process_script() {
 
   if [[ -z "$functions" ]]; then
     echo:Warn "No functions found in $script"
+    # Still output a note for configuration scripts
+    echo ""
+    echo "> **Note:** This is a configuration module that executes initialization code when sourced."
+    echo "> It does not provide reusable functions."
+    echo ""
     return
   fi
 
@@ -864,36 +978,42 @@ main() {
     done
   else
     # Filter files: only process those within configured source directories
-    local filtered_files=()
-    for file in "${files[@]}"; do
-      local is_allowed=false
-      local file_abs_path
+    # Skip filtering in dry-run mode to allow testing with fixture files
+    if $dry_run; then
+      # In dry-run mode, allow any file
+      :
+    else
+      local filtered_files=()
+      for file in "${files[@]}"; do
+        local is_allowed=false
+        local file_abs_path
 
-      # Resolve absolute path
-      if [[ "$file" =~ ^/ ]]; then
-        file_abs_path="$file"
-      else
-        file_abs_path="$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
-      fi
+        # Resolve absolute path
+        if [[ "$file" =~ ^/ ]]; then
+          file_abs_path="$file"
+        else
+          file_abs_path="$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
+        fi
 
-      # Check if file is within any of the source directories
-      for dir in $EDOCS_SOURCE_DIRS; do
-        local source_dir="$PROJECT_ROOT/$dir"
-        # Normalize paths for comparison
-        local normalized_file="${file_abs_path#$source_dir/}"
-        if [[ "$file_abs_path" == "$source_dir"* ]]; then
-          is_allowed=true
-          break
+        # Check if file is within any of the source directories
+        for dir in $EDOCS_SOURCE_DIRS; do
+          local source_dir="$PROJECT_ROOT/$dir"
+          # Normalize paths for comparison
+          local normalized_file="${file_abs_path#$source_dir/}"
+          if [[ "$file_abs_path" == "$source_dir"* ]]; then
+            is_allowed=true
+            break
+          fi
+        done
+
+        if $is_allowed; then
+          filtered_files+=("$file")
+        else
+          echo:Warn "Skipping file outside source directories: $file"
         fi
       done
-
-      if $is_allowed; then
-        filtered_files+=("$file")
-      else
-        echo:Warn "Skipping file outside source directories: $file"
-      fi
-    done
-    files=("${filtered_files[@]}")
+      files=("${filtered_files[@]}")
+    fi
   fi
 
   # Process files with progress display

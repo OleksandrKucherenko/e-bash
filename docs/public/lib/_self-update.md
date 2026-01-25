@@ -11,6 +11,20 @@ for projects using e-bash scripts library.
 - bin: install.e-bash.sh (uses self-update for upgrades)
 - documentation: docs/public/version-up.md
 
+## Module Globals
+
+- E_BASH - Path to .scripts directory
+- __E_BASH - Home directory name (".e-bash")
+- __E_ROOT - Full path to ~/.e-bash
+- __REPO_URL - Repository URL (https://github.com/OleksandrKucherenko/e-bash.git)
+- __REMO_REMOTE - Remote name ("e-bash")
+- __REPO_MASTER - Master branch ("master")
+- __REPO_V1 - First version tag ("v1.0.0")
+- __WORKTREES - Worktrees directory (".versions")
+- __VERSION_PATTERN - Version tag pattern ("v?${SEMVER}")
+- __REPO_MAPPING - Associative array: version -> tag mapping
+- __REPO_VERSIONS - Array of sorted versions
+
 ## Index
 
 * [`array:qsort`](#array-qsort)
@@ -138,7 +152,7 @@ Compares current version with target version using hash verification.
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `version_expression` | "^1.0.0") | string, required | Version constraint (e.g. |
+| `version_expression` | string | required | Version constraint (e.g., "^1.0.0") |
 | `file` | string | optional | Path to script file (default: ${BASH_SOURCE[0]}) |
 
 #### Globals

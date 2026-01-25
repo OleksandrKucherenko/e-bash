@@ -12,9 +12,53 @@ This module provides a declarative hooks system for script extension points.
 - bin: npm.versions.sh (uses hooks for extensibility)
 - documentation: docs/public/hooks.md
 - tests: spec/hooks_spec.sh
-External Dependencies:
+
+## Module Globals
+
+- E_BASH - Path to .scripts directory
+- DEBUG - Always includes "error" when this module loads
+- HOOKS_DIR - Hooks scripts directory, default: "ci-cd"
+- HOOKS_PREFIX - Hook function prefix, default: "hook:"
+- HOOKS_EXEC_MODE - Execution mode ("exec" or "source"), default: "exec"
+- HOOKS_AUTO_TRAP - Auto-install EXIT trap, default: "true"
+- __HOOKS_DEFINED - Associative array: hook name -> existence
+- __HOOKS_CONTEXTS - Associative array: hook name -> pipe-separated contexts
+- __HOOKS_REGISTERED - Associative array: hook name -> "friendly:func|friendly2:func2"
+- __HOOKS_MIDDLEWARE - Associative array: hook name -> middleware function
+- __HOOKS_SOURCE_PATTERNS - Array of patterns for forced sourced mode
+- __HOOKS_SCRIPT_PATTERNS - Array of patterns for forced exec mode
+- __HOOKS_CAPTURE_SEQ - Counter for capture array naming
+- __HOOKS_END_TRAP_INSTALLED - Whether EXIT trap for end hook is installed
+- __HOOKS_FLOW_ROUTE - Routing directive from middleware
+- __HOOKS_FLOW_TERMINATE - Whether to terminate execution
+- __HOOKS_FLOW_EXIT_CODE - Exit code directive
+
+## Additional Information
+
+### External Dependencies
+
 - _traps.sh - trap:on for EXIT trap installation
 - _commons.sh - to:slug() for creating filesystem-safe slugs
+
+### Hook Implementation Types
+
+1. Function: hook:hook_name() - direct function implementation
+2. Registered: hooks:register hook_name "friendly" function_name
+3. Script: HOOKS_DIR/{hook_name}-*.sh or {hook_name}_*.sh
+
+### Script Naming
+
+- {hook_name}-{purpose}.sh - basic script
+- {hook_name}_{NN}_{purpose}.sh - ordered script (recommended)
+- Scripts must be executable (+x)
+Contract Directives (output from hooks to middleware):
+- contract:env:NAME=VALUE - Set environment variable
+- contract:env:NAME+=VALUE - Append to PATH-like variable
+- contract:env:NAME^=VALUE - Prepend to PATH-like variable
+- contract:env:NAME-=VALUE - Remove segment from PATH-like variable
+- contract:route:/path/to/script.sh - Route to another script
+- contract:exit:42 - Exit with code
+
 
 ## Index
 

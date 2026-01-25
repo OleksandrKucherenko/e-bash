@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
+
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Version: 2.0.0 | License: MIT
+## Last revisit: 2026-01-25
+## Version: 2.7.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # _arguments_v2.sh - Elegant argument parsing API
 #

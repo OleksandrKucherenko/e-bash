@@ -104,7 +104,7 @@ Convert semver:compare result code to operator string
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `result` | 1 | 2, 3), number, required | Result code from semver:compare (0 |
+| `result` | number | required | Result code from semver:compare (0, 1, 2, 3) |
 
 #### Globals
 
@@ -191,7 +191,7 @@ Simple semantic version constraint check
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `expression` | "1.2.3>=1.0.0") | string, required | Constraint expression (e.g. |
+| `expression` | string | required | Constraint expression (e.g., "1.2.3>=1.0.0") |
 
 #### Globals
 

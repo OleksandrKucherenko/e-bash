@@ -2,8 +2,6 @@
 
 **_gnu**
 
------------------------------------------------------------------------------
-Purpose:
 GNU tools compatibility layer for macOS/Linux cross-platform development.
 This script creates symbolic links in bin/gnubin/ to provide g-prefixed
 GNU tools (ggrep, gsed, gawk, etc.) on Linux, matching macOS GNU coreutils
@@ -15,14 +13,21 @@ naming conventions.
 - bin/gnubin/: Directory containing GNU tool symlinks
 - .scripts/_colors.sh: Module that uses gnubin tools for color detection
 - All scripts requiring GNU text processing tools (grep, sed, awk)
-Globals Introduced:
+
+## Module Globals
+
 - BIN_DIR - Path to bin/gnubin directory (created if not exists)
-Platform Behavior:
+
+## Additional Information
+
+### Platform Behavior
+
 - Linux: Creates symlinks for ggrep, gsed, gawk, gfind, gmv, gcp, gln, greadlink, gdate
 - macOS: Does nothing (GNU tools already available with 'g' prefix via coreutils)
 - WSL: Same as Linux (creates symlinks)
-Function Categories:
-- Initialization: (none - script runs inline when sourced)
-- Note: This is a configuration script, not a function library. It executes
-  initialization code when sourced rather than providing reusable functions.
+
+
+
+> **Note:** This is a configuration module that executes initialization code when sourced.
+> It does not provide reusable functions.
 

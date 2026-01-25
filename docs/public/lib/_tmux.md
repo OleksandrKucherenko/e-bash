@@ -11,6 +11,17 @@ session management for long-running scripts.
        demo.tmux.exec.sh
 - bin: git.sync-by-patches.sh (uses tmux progress display)
 
+## Module Globals
+
+- E_BASH - Path to .scripts directory
+- TMUX_PROGRESS_HEIGHT - Progress pane height, default: 2
+- TMUX_MAIN_PANE - Main pane index, default: 0
+- TMUX_PROGRESS_PANE - Progress pane index, default: 1
+- TMUX_STARTED_BY_SCRIPT - Flag if script started tmux session
+- TMUX_SESSION_NAME - Session name for tracking
+- TMUX_PROGRESS_ACTIVE - Whether progress display is active
+- TMUX_FIFO_PATH - FIFO path for progress updates
+
 ## Index
 
 * [`tmux:check_mouse_support`](#tmux-check_mouse_support)

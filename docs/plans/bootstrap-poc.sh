@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
+
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Version: 2.0.0 | License: MIT
+## Last revisit: 2026-01-25
+## Version: 2.7.0
+## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # _bootstrap.sh - Elegant E_BASH discovery and initialization
@@ -155,8 +158,14 @@ bootstrap:load-gnu-tools() {
 # USAGE: bootstrap:validate || echo "Installation corrupt"
 #
 bootstrap:validate() {
-  [[ -n "$E_BASH" ]] || { echo "E_BASH not set" >&2; return 1; }
-  [[ -d "$E_BASH" ]] || { echo "E_BASH directory missing: $E_BASH" >&2; return 1; }
+  [[ -n "$E_BASH" ]] || {
+    echo "E_BASH not set" >&2
+    return 1
+  }
+  [[ -d "$E_BASH" ]] || {
+    echo "E_BASH directory missing: $E_BASH" >&2
+    return 1
+  }
 
   local required_modules=(
     "_logger.sh"

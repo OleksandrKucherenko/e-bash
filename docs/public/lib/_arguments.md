@@ -12,6 +12,43 @@ This module provides a declarative argument parsing system with auto-generated h
 - documentation: docs/public/arguments.md
 - tests: spec/arguments_spec.sh
 
+## Module Globals
+
+- E_BASH - Path to .scripts directory
+- ARGS_NO_FLAGS - Array of arguments with flags removed
+- ARGS_DEFINITION - Argument definitions string, default: "-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
+- lookup_arguments - Associative array: flag name -> definition index
+- index_to_outputs - Associative array: index -> variable name
+- index_to_args_qt - Associative array: index -> argument quantity
+- index_to_default - Associative array: index -> default value
+- index_to_keys - Associative array: index -> flag keys
+- args_to_description - Associative array: flag -> help text
+- args_to_group - Associative array: flag -> group name
+- group_to_order - Associative array: group -> display order
+- args_to_envs - Associative array: flag -> environment variable
+- args_to_defaults - Associative array: flag -> default value
+- SKIP_ARGS_PARSING - Set to skip argument parsing during sourcing
+
+## Additional Information
+
+### Definition Format
+
+- "{index}[,-{short},--{long}=]{output}[:{default}[:{quantity}]]"
+- Examples:
+  - "-h,--help"           -> boolean flag
+  - "-v,--verbose"       -> boolean flag
+  - "--port=:8080"       -> --port with default 8080
+  - "--file=::1"         -> --file expects 1 argument
+  - "$1,--output=::1"    -> first positional arg
+  - "-c,--config=file:default:1" -> full definition
+
+### Usage Pattern
+
+  export ARGS_DEFINITION="--verbose --output=file.txt --port=:8080"
+  source "$E_BASH/_arguments.sh"
+  # Variables $verbose, $output, $port are now set
+
+
 ## Index
 
 * [`args:d`](#args-d)

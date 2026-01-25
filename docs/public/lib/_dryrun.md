@@ -11,6 +11,36 @@ This module provides a three-mode execution system: Normal, Dry-run, and Undo/Ro
 - documentation: docs/public/dryrun-wrapper.md
 - tests: spec/dryrun_spec.sh
 
+## Module Globals
+
+- E_BASH - Path to .scripts directory
+- DRY_RUN - Global dry-run mode ("true"/"false"), default: "false"
+- UNDO_RUN - Global undo/rollback mode ("true"/"false"), default: "false"
+- SILENT - Global silent mode ("true"/"false"), default: "false"
+- DRY_RUN_{SUFFIX} - Command-specific dry-run override
+- UNDO_RUN_{SUFFIX} - Command-specific undo mode override
+- SILENT_{SUFFIX} - Command-specific silent mode override
+
+## Additional Information
+
+### Execution Modes
+
+1. EXEC (normal): Commands execute normally
+   run:git status -> executes "git status"
+2. DRY (preview): Commands are logged but not executed
+   DRY_RUN=true dry:git status -> shows "git status" but doesn't run
+3. UNDO (rollback): Only rollback commands execute
+   UNDO_RUN=true rollback:rm -rf /tmp -> removes /tmp
+   UNDO_RUN=false undo:rm -rf /tmp -> shows what would be removed
+
+### Usage Pattern
+
+  dryrun git docker npm
+  dry:git pull origin main     # respects DRY_RUN
+  run:npm install              # always executes
+  rollback:docker rmi $(docker images -q)  # only in UNDO_RUN mode
+
+
 ## Index
 
 * [`_dryrun:exec`](#_dryrun-exec)

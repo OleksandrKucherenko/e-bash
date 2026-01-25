@@ -12,6 +12,20 @@ per signal, LIFO execution order, legacy trap preservation, and stack-based scop
 - documentation: docs/public/traps.md
 - tests: spec/traps_spec.sh
 
+## Module Globals
+
+- E_BASH - Path to .scripts directory
+- __TRAP_PREFIX - Prefix for handler arrays ("__TRAP_HANDLERS_SIG_")
+- __TRAP_LEGACY_PREFIX - Prefix for legacy trap storage ("__TRAP_LEGACY_SIG_")
+- __TRAP_INIT_PREFIX - Prefix for initialization flags ("__TRAP_INITIALIZED_SIG_")
+- __TRAP_STACK_PREFIX - Prefix for stack snapshots ("__TRAP_STACK_")
+- __TRAP_STACK_LEVEL - Current stack depth counter, default: 0
+- __TRAPS_MODULE_INITIALIZED - Module initialization flag
+- __TRAP_HANDLERS_SIG_{signal} - Array of handler function names for each signal
+- __TRAP_INITIALIZED_SIG_{signal} - Flag indicating signal has been initialized
+- __TRAP_LEGACY_SIG_{signal} - Original trap command before module loaded
+- __TRAP_STACK_{N} - Stack snapshot at level N (associative array)
+
 ## Index
 
 * [`Trap::dispatch`](#trap--dispatch)
@@ -152,7 +166,7 @@ Register handler function for one or more signals
 |------|------|---------|-------------|
 | `--allow-duplicates` | flag | optional | Allow duplicate handler registration |
 | `handler_function` | string | required | Function to call when signal triggers |
-| `signals` | INT | TERM, ERR, etc.), string array, variadic | Signal names (EXIT |
+| `signals` | string array | variadic | Signal names (EXIT, INT, TERM, ERR, etc.) |
 
 #### Globals
 

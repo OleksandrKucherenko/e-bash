@@ -76,7 +76,7 @@ Find configuration file hierarchy by searching upward from current folder
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `config_name` | comma-separated | string, default: ".config" | Config file name(s) |
+| `config_name` | string | default: ".config" | Config file name(s), comma-separated |
 | `start_path` | string | default: "." | Starting directory |
 | `stop_at` | string | default: "git" | Where to stop searching |
 | `extensions` | string | default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc" | Comma-separated extensions |
@@ -110,7 +110,7 @@ Find config files following XDG Base Directory Specification
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `app_name` | string | required | Application name for XDG dirs |
-| `config_name` | comma-separated | string, default: "config" | Config file name(s) |
+| `config_name` | string | default: "config" | Config file name(s), comma-separated |
 | `start_path` | string | default: "." | Starting directory |
 | `stop_at` | string | default: "home" | Where to stop hierarchical search |
 | `extensions` | string | default: ",.json,.yaml,.yml,.toml,.ini,.conf,.rc" | Comma-separated extensions |
@@ -532,7 +532,7 @@ Convert string to filesystem-safe slug
 |------|------|---------|-------------|
 | `string` | string | required | String to convert |
 | `separator` | string | default: "_" | Separator character |
-| `trim` | string/number | default: 20 | Maximum length or "always" for hash |
+| `trim` | string | default: 20 | Maximum length or "always" for hash, string/number |
 
 #### Globals
 
