@@ -492,7 +492,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           # Try directory mode first, then fall back to file mode
           directory: ./coverage
@@ -503,6 +503,8 @@ jobs:
           fail_ci_if_error: false
           verbose: true
           disable_search: false
+          # Mark as parallel upload - chunks will be merged after all complete
+          parallel: true
           # Ensure proper merging of parallel uploads
           override_branch: ${{ github.ref_name }}
           override_commit: ${{ github.sha }}
@@ -532,6 +534,21 @@ jobs:
           path: report/
           if-no-files-found: ignore
           retention-days: 30
+
+  codecov-merge:
+    name: "Codecov Merge"
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+    needs: shellspec-ubuntu
+    steps:
+      - name: Finalize Codecov merge
+        uses: codecov/codecov-action@v5
+        with:
+          parallel_finished: true
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   shellmetrics:
     name: "Code Metrics"

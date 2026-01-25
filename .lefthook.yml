@@ -10,9 +10,6 @@ pre-commit:
   # (can be enabled to true after validation)
   parallel: false
 
-  # Skip in CI by default
-  skip_on_ci: true
-
   jobs:
     # Job 1: Verify and add copyright notices
     - name: copyright-verification
@@ -39,8 +36,7 @@ pre-commit:
       script: "edocs-update.sh"
       runner: bash
       glob: ".scripts/*.sh"
-      # Don't fail if docs generation fails
-      run_on_failure: true
+
       tags: [docs, automation]
 
 # Optional: Commit message validation (for future use)
