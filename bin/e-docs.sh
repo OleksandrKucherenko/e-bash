@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-01-25
-## Version: 2.7.0
+## Version: 2.7.8
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -48,11 +48,28 @@ logger:init warn "[${cl_yellow}WARN${cl_reset}] " ">&2"
 logger:init err "[${cl_red}ERROR${cl_reset}] " ">&2"
 
 # Dependency checking (must be after _logger.sh)
-# shellcheck disable=SC1091
-source "$E_BASH/_dependencies.sh"
+# Skip dependency checks for operations that don't need them:
+# 1. Help flag (-h, --help)
+# 2. Stdout mode (--stdout, -s)
+# 3. Dry-run mode (--dry-run, -n, --no-toc)
+# 4. No file arguments provided (options only or unknown options)
+skip_deps=false
+[[ " $* " == *" --help "* ]] || [[ " $* " == *" -h "* ]] && skip_deps=true
+[[ " $* " == *" --stdout "* ]] || [[ " $* " == *" -s "* ]] && skip_deps=true
+[[ " $* " == *" --dry-run "* ]] || [[ " $* " == *" -n "* ]] && skip_deps=true
+[[ " $* " == *" --no-toc "* ]] && skip_deps=true
 
-# Dependency check: ctags (version-aware)
-dependency ctags "6.*.*" "brew install universal-ctags"
+# Also skip if no non-flag arguments (files) are provided
+has_file_arg=false
+for arg in "$@"; do
+  [[ "$arg" != -* ]] && has_file_arg=true && break
+done
+
+if ! $skip_deps && $has_file_arg; then
+  # shellcheck disable=SC1091
+  source "$E_BASH/_dependencies.sh"
+  dependency ctags "6.*.*" "brew install universal-ctags"
+fi
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -951,7 +968,7 @@ main() {
       ;;
     -*)
       echo:Err "Unknown option: $1"
-      usage
+      usage >&2
       exit 1
       ;;
     *)
@@ -1032,8 +1049,8 @@ main() {
       show_progress "$current" "$total" "$script"
     fi
 
-    # Validate structure if enabled
-    if [[ "$EDOCS_VALIDATE" == "true" ]]; then
+    # Validate structure if enabled (but skip in dry-run mode for cleaner output)
+    if [[ "$EDOCS_VALIDATE" == "true" ]] && ! $dry_run; then
       validate_structure "$script"
     fi
 
@@ -1043,7 +1060,8 @@ main() {
       fi
     else
       if $dry_run; then
-        process_script "$script"
+        # Suppress logger messages in dry-run mode for cleaner output
+        process_script "$script" 2>/dev/null
       else
         process_script "$script" >"$output_file"
         if [[ $total -eq 1 ]]; then
