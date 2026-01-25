@@ -63,7 +63,7 @@ test_valid_copyright() {
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-01-25
-## Version: 2.7.3
+## Version: 2.7.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -87,8 +87,8 @@ test_last_revisit() {
 #!/usr/bin/env bash
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-01-01
-## Version: 2.7.3
+## Last revisit: 2026-01-25
+## Version: 2.7.6
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
