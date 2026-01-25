@@ -4,8 +4,6 @@
 # Lefthook pre-commit hook to verify copyright notices in *.sh files
 # Ported from .githook/pre-commit-copyright
 
-set -e
-
 # Get the current date in YYYY-MM-DD format
 CURRENT_DATE=$(date +%Y-%m-%d)
 

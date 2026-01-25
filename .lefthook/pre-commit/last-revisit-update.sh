@@ -4,8 +4,6 @@
 # Lefthook hook to update "Last revisit" date in modified files
 # Ported from .githook/pre-commit-copyright-last-revisit
 
-set -e
-
 # Get current date in YYYY-MM-DD format
 CURRENT_DATE=$(date +%Y-%m-%d)
 

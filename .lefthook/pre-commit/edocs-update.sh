@@ -9,8 +9,6 @@
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
-set -e
-
 # shellcheck disable=SC2155
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
