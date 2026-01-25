@@ -492,16 +492,16 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: always()
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
-          # Try directory mode first, then fall back to file mode
+          # Search directory for coverage files (supports cobertura.xml, coverage.json, etc.)
           directory: ./coverage
-          files: ./coverage/cobertura.xml
-          # Use consistent flag for all chunks to enable merging
+          # Use consistent flag for all chunks - Codecov v5 auto-merges by flag
           flags: shellspec-ubuntu
           name: ubuntu-chunk-${{ matrix.chunk }}
           fail_ci_if_error: false
           verbose: true
+          # Don't specify files - let Codecov auto-discover in the directory
           disable_search: false
           # Ensure proper merging of parallel uploads
           override_branch: ${{ github.ref_name }}
@@ -520,9 +520,13 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
+        uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results as artifact
         if: always()
