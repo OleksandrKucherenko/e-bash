@@ -318,6 +318,35 @@ This allows safe multiple sourcing of the same module.
 - Document complex logic with inline comments
 - Copyright headers are auto-verified in pre-commit hooks
 
+### Logging Standards
+1. **Setup**: ALWAYS declare `DEBUG` before sourcing logger. Ensure `E_BASH` is globally available.
+2. **Tags**: Be explicit with tags. Enable app tags, disable noisy internal tags (e.g., `DEBUG="app,api,-internal"`).
+   - Use domain-specific names (api, db, auth).
+   - Pass script params during logger init to support `--debug` flags.
+3. **Configuration**: 
+   - Redirect most loggers to STDERR (`logger:redirect tag ">&2"`).
+   - Configure in one line: `logger tag "$@" && logger:prefix tag "..." && logger:redirect tag ">&2"`
+   - Use color codes: Red (Error), Yellow (Warn), Gray (Debug). Highlight entities (filenames, values) consistently.
+4. **Usage**:
+   - Prefer piping `cmd | log:Tag` over capturing and echo.
+   - Use `echo:Success`/`echo:Error` for lifecycle messages.
+   - Use `echo:Dump` with `${LINENO}` for troubleshooting/tracing.
+   - Use `logger:push`/`logger:pop` for recursive state.
+   - Filter piped output to keep logs clean.
+5. **Advanced**:
+   - Use session IDs (`__SESSION`) for multi-process tracking.
+   - Use `TERM=dumb` to disable colors throughout.
+   - Avoid wrapping loggers with custom functions.
+
+### Function Implementation
+- **Variables**: Use `local` variables as much as possible. Pre-declare them at function start.
+  - Allowed: Multiple locals per line (max 5).
+- **Flags**: Use long flags (e.g., `--force` instead of `-f`) for readability.
+- **Complexity**: Minimize nesting (flattest code possible).
+  - Avoid nested `if`/`for`.
+  - Use guard clauses (quick returns) at the start of functions.
+  - Keep functions focused and small.
+
 
 <!-- CLAVIX:START -->
 ## Clavix Integration

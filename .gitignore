@@ -32,6 +32,9 @@ bun.lockb
 # local overrides
 .shellspec-local
 
+# Lefthook local configuration
+lefthook-local.yml
+
 # secrets
 .secrets/
 

@@ -1,0 +1,59 @@
+# Lefthook configuration for e-bash
+# Documentation: https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+
+# Minimum lefthook version required
+min_version: 2.0.0
+
+# Pre-commit hook
+pre-commit:
+  # Run jobs sequentially to maintain current behavior
+  # (can be enabled to true after validation)
+  parallel: false
+
+  # Skip in CI by default
+  skip_on_ci: true
+
+  jobs:
+    # Job 1: Verify and add copyright notices
+    - name: copyright-verification
+      script: "copyright-verify.sh"
+      runner: bash
+      # Only process staged .sh files
+      glob: "*.sh"
+      # Stage files modified by the hook
+      stage_fixed: true
+      fail_text: "Copyright verification failed. Please fix copyright issues."
+      tags: [copyright, quality]
+
+    # Job 2: Update last revisit date
+    - name: last-revisit-update
+      script: "last-revisit-update.sh"
+      runner: bash
+      glob: "*.sh"
+      stage_fixed: true
+      fail_text: "Failed to update last revisit dates."
+      tags: [copyright, maintenance]
+
+    # Job 3: Generate documentation for modified scripts
+    - name: edocs-update
+      script: "edocs-update.sh"
+      runner: bash
+      glob: ".scripts/*.sh"
+      # Don't fail if docs generation fails
+      run_on_failure: true
+      tags: [docs, automation]
+
+# Optional: Commit message validation (for future use)
+# commit-msg:
+#   jobs:
+#     - name: conventional-commits
+#       run: bin/git.verify-all-commits.sh {1}
+
+# Optional: Pre-push validation (for future use)
+# pre-push:
+#   parallel: true
+#   jobs:
+#     - name: tests
+#       run: shellspec --quick
+#     - name: lint
+#       run: shellcheck .scripts/*.sh bin/*.sh

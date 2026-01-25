@@ -110,6 +110,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Update Homebrew Tap
+        if: steps.validate.outputs.is_valid == 'true' && !contains(steps.version.outputs.version, '-')
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          if [[ -n "$TAP_GITHUB_TOKEN" ]]; then
+            ./.github/scripts/release/release-brew-tap.sh "${{ steps.version.outputs.version }}"
+          else
+            echo "Skipping Homebrew Tap update (TAP_GITHUB_TOKEN not set)"
+          fi
+
       - name: Release Summary
         if: steps.validate.outputs.is_valid == 'true'
         run: |
