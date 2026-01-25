@@ -56,7 +56,7 @@ Alternatives:
 wget -qO- https://git.new/e-bash | bash -s -- install
 # OR: install latest version (httpie)
 http -b https://git.new/e-bash | bash -s -- install
-
+```
 
 ### Homebrew (macOS/Linux)
 
