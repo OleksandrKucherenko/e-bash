@@ -80,8 +80,8 @@ _ecs:timestamp() {
   local usec=${ts#*.}
   [[ "$ts" == *.* ]] || usec=0
   usec=${usec:0:6}
-  usec=$((10#$usec))
   while ((${#usec} < 6)); do usec="${usec}0"; done
+  usec=$((10#$usec))
 
   local s=$((sec))
   local days=$((s / 86400))
