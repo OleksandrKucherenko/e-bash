@@ -247,9 +247,23 @@ function semver:parse() {
 ## - Echoes incremented version (major+1.0.0)
 ##
 ## Usage:
+# shellcheck disable=SC2154
+##
+## Increment major version number (resets minor and patch to 0)
+##
+## Parameters:
+## - version - Version string to increment, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __major associative array
+##
+## Returns:
+## - Echoes incremented version (major+1.0.0)
+##
+## Usage:
 ## - semver:increase:major "1.2.3"  # Returns "2.0.0"
 ##
-# shellcheck disable=SC2154
 function semver:increase:major() {
   local version="$1"
 
@@ -280,11 +294,23 @@ function semver:increase:major() {
 ##
 ## Returns:
 ## - Echoes incremented version (major.minor+1.0)
+# shellcheck disable=SC2154
+##
+## Increment minor version number (resets patch to 0)
+##
+## Parameters:
+## - version - Version string to increment, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __minor associative array
+##
+## Returns:
+## - Echoes incremented version (major.minor+1.0)
 ##
 ## Usage:
 ## - semver:increase:minor "1.2.3"  # Returns "1.3.0"
 ##
-# shellcheck disable=SC2154
 function semver:increase:minor() {
   local version="$1"
 
@@ -314,11 +340,23 @@ function semver:increase:minor() {
 ##
 ## Returns:
 ## - Echoes incremented version (major.minor.patch+1)
+# shellcheck disable=SC2154
+##
+## Increment patch version number
+##
+## Parameters:
+## - version - Version string to increment, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: creates temporary __patch associative array
+##
+## Returns:
+## - Echoes incremented version (major.minor.patch+1)
 ##
 ## Usage:
 ## - semver:increase:patch "1.2.3"  # Returns "1.2.4"
 ##
-# shellcheck disable=SC2154
 function semver:increase:patch() {
   local version="$1"
 

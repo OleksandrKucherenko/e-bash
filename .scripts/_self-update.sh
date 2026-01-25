@@ -28,7 +28,25 @@ readonly __VERSION_PATTERN="v?${SEMVER}"
 declare -g -A __REPO_MAPPING=()  # version-to-tag mapping
 declare -g -a __REPO_VERSIONS=() # sorted array of versions
 
-# check if script dependencies are satisfied
+##
+## Check and declare script dependencies for self-update functionality
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Declares required dependencies (bash, git, coreutils tools)
+##
+## Usage:
+## - self-update:dependencies
+##
+## Returns:
+## - 0 on success (via dependency function calls)
+##
 function self-update:dependencies() {
   dependency bash "5.*.*" "brew install bash"
   dependency git "2.*.*" "brew install git"
@@ -78,7 +96,6 @@ function compare:versions() {
 ## Usage:
 ## - array:qsort compare_func "item3" "item1" "item2"
 ##
-# Quick-Sort implementation
 function array:qsort() {
   local compare=$1 && shift
   local array=("$@")
@@ -127,7 +144,6 @@ function array:qsort() {
 ## Usage:
 ## - path:resolve "../config.json" "$PWD"
 ##
-# resolve provided path to absolute path, relative to caller script path
 function path:resolve() {
   local file="$1"
   local working_dir=${2:-"$PWD"}

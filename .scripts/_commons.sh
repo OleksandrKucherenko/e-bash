@@ -257,6 +257,7 @@ function input:readpwd() {
   echo "${PWORD}"
 }
 
+# shellcheck disable=SC2086
 ##
 ## Generic input validation with prompt and retry
 ##
@@ -279,7 +280,6 @@ function input:readpwd() {
 ## Usage:
 ## - validate:input result "default" "Enter value"
 ##
-# shellcheck disable=SC2086
 function validate:input() {
   local variable=$1
   local default=${2:-""}
@@ -309,6 +309,7 @@ function validate:input() {
   eval $__resultvar="'$user_in'"
 }
 
+# shellcheck disable=SC2086
 ##
 ## Masked input validation (password-style prompt with asterisks)
 ##
@@ -331,7 +332,6 @@ function validate:input() {
 ## Usage:
 ## - validate:input:masked password "" "Enter password"
 ##
-# shellcheck disable=SC2086
 function validate:input:masked() {
   local variable=$1
   local default=${2:-""}
@@ -351,6 +351,7 @@ function validate:input:masked() {
   eval $__resultvar="'$user_in'"
 }
 
+# shellcheck disable=SC2086,SC2059
 ##
 ## Prompt user for yes/no input and store as boolean value
 ##
@@ -370,7 +371,6 @@ function validate:input:masked() {
 ## Usage:
 ## - validate:input:yn result "y" "Continue?"
 ##
-# shellcheck disable=SC2086,SC2059
 function validate:input:yn() {
   local variable=$1
   local default=${2:-""}
@@ -405,6 +405,7 @@ function validate:input:yn() {
   eval $__resultvar="$user_in"
 }
 
+# shellcheck disable=SC2086
 ##
 ## Get environment variable value or read from secret file (required)
 ##
@@ -424,7 +425,6 @@ function validate:input:yn() {
 ## Usage:
 ## - env:variable:or:secret:file value "API_KEY" ".secrets/api_key" "Set your API key"
 ##
-# shellcheck disable=SC2086
 function env:variable:or:secret:file() {
   local name=$1
   local variable=$2
@@ -452,6 +452,7 @@ function env:variable:or:secret:file() {
   fi
 }
 
+# shellcheck disable=SC2086
 ##
 ## Get environment variable value or read from secret file (optional)
 ##
@@ -470,7 +471,6 @@ function env:variable:or:secret:file() {
 ## Usage:
 ## - env:variable:or:secret:file:optional value "API_KEY" ".secrets/api_key"
 ##
-# shellcheck disable=SC2086
 function env:variable:or:secret:file:optional() {
   local name=$1
   local variable=$2
@@ -697,6 +697,25 @@ function confirm:by:input() {
   local third=$6
   local masked=$7
 
+  ##
+  ## Print confirmation prompt with value
+  ##
+  ## Parameters:
+  ## - value - Value to display in prompt, string, required
+  ##
+  ## Globals:
+  ## - reads/listen: hint, cl_purple, cl_reset, cl_blue
+  ## - mutate/publish: none
+  ##
+  ## Side effects:
+  ## - Outputs formatted prompt to stdout
+  ##
+  ## Returns:
+  ## - None
+  ##
+  ## Usage:
+  ## - print:confirmation "value"
+  ##
   print:confirmation() { echo "${cl_purple}? ${cl_reset}${hint}${cl_blue}$1${cl_reset}"; }
 
   if [ -z "$top" ]; then
