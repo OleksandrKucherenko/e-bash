@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2155
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2026-01-25
+## Version: 2.7.8
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
 # Lefthook pre-commit hook to verify copyright notices in *.sh files
 # Ported from .githook/pre-commit-copyright
 
@@ -28,9 +34,9 @@ detect_project_version() {
 
   # Compute version from conventional commits
   # Strip ANSI color codes before parsing
-  local computed_version=$("$semver_script" 2>/dev/null | \
-    grep "Final Version:" | \
-    sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | \
+  local computed_version=$("$semver_script" 2>/dev/null |
+    grep "Final Version:" |
+    sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' |
     sed -E 's/.*Final Version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
 
   # Return computed version or fallback
@@ -131,7 +137,7 @@ verify_copyright() {
     expected_line=$(echo "$expected_line" | gawk -F: '{print $1 ": "}')
     actual_line=$(echo "$actual_line" | gawk -F: '{print $1 ": "}')
 
-    if ! echo "$actual_line" | ggrep -q "$(echo "$expected_line" | gsed 's/{{VERSION}}/[0-9]\+\.[0-9]\+\.[0-9]\+/g')"; then
+    if ! echo "$actual_line" | ggrep -q "$(echo "$expected_line" | gsed -e 's/{{VERSION}}/[0-9]\+\.[0-9]\+\.[0-9]\+/g' -e 's/{{DATE}}/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}/g')"; then
       return 3 # Format mismatch
     fi
   done

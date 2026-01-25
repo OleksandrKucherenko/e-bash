@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2025-12-26
-## Version: 1.14.1
+## Last revisit: 2026-01-25
+## Version: 2.7.8
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -72,9 +72,7 @@ should_include_path() {
   fi
 
   case "$path" in
-  COPYRIGHT)
-    return 0
-    ;;
+
   .githook/*)
     return 0
     ;;
