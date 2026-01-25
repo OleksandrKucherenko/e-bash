@@ -2,42 +2,10 @@
 # shellcheck disable=SC2155,SC2034,SC2059
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-24
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-##
-## Purpose:
-##   Self-update functionality for projects using e-bash scripts library.
-##   Allows automatic detection of e-bash source updates and file-by-file
-##   library updates. Designed for BASH scripts built on top of e-bash.
-##
-## Compatibility:
-##   Works with bin/install.e-bash.sh - both use ${HOME}/.e-bash/ global directory.
-##   - install.e-bash.sh: Supports local (project) and global (HOME) installations
-##   - self-update.sh: Works only with global part (manages ~/.e-bash/.versions/)
-##   Self-update creates symlinks from project files to versioned global files.
-##
-## Main Usage Pattern:
-##   The recommended approach is to invoke self-update on script exit:
-##     trap "self-update '^1.0.0'" EXIT
-##
-## How It Works:
-##   1. Maintains local git repo at ~/.e-bash/ with multiple version worktrees
-##   2. Creates symbolic links from project .scripts/ to version-specific files
-##   3. Performs file-by-file updates with automatic backup creation
-##   4. Verifies updates using SHA1 hash comparison
-##   5. Supports rollback to previous versions or backup files
-##
-## Supported Version Expressions:
-##   - 'latest'           - latest stable version (no pre-release tags)
-##   - '*' or 'next'      - highest version tag (including alpha, beta, rc)
-##   - 'branch:{name}'    - update from specific branch
-##   - 'tag:{name}'       - update to specific tag
-##   - '^1.0.0'           - minor and patch releases (>= 1.0.0 < 2.0.0)
-##   - '~1.0.0'           - patch releases only (>= 1.0.0 < 1.1.0)
-##   - '>1.0.0 <=1.5.0'   - version range with comparison operators
-##   - '1.0.0'            - exact version match
 
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,7 +28,25 @@ readonly __VERSION_PATTERN="v?${SEMVER}"
 declare -g -A __REPO_MAPPING=()  # version-to-tag mapping
 declare -g -a __REPO_VERSIONS=() # sorted array of versions
 
-# check if script dependencies are satisfied
+##
+## Check and declare script dependencies for self-update functionality
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Declares required dependencies (bash, git, coreutils tools)
+##
+## Usage:
+## - self-update:dependencies
+##
+## Returns:
+## - 0 on success (via dependency function calls)
+##
 function self-update:dependencies() {
   dependency bash "5.*.*" "brew install bash"
   dependency git "2.*.*" "brew install git"
@@ -71,12 +57,45 @@ function self-update:dependencies() {
   dependency gcp "9.2" "brew install coreutils"
 }
 
-# compare two version strings
+##
+## Compare two version strings using semver constraints
+##
+## Parameters:
+## - $1 - First version string (for < comparison), string, required
+## - $2 - Second version string (for > comparison), string, required
+##
+## Globals:
+## - reads/listen: semver:constraints:simple
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if $1 < $2
+## - 1 otherwise
+##
+## Usage:
+## - compare:versions "1.0.0" "2.0.0"
+##
 function compare:versions() {
   (semver:constraints:simple "$1<$2") && return 0 || return 1
 }
 
-# Quick-Sort implementation
+##
+## QuickSort implementation for array sorting
+##
+## Parameters:
+## - compare - Comparison function name, string, required
+## - array - Array elements to sort, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes sorted array elements
+##
+## Usage:
+## - array:qsort compare_func "item3" "item1" "item2"
+##
 function array:qsort() {
   local compare=$1 && shift
   local array=("$@")
@@ -108,7 +127,23 @@ function array:qsort() {
   array:qsort "$compare" "${right[@]}"
 }
 
-# resolve provided path to absolute path, relative to caller script path
+##
+## Resolve file path relative to caller script location
+##
+## Parameters:
+## - file - File path to resolve, string, required
+## - working_dir - Base directory for relative paths, string, default: $PWD
+##
+## Globals:
+## - reads/listen: BASH_SOURCE
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes absolute path to file
+##
+## Usage:
+## - path:resolve "../config.json" "$PWD"
+##
 function path:resolve() {
   local file="$1"
   local working_dir=${2:-"$PWD"}
@@ -150,7 +185,26 @@ function path:resolve() {
   fi
 }
 
-# extract all version tags of the repo into global array
+##
+## Extract all version tags from git repo into global arrays
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __VERSION_PATTERN, __REPO_URL
+## - mutate/publish: __REPO_VERSIONS, __REPO_MAPPING
+##
+## Side effects:
+## - Populates global __REPO_VERSIONS array with sorted versions
+## - Populates global __REPO_MAPPING associative array (version -> tag)
+##
+## Usage:
+## - self-update:version:tags
+##
+## Returns:
+## - 0 on success
+##
 function self-update:version:tags() {
   pushd "${__E_ROOT}" &>/dev/null || exit 1
 
@@ -178,7 +232,23 @@ function self-update:version:tags() {
   popd &>/dev/null || return 1
 }
 
-# find the highest version tag in git repo that matches version expression/constraints
+##
+## Find highest version tag matching semver constraints
+##
+## Parameters:
+## - constraints - Semver constraint expression, string, required
+##
+## Globals:
+## - reads/listen: __REPO_VERSIONS, __REPO_MAPPING
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes tag name (e.g., "v1.2.3") or empty if not found
+##
+## Usage:
+## - tag=$(self-update:version:find "^1.0.0")
+## - tag=$(self-update:version:find "~2.1.0")
+##
 function self-update:version:find() {
   local constraints="$1"
 
@@ -205,13 +275,25 @@ function self-update:version:find() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# find highest version tag in git repo
+##
+## Find highest version tag in git repo
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __REPO_VERSIONS, __REPO_MAPPING
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes highest version tag name
+##
+## Usage:
+## - latest=$(self-update:version:find:highest_tag)
+##
 function self-update:version:find:highest_tag() {
   # extract tags if they are not extracted yet
   [ ${#__REPO_VERSIONS[@]} -eq 0 ] && self-update:version:tags
-
-  # version tag pattern: v${MAJOR}.${MINOR}.${PATCH}[-${STAGE}[.${IDENTITY}]][+${METADATA}], based on https://semver.org/
-  # Example: 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0
 
   # last element of array is the highest version tag
   local last=${#__REPO_VERSIONS[@]} && ((last--))
@@ -223,12 +305,26 @@ function self-update:version:find:highest_tag() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# find latest stable version tag (no pre-release tags like alpha, beta, rc)
+##
+## Find latest stable version tag (no pre-release like alpha, beta, rc)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __REPO_VERSIONS, __REPO_MAPPING
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes highest stable version tag name
+## - Returns empty if no stable version found
+##
+## Usage:
+## - stable=$(self-update:version:find:latest_stable)
+##
 function self-update:version:find:latest_stable() {
   # extract tags if they are not extracted yet
   [ ${#__REPO_VERSIONS[@]} -eq 0 ] && self-update:version:tags
-
-  # iterate from highest to lowest to find first stable version (no pre-release)
   local version=""
   local last=${#__REPO_VERSIONS[@]} && ((last--))
   local iStable # FIXME: do not reuse `i` variable, its a global variable
@@ -246,14 +342,50 @@ function self-update:version:find:latest_stable() {
   echo "${__REPO_MAPPING[$version]}"
 }
 
-# check if version is already extracted on local disk
+##
+## Check if version is already extracted to local disk
+##
+## Parameters:
+## - tag_or_branch - Git tag or branch name, string, required
+##
+## Globals:
+## - reads/listen: __E_ROOT, __WORKTREES
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if version exists locally, 1 otherwise
+##
+## Usage:
+## - if self-update:version:has "v1.0.0"; then echo "exists"; fi
+##
 function self-update:version:has() {
   local tag_or_branch="$1"
   [ -d "${__E_ROOT}/${__WORKTREES}/${tag_or_branch}" ]
 }
 
-# extract specified version from git repo to local disk VERSIONS_DIR folder
-# shellcheck disable=SC2088
+##
+## Extract specified version from git repo to local disk
+##
+## Creates git worktree for the specified version in ~/.e-bash/.versions/
+##
+## Parameters:
+## - tag_or_branch - Git tag or branch name, string, required
+##
+## Globals:
+## - reads/listen: __E_ROOT, __WORKTREES
+## - mutate/publish: none (creates worktree directory)
+##
+## Side effects:
+## - Creates .versions/{tag_or_branch} directory
+## - Runs git worktree add command
+##
+## Usage:
+## - self-update:version:get "v1.0.0"
+##
+## Returns:
+## - 0 on success, exit code from git on failure
+##
+## shellcheck disable=SC2088
 function self-update:version:get() {
   local tag_or_branch="$1"
   local worktree="./${__WORKTREES}/${tag_or_branch}"
@@ -269,21 +401,78 @@ function self-update:version:get() {
   echo:Version "e-bash version ${cl_blue}${tag_or_branch}${cl_reset} ~ ${cl_yellow}${worktree_home}${cl_reset}"
 }
 
-# extract first/rollback version to local disk
+##
+## Extract first version (v1.0.0) to local disk
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __REPO_V1
+## - mutate/publish: none
+##
+## Side effects:
+## - Creates worktree for first version if not exists
+##
+## Usage:
+## - self-update:version:get:first
+##
+## Returns:
+## - 0 on success
+##
 function self-update:version:get:first() {
   local version="${__REPO_V1}"
   echo:Version "Extract first version: ${cl_blue}${version}${cl_reset}"
   self-update:version:has "${version}" || self-update:version:get "${version}"
 }
 
-# extract latest version from git repo to local disk VERSIONS_DIR folder
+##
+## Extract latest version to local disk
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Creates worktree for latest version if not exists
+##
+## Usage:
+## - self-update:version:get:latest
+##
+## Returns:
+## - 0 on success
+##
 function self-update:version:get:latest() {
   local version=$(self-update:version:find:highest_tag)
   echo:Version "Extract latest version: ${cl_blue}${version}${cl_reset}"
   self-update:version:has "${version}" || self-update:version:get "${version}"
 }
 
-# remove version from local disk VERSIONS_DIR folder
+##
+## Remove version from local disk
+##
+## Deletes the git worktree and directory for specified version.
+##
+## Parameters:
+## - version - Version tag to remove, string, required
+##
+## Globals:
+## - reads/listen: __E_ROOT, __WORKTREES
+## - mutate/publish: none (removes worktree directory)
+##
+## Side effects:
+## - Removes .versions/{version} directory
+## - Runs git worktree remove command
+##
+## Usage:
+## - self-update:version:remove "v1.0.0"
+##
+## Returns:
+## - 0 on success
+##
 function self-update:version:remove() {
   local version="$1"
 
@@ -299,8 +488,28 @@ function self-update:version:remove() {
   echo:Version "e-bash version ${cl_blue}${version}${cl_reset} - ${cl_red}REMOVED${cl_reset}"
 }
 
-# bind script file to a specified version of the script
-# shellcheck disable=SC2088
+##
+## Bind script file to specified version
+##
+## Creates symlink from script to version-specific file in ~/.e-bash/.versions/
+##
+## Parameters:
+## - version - Version tag to bind to, string, required
+## - filepath - Path to script file (default: ${BASH_SOURCE[0]}), string, optional
+##
+## Globals:
+## - reads/listen: __E_ROOT, __WORKTREES, __REPO_V1, BASH_SOURCE
+## - mutate/publish: none (creates symlink)
+##
+## Side effects:
+## - Creates numbered backup of original file
+## - Creates symlink to versioned file
+##
+## Usage:
+## - self-update:version:bind "v1.0.0"
+## - self-update:version:bind "v1.2.3" "./my-script.sh"
+##
+## shellcheck disable=SC2088
 function self-update:version:bind() {
   local version="$1"
   local filepath=${2:-"${BASH_SOURCE[0]}"}      # can be full or relative path
@@ -359,7 +568,25 @@ function self-update:version:bind() {
     "~>" "${cl_yellow}${version_dir_home}/${file_name}${cl_reset}"
 }
 
-# extract executable script version
+##
+## Extract version of current script
+##
+## Determines script version from symlink binding or copyright comments.
+##
+## Parameters:
+## - file - Path to script file (default: ${BASH_SOURCE[0]}), string, optional
+##
+## Globals:
+## - reads/listen: __VERSION_PATTERN, __REPO_V1, BASH_SOURCE
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes version tag (e.g., "v1.0.0")
+##
+## Usage:
+## - version=$(self-update:self:version)
+## - version=$(self-update:self:version "./script.sh")
+##
 function self-update:self:version() {
   local file=${1:-"${BASH_SOURCE[0]}"}
   local script_file="$(basename "${file}")"
@@ -395,7 +622,29 @@ function self-update:self:version() {
   # TODO (olku): should we try to extract version from git tags if file is a part of repo?
 }
 
-# calculate hash of the script file content, create a *.sha1 file for caching
+##
+## Calculate SHA1 hash of script file content
+##
+## Creates or updates .sha1 file for caching. Uses numbered backups for hash changes.
+##
+## Parameters:
+## - filepath - Path to script file (default: ${BASH_SOURCE[0]}), string, optional
+##
+## Globals:
+## - reads/listen: BASH_SOURCE
+## - mutate/publish: none (creates/updates .sha1 file)
+##
+## Side effects:
+## - Creates or updates {file}.sha1
+## - Creates numbered backup when hash changes
+##
+## Returns:
+## - Echoes SHA1 hash
+##
+## Usage:
+## - hash=$(self-update:file:hash)
+## - hash=$(self-update:file:hash "./script.sh")
+##
 function self-update:file:hash() {
   local filepath=${1:-"${BASH_SOURCE[0]}"}
 
@@ -425,9 +674,26 @@ function self-update:file:hash() {
   echo "${hash}"
 }
 
-# calculate hash of the script file content, create a *.sha1 file for caching
-# but use version folder as a source of file content
-# shellcheck disable=SC2088
+##
+## Calculate SHA1 hash of versioned script file
+##
+## Like self-update:file:hash but reads file from version folder.
+##
+## Parameters:
+## - filepath - Path to script file (default: ${BASH_SOURCE[0]}), string, optional
+## - version - Version tag to read from, string, required
+##
+## Globals:
+## - reads/listen: __E_ROOT, __WORKTREES, BASH_SOURCE
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes SHA1 hash of versioned file
+##
+## Usage:
+## - hash=$(self-update:version:hash "./script.sh" "v1.0.0")
+##
+## shellcheck disable=SC2088
 function self-update:version:hash() {
   local filepath=${1:-"${BASH_SOURCE[0]}"} # can be full or relative path
   local version=${2}
@@ -454,7 +720,28 @@ function self-update:version:hash() {
   self-update:file:hash "${version_file}"
 }
 
-# restore script file from LN backup file
+##
+## Restore script file from backup
+##
+## Finds the most recent backup file (.~N~) and restores it.
+##
+## Parameters:
+## - file - Path to script file (default: ${BASH_SOURCE[0]}), string, optional
+##
+## Globals:
+## - reads/listen: BASH_SOURCE
+## - mutate/publish: none (replaces file with backup)
+##
+## Side effects:
+## - Replaces original file with latest backup
+##
+## Usage:
+## - self-update:rollback:backup
+## - self-update:rollback:backup "./script.sh"
+##
+## Returns:
+## - 0 on success
+##
 function self-update:rollback:backup() {
   local file=${1:-"${BASH_SOURCE[0]}"}
 
@@ -472,7 +759,30 @@ function self-update:rollback:backup() {
   fi
 }
 
-# rollback to specified version or if version not provided to ${ROLLBACK_VERSION}
+##
+## Rollback script to specified version
+##
+## Extracts version if needed and creates symlink binding.
+##
+## Parameters:
+## - version - Version tag to rollback to (default: v1.0.0), string, optional
+## - file - Path to script file (default: ${BASH_SOURCE[0]}), string, optional
+##
+## Globals:
+## - reads/listen: __REPO_V1, BASH_SOURCE
+## - mutate/publish: none (creates symlink)
+##
+## Side effects:
+## - Creates worktree if version not present
+## - Creates symlink binding
+##
+## Usage:
+## - self-update:rollback:version "v1.0.0"
+## - self-update:rollback:version "v1.2.3" "./script.sh"
+##
+## Returns:
+## - 0 on success
+##
 function self-update:rollback:version() {
   local version=${1:-"${__REPO_V1}"}
   local file=${2:-"${BASH_SOURCE[0]}"}
@@ -485,7 +795,28 @@ function self-update:rollback:version() {
   # NOTE: rollback to specific version does not remove backup files, it will actually create a new one
 }
 
-# convert current file symbolic link to a file copy
+##
+## Convert symlink to regular file copy
+##
+## Replaces symbolic link with actual file content by copying target.
+##
+## Parameters:
+## - filepath - Path to symlink (default: ${BASH_SOURCE[0]}), string, optional
+##
+## Globals:
+## - reads/listen: BASH_SOURCE
+## - mutate/publish: none (replaces symlink with file)
+##
+## Side effects:
+## - Removes symlink and copies target file
+##
+## Usage:
+## - self-update:unlink
+## - self-update:unlink "./script.sh"
+##
+## Returns:
+## - 0 on success, 1 if not a symlink or on copy failure
+##
 function self-update:unlink() {
   local filepath=${1:-"${BASH_SOURCE[0]}"}
 
@@ -516,8 +847,30 @@ function self-update:unlink() {
   fi
 }
 
-# initialize git repo in local disk that helps to manage versions of the script(s)
-# in addition: extract first version of the script files on disk;
+##
+## Initialize git repo and extract first version
+##
+## Sets up ~/.e-bash as git repo with remote and extracts v1.0.0.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __E_ROOT, __REPO_URL, __REMO_REMOTE, __REPO_MASTER, __WORKTREES
+## - mutate/publish: none (creates git repo and worktree)
+##
+## Side effects:
+## - Creates ~/.e-bash directory
+## - Initializes git repo if not exists
+## - Adds remote and fetches
+## - Creates .versions/ worktree for v1.0.0
+##
+## Usage:
+## - self-update:initialize
+##
+## Returns:
+## - 0 on success
+##
 function self-update:initialize() {
   # create folder if it does not exist
   mkdir -p "${__E_ROOT}"
@@ -560,8 +913,32 @@ function self-update:initialize() {
   self-update:version:get:first
 }
 
-# Resolve version expression to actual version/tag/branch
-# This function handles all supported version notation patterns
+##
+## Resolve version expression to actual tag/branch
+##
+## Converts various version notations to concrete git references.
+##
+## Parameters:
+## - version_expression - Version constraint or notation, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Supported expressions:
+## - "latest" - latest stable (no prerelease)
+## - "*" or "next" - highest version including prereleases
+## - "branch:{name}" - specific branch
+## - "tag:{name}" - specific tag
+## - "^1.0.0", "~1.0.0" - semver constraints
+##
+## Returns:
+## - Echoes resolved tag/branch name
+##
+## Usage:
+## - version=$(self-update:version:resolve "latest")
+## - version=$(self-update:version:resolve "branch:master")
+##
 function self-update:version:resolve() {
   local version_expression="$1"
   local resolved_version=""
@@ -587,7 +964,36 @@ function self-update:version:resolve() {
   echo "$resolved_version"
 }
 
-# Entry point for self-update
+##
+## Main entry point for self-update functionality
+##
+## Checks for updates and binds script to newer version if available.
+## Compares current version with target version using hash verification.
+##
+## Parameters:
+## - version_expression - Version constraint (e.g., "^1.0.0"), string, required
+## - file - Path to script file (default: ${BASH_SOURCE[0]}), string, optional
+##
+## Globals:
+## - reads/listen: BASH_SOURCE
+## - mutate/publish: none (creates symlink, backup, .sha1 files)
+##
+## Side effects:
+## - Initializes git repo
+## - Fetches latest version
+## - Creates worktree for target version
+## - Updates symlink and hash files if out of date
+##
+## Usage:
+## - self-update "^1.0.0"
+## - self-update "latest" "./script.sh"
+##
+## Returns:
+## - 0 on success or if up-to-date
+##
+## Recommended pattern:
+##   trap "self-update '^1.0.0'" EXIT
+##
 function self-update() {
   local version_expression="$1"
   local file=${2:-"${BASH_SOURCE[0]}"}
@@ -638,12 +1044,74 @@ function self-update() {
 # Note that it returns the current exit status (could be non-zero).
 ${__SOURCED__:+return}
 
-logger git "$@"     # declare echo:Git, printf:Git
-logger version "$@" # declare echo:Version, printf:Version
-
-logger loader "$@" # initialize logger
-echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
-
 # Refs:
 # - https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
 # - https://stackoverflow.com/questions/3338030/multiple-bash-traps-for-the-same-signal
+
+##
+## Module: Self-Update System for e-bash Scripts
+##
+## This module provides automatic update detection and file-by-file library updates
+## for projects using e-bash scripts library.
+##
+## References:
+## - demo: demo.selfupdate.sh
+## - bin: install.e-bash.sh (uses self-update for upgrades)
+## - documentation: docs/public/version-up.md
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - __E_BASH - Home directory name (".e-bash")
+## - __E_ROOT - Full path to ~/.e-bash
+## - __REPO_URL - Repository URL (https://github.com/OleksandrKucherenko/e-bash.git)
+## - __REMO_REMOTE - Remote name ("e-bash")
+## - __REPO_MASTER - Master branch ("master")
+## - __REPO_V1 - First version tag ("v1.0.0")
+## - __WORKTREES - Worktrees directory (".versions")
+## - __VERSION_PATTERN - Version tag pattern ("v?${SEMVER}")
+## - __REPO_MAPPING - Associative array: version -> tag mapping
+## - __REPO_VERSIONS - Array of sorted versions
+#
+## Supported Version Expressions:
+## - 'latest' - Latest stable version (no pre-release tags)
+## - '*' or 'next' - Highest version including alpha/beta/rc
+## - 'branch:{name}' - Update from specific branch
+## - 'tag:{name}' - Update to specific tag
+## - '^1.0.0' - Minor and patch releases (>= 1.0.0 < 2.0.0)
+## - '~1.0.0' - Patch releases only (>= 1.0.0 < 1.1.0)
+## - '1.0.0' - Exact version match
+#
+## Recommended Usage Pattern:
+##   trap "self-update '^1.0.0'" EXIT
+##
+## Purpose:
+##   Self-update functionality for projects using e-bash scripts library.
+##   Allows automatic detection of e-bash source updates and file-by-file
+##   library updates. Designed for BASH scripts built on top of e-bash.
+##
+## Compatibility:
+##   Works with bin/install.e-bash.sh - both use ${HOME}/.e-bash/ global directory.
+##   - install.e-bash.sh: Supports local (project) and global (HOME) installations
+##   - self-update.sh: Works only with global part (manages ~/.e-bash/.versions/)
+##   Self-update creates symlinks from project files to versioned global files.
+##
+## Main Usage Pattern:
+##   The recommended approach is to invoke self-update on script exit:
+##     trap "self-update '^1.0.0'" EXIT
+##
+## How It Works:
+##   1. Maintains local git repo at ~/.e-bash/ with multiple version worktrees
+##   2. Creates symbolic links from project .scripts/ to version-specific files
+##   3. Performs file-by-file updates with automatic backup creation
+##   4. Verifies updates using SHA1 hash comparison
+##   5. Supports rollback to previous versions or backup files
+##
+## Supported Version Expressions:
+##   - 'latest'           - latest stable version (no pre-release tags)
+##   - '*' or 'next'      - highest version tag (including alpha, beta, rc)
+##   - 'branch:{name}'    - update from specific branch
+##   - 'tag:{name}'       - update to specific tag
+##   - '^1.0.0'           - minor and patch releases (>= 1.0.0 < 2.0.0)
+##   - '~1.0.0'           - patch releases only (>= 1.0.0 < 1.1.0)
+##   - '>1.0.0 <=1.5.0'   - version range with comparison operators
+##   - '1.0.0'            - exact version match

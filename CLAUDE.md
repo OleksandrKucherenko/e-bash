@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `spec/` - ShellSpec test suite (16 test files)
 - `docs/` - Comprehensive documentation and analysis documents
 - `demos/` - Demo scripts showing usage patterns
-- `.githook/` - Git hooks for pre-commit quality checks
+- `.lefthook/` - Git hooks managed by lefthook for pre-commit quality checks
 - `bin/gnubin/` - GNU tool shims for macOS compatibility
 
 ### Key Components
@@ -85,8 +85,12 @@ find . -name "*.sh" -exec "$ALTSHFMT" -w {} \;
 # Run manually:
 shellcheck .scripts/*.sh bin/*.sh
 
-# Git hooks are configured via .githook/ directory
-git config core.hooksPath .githook
+# Git hooks are managed by lefthook
+# Run hooks manually:
+lefthook run pre-commit
+
+# Run specific hook:
+lefthook run pre-commit --commands copyright-verification
 ```
 
 ## Installation & Integration
@@ -257,9 +261,11 @@ trap:on on_exit_update EXIT
 ## Integration Points
 
 ### Git Hooks
-- Located in `.githook/`
+- Managed by [lefthook](https://github.com/evilmartians/lefthook) v2.0+
+- Configuration in `lefthook.yml` and scripts in `.lefthook/pre-commit/`
 - Pre-commit hooks verify copyright headers and refresh "Last revisit" dates
-- Automatically configured by `.envrc`: `git config core.hooksPath .githook`
+- Automatically configured by `.envrc`: `lefthook install`
+- Run manually: `lefthook run pre-commit`
 
 ### CI/CD Pipeline
 - GitHub Actions in `.github/workflows/shellspec.yaml`
@@ -317,6 +323,35 @@ This allows safe multiple sourcing of the same module.
 - Follow the established naming conventions
 - Document complex logic with inline comments
 - Copyright headers are auto-verified in pre-commit hooks
+
+### Logging Standards
+1. **Setup**: ALWAYS declare `DEBUG` before sourcing logger. Ensure `E_BASH` is globally available.
+2. **Tags**: Be explicit with tags. Enable app tags, disable noisy internal tags (e.g., `DEBUG="app,api,-internal"`).
+   - Use domain-specific names (api, db, auth).
+   - Pass script params during logger init to support `--debug` flags.
+3. **Configuration**: 
+   - Redirect most loggers to STDERR (`logger:redirect tag ">&2"`).
+   - Configure in one line: `logger tag "$@" && logger:prefix tag "..." && logger:redirect tag ">&2"`
+   - Use color codes: Red (Error), Yellow (Warn), Gray (Debug). Highlight entities (filenames, values) consistently.
+4. **Usage**:
+   - Prefer piping `cmd | log:Tag` over capturing and echo.
+   - Use `echo:Success`/`echo:Error` for lifecycle messages.
+   - Use `echo:Dump` with `${LINENO}` for troubleshooting/tracing.
+   - Use `logger:push`/`logger:pop` for recursive state.
+   - Filter piped output to keep logs clean.
+5. **Advanced**:
+   - Use session IDs (`__SESSION`) for multi-process tracking.
+   - Use `TERM=dumb` to disable colors throughout.
+   - Avoid wrapping loggers with custom functions.
+
+### Function Implementation
+- **Variables**: Use `local` variables as much as possible. Pre-declare them at function start.
+  - Allowed: Multiple locals per line (max 5).
+- **Flags**: Use long flags (e.g., `--force` instead of `-f`) for readability.
+- **Complexity**: Minimize nesting (flattest code possible).
+  - Avoid nested `if`/`for`.
+  - Use guard clauses (quick returns) at the start of functions.
+  - Keep functions focused and small.
 
 
 <!-- CLAVIX:START -->

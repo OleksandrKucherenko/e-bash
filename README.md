@@ -4,6 +4,7 @@
 
 - [Enhanced BASH Scripts](#enhanced-bash-scripts)
   - [Usage](#usage)
+    - [Direct Download (Manual User)](#direct-download-manual-user)
     - [Using e-bash in Your Scripts](#using-e-bash-in-your-scripts)
     - [Manual installation](#manual-installation)
   - [Library Overview](#library-overview)
@@ -22,6 +23,7 @@
     - [Git Logs](#git-logs)
     - [Git Files Changes](#git-files-changes)
     - [Self-Update](#self-update)
+    - [Documentation Generator: e-docs](#documentation-generator-e-docs)
     - [Troubleshooting](#troubleshooting)
     - [Profile BASH script execution](#profile-bash-script-execution)
     - [Colors support in my terminal](#colors-support-in-my-terminal)
@@ -55,6 +57,16 @@ wget -qO- https://git.new/e-bash | bash -s -- install
 # OR: install latest version (httpie)
 http -b https://git.new/e-bash | bash -s -- install
 
+
+### Homebrew (macOS/Linux)
+
+```bash
+brew install artfulbits-se/tap/e-bash
+```
+
+### Direct Download (Manual User)
+
+```bash
 # install specific version
 curl -sSL https://git.new/e-bash | bash -s -- install v1.0.0
 # OR: install specific version
@@ -131,14 +143,14 @@ source "$E_BASH/_colors.sh"; source "$E_BASH/_logger.sh"
 
 Then source the modules you need:
 
-- `source "$E_BASH/_logger.sh"` - Advanced logging with tag-based filtering
-- `source "$E_BASH/_dependencies.sh"` - Dependency management with version constraints
-- `source "$E_BASH/_arguments.sh"` - Command-line argument parsing
-- `source "$E_BASH/_hooks.sh"` - Declarative hooks system
-- `source "$E_BASH/_traps.sh"` - Enhanced trap management
-- `source "$E_BASH/_semver.sh"` - Semantic versioning support
-- `source "$E_BASH/_commons.sh"` - Common utilities and UI components
-- `source "$E_BASH/_colors.sh"` - Terminal color detection and ANSI definitions
+- `source "$E_BASH/_logger.sh"` - [Advanced logging with tag-based filtering](docs/public/lib/_logger.md)
+- `source "$E_BASH/_dependencies.sh"` - [Dependency management with version constraints](docs/public/lib/_dependencies.md)
+- `source "$E_BASH/_arguments.sh"` - [Command-line argument parsing](docs/public/lib/_arguments.md)
+- `source "$E_BASH/_hooks.sh"` - [Declarative hooks system](docs/public/lib/_hooks.md)
+- `source "$E_BASH/_traps.sh"` - [Enhanced trap management](docs/public/lib/_traps.md)
+- `source "$E_BASH/_semver.sh"` - [Semantic versioning support](docs/public/lib/_semver.md)
+- `source "$E_BASH/_commons.sh"` - [Common utilities and UI components](docs/public/lib/_commons.md)
+- `source "$E_BASH/_colors.sh"` - [Terminal color detection and ANSI definitions](docs/public/lib/_colors.md)
 
 See `.scripts/` directory for all available modules.
 
@@ -177,6 +189,8 @@ refs:
 source ".scripts/_colors.sh"
 
 echo -e "${cl_red}Hello World${cl_reset}"
+
+[API Reference](docs/public/lib/_colors.md)
 ```
 
 ### Script Dependencies
@@ -206,9 +220,11 @@ wStab=$(dependency watchman "2024.*.*.*" "brew install watchman")
 echo "$wHead" | grep 'Error' &>/dev/null && echo "$wStab" || echo "$wHead"
 ```
 
+[API Reference](docs/public/lib/_dependencies.md)
+
 ### Logger
 
-[Quick Start Guide](docs/public/logger.md)
+[Quick Start Guide](docs/public/logger.md) | [API Reference](docs/public/lib/_logger.md)
 
 Requirements:
 
@@ -280,11 +296,11 @@ echo "Is --debug: $DEBUG"
 parse:arguments "$@"
 ```
 
-More details: [Arguments Parsing](docs/public/arguments.md), [Demo script](demos/demo.args.sh).
+More details: [Arguments Parsing](docs/public/arguments.md), [Demo script](demos/demo.args.sh), [API Reference](docs/public/lib/_arguments.md).
 
 ### Common(s) Functions And Inputs
 
-[Complete Documentation](docs/public/commons.md)
+[Complete Documentation](docs/public/commons.md) | [API Reference](docs/public/lib/_commons.md)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -323,6 +339,8 @@ echo -n "Select connection type: " && tput civis # hide cursor
 selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_reset}"
 ```
 
+[API Reference](docs/public/lib/_commons.md#inputselector)
+
 ### UI: Ask for Password
 
 ![Ask for Password](docs/images/public/ui.ask-for-password.gif)
@@ -334,6 +352,8 @@ source ".scripts/_commons.sh"
 echo -n "Enter password: "
 password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
+
+[API Reference](docs/public/lib/_commons.md#inputreadpwd)
 
 ### Dry-Run Wrapper System
 
@@ -386,7 +406,7 @@ rollback:func rollback_fn
 - ✅ Function-based rollbacks (`rollback:func cleanup_fn`)
 - ✅ Variable precedence: command-specific → global → default
 
-More details: [Dry-Run Wrapper System](docs/public/dryrun-wrapper.md), [Demo script](demos/demo.dryrun-modes.sh).
+More details: [Dry-Run Wrapper System](docs/public/dryrun-wrapper.md), [Demo script](demos/demo.dryrun-modes.sh), [API Reference](docs/public/lib/_dryrun.md).
 
 ### Hooks
 
@@ -452,7 +472,7 @@ HOOKS_DIR=".hooks/$(basename "$0" .sh)"  # .hooks/my-script/
 source "$E_BASH/_hooks.sh"
 ```
 
-More details: [Hooks Documentation](docs/public/hooks.md);
+or maybe [Hooks Documentation](docs/public/hooks.md) or [API Reference](docs/public/lib/_hooks.md);
 
 Demos: [Intro](demos/demo.hooks.sh), [Multiple Hooks](demos/demo.hooks-registration.sh), [Nested Hooks](demos/demo.hooks-nested.sh), [Hooks with Logs](demos/demo.hooks-logging.sh), [CI Hooks Demo](./demos/ci-mode/demo.ci-modes.sh), [CI Hooks with Middlewar](./demos/ci-mode/demo.ci-modes-middleware.sh)
 
@@ -482,6 +502,8 @@ semver:parse "2.0.0-rc.1+build.123" "V" \
 # test version code
 echo "1" | grep -E "${SEMVER_LINE}" --color=always --ignore-case || echo "OK!"
 ```
+
+[API Reference](docs/public/lib/_semver.md)
 
 ### Git Semantic/Conventional commits
 
@@ -685,6 +707,22 @@ function __exit() {
 }
 trap "__exit" EXIT
 ```
+
+[API Reference](docs/public/lib/_self-update.md)
+
+### Documentation Generator: e-docs
+
+Automated documentation generator that extracts documentation from `##` comments in your bash scripts and generates GitHub-flavored Markdown.
+
+```bash
+# Generate docs for all scripts in .scripts/
+bin/e-docs.sh
+
+# Generate docs for a specific file
+bin/e-docs.sh .scripts/_logger.sh
+```
+
+[User Documentation](docs/public/e-docs.md)
 
 ### Troubleshooting
 

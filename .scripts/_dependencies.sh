@@ -18,21 +18,74 @@ source "$E_BASH/_logger.sh"
 #set -x # Uncomment to DEBUG
 
 # shellcheck disable=SC2001,SC2155,SC2046,SC2116
+
+##
+## Check if --debug flag is present in arguments
+##
+## Parameters:
+## - args - Arguments to check, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - "true" if --debug present, "false" otherwise
+##
 function isDebug() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--debug" ]]; then echo true; else echo false; fi
 }
 
+##
+## Check if --exec flag is present in arguments
+##
+## Parameters:
+## - args - Arguments to check, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - "true" if --exec present, "false" otherwise
+##
 function isExec() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--exec" ]]; then echo true; else echo false; fi
 }
 
+##
+## Check if --optional flag is present in arguments
+##
+## Parameters:
+## - args - Arguments to check, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - "true" if --optional present, "false" otherwise
+##
 function isOptional() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--optional" ]]; then echo true; else echo false; fi
 }
 
+##
+## Check if --silent flag is present in arguments
+##
+## Parameters:
+## - args - Arguments to check, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - "true" if --silent present, "false" otherwise
+##
 function isSilent() {
   local args=("$@")
   if [[ "${args[*]}" =~ "--silent" ]]; then echo true; else echo false; fi
@@ -50,15 +103,31 @@ __DEPS_VERSION_FLAGS_EXCEPTIONS[kotlin]="-version"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[ant]="-version"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[go]="version"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[ssh]="-V"
-__DEPS_VERSION_FLAGS_EXCEPTIONS[tmux]="-V"
+__DEPS_VERSION_FLAGS_EXCEPTIONS[tmux]="-VV"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[ab]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[unrar]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[composer]="-V"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[screen]="-v"
 __DEPS_VERSION_FLAGS_EXCEPTIONS[unzip]="-v"
 
-# Resolve tool aliases to their canonical command names
-# Override: set SKIP_DEALIAS=1 to bypass alias resolution
+##
+## Resolve tool aliases to their canonical command names
+##
+## Parameters:
+## - alias_name - Tool alias to resolve, string, required
+##
+## Globals:
+## - reads/listen: SKIP_DEALIAS
+## - mutate/publish: none
+##
+## Returns:
+## - Canonical command name
+##
+## Usage:
+## - dependency:dealias "rust" -> "rustc"
+## - dependency:dealias "brew" -> "brew"
+## - SKIP_DEALIAS=1 dependency:dealias "rust" -> "rust"
+##
 function dependency:dealias() {
   # Skip dealiasing if requested (workaround for wrong resolutions)
   if [[ "${SKIP_DEALIAS:-}" == "1" ]]; then
@@ -86,7 +155,24 @@ function dependency:dealias() {
   esac
 }
 
-# Get version flag for a tool (exception or default --version)
+##
+## Get the version flag for a tool (exception or default --version)
+##
+## Parameters:
+## - tool - Tool name, string, required
+## - provided_flag - User-provided flag override, string, optional
+##
+## Globals:
+## - reads/listen: __DEPS_VERSION_FLAGS_EXCEPTIONS
+## - mutate/publish: none
+##
+## Returns:
+## - Version flag (e.g. "--version", "-V", "-version")
+##
+## Usage:
+## - dependency:known:flags "java" -> "-version"
+## - dependency:known:flags "git" -> "--version"
+##
 function dependency:known:flags() {
   local tool="$1"
   local provided_flag="$2"
@@ -100,6 +186,22 @@ function dependency:known:flags() {
   fi
 }
 
+##
+## Check if CI auto-install mode is enabled
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES
+## - mutate/publish: none
+##
+## Returns:
+## - "true" if in CI and auto-install enabled, "false" otherwise
+##
+## Usage:
+## - if [ "$(isCIAutoInstallEnabled)" = "true" ]; then ...; fi
+##
 function isCIAutoInstallEnabled() {
   # Only enable auto-install if we're in a CI environment AND the flag is set
   if [[ -n "${CI:-}" ]]; then
@@ -115,7 +217,33 @@ function isCIAutoInstallEnabled() {
   fi
 }
 
-# shellcheck disable=SC2001,SC2155,SC2086
+##
+## Check and optionally install a dependency with version constraint
+##
+## Parameters:
+## - tool_name - Tool to check, string, required
+## - tool_version_pattern - Semver pattern (e.g. "5.*.*", "HEAD-[a-f0-9]{1,8}"), string, required
+## - tool_fallback - Install command, string, default: "No details. Please google it."
+## - tool_version_flag - Custom version flag, string, default: auto-detected
+## - --optional - Mark as optional dependency (soft fail)
+## - --exec - Execute install command on version mismatch
+## - --debug - Enable debug output
+##
+## Globals:
+## - reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, SKIP_DEALIAS
+## - mutate/publish: none (may execute install command)
+##
+## Side effects:
+## - May execute install command in CI or with --exec
+##
+## Returns:
+## - 0 if dependency found/installed, 1 otherwise
+##
+## Usage:
+## - dependency bash "5.*.*" "brew install bash"
+## - dependency shellspec "0.28.*" "brew install shellspec" "--version"
+## - optional kcov "43" "brew install kcov"
+##
 function dependency() {
   local tool_name=$1
   local tool_name_resolved=$(dependency:dealias "$tool_name")
@@ -229,6 +357,26 @@ function dependency() {
   fi
 }
 
+##
+## Declare an optional dependency (wrapper for dependency with --optional flag)
+##
+## Parameters:
+## - tool_name - Tool to check, string, required
+## - tool_version_pattern - Semver pattern, string, required
+## - tool_fallback - Install command, string, default: "No details. Please google it."
+## - tool_version_flag - Custom version flag, string, default: "--version"
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none (forwards to dependency)
+##
+## Returns:
+## - 0 (always succeeds for optional deps)
+##
+## Usage:
+## - optional kcov "43" "brew install kcov"
+## - optional hyperfine "" "brew install hyperfine"
+##
 function optional() {
   local args=("$@")
 
@@ -256,7 +404,42 @@ logger:init install "${cl_blue}[install]${cl_reset} " ">&2" # register logger fo
 logger loader "$@" # initialize loader logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
-# ref:
-#  https://docs.gradle.org/current/userguide/single_versions.html
-#  https://github.com/qzb/sh-semver
-#  https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
+##
+## Module: Dependency Management with Version Constraints
+##
+## This module provides dependency checking with semantic versioning constraints
+## and optional auto-installation in CI environments.
+##
+## References:
+## - demo: demo.dependencies.sh, demo.cache.sh
+## - bin: git.sync-by-patches.sh, version-up.v2.sh, vhd.sh,
+##   ci.validate-envrc.sh, npm.versions.sh, un-link.sh
+## - documentation: Referenced in docs/public/installation.md
+## - tests: spec/dependencies_spec.sh
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - __DEPS_VERSION_FLAGS_EXCEPTIONS - Associative array of tools with non-standard version flags
+## - CI - Set by CI environments (GitHub Actions, GitLab CI, etc.)
+## - CI_E_BASH_INSTALL_DEPENDENCIES - Enable auto-install in CI (1/true/yes)
+## - SKIP_DEALIAS - Bypass alias resolution when set to "1"
+##
+## Supported Version Patterns:
+## - "5.*.*" - Any 5.x.x version
+## - "^1.0.0" - 1.0.0 or higher (compatible)
+## - "~1.2.3" - 1.2.x versions (patch-level updates)
+## - "HEAD-[a-f0-9]{1,8}" - Git commit hash pattern
+## - ">1.0.0" - Greater than 1.0.0
+##
+## Tool Aliases (auto-resolved):
+## - rust/rustc -> rustc
+## - golang/go -> go
+## - nodejs/node -> node
+## - jre/java -> java
+## - homebrew/brew -> brew
+##
+## ref:
+##  https://docs.gradle.org/current/userguide/single_versions.html
+##  https://github.com/qzb/sh-semver
+##  https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
+##

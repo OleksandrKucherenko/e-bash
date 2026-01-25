@@ -5,7 +5,7 @@
   - [ ] `CSV` file
   - [ ] `.env` files support (https://github.com/bashup/dotenv/blob/master/dotenv)
   - [ ] `java.properties` file
-- [ ] String templates support (`mustache`)
+- [x] String templates support (`mustache`)
 - [ ] Table output
 - [ ] dry-run any command, dynamic function that will replace any command with `echo`
 

@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-24
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -65,19 +65,27 @@ if [[ -z ${HOOKS_PREFIX+x} ]]; then declare -g HOOKS_PREFIX="hook:"; fi
 if [[ -z ${HOOKS_EXEC_MODE+x} ]]; then declare -g HOOKS_EXEC_MODE="exec"; fi
 if [[ -z ${HOOKS_AUTO_TRAP+x} ]]; then declare -g HOOKS_AUTO_TRAP="true"; fi
 
-# Define available hooks in the script
-#
-# Usage:
-#   hooks:declare begin end decide error rollback
-#   hooks:declare custom_hook another_hook
-#
-# Parameters:
-#   $@ - List of hook names to define
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid hook name
-#
+##
+## Declare available hook names for the script
+##
+## Parameters:
+## - @ - Hook names to declare, string array, variadic
+##
+## Globals:
+## - reads/listen: BASH_SOURCE, __HOOKS_DEFINED, __HOOKS_CONTEXTS
+## - mutate/publish: __HOOKS_DEFINED, __HOOKS_CONTEXTS
+##
+## Side effects:
+## - Registers hook names as available
+## - Tracks calling context for nested/composed scripts
+##
+## Usage:
+## - hooks:declare begin end validate process
+## - hooks:declare custom_hook another_hook
+##
+## Returns:
+## - 0 on success, 1 on invalid hook name
+##
 function hooks:declare() {
   local hook_name
 
@@ -134,16 +142,23 @@ function hooks:declare() {
   return 0
 }
 
-#
-# Bootstrap default hooks and exit trap
-#
-# Usage:
-#   hooks:bootstrap
-#
-# Behavior:
-#   - declares begin/end hooks if missing
-#   - installs an EXIT trap to execute end hook (unless HOOKS_AUTO_TRAP=false)
-#
+##
+## Bootstrap default hooks and install EXIT trap for end hook
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: HOOKS_AUTO_TRAP
+## - mutate/publish: __HOOKS_DEFINED, __HOOKS_END_TRAP_INSTALLED
+##
+## Side effects:
+## - Declares begin/end hooks
+## - Installs EXIT trap if HOOKS_AUTO_TRAP=true
+##
+## Usage:
+## - hooks:bootstrap
+##
 function hooks:bootstrap() {
   hooks:declare begin end
 
@@ -154,18 +169,41 @@ function hooks:bootstrap() {
   return 0
 }
 
-#
-# Exit handler for end hook
-#
+##
+## Exit handler that executes the end hook
+##
+## Parameters:
+## - exit_code - Exit code from script, integer (automatic from EXIT trap)
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none (calls hooks:do)
+##
+## Usage:
+## - _hooks:on_exit $?    # typically called from EXIT trap
+##
 function _hooks:on_exit() {
   local exit_code=$?
   hooks:do end "$exit_code"
   return "$exit_code"
 }
 
-#
-# Install EXIT trap for end hook (idempotent)
-#
+##
+## Install EXIT trap for end hook (idempotent)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __HOOKS_END_TRAP_INSTALLED
+## - mutate/publish: __HOOKS_END_TRAP_INSTALLED
+##
+## Side effects:
+## - Installs trap:on _hooks:on_exit EXIT
+##
+## Usage:
+## - _hooks:trap:end
+##
 function _hooks:trap:end() {
   if [[ "${__HOOKS_END_TRAP_INSTALLED:-}" == "true" ]]; then
     return 0
@@ -177,19 +215,20 @@ function _hooks:trap:end() {
   return 0
 }
 
-#
-# Register file patterns to always execute in sourced mode
-#
-# Usage:
-#   hooks:pattern:source "begin-*-init.sh"
-#   hooks:pattern:source "env-*.sh" "config-*.sh"
-#
-# Parameters:
-#   $@ - File patterns (wildcards supported)
-#
-# Returns:
-#   0 - Success
-#
+##
+## Register file patterns to always execute in sourced mode
+##
+## Parameters:
+## - @ - File patterns (wildcards supported), string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: __HOOKS_SOURCE_PATTERNS
+##
+## Usage:
+## - hooks:pattern:source "begin-*-init.sh"
+## - hooks:pattern:source "env-*.sh" "config-*.sh"
+##
 function hooks:pattern:source() {
   local pattern
 
@@ -201,19 +240,20 @@ function hooks:pattern:source() {
   return 0
 }
 
-#
-# Register file patterns to always execute as scripts
-#
-# Usage:
-#   hooks:pattern:script "end-datadog.sh"
-#   hooks:pattern:script "notify-*.sh"
-#
-# Parameters:
-#   $@ - File patterns (wildcards supported)
-#
-# Returns:
-#   0 - Success
-#
+##
+## Register file patterns to always execute as scripts (not sourced)
+##
+## Parameters:
+## - @ - File patterns (wildcards supported), string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: __HOOKS_SCRIPT_PATTERNS
+##
+## Usage:
+## - hooks:pattern:script "end-datadog.sh"
+## - hooks:pattern:script "notify-*.sh"
+##
 function hooks:pattern:script() {
   local pattern
 
@@ -225,28 +265,25 @@ function hooks:pattern:script() {
   return 0
 }
 
-#
-# Register a function to be executed as part of a hook
-#
-# Usage:
-#   hooks:register deploy "10-backup" backup_database
-#   hooks:register deploy "20-update" update_code
-#   hooks:register build "metrics" track_build_metrics
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Friendly name (used for alphabetical sorting)
-#   $3 - Function name to execute
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid parameters or function doesn't exist
-#
-# Notes:
-#   - Functions are executed in alphabetical order by friendly name
-#   - Multiple functions can be registered for the same hook
-#   - Friendly names must be unique within a hook
-#
+##
+## Register a function to be executed as part of a hook
+##
+## Parameters:
+## - hook_name - Hook name to register for, string, required
+## - friendly_name - Sort key for ordering (e.g. "10-backup"), string, required
+## - function_name - Function to execute, string, required
+##
+## Globals:
+## - reads/listen: __HOOKS_DEFINED, __HOOKS_REGISTERED
+## - mutate/publish: __HOOKS_REGISTERED
+##
+## Usage:
+## - hooks:register deploy "10-backup" backup_database
+## - hooks:register deploy "20-update" update_code
+##
+## Returns:
+## - 0 on success, 1 on invalid parameters or missing function
+##
 function hooks:register() {
   local hook_name="$1"
   local friendly_name="$2"
@@ -289,21 +326,24 @@ function hooks:register() {
   return 0
 }
 
-#
-# Register middleware for a hook
-#
-# Usage:
-#   hooks:middleware begin my_middleware
-#   hooks:middleware begin          # reset to default
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Middleware function name (optional)
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid parameters or function doesn't exist
-#
+##
+## Register middleware function for a hook
+##
+## Parameters:
+## - hook_name - Hook name for middleware, string, required
+## - middleware_fn - Middleware function name (empty to reset), string, optional
+##
+## Globals:
+## - reads/listen: __HOOKS_MIDDLEWARE
+## - mutate/publish: __HOOKS_MIDDLEWARE
+##
+## Usage:
+## - hooks:middleware begin my_middleware
+## - hooks:middleware begin          # reset to default
+##
+## Returns:
+## - 0 on success, 1 on invalid parameters or missing function
+##
 function hooks:middleware() {
   local hook_name="$1"
   local middleware_fn="${2:-}"
@@ -329,21 +369,24 @@ function hooks:middleware() {
   return 0
 }
 
-#
-# Unregister a function from a hook
-#
-# Usage:
-#   hooks:unregister deploy "10-backup"
-#   hooks:unregister build "metrics"
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Friendly name of the registration to remove
-#
-# Returns:
-#   0 - Success
-#   1 - Invalid parameters or registration not found
-#
+##
+## Unregister a function from a hook
+##
+## Parameters:
+## - hook_name - Hook name, string, required
+## - friendly_name - Friendly name of registration to remove, string, required
+##
+## Globals:
+## - reads/listen: __HOOKS_REGISTERED
+## - mutate/publish: __HOOKS_REGISTERED
+##
+## Usage:
+## - hooks:unregister deploy "10-backup"
+## - hooks:unregister build "metrics"
+##
+## Returns:
+## - 0 on success, 1 on invalid parameters or not found
+##
 function hooks:unregister() {
   local hook_name="$1"
   local friendly_name="$2"
@@ -394,15 +437,22 @@ function hooks:unregister() {
   return 0
 }
 
-#
-# Determine execution mode for a specific script
-#
-# Parameters:
-#   $1 - Script filename (basename)
-#
-# Returns:
-#   Echoes "source" or "exec"
-#
+##
+## Determine execution mode for a specific script
+##
+## Parameters:
+## - script_name - Script basename to check, string, required
+##
+## Globals:
+## - reads/listen: HOOKS_EXEC_MODE, __HOOKS_SOURCE_PATTERNS, __HOOKS_SCRIPT_PATTERNS
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes "source" or "exec"
+##
+## Usage:
+## - mode=$(hooks:exec:mode "begin-init.sh")
+##
 function hooks:exec:mode() {
   local script_name="$1"
   local pattern
@@ -432,18 +482,32 @@ function hooks:exec:mode() {
 
 #
 # Execute hook implementation with stdout/stderr capture (internal)
-#
-# Usage:
-#   _hooks:capture:run hook_name capture_var command args...
-#
-# Parameters:
-#   $1 - Hook name
-#   $2 - Variable name to store capture array name
-#   $@ - Command and arguments to execute
-#
-# Returns:
-#   Exit code from the executed command
-#
+##
+## Execute hook implementation with stdout/stderr capture (internal)
+##
+## Parameters:
+## - hook_name - Hook name being executed, string, required
+## - capture_var_name - Variable name to store capture array, string, required
+## - @ - Command and arguments to execute, variadic
+##
+## Globals:
+## - reads/listen: __HOOKS_CAPTURE_SEQ
+## - mutate/publish: __HOOKS_CAPTURE_SEQ, creates global array "${hook_slug}_${seq}"
+##
+## External Dependencies:
+## - to:slug() from _commons.sh - Generate filesystem-safe slug from hook name
+##
+## Side effects:
+## - Creates temp files and FIFOs for capture
+## - Creates background sed processes
+## - Declares global array with captured output
+##
+## Usage:
+## - _hooks:capture:run "begin" "capture_var" my_function "arg1" "arg2"
+##
+## Returns:
+## - Exit code from executed command
+##
 function _hooks:capture:run() {
   local hook_name="$1"
   local capture_var_name="$2"
@@ -496,15 +560,15 @@ function _hooks:capture:run() {
   return "$exit_code"
 }
 
-#
-# Default middleware for hook implementations (internal)
-#
-# Usage:
-#   _hooks:middleware:default <hook_name> <exit_code> <capture_var> -- <hook_args...>
-#
-# Returns:
-#   Exit code from implementation
-#
+##
+## Default middleware for hook implementations (internal)
+##
+## Usage:
+##   _hooks:middleware:default <hook_name> <exit_code> <capture_var> -- <hook_args...>
+##
+## Returns:
+##   Exit code from implementation
+##
 function _hooks:middleware:default() {
   local hook_name="$1"
   local exit_code="$2"
@@ -530,15 +594,38 @@ function _hooks:middleware:default() {
   return "$exit_code"
 }
 
-#
-# Apply contract env directive
-#
-# Supported forms:
-#   NAME=VALUE
-#   NAME+=VALUE (append)
-#   NAME^=VALUE (prepend)
-#   NAME-=VALUE (remove segment)
-#
+##
+## Apply contract env directive
+##
+##
+## Apply contract environment directive (internal)
+##
+## Processes contract:env:* directives from hook implementations.
+##
+## Parameters:
+## - expr - Environment directive expression, string, required
+##
+## Globals:
+## - reads/listen: DEBUG
+## - mutate/publish: exports/updates environment variables
+##
+## Supported forms:
+## - NAME=VALUE - Set variable
+## - NAME+=VALUE - Append to PATH-like variable
+## - NAME^=VALUE - Prepend to PATH-like variable
+## - NAME-=VALUE - Remove segment from PATH-like variable
+##
+## Side effects:
+## - Exports environment variable
+## - Calls _hooks:logger:refresh if DEBUG modified
+##
+## Usage:
+## - _hooks:env:apply "PATH+=/new/path"
+## - _hooks:env:apply "MY_VAR=value"
+##
+## Returns:
+## - 0 on success, 1 on invalid expression or variable name
+##
 function _hooks:env:apply() {
   local expr="$1"
   local name op value
@@ -620,9 +707,29 @@ function _hooks:env:apply() {
   return 0
 }
 
-#
-# Refresh logger tags after DEBUG changes
-#
+##
+## Refresh logger tags after DEBUG changes
+##
+## Called when the DEBUG environment variable is modified to reconfigure
+## all registered logger tags. Iterates through TAGS associative array
+## and calls config:logger:{Tag} functions if they exist.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: TAGS (associative array of registered tags)
+## - mutate/publish: none (calls config functions that may modify logger state)
+##
+## Side effects:
+## - Calls config:logger:{Tag} functions for each registered tag
+##
+## Usage:
+## - _hooks:logger:refresh    # typically after modifying DEBUG
+##
+## Returns:
+## - 0
+##
 function _hooks:logger:refresh() {
   local tag
   for tag in "${!TAGS[@]}"; do
@@ -633,17 +740,46 @@ function _hooks:logger:refresh() {
   done
 }
 
-#
-# Middleware: contract-based modes and flow directives (internal)
-#
-# Usage:
-#   _hooks:middleware:modes <hook_name> <exit_code> <capture_var> -- <hook_args...>
-#
+##
+## Middleware: contract-based modes and flow directives (internal)
+##
+## Processes hook implementation output to extract and execute contract directives.
+## Supports environment variable modification, routing, and exit directives.
+##
+## Parameters:
+## - hook_name - Hook name being executed, string, required
+## - exit_code - Exit code from implementation, integer, required
+## - capture_var - Name of array variable containing captured output, string, required
+## - -- - Separator (required literal), string, required
+## - @ - Hook arguments (ignored), variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: __HOOKS_FLOW_ROUTE, __HOOKS_FLOW_TERMINATE, __HOOKS_FLOW_EXIT_CODE
+##
+## Contract Directives (output from hook implementations):
+## - contract:env:NAME=VALUE - Set environment variable
+## - contract:env:NAME+=VALUE - Append to PATH-like variable
+## - contract:env:NAME^=VALUE - Prepend to PATH-like variable
+## - contract:env:NAME-=VALUE - Remove segment from PATH-like variable
+## - contract:route:/path/to/script - Route execution to another script
+## - contract:exit:42 - Exit with specified code
+##
+## Usage:
+## - _hooks:middleware:modes "deploy" 0 "capture_var" -- "$@"
+##
+## Returns:
+## - Original exit code from implementation
+##
+## See Also:
+## - _hooks:env:apply - Environment variable contract implementation
+## - hooks:flow:apply - Executes flow directives set by this middleware
+##
 function _hooks:middleware:modes() {
   local hook_name="$1"
   local exit_code="$2"
   local capture_var="$3"
-  
+
   # we ignore all other arguments, they are not used
   echo:Hooks "middleware is processing hook: '${hook_name}'"
 
@@ -691,12 +827,23 @@ function _hooks:middleware:modes() {
   return "$exit_code"
 }
 
-#
-# Apply flow directives from middleware (public)
-#
-# Usage:
-#   hooks:flow:apply
-#
+##
+## Apply flow directives from middleware (route, exit)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __HOOKS_FLOW_TERMINATE, __HOOKS_FLOW_ROUTE, __HOOKS_FLOW_EXIT_CODE
+## - mutate/publish: none (may exit or source route script)
+##
+## Side effects:
+## - May exit with code if __HOOKS_FLOW_TERMINATE=true
+## - May source route script if __HOOKS_FLOW_ROUTE set
+##
+## Usage:
+## - hooks:flow:apply    # call after hook execution
+##
 function hooks:flow:apply() {
   if [[ "${__HOOKS_FLOW_TERMINATE:-}" != "true" ]]; then
     return 0
@@ -712,44 +859,51 @@ function hooks:flow:apply() {
   exit "${__HOOKS_FLOW_EXIT_CODE:-0}"
 }
 
-#
-# Execute a hook if it's defined and has an implementation
-#
-# Usage:
-#   hooks:do begin
-#   hooks:do decide param1 param2
-#   result=$(hooks:do decide "question")
-#
-# Parameters:
-#   $1 - Hook name
-#   $@ - Additional parameters passed to the hook
-#
-# Execution order:
-#   1. Check if hook is defined via hooks:declare
-#   2. Execute function hook:{name} if it exists
-#   3. Execute registered functions (hooks:register) in alphabetical order by friendly name
-#   4. Find and execute all matching scripts in ci-cd/{hook_name}-*.sh or ci-cd/{hook_name}_*.sh
-#   5. Scripts are executed in alphabetical order
-#
-# Script naming patterns:
-#   - {hook_name}-{purpose}.sh
-#   - {hook_name}_{NN}_{purpose}.sh (recommended for ordered execution)
-#
-# Execution modes (controlled by HOOKS_EXEC_MODE):
-#   - "exec" (default): Execute scripts directly in subprocess
-#   - "source": Source scripts and call hook:run function (runs in current shell)
-#
-# Logging:
-#   Enable with DEBUG=hooks or DEBUG=* to see:
-#   - Hook definitions and registrations
-#   - Hook execution flow
-#   - Script discovery and execution order
-#   - Exit codes for each implementation
-#
-# Returns:
-#   Last hook's exit code or 0 if not implemented
-#   All hooks' stdout is passed through
-#
+##
+## Execute a hook and all its implementations
+##
+## Parameters:
+## - hook_name - Hook name to execute, string, required
+## - @ - Additional parameters to pass to implementations, variadic
+##
+## Globals:
+## - reads/listen: __HOOKS_DEFINED, __HOOKS_REGISTERED, HOOKS_DIR,
+##                 HOOKS_PREFIX, HOOKS_EXEC_MODE, __HOOKS_SOURCE_PATTERNS,
+##                 __HOOKS_SCRIPT_PATTERNS, __HOOKS_MIDDLEWARE
+## - mutate/publish: none (calls hook implementations)
+##
+## Side effects:
+## - Executes hook:hook_name function if exists
+## - Executes all registered functions in alphabetical order
+## - Executes all matching scripts in HOOKS_DIR
+## - Calls middleware for output processing
+##
+## Execution order:
+## 1. Check if hook is defined via hooks:declare
+## 2. Execute function hook:{name} if it exists
+## 3. Execute registered functions (hooks:register) in alphabetical order
+## 4. Find and execute matching scripts in HOOKS_DIR/{hook_name}-*.sh or {hook_name}_*.sh
+## 5. Scripts execute in alphabetical order
+##
+## Script naming patterns:
+## - {hook_name}-{purpose}.sh
+## - {hook_name}_{NN}_{purpose}.sh (recommended for ordered execution)
+##
+## Execution modes (controlled by HOOKS_EXEC_MODE):
+## - "exec" (default): Scripts execute in subprocess
+## - "source": Scripts sourced, hook:run function called
+##
+## Logging:
+## - Enable with DEBUG=hooks or DEBUG=* to see execution flow
+##
+## Usage:
+## - hooks:do begin
+## - hooks:do decide param1 param2
+## - result=$(hooks:do decide "question")
+##
+## Returns:
+## - Last hook's exit code or 0 if not implemented
+##
 function hooks:do() {
   local hook_name="$1"
   shift
@@ -894,20 +1048,24 @@ function hooks:do() {
   return $last_exit_code
 }
 
-#
-# Execute a hook with scripts sourced (ignores HOOKS_EXEC_MODE for call-level override)
-#
-# Usage:
-#   hooks:do:source begin
-#   hooks:do:source deploy param1 param2
-#
-# Parameters:
-#   $1 - Hook name
-#   $@ - Additional parameters passed to the hook
-#
-# Returns:
-#   Last hook's exit code or 0 if not implemented
-#
+##
+## Execute a hook with forced sourced mode (overrides HOOKS_EXEC_MODE)
+##
+## Parameters:
+## - hook_name - Hook name to execute, string, required
+## - @ - Additional parameters, variadic
+##
+## Globals:
+## - reads/listen: HOOKS_EXEC_MODE
+## - mutate/publish: HOOKS_EXEC_MODE (temporarily sets to "source")
+##
+## Usage:
+## - hooks:do:source begin
+## - hooks:do:source deploy param1 param2
+##
+## Returns:
+## - Last hook's exit code or 0 if not implemented
+##
 function hooks:do:source() {
   local saved_mode="$HOOKS_EXEC_MODE"
   HOOKS_EXEC_MODE="source"
@@ -920,20 +1078,24 @@ function hooks:do:source() {
   return $exit_code
 }
 
-#
-# Execute a hook with scripts executed as subprocesses (ignores HOOKS_EXEC_MODE for call-level override)
-#
-# Usage:
-#   hooks:do:script end
-#   hooks:do:script notify url status
-#
-# Parameters:
-#   $1 - Hook name
-#   $@ - Additional parameters passed to the hook
-#
-# Returns:
-#   Last hook's exit code or 0 if not implemented
-#
+##
+## Execute a hook with forced exec mode (overrides HOOKS_EXEC_MODE)
+##
+## Parameters:
+## - hook_name - Hook name to execute, string, required
+## - @ - Additional parameters, variadic
+##
+## Globals:
+## - reads/listen: HOOKS_EXEC_MODE
+## - mutate/publish: HOOKS_EXEC_MODE (temporarily sets to "exec")
+##
+## Usage:
+## - hooks:do:script end
+## - hooks:do:script notify url status
+##
+## Returns:
+## - Last hook's exit code or 0 if not implemented
+##
 function hooks:do:script() {
   local saved_mode="$HOOKS_EXEC_MODE"
   HOOKS_EXEC_MODE="exec"
@@ -946,16 +1108,23 @@ function hooks:do:script() {
   return $exit_code
 }
 
-#
-# List all defined hooks
-#
-# Usage:
-#   hooks:list
-#
-# Returns:
-#   0 - Success
-#   Prints list of defined hooks to stdout
-#
+##
+## List all defined hooks and their implementations
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __HOOKS_DEFINED, __HOOKS_REGISTERED,
+##                 HOOKS_PREFIX, HOOKS_DIR
+## - mutate/publish: none
+##
+## Usage:
+## - hooks:list
+##
+## Returns:
+## - 0, prints hooks and implementations to stdout
+##
 function hooks:list() {
   local hook_name
 
@@ -1016,21 +1185,22 @@ function hooks:list() {
   return 0
 }
 
-#
-# Check if a hook is defined
-#
-# Usage:
-#   if hooks:known begin; then
-#     echo "begin hook is defined"
-#   fi
-#
-# Parameters:
-#   $1 - Hook name
-#
-# Returns:
-#   0 - Hook is defined
-#   1 - Hook is not defined
-#
+##
+## Check if a hook is defined
+##
+## Parameters:
+## - hook_name - Hook name to check, string, required
+##
+## Globals:
+## - reads/listen: __HOOKS_DEFINED
+## - mutate/publish: none
+##
+## Usage:
+## - if hooks:known begin; then echo "begin hook defined"; fi
+##
+## Returns:
+## - 0 if hook is defined, 1 otherwise
+##
 function hooks:known() {
   local hook_name="$1"
 
@@ -1041,21 +1211,22 @@ function hooks:known() {
   return 1
 }
 
-#
-# Check if a hook has an implementation
-#
-# Usage:
-#   if hooks:runnable begin; then
-#     echo "begin hook has implementation"
-#   fi
-#
-# Parameters:
-#   $1 - Hook name
-#
-# Returns:
-#   0 - Hook has implementation (function or script)
-#   1 - Hook has no implementation
-#
+##
+## Check if a hook has any implementation (function or script)
+##
+## Parameters:
+## - hook_name - Hook name to check, string, required
+##
+## Globals:
+## - reads/listen: HOOKS_PREFIX, HOOKS_DIR, __HOOKS_REGISTERED
+## - mutate/publish: none
+##
+## Usage:
+## - if hooks:runnable begin; then echo "has implementation"; fi
+##
+## Returns:
+## - 0 if hook has implementation, 1 otherwise
+##
 function hooks:runnable() {
   local hook_name="$1"
 
@@ -1083,9 +1254,27 @@ function hooks:runnable() {
   return 1
 }
 
-#
-# Cleanup function for tests
-#
+##
+## Reset all hooks module state (for testing)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: __HOOKS_DEFINED, __HOOKS_CONTEXTS, __HOOKS_REGISTERED,
+##                  __HOOKS_MIDDLEWARE, __HOOKS_SOURCE_PATTERNS,
+##                  __HOOKS_SCRIPT_PATTERNS, __HOOKS_CAPTURE_SEQ,
+##                  __HOOKS_END_TRAP_INSTALLED, HOOKS_DIR, HOOKS_PREFIX,
+##                  HOOKS_EXEC_MODE, HOOKS_AUTO_TRAP
+##
+## Side effects:
+## - Unsets and redeclares all global arrays/variables
+## - Resets to default values
+##
+## Usage:
+## - hooks:reset    # typically in test teardown
+##
 function hooks:reset() {
   # Properly unset and re-declare arrays to ensure correct types
   unset __HOOKS_DEFINED
@@ -1137,3 +1326,58 @@ logger loader "$@" # initialize logger
 echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 : # Ensure successful exit code (echo:Loader returns 1 when debug disabled)
+
+##
+## Module: Extensibility and Lifecycle Hooks System
+##
+## This module provides a declarative hooks system for script extension points.
+##
+## References:
+## - demo: demo.hooks.sh, demo.hooks-logging.sh, demo.hooks-nested.sh,
+##        demo.hooks-registration.sh, ci-mode/demo.ci-modes.sh,
+##        ci-mode/ci-10-compile.sh, ci-mode/ci-20-compile.sh
+## - bin: npm.versions.sh (uses hooks for extensibility)
+## - documentation: docs/public/hooks.md
+## - tests: spec/hooks_spec.sh
+##
+## External Dependencies:
+## - _traps.sh - trap:on for EXIT trap installation
+## - _commons.sh - to:slug() for creating filesystem-safe slugs
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - DEBUG - Always includes "error" when this module loads
+## - HOOKS_DIR - Hooks scripts directory, default: "ci-cd"
+## - HOOKS_PREFIX - Hook function prefix, default: "hook:"
+## - HOOKS_EXEC_MODE - Execution mode ("exec" or "source"), default: "exec"
+## - HOOKS_AUTO_TRAP - Auto-install EXIT trap, default: "true"
+## - __HOOKS_DEFINED - Associative array: hook name -> existence
+## - __HOOKS_CONTEXTS - Associative array: hook name -> pipe-separated contexts
+## - __HOOKS_REGISTERED - Associative array: hook name -> "friendly:func|friendly2:func2"
+## - __HOOKS_MIDDLEWARE - Associative array: hook name -> middleware function
+## - __HOOKS_SOURCE_PATTERNS - Array of patterns for forced sourced mode
+## - __HOOKS_SCRIPT_PATTERNS - Array of patterns for forced exec mode
+## - __HOOKS_CAPTURE_SEQ - Counter for capture array naming
+## - __HOOKS_END_TRAP_INSTALLED - Whether EXIT trap for end hook is installed
+## - __HOOKS_FLOW_ROUTE - Routing directive from middleware
+## - __HOOKS_FLOW_TERMINATE - Whether to terminate execution
+## - __HOOKS_FLOW_EXIT_CODE - Exit code directive
+##
+## Hook Implementation Types:
+## 1. Function: hook:hook_name() - direct function implementation
+## 2. Registered: hooks:register hook_name "friendly" function_name
+## 3. Script: HOOKS_DIR/{hook_name}-*.sh or {hook_name}_*.sh
+##
+## Script Naming:
+## - {hook_name}-{purpose}.sh - basic script
+## - {hook_name}_{NN}_{purpose}.sh - ordered script (recommended)
+## - Scripts must be executable (+x)
+##
+## Contract Directives (output from hooks to middleware):
+## - contract:env:NAME=VALUE - Set environment variable
+## - contract:env:NAME+=VALUE - Append to PATH-like variable
+## - contract:env:NAME^=VALUE - Prepend to PATH-like variable
+## - contract:env:NAME-=VALUE - Remove segment from PATH-like variable
+## - contract:route:/path/to/script.sh - Route to another script
+## - contract:exit:42 - Exit with code
+##

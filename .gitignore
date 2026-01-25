@@ -32,6 +32,9 @@ bun.lockb
 # local overrides
 .shellspec-local
 
+# Lefthook local configuration
+lefthook-local.yml
+
 # secrets
 .secrets/
 
@@ -73,3 +76,7 @@ mise.toml
 bun.lock*
 package-lock.json
 yarn.lock
+
+# Benchmark output files (generated)
+docs/benchmarks/*.json
+docs/benchmarks/*.md

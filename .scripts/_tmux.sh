@@ -35,14 +35,26 @@ readonly TMUX_PROGRESS_PANE=1
 # FIFO path for progress display
 : ${TMUX_FIFO_PATH:=}
 
-# Start a new tmux session if not already in one
-# Arguments:
-#   $@: script start parameters
-# Returns:
-#   0 on success, 1 on failure
-# Side Effects:
-#   Listens: TMUX_SESSION_NAME
-#   Modifies: TMUX_STARTED_BY_SCRIPT, TMUX_SESSION_NAME
+##
+## Start tmux session if not already in one
+##
+## Parameters:
+## - @ - Script start parameters (passed to tmux), variadic
+##
+## Globals:
+## - reads/listen: TMUX, TMUX_SESSION_NAME
+## - mutate/publish: TMUX_STARTED_BY_SCRIPT, TMUX_SESSION_NAME
+##
+## Side Effects:
+## - Executes tmux with current script (replaces process via exec)
+##
+## Returns:
+## - 0 on success (process is replaced)
+## - 0 if already in tmux (no action taken)
+##
+## Usage:
+## - tmux:ensure_session "$@"
+##
 function tmux:ensure_session() {
   local session_name="${TMUX_SESSION_NAME:-"tmux_session_$$"}"
   
@@ -64,13 +76,26 @@ function tmux:ensure_session() {
   return 0
 }
 
-# Initialize progress display in a tmux pane
-# Arguments:
-#   $1: fifo_path (string, optional) - Path for the named pipe
-# Returns:
-#   0 on success, 1 on failure
-# Side Effects:
-#   Modifies: TMUX_FIFO_PATH, TMUX_PROGRESS_ACTIVE
+##
+## Initialize progress display in a tmux pane
+##
+## Parameters:
+## - fifo_path - Path for the named pipe, string, default: mktemp --dry-run -t 'tmux_progress'
+##
+## Globals:
+## - reads/listen: TMUX_PROGRESS_HEIGHT, TMUX_MAIN_PANE, TMUX_PROGRESS_PANE
+## - mutate/publish: TMUX_FIFO_PATH, TMUX_PROGRESS_ACTIVE
+##
+## Side Effects:
+## - Creates named pipe (FIFO)
+## - Splits tmux pane to create progress display area
+##
+## Returns:
+## - 0 on success, 1 on failure
+##
+## Usage:
+## - tmux:init_progress "/tmp/my_progress"
+##
 function tmux:init_progress() {
   local fifo_path="${1:-"$(mktemp --dry-run -t 'tmux_progress')"}"
   
@@ -106,11 +131,22 @@ function tmux:init_progress() {
   return 0
 }
 
-# Update progress display
-# Arguments:
-#   $1: message (string) - Progress message to display
-# Returns:
-#   0 on success, 1 on failure
+##
+## Update progress display message
+##
+## Parameters:
+## - message - Progress message to display, string, required
+##
+## Globals:
+## - reads/listen: TMUX_PROGRESS_ACTIVE, TMUX_FIFO_PATH
+## - mutate/publish: none
+##
+## Returns:
+## - 0 on success, 1 if progress display not active
+##
+## Usage:
+## - tmux:update_progress "Processing item 3 of 10"
+##
 function tmux:update_progress() {
   local message="$1"
 
@@ -125,14 +161,25 @@ function tmux:update_progress() {
   return 1
 }
 
-# Show percentage-based progress bar
-# Arguments:
-#   $1: current (number) - Current progress value
-#   $2: total (number) - Total progress value
-#   $3: prefix (string, optional) - Prefix for the progress bar
-#   $4: width (number, optional) - Width of the progress bar
-# Returns:
-#   0 on success, 1 on failure
+##
+## Show percentage-based progress bar
+##
+## Parameters:
+## - current - Current progress value, number, required
+## - total - Total progress value, number, required
+## - prefix - Prefix for the progress bar, string, default: "Progress"
+## - width - Width of the progress bar, number, default: 50
+##
+## Globals:
+## - reads/listen: TMUX_PROGRESS_ACTIVE, TMUX_FIFO_PATH, cl_red, cl_reset
+## - mutate/publish: none
+##
+## Returns:
+## - 0 on success, 1 on failure
+##
+## Usage:
+## - tmux:show_progress_bar 50 100 "Loading" 40
+##
 function tmux:show_progress_bar() {
   local current=$1
   local total=$2
@@ -167,9 +214,26 @@ function tmux:show_progress_bar() {
   return 0
 }
 
-# Clean up tmux progress display resources
-# Returns:
-#   0 on success, otherwise tmux error code
+##
+## Clean up tmux progress display resources
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: TMUX_PROGRESS_ACTIVE, TMUX_FIFO_PATH, TMUX_MAIN_PANE, TMUX_PROGRESS_PANE
+## - mutate/publish: TMUX_PROGRESS_ACTIVE
+##
+## Side effects:
+## - Removes FIFO file
+## - Kills tmux progress pane
+##
+## Returns:
+## - 0 on success, tmux error code otherwise
+##
+## Usage:
+## - tmux:cleanup_progress
+##
 function tmux:cleanup_progress() {
   # Only clean up if progress is active, quick exit
   if [ "$TMUX_PROGRESS_ACTIVE" = false ]; then return 0; fi
@@ -190,14 +254,29 @@ function tmux:cleanup_progress() {
   return 0
 }
 
-# Final cleanup and exit from tmux if needed
-# Arguments:
-#   $1: exit_session (boolean, optional) - Whether to exit the tmux session if we started it
-# Returns:
-#   None, may exit the process
+##
+## Clean up and optionally exit tmux session
+##
+## Parameters:
+## - $1: exit_session - Whether to kill tmux session if we started it, boolean, default: true
+##
+## Globals:
+## - reads/listen: TMUX_STARTED_BY_SCRIPT, TMUX_SESSION_NAME, TMUX_PROGRESS_ACTIVE
+## - mutate/publish: none
+##
+## Side effects:
+## - May kill tmux session
+##
+## Returns:
+## - None
+##
+## Usage:
+## - tmux:cleanup_all
+## - tmux:cleanup_all false  # Keep session alive
+##
 function tmux:cleanup_all() {
   local exit_session="${1:-true}"
-  
+
   # Clean up progress resources
   tmux:cleanup_progress
   
@@ -209,11 +288,22 @@ function tmux:cleanup_all() {
   fi
 }
 
-# Set up trap to catch interrupt and clean up resources
-# Arguments:
-#   $1: exit_session (boolean, optional) - Whether to exit the tmux session on cleanup
-# Returns:
-#   None
+##
+## Set up trap to catch interrupt and clean up resources
+##
+## Parameters:
+## - $1: exit_session - Whether to exit tmux session on cleanup, boolean, default: true
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - None
+##
+## Usage:
+## - tmux:setup_trap
+##
 function tmux:setup_trap() {
   local exit_session="${1:-true}"
   
@@ -222,11 +312,25 @@ function tmux:setup_trap() {
   echo:Tmux "Set trap handler to clean up tmux resources"
 }
 
-
-# Check and enable mouse support if needed
-# Arguments: none
-# Returns:
-#   None
+##
+## Check and enable mouse support in tmux
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Enables mouse mode for tmux session
+##
+## Returns:
+## - None
+##
+## Usage:
+## - tmux:check_mouse_support
+##
 function tmux:check_mouse_support() {
   # Get tmux version
   local tmux_version
@@ -259,3 +363,34 @@ dependency tmux "3.5a" "brew install tmux" "-VV" >&2
 
 # Check mouse support when script is sourced
 tmux:check_mouse_support
+
+##
+## Module: Tmux Integration for Progress Display
+##
+## This module provides tmux integration for displaying progress bars and
+## session management for long-running scripts.
+##
+## References:
+## - demo: demo.tmux.progress.sh, demo.tmux.runner.sh, demo.tmux.streams.sh,
+##        demo.tmux.exec.sh
+## - bin: git.sync-by-patches.sh (uses tmux progress display)
+##
+## Globals:
+## - E_BASH - Path to .scripts directory
+## - TMUX_PROGRESS_HEIGHT - Progress pane height, default: 2
+## - TMUX_MAIN_PANE - Main pane index, default: 0
+## - TMUX_PROGRESS_PANE - Progress pane index, default: 1
+## - TMUX_STARTED_BY_SCRIPT - Flag if script started tmux session
+## - TMUX_SESSION_NAME - Session name for tracking
+## - TMUX_PROGRESS_ACTIVE - Whether progress display is active
+## - TMUX_FIFO_PATH - FIFO path for progress updates
+#
+## Main Functions:
+## - tmux:ensure_session() - Start tmux session if not in one
+## - tmux:init_progress(fifo_path) - Initialize progress display
+## - tmux:update_progress(message) - Update progress message
+## - tmux:show_progress_bar(percent) - Show percentage-based progress bar
+## - tmux:cleanup_progress() - Cleanup progress resources
+## - tmux:setup_trap() - Set up interrupt trap
+## - tmux:check_mouse_support() - Check/enable mouse support
+##
