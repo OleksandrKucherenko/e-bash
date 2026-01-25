@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-01-25
-## Version: 2.7.8
+## Version: 2.7.9
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -48,23 +48,18 @@ logger:init warn "[${cl_yellow}WARN${cl_reset}] " ">&2"
 logger:init err "[${cl_red}ERROR${cl_reset}] " ">&2"
 
 # Dependency checking (must be after _logger.sh)
-# Skip dependency checks for operations that don't need them:
-# 1. Help flag (-h, --help)
-# 2. Stdout mode (--stdout, -s)
-# 3. Dry-run mode (--dry-run, -n, --no-toc)
-# 4. No file arguments provided (options only or unknown options)
+# Skip dependency checks for --help flag only (showing help doesn't need ctags)
+# Also skip if no file arguments provided (catches unknown options early)
 skip_deps=false
 [[ " $* " == *" --help "* ]] || [[ " $* " == *" -h "* ]] && skip_deps=true
-[[ " $* " == *" --stdout "* ]] || [[ " $* " == *" -s "* ]] && skip_deps=true
-[[ " $* " == *" --dry-run "* ]] || [[ " $* " == *" -n "* ]] && skip_deps=true
-[[ " $* " == *" --no-toc "* ]] && skip_deps=true
 
-# Also skip if no non-flag arguments (files) are provided
+# Check if file arguments are provided
 has_file_arg=false
 for arg in "$@"; do
   [[ "$arg" != -* ]] && has_file_arg=true && break
 done
 
+# Only check dependencies if we have file arguments AND not showing help
 if ! $skip_deps && $has_file_arg; then
   # shellcheck disable=SC1091
   source "$E_BASH/_dependencies.sh"
