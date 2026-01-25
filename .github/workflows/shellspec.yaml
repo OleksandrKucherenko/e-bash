@@ -494,17 +494,15 @@ jobs:
         if: always()
         uses: codecov/codecov-action@v5
         with:
-          # Try directory mode first, then fall back to file mode
+          # Search directory for coverage files (supports cobertura.xml, coverage.json, etc.)
           directory: ./coverage
-          files: ./coverage/cobertura.xml
-          # Use consistent flag for all chunks to enable merging
+          # Use consistent flag for all chunks - Codecov v5 auto-merges by flag
           flags: shellspec-ubuntu
           name: ubuntu-chunk-${{ matrix.chunk }}
           fail_ci_if_error: false
           verbose: true
+          # Don't specify files - let Codecov auto-discover in the directory
           disable_search: false
-          # Mark as parallel upload - chunks will be merged after all complete
-          parallel: true
           # Ensure proper merging of parallel uploads
           override_branch: ${{ github.ref_name }}
           override_commit: ${{ github.sha }}
@@ -522,9 +520,13 @@ jobs:
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@v1
+        uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload test results as artifact
         if: always()
@@ -534,21 +536,6 @@ jobs:
           path: report/
           if-no-files-found: ignore
           retention-days: 30
-
-  codecov-merge:
-    name: "Codecov Merge"
-    runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, 'ci skip')"
-    needs: shellspec-ubuntu
-    steps:
-      - name: Finalize Codecov merge
-        uses: codecov/codecov-action@v5
-        with:
-          parallel_finished: true
-          fail_ci_if_error: false
-          verbose: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   shellmetrics:
     name: "Code Metrics"
