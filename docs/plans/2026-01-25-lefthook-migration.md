@@ -11,7 +11,7 @@
 
 This document outlines the migration plan from the current custom git hooks solution (`.githook/`) to [lefthook](https://github.com/evilmartians/lefthook), a modern, cross-platform git hooks manager. The migration will improve maintainability, testing, and cross-platform compatibility while preserving all existing functionality.
 
-**Current Status:** Ready for Phase 1 (Preparation)
+**Current Status:** Phase 3 Complete (Transition) - Lefthook is now primary
 **Target Completion:** 2-3 weeks
 **Risk Level:** Low (lefthook supports rollback via simple uninstall)
 
@@ -127,7 +127,7 @@ pre-commit:
   jobs:
     # Job 1: Verify and add copyright notices
     - name: copyright-verification
-      script: ".lefthook/copyright-verify.sh"
+      script: "copyright-verify.sh"
       runner: bash
       # Only process staged .sh files
       glob: "*.sh"
@@ -138,7 +138,7 @@ pre-commit:
 
     # Job 2: Update last revisit date
     - name: last-revisit-update
-      script: ".lefthook/last-revisit-update.sh"
+      script: "last-revisit-update.sh"
       runner: bash
       glob: "*.sh"
       stage_fixed: true
@@ -146,8 +146,8 @@ pre-commit:
       tags: [copyright, maintenance]
 
     # Job 3: Generate documentation for modified scripts
-    - name: docs-update
-      script: ".lefthook/docs-update.sh"
+    - name: edocs-update
+      script: "edocs-update.sh"
       runner: bash
       glob: ".scripts/*.sh"
       # Don't fail if docs generation fails
@@ -170,23 +170,24 @@ pre-commit:
 #       run: shellcheck .scripts/*.sh bin/*.sh
 ```
 
-### `.lefthook/copyright-verify.sh`
+### `.lefthook/pre-commit/copyright-verify.sh`
 
 Port of `pre-commit-copyright` adapted for lefthook:
-- Remove test mode (use `lefthook run` instead)
-- Use `{staged_files}` from lefthook or `git diff --cached --name-only`
+- Uses `LEFTHOOK_STAGED_FILES` environment variable
+- Falls back to `git diff --cached --name-only` if not set
 - Keep GNU tools dependency initially
 - Maintain numbered backup strategy
 - Preserve exit codes (2=line count, 3=format)
 
-### `.lefthook/last-revisit-update.sh`
+### `.lefthook/pre-commit/last-revisit-update.sh`
 
 Port of `pre-commit-copyright-last-revisit`:
-- Simplify for lefthook's file handling
+- Uses `LEFTHOOK_STAGED_FILES` environment variable
+- Falls back to `git diff --cached --name-only` if not set
 - Keep numbered backup strategy
 - Preserve test fixture detection
 
-### `.lefthook/docs-update.sh`
+### `.lefthook/pre-commit/edocs-update.sh`
 
 Port of `pre-commit.d/docs-update.sh`:
 - Check for `bin/e-docs.sh` existence
@@ -603,9 +604,9 @@ fi
 ### Files to Create
 
 - `lefthook.yml` - Main configuration
-- `.lefthook/copyright-verify.sh` - Copyright verification script
-- `.lefthook/last-revisit-update.sh` - Date update script
-- `.lefthook/docs-update.sh` - Documentation generation script
+- `.lefthook/pre-commit/copyright-verify.sh` - Copyright verification script
+- `.lefthook/pre-commit/last-revisit-update.sh` - Date update script
+- `.lefthook/pre-commit/edocs-update.sh` - Documentation generation script
 - `.lefthook/README.md` - Documentation
 
 ### Files to Modify
@@ -669,13 +670,41 @@ fi
 
 ## Approval
 
-**Plan Status:** Ready for Implementation
+**Plan Status:** Phase 3 Complete (Transition) - Lefthook is now primary
 **Date:** 2026-01-25
-**Next Step:** Begin Phase 1 - Preparation
+**Next Step:** Phase 4 - Cleanup (archive old hooks)
 
 **Stakeholders:**
-- [ ] Project Maintainer
+- [x] Project Maintainer
 - [ ] Core Contributors
+
+---
+
+## Implementation Notes
+
+### Completed Phases
+
+**Phase 1: Preparation** ✅ Complete
+- Created `lefthook.yml` configuration
+- Ported all hook scripts to `.lefthook/pre-commit/`
+- Updated `.envrc` with lefthook dependency
+- Updated `.gitignore` with `lefthook-local.yml`
+
+**Phase 2: Parallel Testing** ✅ Complete
+- Fixed `set -e` issue in ported scripts (removed to allow proper error handling)
+- All hooks tested and working correctly
+- Copyright verification, last-revisit updates, and docs generation all functional
+
+**Phase 3: Transition** ✅ Complete
+- Updated `.envrc` to use lefthook as primary
+- Reset `core.hooksPath` to default (lefthook manages `.git/hooks/`)
+- Updated migration plan documentation with correct file paths
+- All hooks running via lefthook
+
+**Phase 4: Cleanup** ⏳ Pending
+- Archive old `.githook/` directory
+- Clean up any remaining references to old hooks
+- Update CLAUDE.md with lefthook instructions
 
 ---
 

@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `spec/` - ShellSpec test suite (16 test files)
 - `docs/` - Comprehensive documentation and analysis documents
 - `demos/` - Demo scripts showing usage patterns
-- `.githook/` - Git hooks for pre-commit quality checks
+- `.lefthook/` - Git hooks managed by lefthook for pre-commit quality checks
 - `bin/gnubin/` - GNU tool shims for macOS compatibility
 
 ### Key Components
@@ -85,8 +85,12 @@ find . -name "*.sh" -exec "$ALTSHFMT" -w {} \;
 # Run manually:
 shellcheck .scripts/*.sh bin/*.sh
 
-# Git hooks are configured via .githook/ directory
-git config core.hooksPath .githook
+# Git hooks are managed by lefthook
+# Run hooks manually:
+lefthook run pre-commit
+
+# Run specific hook:
+lefthook run pre-commit --commands copyright-verification
 ```
 
 ## Installation & Integration
@@ -257,9 +261,11 @@ trap:on on_exit_update EXIT
 ## Integration Points
 
 ### Git Hooks
-- Located in `.githook/`
+- Managed by [lefthook](https://github.com/evilmartians/lefthook) v2.0+
+- Configuration in `lefthook.yml` and scripts in `.lefthook/pre-commit/`
 - Pre-commit hooks verify copyright headers and refresh "Last revisit" dates
-- Automatically configured by `.envrc`: `git config core.hooksPath .githook`
+- Automatically configured by `.envrc`: `lefthook install`
+- Run manually: `lefthook run pre-commit`
 
 ### CI/CD Pipeline
 - GitHub Actions in `.github/workflows/shellspec.yaml`
