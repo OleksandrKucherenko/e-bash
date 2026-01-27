@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-25
-## Version: 2.8.0
+## Last revisit: 2026-01-27
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -768,6 +768,8 @@ Describe "_dependencies.sh /"
     End
 
     It "dependency:exists resolves aliases"
+      is_go_not_installed() { ! command -v go >/dev/null 2>&1; }
+      Skip if "go is not installed" is_go_not_installed
       When call dependency:exists golang
       The status should be success
     End
@@ -798,8 +800,8 @@ Describe "_dependencies.sh /"
     BeforeEach '_cache:clear'
 
     It "caches successful dependency verification"
-      # First call - should verify and cache
-      dependency bash "5.*.*" "brew install bash"
+      # First call - should verify and cache (silently)
+      dependency bash "5.*.*" "brew install bash" >/dev/null 2>&1
       # Second call - should use cache
       When call dependency bash "5.*.*" "brew install bash"
       The status should be success
@@ -807,8 +809,8 @@ Describe "_dependencies.sh /"
     End
 
     It "cache is bypassed with --no-cache flag"
-      # First call - should verify and cache
-      dependency bash "5.*.*" "brew install bash"
+      # First call - should verify and cache (silently)
+      dependency bash "5.*.*" "brew install bash" >/dev/null 2>&1
       # Second call with --no-cache - should NOT show cached
       When call dependency bash "5.*.*" "brew install bash" --version --no-cache
       The status should be success
@@ -816,7 +818,10 @@ Describe "_dependencies.sh /"
     End
 
     It "caches failure for missing tool"
-      dependency nonexistent_tool_abc "1.*.*"
+      # Call dependency in subshell to avoid test abort on failure (silently)
+      (dependency nonexistent_tool_abc "1.*.*" >/dev/null 2>&1 || true)
+      # Reload cache from disk (subshell wrote to file but parent needs to reload)
+      _cache:load
       # Verify cache was set with failure
       When call _cache:get "nonexistent_tool_abc:1.*.*:--version"
       The status should be success

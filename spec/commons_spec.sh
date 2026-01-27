@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -530,7 +530,7 @@ Describe "_commons.sh /"
       # Multi-level composition:
       # val:l1 CLI_ARG (var:l1 ENV_VAR (var:l1 CONFIG_PATH CONFIG_PATH_INSTALLER default))
       test_complex_real_world() {
-        local cli_arg=""  # No CLI argument provided
+        local cli_arg="" # No CLI argument provided
         local config_base="CONFIG_PATH"
         local script_name="installer"
         local script_name_upper=$(echo "$script_name" | tr '[:lower:]' '[:upper:]')
@@ -1170,7 +1170,7 @@ Describe "_commons.sh /"
 
     It "rejects whitespace-only input and loops"
       Data
-        #|   
+        #|
         #|valid
       End
 
@@ -1604,7 +1604,7 @@ Describe "_commons.sh /"
       When call echo "${#result}"
 
       The status should be success
-      The output should eq "13"  # hello (5) + _ (1) + hash (7)
+      The output should eq "13" # hello (5) + _ (1) + hash (7)
       The error should eq ''
     End
 
@@ -1613,7 +1613,7 @@ Describe "_commons.sh /"
       When call echo "${#result}"
 
       The status should be success
-      The output should eq "19"  # hello_world (11) + _ (1) + hash (7) = 19
+      The output should eq "19" # hello_world (11) + _ (1) + hash (7) = 19
       The error should eq ''
     End
 
@@ -1811,9 +1811,9 @@ Describe "_commons.sh /"
       mkdir -p "$test_root/level1/level2/level3"
       test_root=$(cd "$test_root" && pwd -P)
 
-      echo '{"root": true}' > "$test_root/.myconfig.json"
-      echo '{"level1": true}' > "$test_root/level1/.myconfig.json"
-      echo '{"level3": true}' > "$test_root/level1/level2/level3/.myconfig.json"
+      echo '{"root": true}' >"$test_root/.myconfig.json"
+      echo '{"level1": true}' >"$test_root/level1/.myconfig.json"
+      echo '{"level3": true}' >"$test_root/level1/level2/level3/.myconfig.json"
 
       echo "$test_root"
     }
@@ -1857,7 +1857,7 @@ Describe "_commons.sh /"
 
     It "searches multiple config names (comma-separated)"
       test_root=$(setup_test_configs)
-      echo '{"alt": true}' > "$test_root/level1/level2/level3/.altconfig.json"
+      echo '{"alt": true}' >"$test_root/level1/level2/level3/.altconfig.json"
 
       result=$(config:hierarchy ".myconfig,.altconfig" "$test_root/level1/level2/level3" "root" ".json")
       cleanup_test_configs "$test_root"
@@ -1871,7 +1871,7 @@ Describe "_commons.sh /"
 
     It "tries multiple extensions for same config name"
       test_root=$(setup_test_configs)
-      echo 'root: true' > "$test_root/.myconfig.yaml"
+      echo 'root: true' >"$test_root/.myconfig.yaml"
 
       result=$(config:hierarchy ".myconfig" "$test_root/level1/level2/level3" "root" ".json,.yaml")
       cleanup_test_configs "$test_root"
@@ -1902,7 +1902,7 @@ Describe "_commons.sh /"
       When call echo "$count"
 
       The status should be success
-      The output should eq "2"  # Should find level1 and level3, but not root
+      The output should eq "2" # Should find level1 and level3, but not root
     End
 
     It "handles invalid starting path gracefully"
@@ -1921,7 +1921,7 @@ Describe "_commons.sh /"
 
     It "includes empty extension to match exact filename"
       test_root=$(setup_test_configs)
-      echo '{"exact": true}' > "$test_root/level1/level2/level3/myconfig"
+      echo '{"exact": true}' >"$test_root/level1/level2/level3/myconfig"
 
       result=$(config:hierarchy "myconfig" "$test_root/level1/level2/level3" "root" ",.json")
       cleanup_test_configs "$test_root"
@@ -1966,8 +1966,8 @@ Describe "_commons.sh /"
 
     It "finds config files with default extensions when not specified"
       test_root=$(setup_test_configs)
-      echo 'root: true' > "$test_root/.myconfig.yaml"
-      echo 'root: true' > "$test_root/.myconfig.toml"
+      echo 'root: true' >"$test_root/.myconfig.yaml"
+      echo 'root: true' >"$test_root/.myconfig.toml"
 
       result=$(config:hierarchy ".myconfig" "$test_root" "root")
       cleanup_test_configs "$test_root"
@@ -1991,13 +1991,13 @@ Describe "_commons.sh /"
       mkdir -p "$test_root/etc/myapp"
 
       # Hierarchical configs (highest priority)
-      echo '{"level": "project"}' > "$test_root/project/myapp.json"
-      echo '{"level": "subdir"}' > "$test_root/project/subdir/myapp.json"
+      echo '{"level": "project"}' >"$test_root/project/myapp.json"
+      echo '{"level": "subdir"}' >"$test_root/project/subdir/myapp.json"
 
       # XDG configs
-      echo '{"level": "xdg_config_home"}' > "$test_root/.config/myapp/config.json"
-      echo '{"level": "etc_xdg"}' > "$test_root/etc/xdg/myapp/config.json"
-      echo '{"level": "etc"}' > "$test_root/etc/myapp/config.json"
+      echo '{"level": "xdg_config_home"}' >"$test_root/.config/myapp/config.json"
+      echo '{"level": "etc_xdg"}' >"$test_root/etc/xdg/myapp/config.json"
+      echo '{"level": "etc"}' >"$test_root/etc/myapp/config.json"
 
       echo "$test_root"
     }
@@ -2093,7 +2093,7 @@ Describe "_commons.sh /"
     It "searches XDG_CONFIG_HOME when set"
       test_root=$(setup_xdg_test)
       mkdir -p "$test_root/custom-xdg/myapp"
-      echo '{"level": "custom"}' > "$test_root/custom-xdg/myapp/config.json"
+      echo '{"level": "custom"}' >"$test_root/custom-xdg/myapp/config.json"
 
       result=$(call_xdg_with_home "$test_root" --xdg "$test_root/custom-xdg" "myapp" "config" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
@@ -2110,8 +2110,8 @@ Describe "_commons.sh /"
       test_root=$(setup_xdg_test)
       # Create same file in both hierarchical and XDG location
       mkdir -p "$test_root/.config/myapp"
-      echo '{"level": "duplicate"}' > "$test_root/.config/myapp/config.json"
-      echo '{"level": "duplicate"}' > "$test_root/project/config.json"
+      echo '{"level": "duplicate"}' >"$test_root/.config/myapp/config.json"
+      echo '{"level": "duplicate"}' >"$test_root/project/config.json"
 
       BeforeCall "export HOME=$test_root"
 
@@ -2131,8 +2131,8 @@ Describe "_commons.sh /"
     It "searches multiple config names in XDG directories"
       test_root=$(setup_xdg_test)
       mkdir -p "$test_root/.config/myapp"
-      echo '{"file": "config"}' > "$test_root/.config/myapp/config.json"
-      echo '{"file": "myapprc"}' > "$test_root/.config/myapp/myapprc.json"
+      echo '{"file": "config"}' >"$test_root/.config/myapp/config.json"
+      echo '{"file": "myapprc"}' >"$test_root/.config/myapp/myapprc.json"
 
       result=$(call_xdg_with_home "$test_root" "myapp" "config,myapprc" "$test_root/project" "root" ".json")
       cleanup_xdg_test "$test_root"
@@ -2216,7 +2216,7 @@ Describe "_commons.sh /"
     It "works with real-world app example: nvim"
       test_root=$(setup_xdg_test)
       mkdir -p "$test_root/.config/nvim"
-      echo 'set number' > "$test_root/.config/nvim/init.vim"
+      echo 'set number' >"$test_root/.config/nvim/init.vim"
 
       result=$(call_xdg_with_home "$test_root" "nvim" "init.vim" "$test_root/project" "home" "")
       cleanup_xdg_test "$test_root"

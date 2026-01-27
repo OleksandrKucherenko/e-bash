@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -214,7 +214,7 @@ Describe '_hooks.sh /'
   Context 'Hook execution with scripts /'
     setup_hooks_dir() {
       setup_test_hooks_dir
-      
+
     }
 
     cleanup_hooks_dir() {
@@ -228,16 +228,16 @@ Describe '_hooks.sh /'
       test_script_hook() {
         # Set up test environment
         setup_test_hooks_dir
-        
+
         hooks:declare script_hook
-        cat > "$TEST_HOOKS_DIR/script_hook-test.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/script_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script hook executed"
 EOF
         chmod +x "$TEST_HOOKS_DIR"/script_hook-test.sh
-        
+
         hooks:do script_hook
-        
+
         # Clean up
       }
 
@@ -253,16 +253,16 @@ EOF
       test_script_params() {
         # Set up test environment
         setup_test_hooks_dir
-        
+
         hooks:declare script_hook
-        cat > "$TEST_HOOKS_DIR/script_hook-test.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/script_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script params: $*"
 EOF
         chmod +x "$TEST_HOOKS_DIR"/script_hook-test.sh
-        
+
         hooks:do script_hook arg1 arg2
-        
+
         # Clean up
       }
 
@@ -277,21 +277,20 @@ EOF
       test_script_exit_code() {
         # Set up test environment
         setup_test_hooks_dir
-        
-        
+
         hooks:declare fail_hook
-        cat > "$TEST_HOOKS_DIR/fail_hook-test.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/fail_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 exit 13
 EOF
         chmod +x "$TEST_HOOKS_DIR"/fail_hook-test.sh
-        
+
         # Execute hook and capture exit code
         hooks:do fail_hook
         local exit_code=$?
-        
+
         # Clean up
-        
+
         # Return the captured exit code
         return $exit_code
       }
@@ -306,20 +305,19 @@ EOF
       test_priority_hook() {
         # Set up test environment
         setup_test_hooks_dir
-        
-        
+
         hooks:declare priority_hook
         hook:priority_hook() {
           echo "Function implementation"
         }
-        cat > "$TEST_HOOKS_DIR/priority_hook-test.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/priority_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script implementation"
 EOF
         chmod +x "$TEST_HOOKS_DIR"/priority_hook-test.sh
-        
+
         hooks:do priority_hook
-        
+
         # Clean up
       }
 
@@ -341,7 +339,7 @@ EOF
         func_charlie() { echo "charlie"; }
         hooks:register merge_order "10-alpha" func_alpha
         hooks:register merge_order "30-charlie" func_charlie
-        cat > "$TEST_HOOKS_DIR/merge_order-20-bravo.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/merge_order-20-bravo.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "bravo"
 EOF
@@ -363,17 +361,16 @@ EOF
       test_non_executable() {
         # Set up test environment
         setup_test_hooks_dir
-        
-        
+
         hooks:declare no_exec_hook
-        cat > "$TEST_HOOKS_DIR/no_exec_hook-test.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/no_exec_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "This should not execute"
 EOF
         # Intentionally not making it executable
-        
+
         hooks:do no_exec_hook
-        
+
         # Clean up
       }
 
@@ -390,25 +387,24 @@ EOF
       test_numbered_scripts() {
         # Set up test environment
         setup_test_hooks_dir
-        
-        
+
         hooks:declare begin
-        cat > "$TEST_HOOKS_DIR/begin_01_init.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/begin_01_init.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Step 1: Init"
 EOF
-        cat > "$TEST_HOOKS_DIR/begin_02_validate.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/begin_02_validate.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Step 2: Validate"
 EOF
-        cat > "$TEST_HOOKS_DIR/begin_10_finalize.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/begin_10_finalize.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Step 10: Finalize"
 EOF
         chmod +x "$TEST_HOOKS_DIR"/begin_*.sh
-        
+
         hooks:do begin
-        
+
         # Clean up
       }
 
@@ -426,11 +422,11 @@ EOF
       setup() {
         setup_test_hooks_dir
         hooks:declare process
-        cat > "$TEST_HOOKS_DIR/process-validate.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/process-validate.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Validate: $1"
 EOF
-        cat > "$TEST_HOOKS_DIR/process-execute.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/process-execute.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Execute: $1"
 EOF
@@ -451,12 +447,12 @@ EOF
       setup() {
         setup_test_hooks_dir
         hooks:declare test_hook
-        cat > "$TEST_HOOKS_DIR/test_hook-first.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/test_hook-first.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "First"
 exit 0
 EOF
-        cat > "$TEST_HOOKS_DIR/test_hook-second.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/test_hook-second.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Second"
 exit 42
@@ -479,11 +475,11 @@ EOF
       setup() {
         setup_test_hooks_dir
         hooks:declare specific_hook
-        cat > "$TEST_HOOKS_DIR/specific_hook-valid.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/specific_hook-valid.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Valid script"
 EOF
-        cat > "$TEST_HOOKS_DIR/other_hook-invalid.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/other_hook-invalid.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Should not execute"
 EOF
@@ -504,11 +500,11 @@ EOF
       setup() {
         setup_test_hooks_dir
         hooks:declare flexible
-        cat > "$TEST_HOOKS_DIR/flexible-dash.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/flexible-dash.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Dash pattern"
 EOF
-        cat > "$TEST_HOOKS_DIR/flexible_underscore.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/flexible_underscore.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Underscore pattern"
 EOF
@@ -597,7 +593,7 @@ EOF
       setup() {
         setup_test_hooks_dir
         hooks:declare impl_hook
-        cat > "$TEST_HOOKS_DIR/impl_hook-test.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/impl_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 :
 EOF
@@ -645,7 +641,7 @@ EOF
     It 'sources script and calls hook:run function'
       setup() {
         hooks:declare test_source
-        cat > "$TEST_SOURCE_DIR/test_source-script.sh" <<'EOF'
+        cat >"$TEST_SOURCE_DIR/test_source-script.sh" <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "Sourced execution"
@@ -666,7 +662,7 @@ EOF
     It 'passes parameters to hook:run function'
       setup() {
         hooks:declare test_params
-        cat > "$TEST_SOURCE_DIR"/test_params-script.sh <<'EOF'
+        cat >"$TEST_SOURCE_DIR"/test_params-script.sh <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "Params: $*"
@@ -690,7 +686,7 @@ EOF
       setup() {
         export DEBUG="hooks"
         hooks:declare test_no_func
-        cat > "$TEST_SOURCE_DIR"/test_no_func-script.sh <<'EOF'
+        cat >"$TEST_SOURCE_DIR"/test_no_func-script.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Top-level code executes"
 EOF
@@ -712,7 +708,7 @@ EOF
       setup() {
         hooks:declare test_env
         export TEST_VAR="parent_value"
-        cat > "$TEST_SOURCE_DIR"/test_env-script.sh <<'EOF'
+        cat >"$TEST_SOURCE_DIR"/test_env-script.sh <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "TEST_VAR=$TEST_VAR"
@@ -755,7 +751,7 @@ EOF
 
     It 'detects when same hook is defined from multiple contexts'
       # Create a helper script that defines a hook
-      cat > "$TEST_NESTED_DIR/helper.sh" <<'EOF'
+      cat >"$TEST_NESTED_DIR/helper.sh" <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -795,7 +791,7 @@ EOF
 
     It 'tracks contexts for each hook'
       # Create two helper scripts
-      cat > "$TEST_NESTED_DIR"/helper1.sh <<'EOF'
+      cat >"$TEST_NESTED_DIR"/helper1.sh <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -803,7 +799,7 @@ set -e
 hooks:declare build
 EOF
 
-      cat > "$TEST_NESTED_DIR"/helper2.sh <<'EOF'
+      cat >"$TEST_NESTED_DIR"/helper2.sh <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -839,7 +835,7 @@ EOF
 
     It 'executes hooks defined from multiple contexts'
       # Create a script implementation
-      cat > "$TEST_NESTED_DIR"/multi_ctx_hook-test.sh <<'EOF'
+      cat >"$TEST_NESTED_DIR"/multi_ctx_hook-test.sh <<'EOF'
 #!/usr/bin/env bash
 echo "Hook executed"
 exit 0
@@ -847,7 +843,7 @@ EOF
       chmod +x "$TEST_NESTED_DIR"/multi_ctx_hook-test.sh
 
       # Create helper that defines the hook
-      cat > "$TEST_NESTED_DIR"/helper.sh <<'EOF'
+      cat >"$TEST_NESTED_DIR"/helper.sh <<'EOF'
 #!/usr/bin/env bash
 set +e  # Prevent logger conditionals from causing exit
 source "$E_BASH/_hooks.sh"
@@ -995,7 +991,7 @@ EOF
 
     It 'can register functions for forwarding to external scripts'
       external_script="/tmp/external_test.sh"
-      cat > "$external_script" <<'EOF'
+      cat >"$external_script" <<'EOF'
 #!/usr/bin/env bash
 echo "External script via function"
 exit 0
@@ -1239,7 +1235,7 @@ EOF
       setup() {
         hooks:declare route_hook
         route_script="$(mktemp)"
-        cat > "$route_script" <<'EOF'
+        cat >"$route_script" <<'EOF'
 echo "routed"
 __HOOKS_FLOW_EXIT_CODE=5
 EOF
@@ -1251,7 +1247,7 @@ EOF
       run_route() {
         hooks:do route_hook >/dev/null
         local routed_output=""
-        routed_output="$( (hooks:flow:apply) )"
+        routed_output="$( (hooks:flow:apply))"
         local routed_code=$?
         if [[ -n "${routed_output}" ]]; then
           printf '%s\n' "${routed_output}"
@@ -1278,7 +1274,7 @@ code=5"
       run_exit() {
         hooks:do exit_hook >/dev/null
         local exit_output=""
-        exit_output="$( (hooks:flow:apply) )"
+        exit_output="$( (hooks:flow:apply))"
         local exit_code=$?
         if [[ -n "${exit_output}" ]]; then
           printf '%s\n' "${exit_output}"
@@ -1298,7 +1294,7 @@ code=5"
         setup_test_hooks_dir
         export HOOKS_EXEC_MODE="source"
         hooks:declare source_hook
-        cat > "$TEST_HOOKS_DIR/source_hook-test.sh" <<'EOF'
+        cat >"$TEST_HOOKS_DIR/source_hook-test.sh" <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "source-out"
@@ -1336,7 +1332,10 @@ EOF
     It 'provides prefixed capture lines to middleware'
       setup() {
         hooks:declare cap_format
-        hook:cap_format() { echo "a"; echo "b" >&2; }
+        hook:cap_format() {
+          echo "a"
+          echo "b" >&2
+        }
         middleware:inspect() {
           local hook_name="$1" exit_code="$2" capture_var="$3"
           local -n capture_ref="$capture_var"
@@ -1445,7 +1444,7 @@ EOF
       mkdir -p "$TEST_PATTERN_DIR"
       hooks:reset
       export HOOKS_DIR="$TEST_PATTERN_DIR"
-      export HOOKS_EXEC_MODE="exec"  # Default to exec mode
+      export HOOKS_EXEC_MODE="exec" # Default to exec mode
       source ".scripts/_hooks.sh"
     }
 
@@ -1461,22 +1460,22 @@ EOF
       test_pattern_source() {
         # Register pattern first
         hooks:pattern:source "test_pattern-*.sh" 2>/dev/null
-        
+
         # Define hook
         hooks:declare test_pattern
-        
+
         # Create script in the current HOOKS_DIR
-        cat > "$HOOKS_DIR/test_pattern-config.sh" <<'EOF'
+        cat >"$HOOKS_DIR/test_pattern-config.sh" <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "Sourced via pattern"
 }
 EOF
         chmod +x "$HOOKS_DIR"/test_pattern-config.sh
-        
+
         # Execute hook
         hooks:do test_pattern
-        
+
         # Clean up
         rm -f "$HOOKS_DIR/test_pattern-config.sh"
       }
@@ -1492,20 +1491,20 @@ EOF
       test_exec_script() {
         # Register pattern first
         hooks:pattern:script "test_exec-*.sh" 2>/dev/null
-        
+
         # Define hook
         hooks:declare test_exec
-        
+
         # Create script
-        cat > "$HOOKS_DIR/test_exec-notify.sh" <<'EOF'
+        cat >"$HOOKS_DIR/test_exec-notify.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Executed as script"
 EOF
         chmod +x "$HOOKS_DIR"/test_exec-notify.sh
-        
+
         # Execute hook
         hooks:do test_exec
-        
+
         # Clean up
         rm -f "$HOOKS_DIR/test_exec-notify.sh"
       }
@@ -1519,26 +1518,26 @@ EOF
 
     It 'overrides global HOOKS_EXEC_MODE with source pattern'
       test_override_source() {
-        export HOOKS_EXEC_MODE="exec"  # Global setting
-        
+        export HOOKS_EXEC_MODE="exec" # Global setting
+
         # Register pattern first
         hooks:pattern:source "override_test-*.sh" 2>/dev/null
-        
+
         # Define hook
         hooks:declare override_test
-        
+
         # Create script
-        cat > "$HOOKS_DIR/override_test-config.sh" <<'EOF'
+        cat >"$HOOKS_DIR/override_test-config.sh" <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "Pattern overrode global mode"
 }
 EOF
         chmod +x "$HOOKS_DIR"/override_test-config.sh
-        
+
         # Execute hook
         hooks:do override_test
-        
+
         # Clean up
         rm -f "$HOOKS_DIR/override_test-config.sh"
       }
@@ -1552,24 +1551,24 @@ EOF
 
     It 'overrides global HOOKS_EXEC_MODE with script pattern'
       test_override_script() {
-        export HOOKS_EXEC_MODE="source"  # Global setting
-        
+        export HOOKS_EXEC_MODE="source" # Global setting
+
         # Register pattern first
         hooks:pattern:script "script_override-*.sh" 2>/dev/null
-        
+
         # Define hook
         hooks:declare script_override
-        
+
         # Create script
-        cat > "$HOOKS_DIR/script_override-notify.sh" <<'EOF'
+        cat >"$HOOKS_DIR/script_override-notify.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Script pattern overrode global source mode"
 EOF
         chmod +x "$HOOKS_DIR"/script_override-notify.sh
-        
+
         # Execute hook
         hooks:do script_override
-        
+
         # Clean up
         rm -f "$HOOKS_DIR/script_override-notify.sh"
       }
@@ -1586,26 +1585,26 @@ EOF
         # Register patterns first
         hooks:pattern:source "mixed_patterns-config*.sh" 2>/dev/null
         hooks:pattern:script "mixed_patterns-notify*.sh" 2>/dev/null
-        
+
         # Define hook
         hooks:declare mixed_patterns
-        
+
         # Create scripts
-        cat > "$HOOKS_DIR/mixed_patterns-config.sh" <<'EOF'
+        cat >"$HOOKS_DIR/mixed_patterns-config.sh" <<'EOF'
 #!/usr/bin/env bash
 function hook:run() {
   echo "Config sourced"
 }
 EOF
-        cat > "$HOOKS_DIR/mixed_patterns-notify.sh" <<'EOF'
+        cat >"$HOOKS_DIR/mixed_patterns-notify.sh" <<'EOF'
 #!/usr/bin/env bash
 echo "Notify executed"
 EOF
         chmod +x "$HOOKS_DIR"/mixed_patterns-*.sh
-        
+
         # Execute hook
         hooks:do mixed_patterns
-        
+
         # Clean up
         rm -f "$HOOKS_DIR/mixed_patterns-"*.sh
       }

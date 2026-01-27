@@ -2,8 +2,8 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-25
-## Version: 2.1.0
+## Last revisit: 2026-01-27
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -573,24 +573,37 @@ function isCIAutoInstallEnabled() {
 ## - if dependency go --silent; then echo "Go is installed"; fi
 ##
 function dependency() {
-  local tool_name=$1
-  local tool_name_resolved=$(dependency:dealias "$tool_name")
-  local tool_version_pattern=$2
-  local tool_fallback=${3:-"No details. Please google it."}
-  local tool_version_flag=${4:-""}
-  # Resolve version flag (user-provided or built-in exception or default --version)
-  tool_version_flag=$(dependency:known:flags "$tool_name_resolved" "$tool_version_flag")
+  # Detect flags first (before processing positional args)
   local is_exec=$(isExec "$@")
   local is_optional=$(isOptional "$@")
   local is_silent=$(isSilent "$@")
   local is_no_cache=$(isNoCache "$@")
   local is_ci_auto_install=$(isCIAutoInstallEnabled)
 
+  # Filter out flag arguments to get positional args only
+  local filtered_args=()
+  for arg in "$@"; do
+    case "$arg" in
+      --exec|--optional|--silent|--no-cache|--debug) continue ;;
+      *) filtered_args+=("$arg") ;;
+    esac
+  done
+
+  local tool_name="${filtered_args[0]:-""}"
+  local tool_name_resolved=$(dependency:dealias "$tool_name")
+  local tool_version_pattern="${filtered_args[1]:-""}"
+  local tool_fallback="${filtered_args[2]:-"No details. Please google it."}"
+  local tool_version_flag="${filtered_args[3]:-""}"
+
+  # Resolve version flag (user-provided or built-in exception or default --version)
+  tool_version_flag=$(dependency:known:flags "$tool_name_resolved" "$tool_version_flag")
+
   # Local constants for success/failure symbols
   local YEP="${cl_green}✓${cl_reset}"
   local BAD="${cl_red}✗${cl_reset}"
 
-  config:logger:Dependencies "$@" # refresh debug flags
+  # Only refresh debug flags if not silent and tool_name is not empty
+  ! $is_silent && [[ -n "$tool_name" ]] && config:logger:Dependencies "${filtered_args[@]}"
 
   # Short form: if no version pattern provided, just check existence
   if [[ -z "$tool_version_pattern" ]]; then
@@ -619,7 +632,7 @@ function dependency() {
 
   # Check cache (unless --no-cache)
   if ! $is_no_cache && _cache:get "$cache_key"; then
-    printf:Dependencies "cache hit: %s -> status=%s, version=%s, path=%s\n" \
+    ! $is_silent && printf:Dependencies "cache hit: %s -> status=%s, version=%s, path=%s\n" \
       "$cache_key" "$__DEPS_CACHE_STATUS" "$__DEPS_CACHE_VERSION" "$__DEPS_CACHE_PATH"
     if [[ "$__DEPS_CACHE_STATUS" == "0" ]]; then
       if $is_optional; then echo -n "Optional   "; else echo -n "Dependency "; fi
@@ -636,7 +649,7 @@ function dependency() {
   local tool_version=$(sed -e 's#[&\\/\.{}]#\\&#g; s#$#\\#' -e '$s#\\$##' -e 's#*#[0-9]\\{1,4\\}#g' <<<$tool_version_pattern)
 
   if [ -z "$which_tool" ]; then
-    printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
+    ! $is_silent && printf:Dependencies "which  : %s\npattern: %s, sed: \"s#.*\(%s\).*#\1#g\"\n-------\n" \
       "${which_tool:-"command -v $tool_name"}" "$tool_version_pattern" "$tool_version"
 
     if $is_ci_auto_install && ! $is_optional; then
@@ -675,7 +688,7 @@ function dependency() {
   local version_message=$($tool_name_resolved $tool_version_flag 2>&1)
   local version_cleaned=$(echo "'$version_message'" | sed -n "s#.*\($tool_version\).*#\1#p" | head -1)
 
-  printf:Dependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\\\1#g\"\nver.   : %s\n-------\n" \
+  ! $is_silent && printf:Dependencies "which  : %s\nversion: %s\npattern: %s, sed: \"s#.*\(%s\).*#\\\1#g\"\nver.   : %s\n-------\n" \
     "$which_tool" "$version_message" "$tool_version_pattern" "$tool_version" "$version_cleaned"
 
   if [ "$version_cleaned" == "" ]; then

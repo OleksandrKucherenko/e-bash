@@ -4,7 +4,7 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -26,13 +26,13 @@ Describe 'Self-Update Module /'
 
   setup() {
     # Mock all logger functions to avoid errors
-    echo:Version() { echo "$@"; }  # Silent mock
-    echo:Git() { echo "$@"; }      # Silent mock
-    echo:Regex() { :; }    # Silent mock
-    echo:Loader() { echo "$@"; }   # Silent mock
-    echo:Simple() { echo "$@"; }   # Silent mock
-    echo:Semver() { echo "$@"; }   # Silent mock
-    
+    echo:Version() { echo "$@"; } # Silent mock
+    echo:Git() { echo "$@"; }     # Silent mock
+    echo:Regex() { :; }           # Silent mock
+    echo:Loader() { echo "$@"; }  # Silent mock
+    echo:Simple() { echo "$@"; }  # Silent mock
+    echo:Semver() { echo "$@"; }  # Silent mock
+
     printf:Version() { printf "$@"; }
     printf:Git() { printf "$@"; }
     printf:Regex() { :; }
@@ -52,7 +52,7 @@ Describe 'Self-Update Module /'
   Describe 'compare:versions /'
     It 'compares two versions correctly (1.0.0 < 2.0.0)'
       When call compare:versions "1.0.0" "2.0.0"
-      
+
       The status should be success
       # left side expression to verify, right side possible valid operators between operands
       The stderr should include "(1.0.0 < 2.0.0) -> (< <= !=)"
@@ -60,7 +60,7 @@ Describe 'Self-Update Module /'
 
     It 'compares two versions correctly (2.0.0 > 1.0.0)'
       When call compare:versions "2.0.0" "1.0.0"
-      
+
       The status should be failure
       # left side expression to verify, right side possible valid operators between operands
       The stderr should include "(2.0.0 < 1.0.0) -> (> >= !=)"
@@ -68,7 +68,7 @@ Describe 'Self-Update Module /'
 
     It 'handles pre-release versions (1.0.0-alpha < 1.0.0)'
       When call compare:versions "1.0.0-alpha" "1.0.0"
-     
+
       The status should be success
       # left side expression to verify, right side possible valid operators between operands
       The stderr should include "(1.0.0-alpha < 1.0.0) -> (< <= !=)"
@@ -76,7 +76,7 @@ Describe 'Self-Update Module /'
 
     It 'handles equal versions (1.0.0 = 1.0.0)'
       When call compare:versions "1.0.0" "1.0.0"
-      
+
       The status should be failure
       # left side expression to verify, right side possible valid operators between operands
       The stderr should include "(1.0.0 < 1.0.0) -> (= == >= <=)"
@@ -96,7 +96,7 @@ Describe 'Self-Update Module /'
 
     It 'sorts multiple versions in ascending order'
       When call array:qsort "compare:versions" "2.0.0" "1.0.0" "1.5.0"
-      
+
       The line 1 should equal "1.0.0"
       The line 2 should equal "1.5.0"
       The line 3 should equal "2.0.0"
@@ -108,7 +108,7 @@ Describe 'Self-Update Module /'
 
     It 'sorts versions with pre-release tags correctly'
       When call array:qsort "compare:versions" "1.0.0" "1.0.0-beta" "1.0.0-alpha" "2.0.0"
-      
+
       The line 1 should equal "1.0.0-alpha"
       The line 2 should equal "1.0.0-beta"
       The line 3 should equal "1.0.0"
@@ -125,7 +125,7 @@ Describe 'Self-Update Module /'
       When call semver:constraints:v1 "1.0.1-alpha" "~1.0.0"
       The status should be success
       The stderr should include "[~1.0.0]:"
-      
+
       # Dump
     End
 
@@ -133,7 +133,7 @@ Describe 'Self-Update Module /'
       When call semver:constraints:v2 "1.0.1-alpha" "~1.0.0"
       The status should be failure
       The stderr should include "[~1.0.0]:"
-      
+
       # Dump
     End
 
@@ -141,7 +141,7 @@ Describe 'Self-Update Module /'
       When call semver:constraints:v2 "1.0.1-beta" "~1.0.1-alpha"
       The status should be success
       The stderr should include "[~1.0.1-alpha]:"
-      
+
       # Dump
     End
 
@@ -149,7 +149,7 @@ Describe 'Self-Update Module /'
       When call semver:constraints:v2 "1.0.2-alpha" "~1.0.1-alpha"
       The status should be failure
       The stderr should include "[~1.0.1-alpha]:"
-      
+
       # Dump
     End
 
@@ -157,7 +157,7 @@ Describe 'Self-Update Module /'
       When call semver:constraints:v2 "1.0.2" "~1.0.1-alpha"
       The status should be success
       The stderr should include "[~1.0.1-alpha]:"
-      
+
       # Dump
     End
   End
@@ -219,7 +219,7 @@ Describe 'Self-Update Module /'
     It 'includes pre-release versions in consideration'
       # Remove the stable 2.0.0, highest should be 2.0.0-beta
       unset '__REPO_VERSIONS[4]'
-      __REPO_VERSIONS=("${__REPO_VERSIONS[@]}")  # re-index array
+      __REPO_VERSIONS=("${__REPO_VERSIONS[@]}") # re-index array
 
       When call self-update:version:find:highest_tag
       The output should equal "v2.0.0-beta"
@@ -297,7 +297,7 @@ Describe 'Self-Update Module /'
 
     It 'finds highest version matching caret constraint (^1.0.0)'
       When call self-update:version:find "^1.0.0"
-     
+
       The output should equal "v1.2.0"
       The stderr should include "(1.2.0>=1.0.0) (1.2.0 >= 1.0.0) -> (> >= !=)"
     End
@@ -502,7 +502,7 @@ Describe 'Self-Update Module /'
       cd "$TEMP_DIR" || exit 1
 
       When call path:resolve "test-file.sh" "$TEMP_DIR"
-      
+
       The status should be success
       The output should equal "$TEMP_DIR/test-file.sh"
       The result of function no_colors_stderr should include "file ~> $TEMP_DIR/test-file.sh"
@@ -517,7 +517,7 @@ Describe 'Self-Update Module /'
 
     It 'returns error for non-existent file'
       When call path:resolve "$TEMP_DIR/non-existent.sh" "$TEMP_DIR"
-      
+
       The status should be failure
       The stdout should include "$TEMP_DIR/non-existent.sh"
       The result of function no_colors_stderr should include "ERROR: file not found ($TEMP_DIR): $TEMP_DIR/non-existent.sh"
@@ -573,7 +573,7 @@ Describe 'Self-Update Module /'
 
     setup_hash_test() {
       TEMP_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/hash_test.XXXXXX")
-      echo "test content" > "$TEMP_DIR/test-file.sh"
+      echo "test content" >"$TEMP_DIR/test-file.sh"
     }
 
     cleanup_hash_test() {
@@ -585,13 +585,13 @@ Describe 'Self-Update Module /'
 
     It 'calculates SHA1 hash of file'
       When call self-update:file:hash "$TEMP_DIR/test-file.sh"
-      
+
       # Expected: printed hash in stdout and stderr messages
       The stdout should satisfy is_sha1
       The result of function no_colors_stderr should satisfy is_hash_log
       The result of function no_colors_stderr should include "of $TEMP_DIR/test-file.sh"
       The status should be success
-      
+
       # Dump
     End
 

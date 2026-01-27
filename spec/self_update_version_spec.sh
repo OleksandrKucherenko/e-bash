@@ -4,7 +4,7 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -64,11 +64,11 @@ Mock printf:Regex
 End
 
 Mock echo:Simple
-  :  # Suppress debug output from semver comparison
+  : # Suppress debug output from semver comparison
 End
 
 Mock printf:Simple
-  :  # Suppress debug output from semver comparison
+  : # Suppress debug output from semver comparison
 End
 
 Describe 'Self-Update Version Management /'
@@ -156,7 +156,7 @@ Describe 'Self-Update Version Management /'
         git config user.email "test@example.com"
         git config user.name "Test User"
 
-        echo "test" > README.md
+        echo "test" >README.md
         git add README.md
         git commit -q -m "Initial commit"
         git tag test-tag-get
@@ -208,7 +208,7 @@ Describe 'Self-Update Version Management /'
   Describe 'self-update:version:get:first /'
     It 'calls get with v1.0.0 version'
       # Mock the dependency functions
-      self-update:version:has() { return 1; }  # Pretend it doesn't exist
+      self-update:version:has() { return 1; } # Pretend it doesn't exist
       self-update:version:get() {
         echo:Version "Mock get called with: $1" >&2
         [[ "$1" == "v1.0.0" ]]
@@ -221,7 +221,7 @@ Describe 'Self-Update Version Management /'
     End
 
     It 'skips extraction if version already exists'
-      self-update:version:has() { return 0; }  # Pretend it exists
+      self-update:version:has() { return 0; } # Pretend it exists
       self-update:version:get() {
         echo "Should not be called" >&2
         return 1
@@ -298,13 +298,13 @@ Describe 'Self-Update Version Management /'
 
       # Setup version directory with test script at __E_ROOT
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_BIND_VERSION}/.scripts"
-      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_BIND_VERSION}/.scripts/test.sh"
-      echo "echo 'version content'" >> "${__E_ROOT}/${__WORKTREES}/${TEST_BIND_VERSION}/.scripts/test.sh"
+      echo "#!/bin/bash" >"${__E_ROOT}/${__WORKTREES}/${TEST_BIND_VERSION}/.scripts/test.sh"
+      echo "echo 'version content'" >>"${__E_ROOT}/${__WORKTREES}/${TEST_BIND_VERSION}/.scripts/test.sh"
 
       # Setup project directory with target file
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
-      echo "#!/bin/bash" > "$TEMP_PROJECT_DIR/.scripts/test.sh"
-      echo "echo 'original'" >> "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "#!/bin/bash" >"$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "echo 'original'" >>"$TEMP_PROJECT_DIR/.scripts/test.sh"
     }
 
     cleanup_bind_test() {
@@ -355,12 +355,12 @@ Describe 'Self-Update Version Management /'
 
       # Setup version directory with test script
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION}/.scripts"
-      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION}/.scripts/test.sh"
-      echo "# version 1.0.0 content" >> "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION}/.scripts/test.sh"
+      echo "#!/bin/bash" >"${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION}/.scripts/test.sh"
+      echo "# version 1.0.0 content" >>"${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION}/.scripts/test.sh"
 
       # Setup project directory
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
-      echo "#!/bin/bash" > "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "#!/bin/bash" >"$TEMP_PROJECT_DIR/.scripts/test.sh"
     }
 
     cleanup_version_hash_test() {
@@ -391,8 +391,8 @@ Describe 'Self-Update Version Management /'
       # Create another version with different content
       TEST_HASH_VERSION2="test-hash-v2.0.0"
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION2}/.scripts"
-      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION2}/.scripts/test.sh"
-      echo "# version 2.0.0 content - different" >> "${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION2}/.scripts/test.sh"
+      echo "#!/bin/bash" >"${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION2}/.scripts/test.sh"
+      echo "# version 2.0.0 content - different" >>"${__E_ROOT}/${__WORKTREES}/${TEST_HASH_VERSION2}/.scripts/test.sh"
 
       hash1=$(self-update:version:hash "$TEMP_PROJECT_DIR/.scripts/test.sh" "$TEST_HASH_VERSION" 2>/dev/null)
       hash2=$(self-update:version:hash "$TEMP_PROJECT_DIR/.scripts/test.sh" "$TEST_HASH_VERSION2" 2>/dev/null)
@@ -421,7 +421,7 @@ Describe 'Self-Update Version Management /'
         git config user.name "Test User"
 
         # Create initial commit
-        echo "test" > README.md
+        echo "test" >README.md
         git add README.md
         git commit -q -m "Initial commit"
 

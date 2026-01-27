@@ -25,34 +25,22 @@ result caching for performance, and optional auto-installation in CI environment
 - CI_E_BASH_INSTALL_DEPENDENCIES - Enable auto-install in CI (1/true/yes)
 - SKIP_DEALIAS - Bypass alias resolution when set to "1"
 
-## Caching
+## Additional Information
 
-Dependency verification results are cached persistently on disk:
+### Dependency verification results are cached persistently on disk
 
-- **Cache location**: `$XDG_CACHE_HOME/e-bash/dependencies.cache` (or `~/.cache/e-bash/`)
-- **Cache TTL**: 1 day (configurable via `__DEPS_CACHE_TTL` in seconds)
-- **Cache invalidation**: When PATH changes (hash-based detection)
-- **Multi-version support**: Different paths cache separately (e.g., `/usr/bin/bash` vs `/opt/homebrew/bin/bash`)
-- **Cache format**: `{path}:{version_pattern}:{flag}={status}:{version}:{path}`
-
-### Cache Behavior
-
+- Cache location: $XDG_CACHE_HOME/e-bash/dependencies.cache (or ~/.cache/e-bash/)
+- Cache TTL: 1 day (configurable via __DEPS_CACHE_TTL in seconds)
+- Cache is invalidated when PATH changes (hash-based detection)
 - First call verifies the tool and caches the result
 - Subsequent calls with same arguments return cached result (marked "(cached)")
-- Use `--no-cache` flag to bypass cache and force re-verification
-- Use `_cache:clear` to clear all cached entries (memory and disk)
-
-## Short Form (Existence Check)
-
+- Use --no-cache flag to bypass cache and force re-verification
+- Use _cache:clear to clear all cached entries (memory and disk)
+Short Form (Existence Check):
 When called with only a tool name (no version pattern), checks existence only:
-
-```bash
-dependency go              # Check if 'go' exists
-dependency:exists python   # Alternative function for scripting
-if dependency go --silent; then ... fi  # Use in conditions
-```
-
-## Additional Information
+- dependency go              # Check if 'go' exists
+- dependency:exists python   # Alternative function for scripting
+- if dependency go --silent; then ... fi  # Use in conditions
 
 ### Supported Version Patterns
 
@@ -61,25 +49,29 @@ if dependency go --silent; then ... fi  # Use in conditions
 - "~1.2.3" - 1.2.x versions (patch-level updates)
 - "HEAD-[a-f0-9]{1,8}" - Git commit hash pattern
 - ">1.0.0" - Greater than 1.0.0
-
-### Tool Aliases (auto-resolved)
-
+Tool Aliases (auto-resolved):
 - rust/rustc -> rustc
 - golang/go -> go
 - nodejs/node -> node
 - jre/java -> java
 - homebrew/brew -> brew
-
-### References
-
-- https://docs.gradle.org/current/userguide/single_versions.html
-- https://github.com/qzb/sh-semver
-- https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
+ref:
+ https://docs.gradle.org/current/userguide/single_versions.html
+ https://github.com/qzb/sh-semver
+ https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
 
 
 ## Index
 
-### Public Functions
+* [`_cache:clear`](#_cache-clear)
+* [`_cache:ensure:loaded`](#_cache-ensure-loaded)
+* [`_cache:get`](#_cache-get)
+* [`_cache:is:valid`](#_cache-is-valid)
+* [`_cache:key`](#_cache-key)
+* [`_cache:load`](#_cache-load)
+* [`_cache:path:hash`](#_cache-path-hash)
+* [`_cache:save`](#_cache-save)
+* [`_cache:set`](#_cache-set)
 * [`dependency`](#dependency)
 * [`dependency:dealias`](#dependency-dealias)
 * [`dependency:exists`](#dependency-exists)
@@ -91,17 +83,6 @@ if dependency go --silent; then ... fi  # Use in conditions
 * [`isOptional`](#isoptional)
 * [`isSilent`](#issilent)
 * [`optional`](#optional)
-
-### Internal Cache Functions
-* [`_cache:clear`](#_cache-clear)
-* [`_cache:ensure:loaded`](#_cache-ensure-loaded)
-* [`_cache:get`](#_cache-get)
-* [`_cache:is:valid`](#_cache-is-valid)
-* [`_cache:key`](#_cache-key)
-* [`_cache:load`](#_cache-load)
-* [`_cache:path:hash`](#_cache-path-hash)
-* [`_cache:save`](#_cache-save)
-* [`_cache:set`](#_cache-set)
 
 ---
 
@@ -118,14 +99,14 @@ Check and optionally install a dependency with version constraint
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `tool_name` | string | required | Tool to check |
-| `tool_version_pattern` | string | optional | Semver pattern (e.g. "5.*.*", "HEAD-[a-f0-9]{1,8}"). If omitted, only checks existence. |
+| `tool_version_pattern` | string | optional | Semver pattern (e.g. "5.*.*", "HEAD-[a-f0-9]{1,8}") |
 | `tool_fallback` | string | default: "No details. Please google it." | Install command |
 | `tool_version_flag` | string | default: auto-detected | Custom version flag |
-| `--optional` | flag | | Mark as optional dependency (soft fail) |
-| `--exec` | flag | | Execute install command on version mismatch |
-| `--debug` | flag | | Enable debug output |
-| `--no-cache` | flag | | Bypass cache and force re-verification |
-| `--silent` | flag | | Suppress output (useful for scripting) |
+| `--optional` | string | required | Mark as optional dependency (soft fail) |
+| `--exec` | string | required | Execute install command on version mismatch |
+| `--debug` | string | required | Enable debug output |
+| `--no-cache` | string | required | Bypass cache and force re-verification |
+| `--silent` | string | required | Suppress output (useful for scripting) |
 
 #### Globals
 
@@ -399,157 +380,3 @@ optional kcov "43" "brew install kcov"
 optional hyperfine "" "brew install hyperfine"
 ```
 
----
-
-## Internal Cache Functions
-
-These functions are prefixed with `_` to indicate they are internal implementation details.
-
----
-
-### _cache:clear
-
-Clear the dependency verification cache (memory and disk)
-
-#### Usage
-
-```bash
-_cache:clear
-```
-
----
-
-### _cache:ensure:loaded
-
-Ensure cache is loaded from disk
-
-#### Globals
-
-- reads/listen: __DEPS_CACHE_LOADED
-- mutate/publish: calls _cache:load if needed
-
----
-
-### _cache:get
-
-Get cached dependency verification result
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `key` | string | required | Cache key from _cache:key |
-
-#### Globals
-
-- reads/listen: __DEPS_CACHE
-- mutate/publish: __DEPS_CACHE_STATUS, __DEPS_CACHE_VERSION, __DEPS_CACHE_PATH
-
-#### Returns
-
-- 0 if cache hit, sets __DEPS_CACHE_STATUS, __DEPS_CACHE_VERSION, __DEPS_CACHE_PATH
-- 1 if cache miss
-
-#### Usage
-
-```bash
-if _cache:get "$key"; then
-    echo "Cached: status=$__DEPS_CACHE_STATUS, version=$__DEPS_CACHE_VERSION, path=$__DEPS_CACHE_PATH"
-fi
-```
-
----
-
-### _cache:is:valid
-
-Check if cache file is valid (exists, not expired, PATH matches)
-
-#### Returns
-
-- 0 if cache is valid, 1 otherwise
-
----
-
-### _cache:key
-
-Generate cache key for dependency verification
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `tool_path` | string | required | Absolute path to tool |
-| `version_pattern` | string | required | Version pattern |
-| `version_flag` | string | required | Version flag |
-
-#### Returns
-
-- Cache key string (path-based for multi-version support)
-
-#### Usage
-
-```bash
-key=$(_cache:key "/usr/bin/bash" "5.*.*" "--version")
-```
-
-#### Note
-
-Using path as key allows caching multiple versions of the same tool
-(e.g., /usr/bin/bash (3.x) and /opt/homebrew/bin/bash (5.x))
-
----
-
-### _cache:load
-
-Load cache from disk into memory
-
-#### Globals
-
-- reads/listen: __DEPS_CACHE_FILE
-- mutate/publish: __DEPS_CACHE, __DEPS_CACHE_LOADED, __DEPS_CACHE_PATH_HASH
-
----
-
-### _cache:path:hash
-
-Generate hash of PATH variable for cache invalidation
-
-#### Returns
-
-- Short hash string (8 chars or cksum value)
-
----
-
-### _cache:save
-
-Save cache from memory to disk
-
-#### Globals
-
-- reads/listen: __DEPS_CACHE, __DEPS_CACHE_DIR, __DEPS_CACHE_FILE
-- mutate/publish: none (writes to disk)
-
-#### Returns
-
-- 0 on success, 1 on failure
-
----
-
-### _cache:set
-
-Set cached dependency verification result
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `key` | string | required | Cache key from _cache:key |
-| `status` | number | required | Exit status (0 or 1) |
-| `version` | string | optional | Extracted version string |
-| `path` | string | optional | Absolute path to command |
-
-#### Usage
-
-```bash
-_cache:set "$key" 0 "5.1.16" "/usr/bin/bash"
-```

@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -188,11 +188,11 @@ Describe 'bin/install.e-bash.sh /'
 
   # Define a helper function to strip ANSI escape sequences
   # $1 = stdout, $2 = stderr, $3 = exit status of the command
-  no_colors_error() { 
+  no_colors_error() {
     # Use printf to create the escape sequences for better portability
     echo -n "$2" | sed -E "s/$(printf '\033')\[[0-9;]*[A-Za-z]//g; s/$(printf '\033')\([A-Z]//g; s/$(printf '\017')//g" | tr -s ' '
   }
-  no_colors_output() { 
+  no_colors_output() {
     # Use printf to create the escape sequences for better portability
     echo -n "$1" | sed -E "s/$(printf '\033')\[[0-9;]*[A-Za-z]//g; s/$(printf '\033')\([A-Z]//g; s/$(printf '\017')//g" | tr -s ' '
   }
@@ -453,31 +453,31 @@ Describe 'bin/install.e-bash.sh /'
 
     It 'should print uninstall instructions on merge conflict'
       # user has repo with e-bash script installed manually...
-      
+
       # Create conflicting content in the fake remote to trigger merge conflicts
       local fake_remote_dir="$TEST_DIR/../fake-e-bash-remote.git"
       local temp_work_dir="$TEST_DIR/../fake-e-bash-conflict-work"
-      
+
       # Modify the fake remote to have conflicting content
       mkdir -p "$temp_work_dir"
       cd "$temp_work_dir" || return 1
       git clone -q "$fake_remote_dir" . 2>/dev/null || true
-      
+
       # Configure git user for this temporary repository
       git config user.name "Test User" 2>/dev/null || git config --global user.name "Test User"
       git config user.email "test@example.com" 2>/dev/null || git config --global user.email "test@example.com"
-      
+
       # Create conflicting content in the remote
-      echo "REMOTE CONFLICTING CONTENT THAT WILL CONFLICT" > .scripts/_colors.sh
+      echo "REMOTE CONFLICTING CONTENT THAT WILL CONFLICT" >.scripts/_colors.sh
       git add .scripts/_colors.sh
       git commit --no-gpg-sign -m "Remote conflicting changes" -q 2>/dev/null || git commit -m "Remote conflicting changes" -q
       git push -q origin master 2>/dev/null || true
-      
+
       cd "$TEST_DIR" || return 1
       rm -rf "$temp_work_dir"
 
       # I mean something in .scripts folder
-      mkdir -p .scripts                        # create out destination folder
+      mkdir -p .scripts                                                        # create out destination folder
       echo "LOCAL CONFLICTING CONTENT THAT WILL CONFLICT" >.scripts/_colors.sh # is_installed() == true
       git_add_all
       git_amend
@@ -805,7 +805,7 @@ Describe 'bin/install.e-bash.sh /'
 
       When run bash -c 'cat ./install.e-bash.sh | bash -s -- uninstall'
 
-      The status should be failure  # Should fail because --confirm is required
+      The status should be failure # Should fail because --confirm is required
       # The example command should show curl format
       The result of function no_colors_output should include "curl -sSL https://git.new/e-bash | bash -s -- uninstall --confirm"
     End
@@ -817,7 +817,7 @@ Describe 'bin/install.e-bash.sh /'
 
       When run ./install.e-bash.sh uninstall
 
-      The status should be failure  # Should fail because --confirm is required
+      The status should be failure # Should fail because --confirm is required
       # The example command should show script path
       The result of function no_colors_output should include "./install.e-bash.sh uninstall --confirm"
     End
@@ -1369,7 +1369,7 @@ Describe 'bin/install.e-bash.sh /'
 
     It 'should allow --directory flag to override .ebashrc'
       # Create .ebashrc with one directory (but don't create the actual directory to avoid untracked dir error)
-      echo 'E_BASH_INSTALL_DIR=".ebash-old"' > .ebashrc
+      echo 'E_BASH_INSTALL_DIR=".ebash-old"' >.ebashrc
       git add .ebashrc
       git commit --no-gpg-sign -m "Add .ebashrc" -q 2>/dev/null || git commit -m "Add .ebashrc" -q
 
