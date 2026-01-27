@@ -25,11 +25,7 @@ coverage:
 # Flag configuration for parallel uploads
 flags:
   shellspec-ubuntu:
-    # All 4 chunks upload with this flag
-    carryforward: true
-
-  shellspec-macos:
-    # MacOS chunks (if applicable)
+    # All 4 ubuntu chunks upload with this flag and are merged via parallel: true
     carryforward: true
 
 # Comment configuration for PRs
