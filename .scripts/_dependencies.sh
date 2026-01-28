@@ -666,9 +666,11 @@ function dependency() {
           # This can happen if PATH needs to be reloaded or in test environments
           printf:Dependencies "Note: Install command succeeded but \`$tool_name\` not immediately found in PATH\n"
         fi
+        _cache:set "$cache_key" 0 ""
         return 0
       else
         echo:Install "$BAD Failed to install \`$tool_name\`"
+        _cache:set "$cache_key" 1 ""
         return 1
       fi
     elif $is_optional; then
@@ -706,9 +708,11 @@ function dependency() {
           # This can happen if PATH needs to be reloaded or in test environments
           printf:Dependencies "Note: Install command succeeded but \`$tool_name\` not immediately found in PATH\n"
         fi
+        _cache:set "$cache_key" 0 "" "$which_tool"
         return 0
       else
         echo:Install "$BAD Failed to install \`$tool_name\`"
+        _cache:set "$cache_key" 1 "" "$which_tool"
         return 1
       fi
     elif $is_optional; then
