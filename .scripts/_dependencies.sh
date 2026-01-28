@@ -725,7 +725,13 @@ function dependency() {
         # shellcheck disable=SC2006,SC2154
         echo " Executing: ${cl_yellow}${tool_fallback}${cl_reset}"
         echo ""
-        eval $tool_fallback
+        if eval $tool_fallback; then
+          _cache:set "$cache_key" 0 "" "$which_tool"
+          return 0
+        else
+          _cache:set "$cache_key" 1 "" "$which_tool"
+          return 1
+        fi
       else
         echo ""
         echo " Hint. To install tool use the command below: "
