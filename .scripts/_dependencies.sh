@@ -555,7 +555,7 @@ function isCIAutoInstallEnabled() {
 ## - --silent - Suppress output (useful for scripting)
 ##
 ## Globals:
-## - reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, SKIP_DEALIAS, __DEPS_CACHE
+## - reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, E_BASH_SKIP_CACHE, SKIP_DEALIAS, __DEPS_CACHE
 ## - mutate/publish: __DEPS_CACHE (stores verification results)
 ##
 ## Side effects:
@@ -630,8 +630,8 @@ function dependency() {
     cache_key=$(_cache:key "$tool_name_resolved" "$tool_version_pattern" "$tool_version_flag")
   fi
 
-  # Check cache (unless --no-cache)
-  if ! $is_no_cache && _cache:get "$cache_key"; then
+  # Check cache (unless --no-cache or E_BASH_SKIP_CACHE is set)
+  if ! $is_no_cache && [[ -z "${E_BASH_SKIP_CACHE:-}" ]] && _cache:get "$cache_key"; then
     ! $is_silent && printf:Dependencies "cache hit: %s -> status=%s, version=%s, path=%s\n" \
       "$cache_key" "$__DEPS_CACHE_STATUS" "$__DEPS_CACHE_VERSION" "$__DEPS_CACHE_PATH"
     if [[ "$__DEPS_CACHE_STATUS" == "0" ]]; then
