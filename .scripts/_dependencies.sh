@@ -142,7 +142,7 @@ function _cache:path:hash() {
   if command -v md5sum >/dev/null 2>&1; then
     echo -n "$PATH" | md5sum | cut -c1-8
   elif command -v md5 >/dev/null 2>&1; then
-    echo -n "$PATH" | md5 | cut -c1-8
+    echo -n "$PATH" | md5 -q | cut -c1-8
   elif command -v sha256sum >/dev/null 2>&1; then
     echo -n "$PATH" | sha256sum | cut -c1-8
   elif command -v cksum >/dev/null 2>&1; then
