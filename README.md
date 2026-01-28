@@ -189,9 +189,9 @@ refs:
 source ".scripts/_colors.sh"
 
 echo -e "${cl_red}Hello World${cl_reset}"
+```
 
 [API Reference](docs/public/lib/_colors.md)
-```
 
 ### Script Dependencies
 
