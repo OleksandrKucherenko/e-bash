@@ -125,6 +125,8 @@ Describe "_dependencies.sh /"
   End
 
   Describe "Optional /"
+    BeforeEach '_cache:clear'
+
     It "Optional OK on \`optional bash \"5.*.*\" \"brew install bash\" --version --debug\`"
       When call optional bash "5.*.*" "brew install bash" --version --debug
 
@@ -300,6 +302,8 @@ Describe "_dependencies.sh /"
   End
 
   Describe "CI Auto-Install Mode /"
+    BeforeEach '_cache:clear'
+
     It "CI mode enabled with CI=1 and CI_E_BASH_INSTALL_DEPENDENCIES=1 should auto-install missing tool"
       export CI=1
       export CI_E_BASH_INSTALL_DEPENDENCIES=1
