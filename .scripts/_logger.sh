@@ -8,7 +8,7 @@
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # one time initialization, CUID
-if type logger | grep -q "is a function"; then return 0; fi
+if type logger 2>/dev/null | grep -q "is a function"; then return 0; fi
 
 # global helpers
 export __SESSION=$(uuidgen 2>/dev/null || echo "session-$$-$RANDOM")

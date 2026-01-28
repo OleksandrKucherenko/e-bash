@@ -4,7 +4,7 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -87,7 +87,7 @@ Describe 'Self-Update Rollback and Cleanup /'
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
 
       # Create original file
-      echo "original content" > "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "original content" >"$TEMP_PROJECT_DIR/.scripts/test.sh"
     }
 
     cleanup_rollback_backup_test() {
@@ -99,12 +99,12 @@ Describe 'Self-Update Rollback and Cleanup /'
 
     It 'restores file from latest backup'
       # Create backup files (simulating previous ln --backup operations)
-      echo "backup 1" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
-      echo "backup 2" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~2~"
-      echo "backup 3" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~3~"
+      echo "backup 1" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
+      echo "backup 2" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~2~"
+      echo "backup 3" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~3~"
 
       # Modify current file
-      echo "modified" > "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "modified" >"$TEMP_PROJECT_DIR/.scripts/test.sh"
 
       When call self-update:rollback:backup "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
@@ -115,7 +115,7 @@ Describe 'Self-Update Rollback and Cleanup /'
     End
 
     It 'outputs backup file path found'
-      echo "backup 1" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
+      echo "backup 1" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
 
       When call self-update:rollback:backup "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The result of function no_colors_stderr should include "Found backup file:"
@@ -132,10 +132,10 @@ Describe 'Self-Update Rollback and Cleanup /'
 
     It 'selects highest numbered backup file'
       # Create multiple backups
-      echo "backup 1" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
-      echo "backup 5" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~5~"
-      echo "backup 10" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~10~"
-      echo "backup 2" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~2~"
+      echo "backup 1" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
+      echo "backup 5" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~5~"
+      echo "backup 10" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~10~"
+      echo "backup 2" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~2~"
 
       When call self-update:rollback:backup "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
@@ -146,7 +146,7 @@ Describe 'Self-Update Rollback and Cleanup /'
     End
 
     It 'removes backup file after restoration'
-      echo "backup content" > "$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
+      echo "backup content" >"$TEMP_PROJECT_DIR/.scripts/test.sh.~1~"
 
       When call self-update:rollback:backup "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
@@ -164,13 +164,13 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       # Setup version directory with test script at __E_ROOT
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts"
-      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts/test.sh"
-      echo "echo 'v1.0.0'" >> "${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts/test.sh"
+      echo "#!/bin/bash" >"${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts/test.sh"
+      echo "echo 'v1.0.0'" >>"${__E_ROOT}/${__WORKTREES}/${TEST_ROLLBACK_VERSION}/.scripts/test.sh"
 
       # Setup project directory
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
-      echo "#!/bin/bash" > "$TEMP_PROJECT_DIR/.scripts/test.sh"
-      echo "echo 'current'" >> "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "#!/bin/bash" >"$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "echo 'current'" >>"$TEMP_PROJECT_DIR/.scripts/test.sh"
     }
 
     cleanup_rollback_version_test() {
@@ -183,7 +183,7 @@ Describe 'Self-Update Rollback and Cleanup /'
 
     It 'rolls back to specified version'
       # Mock version:has to say version doesn't exist, then version:get will be called
-      self-update:version:has() { return 0; }  # Pretend it exists
+      self-update:version:has() { return 0; } # Pretend it exists
 
       When call self-update:rollback:version "$TEST_ROLLBACK_VERSION" "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
@@ -201,7 +201,7 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       # Create the default v1.0.0 version directory
       mkdir -p "${__E_ROOT}/${__WORKTREES}/v1.0.0/.scripts"
-      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/v1.0.0/.scripts/test.sh"
+      echo "#!/bin/bash" >"${__E_ROOT}/${__WORKTREES}/v1.0.0/.scripts/test.sh"
 
       When call self-update:rollback:version "" "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
@@ -234,8 +234,8 @@ Describe 'Self-Update Rollback and Cleanup /'
 
       # Setup source file at __E_ROOT
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts"
-      echo "#!/bin/bash" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts/test.sh"
-      echo "# version file content" >> "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts/test.sh"
+      echo "#!/bin/bash" >"${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts/test.sh"
+      echo "# version file content" >>"${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/.scripts/test.sh"
 
       # Setup project with symlink
       mkdir -p "$TEMP_PROJECT_DIR/.scripts"
@@ -278,7 +278,7 @@ Describe 'Self-Update Rollback and Cleanup /'
     It 'handles non-symlink file gracefully'
       # Replace symlink with regular file
       rm "$TEMP_PROJECT_DIR/.scripts/test.sh"
-      echo "regular file" > "$TEMP_PROJECT_DIR/.scripts/test.sh"
+      echo "regular file" >"$TEMP_PROJECT_DIR/.scripts/test.sh"
 
       When call self-update:unlink "$TEMP_PROJECT_DIR/.scripts/test.sh"
       The status should be success
@@ -288,7 +288,7 @@ Describe 'Self-Update Rollback and Cleanup /'
     It 'handles directory symlinks'
       # Create directory symlink
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir"
-      echo "content" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir/file.txt"
+      echo "content" >"${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir/file.txt"
 
       ln -s "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir" "$TEMP_PROJECT_DIR/mydir"
 
@@ -304,7 +304,7 @@ Describe 'Self-Update Rollback and Cleanup /'
 
     It 'preserves directory content after unlinking'
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir"
-      echo "test content" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir/file.txt"
+      echo "test content" >"${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir/file.txt"
 
       ln -s "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_VERSION}/mydir" "$TEMP_PROJECT_DIR/mydir"
 
@@ -344,7 +344,7 @@ Describe 'Self-Update Rollback and Cleanup /'
 
     It 'handles files with spaces in name'
       mkdir -p "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}/.scripts"
-      echo "content" > "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}/.scripts/file with spaces.sh"
+      echo "content" >"${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}/.scripts/file with spaces.sh"
 
       ln -s "${__E_ROOT}/${__WORKTREES}/${TEST_UNLINK_EDGE_VERSION}/.scripts/file with spaces.sh" "$TEMP_PROJECT_DIR/.scripts/file with spaces.sh"
 
@@ -361,7 +361,7 @@ Describe 'Self-Update Rollback and Cleanup /'
       TEMP_REPO_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/unlink_repo_rel.XXXXXX")
 
       mkdir -p "$TEMP_REPO_DIR/source"
-      echo "relative content" > "$TEMP_REPO_DIR/source/file.sh"
+      echo "relative content" >"$TEMP_REPO_DIR/source/file.sh"
 
       cd "$TEMP_PROJECT_DIR/.scripts" || exit 1
       ln -s "../../$(basename "$TEMP_REPO_DIR")/source/file.sh" "relative.sh"

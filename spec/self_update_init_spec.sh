@@ -4,7 +4,7 @@
 # shellcheck disable=SC2034,SC2154,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -227,37 +227,37 @@ Describe 'Self-Update Initialization /'
 
       git() {
         case "$1" in
-          init)
-            GIT_OPS+=("init")
-            command git "$@"
-            ;;
-          remote)
-            if [[ "$2" == "add" ]]; then
-              GIT_OPS+=("remote-add")
-            elif [[ "$2" == "set-url" ]]; then
-              GIT_OPS+=("remote-set-url")
-            elif [[ "$2" == "-v" ]]; then
-              GIT_OPS+=("remote-list")
-            fi
-            command git "$@"
-            ;;
-          fetch)
-            GIT_OPS+=("fetch")
-            # Skip actual fetch
-            return 0
-            ;;
-          checkout)
-            GIT_OPS+=("checkout")
-            command git "$@"
-            ;;
-          reset)
-            GIT_OPS+=("reset")
-            # Skip actual reset
-            return 0
-            ;;
-          *)
-            command git "$@"
-            ;;
+        init)
+          GIT_OPS+=("init")
+          command git "$@"
+          ;;
+        remote)
+          if [[ "$2" == "add" ]]; then
+            GIT_OPS+=("remote-add")
+          elif [[ "$2" == "set-url" ]]; then
+            GIT_OPS+=("remote-set-url")
+          elif [[ "$2" == "-v" ]]; then
+            GIT_OPS+=("remote-list")
+          fi
+          command git "$@"
+          ;;
+        fetch)
+          GIT_OPS+=("fetch")
+          # Skip actual fetch
+          return 0
+          ;;
+        checkout)
+          GIT_OPS+=("checkout")
+          command git "$@"
+          ;;
+        reset)
+          GIT_OPS+=("reset")
+          # Skip actual reset
+          return 0
+          ;;
+        *)
+          command git "$@"
+          ;;
         esac
       }
 
@@ -283,8 +283,8 @@ Describe 'Self-Update Initialization /'
       # Pre-populate .gitignore
       [[ -d "${__E_ROOT}" ]] || mkdir -p "${__E_ROOT}"
       if [[ ! -f "${__E_ROOT}/.gitignore" ]] || ! grep -q "^# test content$" "${__E_ROOT}/.gitignore"; then
-        echo "# test content" >> "${__E_ROOT}/.gitignore"
-        echo "*.tmp" >> "${__E_ROOT}/.gitignore"
+        echo "# test content" >>"${__E_ROOT}/.gitignore"
+        echo "*.tmp" >>"${__E_ROOT}/.gitignore"
       fi
 
       When call self-update:initialize

@@ -4,7 +4,7 @@
 # shellcheck disable=SC2329,SC2155
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-27
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -40,7 +40,7 @@ Describe '.github/scripts/shellmetrics-compare.sh /'
     mkdir -p "$TEST_DIR/mock-bin"
 
     # Create a mock shellmetrics that generates test data
-    cat > "$TEST_DIR/mock-bin/shellmetrics" <<'MOCK_SHELLMETRICS'
+    cat >"$TEST_DIR/mock-bin/shellmetrics" <<'MOCK_SHELLMETRICS'
 #!/bin/bash
 # Mock shellmetrics for testing
 if [[ "$1" == "--csv" ]]; then
@@ -68,13 +68,13 @@ MOCK_SHELLMETRICS
   # Helper to create empty CSV
   create_empty_metrics() {
     local file="$1"
-    echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$file"
+    echo "file,func,lineno,lloc,ccn,lines,comment,blank" >"$file"
   }
 
   # Helper to create malformed CSV
   create_malformed_csv() {
     local file="$1"
-    cat > "$file" <<'CSV'
+    cat >"$file" <<'CSV'
 file,func,lineno,lloc,ccn
 invalid,data,without,enough,columns
 CSV
@@ -271,21 +271,21 @@ CSV
       The output should include "bin/test3.sh"
     End
 
-	    It 'detects no changes when files are identical'
-	      When call compare_metrics "$FIXTURES_DIR/shellmetrics-base.csv" "$FIXTURES_DIR/shellmetrics-base.csv" "$TEST_DIR/report.md"
-	      The output should include "Comparison report saved to:"
-	      The status should be success
-	      The contents of file "$TEST_DIR/report.md" should include "No changes detected"
-	    End
+    It 'detects no changes when files are identical'
+      When call compare_metrics "$FIXTURES_DIR/shellmetrics-base.csv" "$FIXTURES_DIR/shellmetrics-base.csv" "$TEST_DIR/report.md"
+      The output should include "Comparison report saved to:"
+      The status should be success
+      The contents of file "$TEST_DIR/report.md" should include "No changes detected"
+    End
 
-	    It 'handles negative per-file deltas without exiting'
-	      When run script "$SHELLMETRICS_SCRIPT" compare "$FIXTURES_DIR/shellmetrics-negative-base.csv" "$FIXTURES_DIR/shellmetrics-negative-current.csv" negative-report.md
-	      The status should be success
-	      The output should include "Comparison report saved to:"
-	      The path negative-report.md should be file
-	      The contents of file negative-report.md should include "(-5)"
-	    End
-	  End
+    It 'handles negative per-file deltas without exiting'
+      When run script "$SHELLMETRICS_SCRIPT" compare "$FIXTURES_DIR/shellmetrics-negative-base.csv" "$FIXTURES_DIR/shellmetrics-negative-current.csv" negative-report.md
+      The status should be success
+      The output should include "Comparison report saved to:"
+      The path negative-report.md should be file
+      The contents of file negative-report.md should include "(-5)"
+    End
+  End
 
   Context 'main function - command dispatcher /'
     It 'handles help command'
@@ -327,7 +327,7 @@ CSV
     It 'creates output file with header'
       # Create a test shell script
       mkdir -p .scripts
-      cat > .scripts/test-script.sh <<'SCRIPT'
+      cat >.scripts/test-script.sh <<'SCRIPT'
 #!/bin/bash
 test_function() {
   echo "test"
@@ -343,8 +343,8 @@ SCRIPT
 
     It 'uses default filename when not provided'
       mkdir -p .scripts
-      echo '#!/bin/bash' > .scripts/test.sh
-      
+      echo '#!/bin/bash' >.scripts/test.sh
+
       When call main collect
       The output should include "Saved to: metrics.csv"
       The path metrics.csv should be file
@@ -353,11 +353,11 @@ SCRIPT
 
     It 'creates CSV with proper header'
       mkdir -p .scripts bin
-      echo '#!/bin/bash' > .scripts/test.sh
-      echo 'function test() { echo "v1"; }' >> .scripts/test.sh
-      
+      echo '#!/bin/bash' >.scripts/test.sh
+      echo 'function test() { echo "v1"; }' >>.scripts/test.sh
+
       main collect "$TEST_DIR/test-collect.csv" >/dev/null 2>&1
-      
+
       When call head -n 1 "$TEST_DIR/test-collect.csv"
       The output should include "file,func,lineno,lloc,ccn,lines,comment,blank"
       The status should be success
@@ -382,7 +382,7 @@ SCRIPT
       # Create test files with default names in current directory
       cp "$FIXTURES_DIR/shellmetrics-base.csv" base-metrics.csv
       cp "$FIXTURES_DIR/shellmetrics-current.csv" current-metrics.csv
-      
+
       When call main compare
       The output should include "Comparison report saved to:"
       The status should be success
@@ -399,7 +399,7 @@ SCRIPT
           echo "\"file${i}.sh\",\"func${i}\",10,20,3,30,2,1"
           echo "\"file${i}.sh\",\"<end>\",100,0,0,100,10,5"
         done
-      } > "$TEST_DIR/large.csv"
+      } >"$TEST_DIR/large.csv"
 
       When call calculate_totals "$TEST_DIR/large.csv"
       The status should be success
@@ -407,7 +407,7 @@ SCRIPT
     End
 
     It 'handles files with zero metrics'
-      cat > "$TEST_DIR/zeros.csv" <<'CSV'
+      cat >"$TEST_DIR/zeros.csv" <<'CSV'
 file,func,lineno,lloc,ccn,lines,comment,blank
 "empty.sh","<begin>",1,0,0,0,0,0
 "empty.sh","<end>",1,0,0,0,0,0
@@ -443,7 +443,7 @@ CSV
     It 'full workflow: collect and compare'
       # Create test shell scripts
       mkdir -p .scripts
-      cat > .scripts/workflow-test.sh <<'SHELL'
+      cat >.scripts/workflow-test.sh <<'SHELL'
 #!/bin/bash
 process() {
   echo "processing $1"
@@ -452,9 +452,9 @@ SHELL
 
       # Collect base
       main collect base-workflow.csv >/dev/null 2>&1
-      
+
       # Modify script
-      echo 'new_function() { echo "new"; }' >> .scripts/workflow-test.sh
+      echo 'new_function() { echo "new"; }' >>.scripts/workflow-test.sh
 
       # Collect current
       main collect current-workflow.csv >/dev/null 2>&1
@@ -488,10 +488,10 @@ SHELL
       # Simulate the CI workflow steps
       # 1. Collect current metrics
       mkdir -p .scripts bin
-      echo '#!/bin/bash' > .scripts/test.sh
-      echo 'function test() { echo "test"; }' >> .scripts/test.sh
-      echo '#!/bin/bash' > bin/test.sh
-      echo 'function main() { echo "main"; }' >> bin/test.sh
+      echo '#!/bin/bash' >.scripts/test.sh
+      echo 'function test() { echo "test"; }' >>.scripts/test.sh
+      echo '#!/bin/bash' >bin/test.sh
+      echo 'function main() { echo "main"; }' >>bin/test.sh
       chmod +x bin/test.sh
 
       # Collect current metrics (like CI does)
@@ -510,7 +510,7 @@ SHELL
     It 'handles missing base metrics gracefully'
       # This is the likely CI failure - base metrics not collected properly
       touch current-metrics.csv
-      echo "file,func,lineno,lloc,ccn,lines,comment,blank" > current-metrics.csv
+      echo "file,func,lineno,lloc,ccn,lines,comment,blank" >current-metrics.csv
 
       # Use a non-existent path within TEST_DIR (guaranteed not to exist)
       # Redirect stderr to stdout to capture warnings
@@ -522,7 +522,7 @@ SHELL
     It 'handles missing current metrics gracefully'
       # Create base file in TEST_DIR
       touch "$TEST_DIR/test-base.csv"
-      echo "file,func,lineno,lloc,ccn,lines,comment,blank" > "$TEST_DIR/test-base.csv"
+      echo "file,func,lineno,lloc,ccn,lines,comment,blank" >"$TEST_DIR/test-base.csv"
 
       # Use non-existent current file within TEST_DIR
       # Redirect stderr to stdout to capture warnings
@@ -544,7 +544,7 @@ SHELL
     It 'works with BSD-style mktemp (template required)'
       # Simulate BSD/macOS mktemp which fails when no template is provided.
       mkdir -p "$TEST_DIR/bsd-mktemp-bin"
-      cat > "$TEST_DIR/bsd-mktemp-bin/mktemp" <<'MOCK_MKTEMP'
+      cat >"$TEST_DIR/bsd-mktemp-bin/mktemp" <<'MOCK_MKTEMP'
 #!/bin/bash
 set -euo pipefail
 
@@ -605,7 +605,7 @@ MOCK_MKTEMP
     It 'validates CSV format from collect command'
       # Create actual shell scripts
       mkdir -p .scripts
-      cat > .scripts/sample.sh <<'SHELL'
+      cat >.scripts/sample.sh <<'SHELL'
 #!/bin/bash
 process() {
   local input="$1"
@@ -618,7 +618,7 @@ SHELL
 
       # Collect metrics first
       main collect debug-metrics.csv >/dev/null 2>&1
-      
+
       # Then verify CSV structure by reading first line
       When call head -n 1 debug-metrics.csv
       The output should include "file,func,lineno,lloc,ccn,lines,comment,blank"
@@ -627,16 +627,16 @@ SHELL
 
     It 'verifies compare works with collect output'
       mkdir -p .scripts bin
-      echo '#!/bin/bash' > .scripts/test.sh
-      echo 'test() { echo "v1"; }' >> .scripts/test.sh
+      echo '#!/bin/bash' >.scripts/test.sh
+      echo 'test() { echo "v1"; }' >>.scripts/test.sh
 
       # Collect base
       main collect base.csv >/dev/null 2>&1
-      
+
       # Modify script
-      echo '#!/bin/bash' > .scripts/test.sh
-      echo 'test() { echo "v2"; }' >> .scripts/test.sh
-      echo 'new_func() { echo "new"; }' >> .scripts/test.sh
+      echo '#!/bin/bash' >.scripts/test.sh
+      echo 'test() { echo "v2"; }' >>.scripts/test.sh
+      echo 'new_func() { echo "new"; }' >>.scripts/test.sh
 
       # Collect current
       main collect current.csv >/dev/null 2>&1

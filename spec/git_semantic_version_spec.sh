@@ -4,8 +4,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-15
-## Version: 2.0.14
+## Last revisit: 2026-01-27
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -486,17 +486,17 @@ Describe "bin/git.semantic-version.sh /"
       # Mock git to simulate tag that IS an ancestor
       Mock git
         case "$1 $2" in
-          "rev-list -n")
-            # Return a fake commit hash
-            echo "abc123def456"
-            ;;
-          "merge-base --is-ancestor")
-            # Simulate: tag IS an ancestor
-            exit 0
-            ;;
-          *)
-            command git "$@"
-            ;;
+        "rev-list -n")
+          # Return a fake commit hash
+          echo "abc123def456"
+          ;;
+        "merge-base --is-ancestor")
+          # Simulate: tag IS an ancestor
+          exit 0
+          ;;
+        *)
+          command git "$@"
+          ;;
         esac
       End
 
@@ -510,17 +510,17 @@ Describe "bin/git.semantic-version.sh /"
       # Mock git to simulate tag that is NOT an ancestor
       Mock git
         case "$1 $2" in
-          "rev-list -n")
-            # Return a fake commit hash
-            echo "abc123def456"
-            ;;
-          "merge-base --is-ancestor")
-            # Simulate: tag is NOT an ancestor
-            exit 1
-            ;;
-          *)
-            command git "$@"
-            ;;
+        "rev-list -n")
+          # Return a fake commit hash
+          echo "abc123def456"
+          ;;
+        "merge-base --is-ancestor")
+          # Simulate: tag is NOT an ancestor
+          exit 1
+          ;;
+        *)
+          command git "$@"
+          ;;
         esac
       End
 
@@ -534,16 +534,16 @@ Describe "bin/git.semantic-version.sh /"
       # Mock git to simulate tag that is NOT an ancestor
       Mock git
         case "$1 $2" in
-          "rev-list -n")
-            echo "abc123def456"
-            ;;
-          "merge-base --is-ancestor")
-            # Simulate: tag is NOT an ancestor
-            exit 1
-            ;;
-          *)
-            command git "$@"
-            ;;
+        "rev-list -n")
+          echo "abc123def456"
+          ;;
+        "merge-base --is-ancestor")
+          # Simulate: tag is NOT an ancestor
+          exit 1
+          ;;
+        *)
+          command git "$@"
+          ;;
         esac
       End
 
@@ -572,36 +572,36 @@ Describe "bin/git.semantic-version.sh /"
       # Mock git to return multiple tags, with v2.0.0 being NOT an ancestor
       Mock git
         case "$1" in
-          tag)
-            # Return tags in reverse version order (highest first)
-            echo "v2.0.0"
-            echo "v1.0.0"
-            ;;
-          rev-list)
-            # Return commit hash for the tag
-            # git rev-list -n 1 <tag> -> $1=rev-list, $2=-n, $3=1, $4=<tag>
-            if [[ "$4" == "v2.0.0" ]]; then
-              echo "notancestor123"
-            elif [[ "$4" == "v1.0.0" ]]; then
-              echo "ancestor456"
-            else
-              command git "$@"
-            fi
-            ;;
-          merge-base)
-            # v2.0.0 is NOT an ancestor, v1.0.0 IS an ancestor
-            # git merge-base --is-ancestor <commit> HEAD -> $1=merge-base, $2=--is-ancestor, $3=<commit>, $4=HEAD
-            if [[ "$3" == "notancestor123" ]]; then
-              exit 1
-            elif [[ "$3" == "ancestor456" ]]; then
-              exit 0
-            else
-              command git "$@"
-            fi
-            ;;
-          *)
+        tag)
+          # Return tags in reverse version order (highest first)
+          echo "v2.0.0"
+          echo "v1.0.0"
+          ;;
+        rev-list)
+          # Return commit hash for the tag
+          # git rev-list -n 1 <tag> -> $1=rev-list, $2=-n, $3=1, $4=<tag>
+          if [[ "$4" == "v2.0.0" ]]; then
+            echo "notancestor123"
+          elif [[ "$4" == "v1.0.0" ]]; then
+            echo "ancestor456"
+          else
             command git "$@"
-            ;;
+          fi
+          ;;
+        merge-base)
+          # v2.0.0 is NOT an ancestor, v1.0.0 IS an ancestor
+          # git merge-base --is-ancestor <commit> HEAD -> $1=merge-base, $2=--is-ancestor, $3=<commit>, $4=HEAD
+          if [[ "$3" == "notancestor123" ]]; then
+            exit 1
+          elif [[ "$3" == "ancestor456" ]]; then
+            exit 0
+          else
+            command git "$@"
+          fi
+          ;;
+        *)
+          command git "$@"
+          ;;
         esac
       End
 
@@ -616,22 +616,22 @@ Describe "bin/git.semantic-version.sh /"
       # Mock git to return multiple tags
       Mock git
         case "$1" in
-          tag)
-            # Return tags in reverse version order
-            echo "v2.0.0"
-            echo "v1.0.0"
-            ;;
-          rev-list)
-            # Return commit hash
-            echo "commit123"
-            ;;
-          merge-base)
-            # Simulate NOT an ancestor (but filtering is disabled)
-            exit 1
-            ;;
-          *)
-            command git "$@"
-            ;;
+        tag)
+          # Return tags in reverse version order
+          echo "v2.0.0"
+          echo "v1.0.0"
+          ;;
+        rev-list)
+          # Return commit hash
+          echo "commit123"
+          ;;
+        merge-base)
+          # Simulate NOT an ancestor (but filtering is disabled)
+          exit 1
+          ;;
+        *)
+          command git "$@"
+          ;;
         esac
       End
 
@@ -880,26 +880,26 @@ Describe "bin/git.semantic-version.sh /"
     setup_integration_test() {
       TEST_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/semver.XXXXXX")
       export TEST_DIR
-      # We need to save the original directory to return to it if needed, 
+      # We need to save the original directory to return to it if needed,
       # but ShellSpec runs in subshells mostly.
       # However, we need to access the script.
       SCRIPT_PATH="$SHELLSPEC_PROJECT_ROOT/bin/git.semantic-version.sh"
-      
+
       cd "$TEST_DIR" || return 1
       git init -q
       git config user.email "test@example.com"
       git config user.name "Test User"
-      
+
       # Create some commits to simulate history
       # HEAD~10..HEAD
       for i in {1..11}; do
-        echo "change $i" > file.txt
+        echo "change $i" >file.txt
         git add file.txt
         if [ "$i" -eq 6 ]; then
-           git commit -q -m "feat: feature $i"
-           git tag v1.0.0
+          git commit -q -m "feat: feature $i"
+          git tag v1.0.0
         else
-           git commit -q -m "fix: fix $i"
+          git commit -q -m "fix: fix $i"
         fi
       done
     }
@@ -936,19 +936,19 @@ Describe "bin/git.semantic-version.sh /"
       # create a non-git dir OUTSIDE of TEST_DIR (which is a git repo)
       # A subdirectory of a git repo is still inside the git repo!
       NOGIT_DIR=$(mktemp -d "$SHELLSPEC_TMPBASE/nogit.XXXXXX")
-      
+
       # We use a subshell to run the script in the non-git dir
-      # run script works by executing the script. 
+      # run script works by executing the script.
       # ShellSpec 'When run' uses the command given.
-      
+
       cwd_cmd() {
-         cd "$NOGIT_DIR" && "$SCRIPT_PATH" "$@"
+        cd "$NOGIT_DIR" && "$SCRIPT_PATH" "$@"
       }
-      
+
       When run cwd_cmd
       The status should be failure
       The stderr should include "Not a git repository"
-      
+
       # Cleanup the extra temp directory
       rm -rf "$NOGIT_DIR"
     End

@@ -2,8 +2,8 @@
 
 **Dependency Management with Version Constraints**
 
-This module provides dependency checking with semantic versioning constraints
-and optional auto-installation in CI environments.
+This module provides dependency checking with semantic versioning constraints,
+result caching for performance, and optional auto-installation in CI environments.
 
 ## References
 
@@ -17,11 +17,30 @@ and optional auto-installation in CI environments.
 
 - E_BASH - Path to .scripts directory
 - __DEPS_VERSION_FLAGS_EXCEPTIONS - Associative array of tools with non-standard version flags
+- __DEPS_CACHE - Associative array caching verification results
+- __DEPS_CACHE_TTL - Cache time-to-live in seconds (default: 86400 = 1 day)
+- __DEPS_CACHE_DIR - Cache directory (default: $XDG_CACHE_HOME/e-bash or ~/.cache/e-bash)
+- __DEPS_CACHE_FILE - Full path to cache file
 - CI - Set by CI environments (GitHub Actions, GitLab CI, etc.)
 - CI_E_BASH_INSTALL_DEPENDENCIES - Enable auto-install in CI (1/true/yes)
 - SKIP_DEALIAS - Bypass alias resolution when set to "1"
 
 ## Additional Information
+
+### Dependency verification results are cached persistently on disk
+
+- Cache location: $XDG_CACHE_HOME/e-bash/dependencies.cache (or ~/.cache/e-bash/)
+- Cache TTL: 1 day (configurable via __DEPS_CACHE_TTL in seconds)
+- Cache is invalidated when PATH changes (hash-based detection)
+- First call verifies the tool and caches the result
+- Subsequent calls with same arguments return cached result (marked "(cached)")
+- Use --no-cache flag to bypass cache and force re-verification
+- Use _cache:clear to clear all cached entries (memory and disk)
+Short Form (Existence Check):
+When called with only a tool name (no version pattern), checks existence only:
+- dependency go              # Check if 'go' exists
+- dependency:exists python   # Alternative function for scripting
+- if dependency go --silent; then ... fi  # Use in conditions
 
 ### Supported Version Patterns
 
@@ -44,12 +63,23 @@ ref:
 
 ## Index
 
+* [`_cache:clear`](#_cache-clear)
+* [`_cache:ensure:loaded`](#_cache-ensure-loaded)
+* [`_cache:get`](#_cache-get)
+* [`_cache:is:valid`](#_cache-is-valid)
+* [`_cache:key`](#_cache-key)
+* [`_cache:load`](#_cache-load)
+* [`_cache:path:hash`](#_cache-path-hash)
+* [`_cache:save`](#_cache-save)
+* [`_cache:set`](#_cache-set)
 * [`dependency`](#dependency)
 * [`dependency:dealias`](#dependency-dealias)
+* [`dependency:exists`](#dependency-exists)
 * [`dependency:known:flags`](#dependency-known-flags)
 * [`isCIAutoInstallEnabled`](#isciautoinstallenabled)
 * [`isDebug`](#isdebug)
 * [`isExec`](#isexec)
+* [`isNoCache`](#isnocache)
 * [`isOptional`](#isoptional)
 * [`isSilent`](#issilent)
 * [`optional`](#optional)
@@ -69,21 +99,24 @@ Check and optionally install a dependency with version constraint
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
 | `tool_name` | string | required | Tool to check |
-| `tool_version_pattern` | string | required | Semver pattern (e.g. "5.*.*", "HEAD-[a-f0-9]{1,8}") |
+| `tool_version_pattern` | string | optional | Semver pattern (e.g. "5.*.*", "HEAD-[a-f0-9]{1,8}") |
 | `tool_fallback` | string | default: "No details. Please google it." | Install command |
 | `tool_version_flag` | string | default: auto-detected | Custom version flag |
 | `--optional` | string | required | Mark as optional dependency (soft fail) |
 | `--exec` | string | required | Execute install command on version mismatch |
 | `--debug` | string | required | Enable debug output |
+| `--no-cache` | string | required | Bypass cache and force re-verification |
+| `--silent` | string | required | Suppress output (useful for scripting) |
 
 #### Globals
 
-- reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, SKIP_DEALIAS
-- mutate/publish: none (may execute install command)
+- reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, SKIP_DEALIAS, __DEPS_CACHE
+- mutate/publish: __DEPS_CACHE (stores verification results)
 
 #### Side Effects
 
 - May execute install command in CI or with --exec
+- Caches verification results for performance
 
 #### Returns
 
@@ -95,6 +128,8 @@ Check and optionally install a dependency with version constraint
 dependency bash "5.*.*" "brew install bash"
 dependency shellspec "0.28.*" "brew install shellspec" "--version"
 optional kcov "43" "brew install kcov"
+dependency go  # Short form: just check if tool exists
+if dependency go --silent; then echo "Go is installed"; fi
 ```
 
 ---
@@ -124,6 +159,34 @@ Resolve tool aliases to their canonical command names
 dependency:dealias "rust" -> "rustc"
 dependency:dealias "brew" -> "brew"
 SKIP_DEALIAS=1 dependency:dealias "rust" -> "rust"
+```
+
+---
+
+### dependency:exists
+
+Check if a tool exists (short form for if/else expressions)
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `tool_name` | string | required | Tool to check |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Returns
+
+- 0 if tool exists, 1 otherwise
+
+#### Usage
+
+```bash
+if dependency:exists go; then echo "Go is installed"; fi
+dependency:exists python && python --version
 ```
 
 ---
@@ -222,6 +285,27 @@ Check if --exec flag is present in arguments
 #### Returns
 
 - "true" if --exec present, "false" otherwise
+
+---
+
+### isNoCache
+
+Check if --no-cache flag is present in arguments
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `args` | string array | variadic | Arguments to check |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Returns
+
+- "true" if --no-cache present, "false" otherwise
 
 ---
 
