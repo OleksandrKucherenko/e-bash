@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-01-29
-## Version: 2.3.1
+## Version: 2.4.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -30,7 +30,7 @@ set -o pipefail
 # Load e-bash modules
 # -----------------------------------------------------------------------------
 # Tag-based logging (must be before _dependencies.sh)
-DEBUG=${DEBUG:-"-edocs,ok,warn,error,parse,generate,ctags,validate,-loader"}
+DEBUG=${DEBUG:-"-edocs,ok,warn,err,parse,generate,ctags,validate,-loader"}
 
 # Colors for output
 # shellcheck disable=SC1091 source=../.scripts/_colors.sh
@@ -70,6 +70,7 @@ logger:init validate "[${cl_yellow}valid${cl_reset}] " ">&2"
 logger:init warn "[${cl_yellow}Warning${cl_reset}] " ">&2"
 logger:init ok "[${cl_green}OK${cl_reset}] " ">&2"
 logger:init err "[${cl_red}ERROR${cl_reset}] " ">&2"
+logger:init debug "[${cl_magenta}DEBUG${cl_reset}] " ">&2"
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -102,28 +103,60 @@ trap:on "rm -rf '$TEMP_DIR'" EXIT INT TERM
 # Utility Functions
 # -----------------------------------------------------------------------------
 
-# Trim leading and trailing whitespace from a string
-# Arguments: $1 = string to trim
-# Output: trimmed string
-trim() {
+##
+## Trim leading and trailing whitespace from a string
+##
+## Parameters:
+## - str - String to trim, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - 0 on success, echoes trimmed string
+##
+## Usage:
+## - edocs:trim "  hello world  "
+##
+edocs:trim() {
   local str="$1"
   str="${str#"${str%%[![:space:]]*}"}"
   str="${str%"${str##*[![:space:]]}"}"
   echo "$str"
 }
 
-# Show progress when processing multiple files
-# Arguments: $1 = current index (1-based), $2 = total count, $3 = filename
-show_progress() {
+##
+## Show progress when processing multiple files
+##
+## Parameters:
+## - current - Current file index (1-based), integer, required
+## - total - Total number of files, integer, required
+## - filename - Current filename being processed, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Prints progress bar to stdout with percentage, bar, and filename
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:show_progress 5 10 "/path/to/script.sh"
+##
+edocs:show_progress() {
   local current=$1
   local total=$2
   local filename=$3
 
   # Calculate percentage
   local percent=$((current * 100 / total))
-  local bar_width=20
-  local filled=$((percent * bar_width / 100))
-  local empty=$((bar_width - filled))
+  readonly BAR_WIDTH=20
+  local filled=$((percent * BAR_WIDTH / 100))
+  local empty=$((BAR_WIDTH - filled))
 
   # Build progress bar
   local bar=""
@@ -143,10 +176,29 @@ show_progress() {
 # Validation Functions
 # -----------------------------------------------------------------------------
 
-# Validate documentation block format
-# Arguments: $1 = script file, $2 = function name, $3 = function line, $4 = doc block
-# Output: Warnings to stderr if issues found
-validate_doc_block() {
+##
+## Validate documentation block format
+##
+## Parameters:
+## - script - Script file path, string, required
+## - func_name - Function name being validated, string, required
+## - func_line - Line number of function, integer, required
+## - doc_block - Documentation block content, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs validation warnings to stderr if issues found
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:validate_doc_block "file.sh" "my_func" "42" "## description"
+##
+edocs:validate_doc_block() {
   local script="$1"
   local func_name="$2"
   local func_line="$3"
@@ -161,7 +213,7 @@ validate_doc_block() {
     local has_description=false
     while IFS= read -r line; do
       local content="${line#*##}"
-      content=$(trim "$content")
+      content=$(edocs:trim "$content")
       if [[ -n "$content" && ! "$content" =~ ^(Parameters|Globals|Returns|Side|Usage|References|Categories|@\{): ]]; then
         has_description=true
         break
@@ -193,10 +245,27 @@ validate_doc_block() {
   fi
 }
 
-# Validate ctags version and installation
-# Arguments: none
-# Returns: 0 if ctags is available and meets version requirements, 1 otherwise
-validate_ctags() {
+##
+## Validate ctags version and installation
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs error messages to stderr if ctags is missing or outdated
+##
+## Returns:
+## - 0 if ctags is available and meets version requirements (>= 6.0.0)
+## - 1 if ctags is not installed or version requirement not met
+##
+## Usage:
+## - edocs:validate_ctags
+##
+edocs:validate_ctags() {
   if ! command -v ctags >/dev/null 2>&1; then
     echo:Err "ctags is not installed"
     echo:Err "Install with: brew install universal-ctags"
@@ -214,10 +283,27 @@ validate_ctags() {
   return 0
 }
 
-# Validate gawk version and installation
-# Arguments: none
-# Returns: 0 if gawk is available and meets version requirements, 1 otherwise
-validate_gawk() {
+##
+## Validate gawk version and installation
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs error messages to stderr if gawk is missing or outdated
+##
+## Returns:
+## - 0 if gawk is available and meets version requirements (>= 4.0.0)
+## - 1 if gawk is not installed or version requirement not met
+##
+## Usage:
+## - edocs:validate_gawk
+##
+edocs:validate_gawk() {
   if ! command -v gawk >/dev/null 2>&1; then
     echo:Err "gawk is not installed"
     echo:Err "Install with: brew install gawk"
@@ -235,10 +321,26 @@ validate_gawk() {
   return 0
 }
 
-# Validate script structure (6-zone format)
-# Arguments: $1 = script file
-# Output: Warnings to stderr if structure issues found
-validate_structure() {
+##
+## Validate script structure (6-zone format)
+##
+## Parameters:
+## - script - Script file path, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs structure validation warnings to stderr if issues found
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:validate_structure "file.sh"
+##
+edocs:validate_structure() {
   local script="$1"
   local issues=()
 
@@ -289,18 +391,34 @@ done
 
 # Only check dependencies if we have file arguments AND not showing help
 if ! $skip_deps && $has_file_arg; then
-  validate_ctags || exit 1
-  validate_gawk || exit 1
+  edocs:validate_ctags || exit 1
+  edocs:validate_gawk || exit 1
 fi
 
 # -----------------------------------------------------------------------------
 # @{keyword} Hint Parsing
 # -----------------------------------------------------------------------------
 
-# Parse @{keyword} hints from documentation
-# Arguments: $1 = documentation block
-# Output: "keyword:value" pairs, one per line
-parse_hints() {
+##
+## Parse @{keyword} hints from documentation
+##
+## Parameters:
+## - doc_block - Documentation block content, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs "keyword:value" pairs, one per line to stdout
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:parse_hints "## description @{internal} @{deprecated:old}"
+##
+edocs:parse_hints() {
   local doc_block="$1"
 
   while IFS= read -r line; do
@@ -313,20 +431,50 @@ parse_hints() {
   done <<<"$doc_block"
 }
 
-# Check if a hint is present
-# Arguments: $1 = doc block, $2 = keyword to find
-# Returns: 0 if found, 1 if not
-has_hint() {
+##
+## Check if a hint is present in documentation block
+##
+## Parameters:
+## - doc_block - Documentation block content, string, required
+## - keyword - Keyword to search for (without @{}), string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if hint is found
+## - 1 if hint is not found
+##
+## Usage:
+## - edocs:has_hint "## description @{internal}" "internal"
+##
+edocs:has_hint() {
   local doc_block="$1"
   local keyword="$2"
 
   [[ "$doc_block" =~ @\{$keyword(\}|:) ]]
 }
 
-# Get hint value
-# Arguments: $1 = doc block, $2 = keyword
-# Output: hint value or empty
-get_hint() {
+##
+## Get hint value from documentation block
+##
+## Parameters:
+## - doc_block - Documentation block content, string, required
+## - keyword - Keyword to extract value for (without @{}), string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes hint value if found, or "true" for flag-style hints
+## - Empty string if hint not found
+##
+## Usage:
+## - edocs:get_hint "## description @{deprecated:old}" "deprecated"
+##
+edocs:get_hint() {
   local doc_block="$1"
   local keyword="$2"
 
@@ -341,10 +489,27 @@ get_hint() {
 # Function Detection via ctags
 # -----------------------------------------------------------------------------
 
-# Get functions from a script file using ctags JSON output
-# Arguments: $1 = script file path
-# Output: JSON lines with function name and line number
-get_functions() {
+##
+## Get functions from a script file using ctags JSON output
+##
+## Parameters:
+## - script - Script file path, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Executes ctags command with JSON output format
+##
+## Returns:
+## - 0 on success, outputs JSON lines with function name and line number
+## - JSON may be empty if no functions found
+##
+## Usage:
+## - edocs:get_functions "file.sh"
+##
+edocs:get_functions() {
   local script="$1"
 
   # Use ctags with JSON output format
@@ -356,11 +521,27 @@ get_functions() {
     grep 'kind.*function' || true
 }
 
-# Parse ctags JSON output to extract function names and line numbers
-# Input: stdin with JSON lines
-# Output: "function_name:line_number" per line
-# Skips nested functions (indented) and variable assignments ctags misclassifies
-parse_ctags_json() {
+##
+## Parse ctags JSON output to extract function names and line numbers
+##
+## Parameters:
+## - stdin - JSON lines from ctags output
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs "function_name@line_number" pairs per line to stdout
+##
+## Returns:
+## - 0 on success
+## - Skips nested functions (indented) and variable assignments ctags misclassifies
+##
+## Usage:
+## - ctags --language-force=sh --kinds-sh=f --output-format=json --fields=+n file.sh | edocs:parse_ctags_json
+##
+edocs:parse_ctags_json() {
   while IFS= read -r line; do
     # Guard: skip empty lines
     [[ -z "$line" ]] && continue
@@ -376,8 +557,8 @@ parse_ctags_json() {
       continue
     fi
 
-    # Skip nested functions (pattern contains space after ^ before "function")
-    if echo "$line" | grep -qE '"pattern"[[:space:]]*:[[:space:]]*"/\^[[:space:]]+[[:space:]]*function'; then
+    # Skip nested functions (pattern contains multiple spaces after ^ before "function")
+    if echo "$line" | grep -qE '"pattern"[[:space:]]*:[[:space:]]*"/\^[[:space:]]{2,}function'; then
       continue
     fi
 
@@ -389,26 +570,72 @@ parse_ctags_json() {
 # -----------------------------------------------------------------------------
 # Documentation Parsing
 # -----------------------------------------------------------------------------
-# Check if line is a documentation comment (##)
-# Arguments: $1 = line to check
-# Returns: 0 if ## comment, 1 otherwise
-is_doc_comment() {
+##
+## Check if line is a documentation comment (##)
+##
+## Parameters:
+## - line - Line to check, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if line is a documentation comment (starts with ##)
+## - 1 if line is not a documentation comment
+##
+## Usage:
+## - edocs:is_doc_comment "## This is a doc comment"
+##
+edocs:is_doc_comment() {
   local line="$1"
   [[ "$line" =~ ^[[:space:]]*## ]]
 }
 
-# Check if line is a regular comment (#)
-# Arguments: $1 = line to check
-# Returns: 0 if # comment, 1 otherwise
-is_regular_comment() {
+##
+## Check if line is a regular comment (#)
+##
+## Parameters:
+## - line - Line to check, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if line is a regular comment (starts with # but not ##)
+## - 1 if line is not a regular comment
+##
+## Usage:
+## - edocs:is_regular_comment "# This is a regular comment"
+##
+edocs:is_regular_comment() {
   local line="$1"
   [[ "$line" =~ ^[[:space:]]*# && ! "$line" =~ ^[[:space:]]*## ]]
 }
 
-# Find documentation block boundaries in lines array
-# Arguments: $1 = lines array name (passed by reference)
-# Outputs: doc_start and doc_end variables
-find_doc_boundaries() {
+##
+## Find documentation block boundaries in lines array
+##
+## Parameters:
+## - lines_ref - Reference to lines array name, array, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs two space-separated numbers: doc_start doc_end (line indices, 0-based)
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - declare -a lines=("## comment" "## another comment" "code")
+## - local start end
+## - read -r start end <<< "$(edocs:find_doc_boundaries lines)"
+##
+edocs:find_doc_boundaries() {
   local -n lines_ref=$1
   local doc_start=-1
   local doc_end=-1
@@ -428,14 +655,14 @@ find_doc_boundaries() {
       continue
     fi
 
-    if is_doc_comment "$line"; then
+    if edocs:is_doc_comment "$line"; then
       # Found ## comment
       if [[ $doc_end -eq -1 ]]; then
         doc_end=$i
       fi
       doc_start=$i
       in_gap=false
-    elif is_regular_comment "$line"; then
+    elif edocs:is_regular_comment "$line"; then
       # Other # comments - skip if we're in a block or gap
       [[ $doc_start -ne -1 || $in_gap == true ]] && continue
     else
@@ -454,10 +681,28 @@ find_doc_boundaries() {
   echo "$doc_start $doc_end"
 }
 
-# Extract documentation block above a given line number
-# Arguments: $1 = script file, $2 = function line number
-# Output: Documentation text
-extract_doc_block() {
+##
+## Extract documentation block above a given line number
+##
+## Parameters:
+## - script - Script file path, string, required
+## - func_line - Function line number (1-based), integer, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs documentation text to stdout (may be empty)
+##
+## Returns:
+## - 0 on success
+## - Outputs empty string if no documentation block found
+##
+## Usage:
+## - edocs:extract_doc_block "file.sh" "42"
+##
+edocs:extract_doc_block() {
   local script="$1"
   local func_line="$2"
   local doc_lines=()
@@ -525,10 +770,27 @@ extract_doc_block() {
   fi
 }
 
-# Parse a documentation block into sections
-# Arguments: $1 = documentation block text (multiline)
-# Output: Parsed sections in a structured format
-parse_doc_sections() {
+##
+## Parse a documentation block into sections
+##
+## Parameters:
+## - doc_block - Documentation block text (multiline), string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs structured sections to stdout
+##
+## Returns:
+## - 0 on success
+## - Output format: SECTION:name\ncontent\nEND_SECTION per section
+##
+## Usage:
+## - edocs:parse_doc_sections "## description\n## Parameters: name - string"
+##
+edocs:parse_doc_sections() {
   local current_section="description"
   local section_content=""
 
@@ -571,10 +833,27 @@ parse_doc_sections() {
 # Module Summary Extraction (Zone 6)
 # -----------------------------------------------------------------------------
 
-# Extract module summary from the end of file
-# Arguments: $1 = script file
-# Output: Module summary documentation block
-extract_module_summary() {
+##
+## Extract module summary from the end of file
+##
+## Parameters:
+## - script - Script file path, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs module summary documentation block to stdout
+##
+## Returns:
+## - 0 on success
+## - Outputs empty string if no module summary found
+##
+## Usage:
+## - edocs:extract_module_summary "file.sh"
+##
+edocs:extract_module_summary() {
   local script="$1"
   local in_summary=false
   local summary_lines=()
@@ -607,9 +886,27 @@ extract_module_summary() {
 # Markdown Generation
 # -----------------------------------------------------------------------------
 
-# Generate markdown header for a script
-# Arguments: $1 = script basename, $2 = module summary
-generate_header() {
+##
+## Generate markdown header for a script
+##
+## Parameters:
+## - basename - Script basename (without extension), string, required
+## - module_summary - Module summary documentation block, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs markdown header to stdout
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:generate_header "logger" "## Module: Logger\n## description"
+##
+edocs:generate_header() {
   local basename="$1"
   local module_summary="$2"
 
@@ -732,12 +1029,28 @@ generate_header() {
   fi
 }
 
-# Generate GitHub-compatible anchor from text
-# Arguments: $1 = text to convert to anchor
-# Output: anchor string
-# GitHub's anchor format: lowercase, remove non-alphanumeric except hyphen and underscore,
-# collapse multiple hyphens, trim leading/trailing hyphens
-github_anchor() {
+##
+## Generate GitHub-compatible anchor from text
+##
+## Parameters:
+## - text - Text to convert to anchor, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs GitHub-compatible anchor to stdout
+##
+## Returns:
+## - 0 on success
+## - Anchor format: lowercase, removes non-alphanumeric except hyphen and underscore,
+## - collapses multiple hyphens, trims leading/trailing hyphens
+##
+## Usage:
+## - edocs:github_anchor "My Function"
+##
+edocs:github_anchor() {
   local text="$1"
   # Convert to lowercase
   text="${text,,}"
@@ -751,10 +1064,27 @@ github_anchor() {
   echo "$text"
 }
 
-# Generate table of contents
-# Arguments: $1 = script basename, stdin = function names (format: name@line)
-# Output: Full TOC with proper hierarchy and GitHub-compatible anchors
-generate_toc() {
+##
+## Generate table of contents
+##
+## Parameters:
+## - basename - Script basename (without extension), string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Inputs function names from stdin (format: name@line)
+## - Outputs full TOC with proper hierarchy and GitHub-compatible anchors to stdout
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - echo "func1@10" "func2@20" | edocs:generate_toc "script"
+##
+edocs:generate_toc() {
   local basename="$1"
 
   # Read all functions into an array
@@ -769,13 +1099,13 @@ generate_toc() {
 
   # Level 1: File title
   local file_anchor
-  file_anchor=$(github_anchor "$basename")
+  file_anchor=$(edocs:github_anchor "$basename")
   echo "- [${basename}](#${file_anchor})"
 
   # Level 2: Function names (TOC is inside ## Functions section)
   for name in "${func_names[@]}"; do
     local func_anchor
-    func_anchor=$(github_anchor "$name")
+    func_anchor=$(edocs:github_anchor "$name")
     echo "    - [\`${name}\`](#${func_anchor})"
   done
 
@@ -784,12 +1114,28 @@ generate_toc() {
   echo ""
 }
 
-# Format a parameter line as table row
-# Input: "- name - description, type, default"
-# Output: Markdown table row or empty if parsing fails
-# Note: Uses smarter parsing to handle commas in descriptions/examples
-# shellcheck disable=SC2155,SC2310
-format_parameter_row() {
+##
+## Format a parameter line as table row
+##
+## Parameters:
+## - line - Parameter line in format "- name - description, type, default", string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs Markdown table row to stdout (or empty if parsing fails)
+##
+## Returns:
+## - 0 on success
+## - Uses smart parsing to handle commas in descriptions/examples
+## - Output format: | name | type | default | description |
+##
+## Usage:
+## - edocs:format_parameter_row "- name - description, string, required"
+##
+edocs:format_parameter_row() {
   local line="$1"
 
   # Guard: must match expected format (- name - rest)
@@ -847,16 +1193,34 @@ format_parameter_row() {
   fi
 
   # Clean up whitespace using trim
-  desc=$(trim "$desc")
-  type=$(trim "${type:-string}")
-  default=$(trim "${default:-required}")
+  desc=$(edocs:trim "$desc")
+  type=$(edocs:trim "${type:-string}")
+  default=$(edocs:trim "${default:-required}")
 
   echo "| \`${name}\` | ${type} | ${default} | ${desc} |"
 }
 
-# Generate documentation for a single function
-# Arguments: $1 = function name, $2 = parsed sections
-generate_function_doc() {
+##
+## Generate documentation for a single function
+##
+## Parameters:
+## - func_name - Function name, string, required
+## - sections - Parsed sections from parse_doc_sections, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs function documentation to stdout
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:generate_function_doc "my_func" "$(edocs:parse_doc_sections "## desc")"
+##
+edocs:generate_function_doc() {
   local func_name="$1"
   local sections="$2"
 
@@ -918,7 +1282,7 @@ generate_function_doc() {
         ;;
       Parameters)
         local row
-        row=$(format_parameter_row "$line")
+        row=$(edocs:format_parameter_row "$line")
         if [[ -n "$row" ]]; then
           echo "$row"
         fi
@@ -946,27 +1310,44 @@ generate_function_doc() {
 # Main Processing
 # -----------------------------------------------------------------------------
 
-# Process a single script file
-# Arguments: $1 = script file path
-# Output: Markdown documentation to stdout
-process_script() {
+##
+## Process a single script file
+##
+## Parameters:
+## - script - Script file path, string, required
+##
+## Globals:
+## - reads/listen: EDOCS_INCLUDE_PRIVATE, EDOCS_TOC, EDOCS_VALIDATE
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs markdown documentation to stdout
+## - Logs processing status using edocs logger
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:process_script "file.sh"
+##
+edocs:process_script() {
   local script="$1"
   local basename
   basename=$(basename "$script")
 
-  echo:Edocs "Processing: $script"
+    echo:Edocs "Processing: $script"
 
   # Get module summary from end of file
   local module_summary
-  module_summary=$(extract_module_summary "$script")
+  module_summary=$(edocs:extract_module_summary "$script")
 
   # Generate header
-  generate_header "$basename" "$module_summary"
+  edocs:generate_header "$basename" "$module_summary"
 
   # Get all functions via ctags (read-only operation)
   local functions
-  functions=$(get_functions "$script" | parse_ctags_json)
-
+    functions=$(edocs:get_functions "$script" | edocs:parse_ctags_json)
+  
   # Filter functions for documentation (exclude private if not included)
   local filtered_functions=""
   while IFS=@ read -r func_name func_line; do
@@ -979,6 +1360,7 @@ process_script() {
     filtered_functions+="${func_name}@${func_line}"
   done <<<"$functions"
   functions="$filtered_functions"
+  echo:Debug "Functions after filtering: $functions"
 
   if [[ -z "$functions" ]]; then
     echo:Warn "No functions found in $script"
@@ -997,7 +1379,7 @@ process_script() {
 
   # Generate TOC if enabled (inside Functions section)
   if [[ "$EDOCS_TOC" == "true" ]]; then
-    echo "$functions" | generate_toc "$basename"
+    echo "$functions" | edocs:generate_toc "$basename"
   fi
 
   # Process each function
@@ -1007,32 +1389,32 @@ process_script() {
 
     # Extract and parse documentation
     local doc_block sections
-    doc_block=$(extract_doc_block "$script" "$func_line")
+    doc_block=$(edocs:extract_doc_block "$script" "$func_line")
 
     # Validate documentation if enabled
     if [[ "$EDOCS_VALIDATE" == "true" ]]; then
-      validate_doc_block "$script" "$func_name" "$func_line" "$doc_block"
+      edocs:validate_doc_block "$script" "$func_name" "$func_line" "$doc_block"
     fi
 
     # Check for @{internal} hint - skip internal functions
-    if has_hint "$doc_block" "internal"; then
+    if edocs:has_hint "$doc_block" "internal"; then
       continue
     fi
 
     # Check for @{ignore} hint - skip functions marked to be excluded from docs
-    if has_hint "$doc_block" "ignore"; then
+    if edocs:has_hint "$doc_block" "ignore"; then
       continue
     fi
 
     # Check for @{deprecated} hint - add deprecation notice
     local deprecated_msg=""
-    if has_hint "$doc_block" "deprecated"; then
-      deprecated_msg=$(get_hint "$doc_block" "deprecated")
+    if edocs:has_hint "$doc_block" "deprecated"; then
+      deprecated_msg=$(edocs:get_hint "$doc_block" "deprecated")
     fi
 
     if [[ -n "$doc_block" ]]; then
-      sections=$(echo "$doc_block" | parse_doc_sections)
-      generate_function_doc "$func_name" "$sections" "$deprecated_msg"
+      sections=$(echo "$doc_block" | edocs:parse_doc_sections)
+      edocs:generate_function_doc "$func_name" "$sections" "$deprecated_msg"
     else
       # Function without documentation
       echo "---"
@@ -1045,8 +1427,28 @@ process_script() {
   done <<<"$functions"
 }
 
-# Check mode (--check flag)
-check_mode() {
+##
+## Check mode (--check flag)
+##
+## Parameters:
+## - script - Script file path, string, required
+## - output_file - Output markdown file path, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs status messages to stdout/stderr
+##
+## Returns:
+## - 0 if documentation is up to date
+## - 1 if documentation is missing or out of date
+##
+## Usage:
+## - edocs:check_mode "file.sh" "docs/file.md"
+##
+edocs:check_mode() {
   local script="$1"
   local output_file="$2"
 
@@ -1057,7 +1459,7 @@ check_mode() {
 
   local current new_content
   current=$(cat "$output_file")
-  new_content=$(process_script "$script" 2>/dev/null)
+  new_content=$(edocs:edocs:process_script "$script")
 
   if [[ "$current" != "$new_content" ]]; then
     echo:Err "Documentation out of date: $output_file"
@@ -1121,8 +1523,26 @@ for arg in "$@"; do
   esac
 done
 
-# Simplified usage function using print:help
-usage() {
+##
+## Display edocs:usage information
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Side effects:
+## - Outputs edocs:usage information to stdout
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - edocs:edocs:usage
+##
+edocs:usage() {
   print:help
   echo ""
   echo "Examples:"
@@ -1138,7 +1558,30 @@ usage() {
   echo "  @{since:version}   Version when function was added"
 }
 
-main() {
+##
+## Main CLI entry point
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: args_check, args_dry_run, args_stdout, args_no_toc, args_validate,
+## -             args_no_validate, args_include_private, OUTPUT_DIR, help, version
+## - mutate/publish: EDOCS_OUTPUT_DIR, EDOCS_TOC, EDOCS_VALIDATE, EDOCS_INCLUDE_PRIVATE
+##
+## Side effects:
+## - Creates output directories
+## - Processes files and generates documentation
+## - Outputs progress messages and results
+##
+## Returns:
+## - 0 on success
+## - 1 if documentation is out of date in check mode
+##
+## Usage:
+## - edocs:main
+##
+edocs:main() {
   local check_only=false
   local dry_run=false
   local files=()
@@ -1162,7 +1605,7 @@ main() {
 
   # Handle help and version flags
   if [[ "${help:-}" == "1" ]]; then
-    usage
+    edocs:usage
     exit 0
   fi
 
@@ -1241,25 +1684,25 @@ main() {
 
     # Show progress for multiple files
     if [[ $total -gt 1 ]]; then
-      show_progress "$current" "$total" "$script"
+      edocs:show_progress "$current" "$total" "$script"
     fi
 
     # Validate structure if enabled (but skip in dry-run mode for cleaner output)
     if [[ "$EDOCS_VALIDATE" == "true" ]] && ! $dry_run; then
-      validate_structure "$script"
+      edocs:validate_structure "$script"
     fi
 
     if $check_only; then
-      if ! check_mode "$script" "$output_file"; then
+      if ! edocs:check_mode "$script" "$output_file"; then
         exit_code=1
       fi
     else
       if $dry_run; then
         # Suppress logger messages in dry-run mode for cleaner output
-        process_script "$script" 2>/dev/null
+                edocs:process_script "$script"
       else
         # Write output file (state-mutating operation)
-        process_script "$script" >"$output_file"
+                edocs:process_script "$script" >"$output_file"
         if [[ $total -eq 1 ]]; then
           echo:Ok "Generated: $output_file"
         fi
@@ -1282,7 +1725,7 @@ main() {
 # Run main if not sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   # ARGS_NO_FLAGS is populated by parse:exclude_flags_from_args (called during module load)
-  main "${ARGS_NO_FLAGS[@]}"
+  edocs:main "${ARGS_NO_FLAGS[@]}"
 fi
 
 ##
@@ -1311,25 +1754,25 @@ fi
 ## Categories:
 ##
 ## Utility Functions:
-## - trim() - Remove leading/trailing whitespace
+## - edocs:trim() - Remove leading/trailing whitespace
 ##
 ## Function Detection:
-## - get_functions() - Extract functions via ctags JSON output
-## - parse_ctags_json() - Parse ctags output to name:line pairs
+## - edocs:get_functions() - Extract functions via ctags JSON output
+## - edocs:parse_ctags_json() - Parse ctags output to name:line pairs
 ##
 ## Documentation Parsing:
-## - extract_doc_block() - Get ## block above function
-## - parse_doc_sections() - Split doc into sections
-## - extract_module_summary() - Get Module Summary from EOF
+## - edocs:extract_doc_block() - Get ## block above function
+## - edocs:parse_doc_sections() - Split doc into sections
+## - edocs:extract_module_summary() - Get Module Summary from EOF
 ##
 ## Markdown Generation:
-## - generate_header() - Create file header with module info
-## - generate_toc() - Create Table of Contents
-## - format_parameter_row() - Format parameter as table row
-## - generate_function_doc() - Render function documentation
+## - edocs:generate_header() - Create file header with module info
+## - edocs:generate_toc() - Create Table of Contents
+## - edocs:format_parameter_row() - Format parameter as table row
+## - edocs:generate_function_doc() - Render function documentation
 ##
 ## Main Processing:
-## - process_script() - Process single script file
-## - check_mode() - Verify docs are up to date
-## - main() - CLI entry point
+## - edocs:process_script() - Process single script file
+## - edocs:check_mode() - Verify docs are up to date
+## - edocs:main() - CLI entry point
 ##
