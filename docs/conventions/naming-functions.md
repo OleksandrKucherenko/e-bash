@@ -28,7 +28,7 @@ function trap:on() { ... }
 function dependency:exists() { ... }
 ```
 
-### Pattern: `{domain}:{entity}:{verb}` (nested namespaces)
+### Pattern: `{domain}:{verb}:{entity}` (nested namespaces)
 
 ```bash
 function semver:increase:major() { ... }
@@ -43,9 +43,9 @@ function logger:redirect() { ... }
   - ✅ `logger:init`, `hooks:do`, `semver:compare`
   - ❌ `logger:Init`, `hooks:Do`, `semverCompare`
 - **Colon separators** - Use `:` not `_` or `-`
-- **Verb comes last** - Pattern is `{domain}:{verb}` or `{domain}:{entity}:{verb}`
+- **Verb comes after domain** - Pattern is `{domain}:{verb}` or `{domain}:{verb}:{entity}`
 - **Domain prefix** - First component is the domain/module name
-- **Max 3 levels** - Avoid deeply nested names (`domain:cat1:cat2:verb` is too deep)
+- **Max 3 levels** - Avoid deeply nested names (`domain:verb:cat1:cat2` is too deep)
 - **Clear verbs** - Use descriptive action verbs (init, do, get, set, list, clear, etc.)
 
 ### Important Scope Distinction
@@ -166,48 +166,28 @@ function _cache:path:hash() { ... }
 function _cache:ensure:loaded() { ... }
 ```
 
-### Pattern: `_Module::method_name` (OOP-style, class-like - LEGACY)
+### Noncompliant legacy pattern (do not use)
+
+`_Module::method` exists in older code but violates the lowercase-only rule for module functions.
+Migrate these to `_domain:*` equivalents.
 
 ```bash
-# NOTE: This pattern is legacy and exists in older modules like _traps.sh
-# New code should prefer _{domain}:* pattern instead
+# Noncompliant legacy (do not use)
 function _Trap::normalize_signal() { ... }
-function _Trap::initialize_signal() { ... }
-function _Trap::capture_legacy() { ... }
-function _Trap::contains() { ... }
-function _Trap::remove_handler() { ... }
 ```
 
 ### Rules
 
 - **Single underscore prefix + colon** - `_{domain}:` indicates module-private function
-- **Follows same structure as public** - Use `_{domain}:{verb}` or `_{domain}:{entity}:{verb}`
-- **Legacy OOP-style** - `_Module::method` exists in older code but avoid in new code
+- **Follows same structure as public** - Use `_{domain}:{verb}` or `_{domain}:{verb}:{entity}`
+- **No OOP-style legacy** - `_Module::method` is noncompliant and should be removed
 - **Not for external use** - These may change without notice
 - **Same verb conventions** - Use same verbs as public API (init, do, get, set, etc.)
 
-### When to Use `_{domain}:*` vs `_Module::method`
-
-| Use `_{domain}:*` (PREFERRED) | Use `_Module::method` (LEGACY) |
-|-------------------------------|--------------------------------|
-| All new internal functions | Only in legacy modules (_traps.sh) |
-| Consistent with public API | OOP-style grouping |
-| `_hooks:capture:run` | `_Trap::normalize_signal` |
-| `_cache:load` | `_Trap::dispatch` |
-| `_hooks:middleware:default` | `_Trap::contains` |
-
-**Recommendation:** Use `_{domain}:*` pattern for all new code. The `_Module::method` pattern exists only for backward compatibility in `_traps.sh`.
-
-### Examples from Codebase
+### Examples (compliant)
 
 | Function | Pattern | Purpose |
 |----------|---------|---------|
-| `_Trap::dispatch` | Class method | Main trap dispatcher (called by OS) |
-| `_Trap::normalize_signal` | Class method | Convert signal names to standard format |
-| `_Trap::initialize_signal` | Class method | First-time signal setup |
-| `_Trap::capture_legacy` | Class method | Save existing trap before override |
-| `_Trap::contains` | Class method | Check if handler in list |
-| `_Trap::remove_handler` | Class method | Remove handler from list |
 | `_hooks:capture:run` | Namespaced helper | Execute with output capture (internal) |
 | `_hooks:middleware:default` | Namespaced helper | Default middleware implementation |
 | `_hooks:env:apply` | Namespaced helper | Apply environment directive |
@@ -292,11 +272,9 @@ function parse:mapping() { ... }
 function parse:arguments() { ... }
 function parse:extract_output_definition() { ... }
 
-# Conditional checks (used by _dependencies.sh)
-function isDebug() { ... }
-function isExec() { ... }
-function isOptional() { ... }
-function isSilent() { ... }
+# Conditional checks (flag helpers)
+function args:has() { ... }
+function args:has:any() { ... }
 
 # Time utilities (used by _commons.sh)
 function time:now() { ... }
@@ -369,7 +347,7 @@ function processCommit() { ... }         # ✓ Script function - CamelCase OK
 
 # INTERNAL FUNCTIONS: Use _{domain}:* pattern
 function _hooks:capture:run() { ... }    # ✓ Internal - preferred pattern
-function _Trap::dispatch() { ... }       # ✓ Internal - legacy OOP pattern
+function _trap:dispatch() { ... }        # ✓ Internal - preferred pattern
 ```
 
 ### ❌ DON'T
@@ -385,7 +363,7 @@ function logger_init() { ... }           # ✗ Use colons, not underscores
 function logger_redirect() { ... }       # ✗ Use logger:redirect
 
 # DON'T use ambiguous prefixes
-function _logger_init() { ... }          # ✗ Use _logger:init or __logger_init
+function _logger_init() { ... }          # ✗ Use _logger:init
 
 # DON'T omit module prefix
 function redirect() { ... }              # ✗ Too generic, use logger:redirect
@@ -442,13 +420,18 @@ function example:function() {
 Before adding a new function, ask:
 
 - [ ] Is this part of the public API? → Use `module:action`
-- [ ] Is this module-internal? → Use `__module_function` or `_Module::method`
+- [ ] Is this module-internal? → Use `_{domain}:*`
 - [ ] Does it modify global state? → Document in `Globals:` section
 - [ ] Is the name a clear verb? → Prefer `get`, `set`, `do`, `init`, etc.
 - [ ] Does it follow existing patterns in the module? → Check similar functions
 - [ ] Is it documented with `##` comments? → Follow template above
 
 ---
+
+## Known Code Deviations (to Fix)
+
+- `.scripts/_traps.sh` uses `_Trap::*` (mixed case, OOP-style) and should be migrated to lowercase `_{domain}:*`.
+- `.scripts/_dependencies.sh` defines `isDebug`, `isExec`, `isOptional`, `isSilent`, `isNoCache`, which should be replaced with lowercase, namespaced helpers.
 
 ## See Also
 

@@ -76,9 +76,9 @@ See [Function Naming](naming-functions.md) for complete details.
 | Type                           | Pattern                     | Example                                                          | Scope                     | Case                  |
 | ------------------------------ | --------------------------- | ---------------------------------------------------------------- | ------------------------- | --------------------- |
 | **Module Function**            | `{domain}:{verb}`           | `logger:init`, `hooks:do`                                        | `.scripts/_*.sh`          | **lowercase only**    |
-| **Module Function (nested)**   | `{domain}:{entity}:{verb}`  | `semver:increase:major`                                          | `.scripts/_*.sh`          | **lowercase only**    |
+| **Module Function (nested)**   | `{domain}:{verb}:{entity}`  | `semver:increase:major`                                          | `.scripts/_*.sh`          | **lowercase only**    |
 | **Internal Function**          | `_{domain}:*`               | `_hooks:capture:run`                                             | `.scripts/_*.sh`          | **lowercase only**    |
-| **Internal Function (legacy)** | `_Module::method`           | `_Trap::dispatch`                                                | `.scripts/_*.sh` (legacy) | **lowercase only**    |
+| **Internal Function (legacy, avoid)** | `_module::method`     | `_trap::dispatch`                                                | `.scripts/_*.sh` (legacy) | **lowercase only**    |
 | **Generated Function**         | `action:Tag`                | `echo:Common`, `log:MyApp`                                       | Dynamic (eval)            | **CamelCase allowed** |
 | **Script Function**            | `{domain}:{verb}` or `name` | `gitsv:add_keyword`, `processCommit`                             | `bin/*.sh`, user scripts  | **mixed case OK**     |
 | **Module Global Variable**     | `__MODULE_VARIABLE`         | `__LOGGER_TAGS`, `__HOOKS_DEFINED`                               | Module state              |
@@ -129,6 +129,10 @@ function logger:redirect() { ... }      # Correct
 # DON'T: Single underscore for module globals functions
 function _logger_init() { ... }         # Unclear scope
 function _logger:init() { ... }        # Correct (clearly internal)
+
+# DON'T: Legacy OOP-style internal functions
+function _Trap::normalize_signal() { ... }  # Wrong (legacy mixed case)
+function _trap:signal:normalize() { ... }   # Correct (internal helper)
 ```
 
 ### Variables
@@ -167,15 +171,12 @@ Use this flowchart to choose the right naming pattern:
 
 ```
 Is this function part of the public API?
-├─ YES → Use `module:action` or `module:category:action`
-│        Example: logger:init, semver:compare
+├─ YES → Use `module:action` or `module:action:target`
+│        Example: logger:init, semver:increase:major
 │
 └─ NO → Is it module-internal?
-    ├─ YES → Is it class-like/OOP style?
-    │   ├─ YES → Use `_module::method`
-    │   │        Example: _trap::normalize_signal
-    │   └─ NO → Use `_module:function`
-    │            Example: __logger:init
+    ├─ YES → Use `_module:function`
+    │        Example: _logger:init
     │
     └─ NO → Is it dynamically generated?
         └─ YES → Use `action:Tag`

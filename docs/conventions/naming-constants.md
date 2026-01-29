@@ -59,18 +59,17 @@ return $EXIT_OK
 | `EXIT_OK`           | 0     | Success                  |
 | `EXIT_ERROR`        | 1     | General error            |
 | `EXIT_INVALID_ARGS` | 2     | Invalid arguments        |
-| `EXIT_NO_COMMITS`   | 2     | No commits found         |
+| `EXIT_NO_COMMITS`   | 3     | No commits found         |
 | `EXIT_NOT_FOUND`    | 3     | Resource not found       |
 | `EXIT_INTERRUPTED`  | 130   | SIGINT received (Ctrl+C) |
 
-### Examples from Codebase
+### Example (Recommended)
 
 ```bash
-# From bin/git.semantic-version.sh
 readonly EXIT_OK=0
 readonly EXIT_ERROR=1
-readonly EXIT_NO_COMMITS=2
-readonly EXIT_INVALID_ARGS=3
+readonly EXIT_INVALID_ARGS=2
+readonly EXIT_NO_COMMITS=3
 readonly EXIT_INTERRUPTED=130
 
 # Usage
@@ -79,6 +78,10 @@ if [[ -z "$commits" ]]; then
   exit $EXIT_NO_COMMITS
 fi
 ```
+
+### Known Code Deviations (to Fix)
+
+- `bin/git.semantic-version.sh` currently defines `EXIT_NO_COMMITS=2` and `EXIT_INVALID_ARGS=3`, which should be swapped to match this document.
 
 ---
 

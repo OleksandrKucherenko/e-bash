@@ -148,9 +148,6 @@ HOOKS_AUTO_TRAP="true"                 # Auto-install EXIT trap
 # Trap module configuration
 # (none currently - trap module uses runtime registration)
 
-# Dependency cache configuration
-__DEPS_CACHE_TTL=86400                 # Cache TTL (internal default)
-__DEPS_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/e-bash"
 ```
 
 ### Rules
@@ -220,15 +217,17 @@ __TRAP_STACK_LEVEL=0
 __TRAPS_MODULE_INITIALIZED="yes"
 
 # Dependency cache internals
-declare -gA __DEPS_CACHE                 # In-memory cache
+declare -g __DEPS_CACHE_TTL=86400         # Cache TTL (internal default)
+declare -g __DEPS_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/e-bash"
+declare -gA __DEPS_CACHE                  # In-memory cache
 declare -g __DEPS_CACHE_LOADED=false
 declare -g __DEPS_CACHE_PATH_HASH=""
 declare -gA __DEPS_VERSION_FLAGS_EXCEPTIONS
 
 # Semver internals
-declare -A -g __semver_parse_result      # Parse results
-declare -A -g __semver_compare_v1        # Comparison temp
-declare -A -g __semver_compare_v2        # Comparison temp
+declare -A -g __SEMVER_PARSE_RESULT      # Parse results
+declare -A -g __SEMVER_COMPARE_V1        # Comparison temp
+declare -A -g __SEMVER_COMPARE_V2        # Comparison temp
 ```
 
 ### Rules
@@ -251,7 +250,7 @@ declare -A -g __semver_compare_v2        # Comparison temp
 | `__TRAP_STACK_LEVEL` | traps | Integer | Current stack depth |
 | `__DEPS_CACHE` | dependencies | Associative array | In-memory dependency cache |
 | `__DEPS_CACHE_LOADED` | dependencies | Boolean | Cache load state |
-| `__semver_parse_result` | semver | Associative array | Parse results storage |
+| `__SEMVER_PARSE_RESULT` | semver | Associative array | Parse results storage |
 | `__SESSION` | logger | String | Unique session identifier |
 
 ### Declaration Patterns
@@ -600,6 +599,12 @@ What type of variable is this?
 └─ Function-local or parameter?
    └─ Use: snake_case_name (local)
 ```
+
+---
+
+## Known Code Deviations (to Fix)
+
+- `.scripts/_semver.sh` and `demos/demo.semver.sh` use lowercase `__semver_*` internals; rename to `__SEMVER_*` to comply.
 
 ---
 

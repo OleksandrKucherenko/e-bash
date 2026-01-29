@@ -49,9 +49,9 @@ __HOOKS_REGISTERED[$hook_name]="friendly1:func1|friendly2:func2"
 | `__HOOKS_MIDDLEWARE` | hooks | Middleware functions | Map: hook_name → function |
 | `__DEPS_CACHE` | dependencies | Dependency cache | Map: key → value |
 | `__DEPS_VERSION_FLAGS_EXCEPTIONS` | dependencies | Version flag exceptions | Map: tool → flag |
-| `__semver_parse_result` | semver | Parse results | Map: component → value |
-| `__semver_compare_v1` | semver | Comparison temp | Map: component → value |
-| `__semver_compare_v2` | semver | Comparison temp | Map: component → value |
+| `__SEMVER_PARSE_RESULT` | semver | Parse results | Map: component → value |
+| `__SEMVER_COMPARE_V1` | semver | Comparison temp | Map: component → value |
+| `__SEMVER_COMPARE_V2` | semver | Comparison temp | Map: component → value |
 
 ### Declaration Patterns
 
@@ -202,7 +202,7 @@ function logger:compose() {
 # From semver:parse
 function semver:parse() {
   local version="$1"
-  local output_variable="${2:-"__semver_parse_result"}"
+  local output_variable="${2:-"__SEMVER_PARSE_RESULT"}"
   declare -A parsed=(["version"]="" ["version-core"]="" ["pre-release"]="" ["build"]="")
   # ...
 }
@@ -485,6 +485,12 @@ unset 'array[key]'        # Remove specific key (quote to prevent glob)
 unset array               # Remove entire array
 array=()                  # Clear to empty array
 ```
+
+---
+
+## Known Code Deviations (to Fix)
+
+- `.scripts/_semver.sh` uses lowercase `__semver_*` associative arrays; rename to `__SEMVER_*` to comply.
 
 ---
 
