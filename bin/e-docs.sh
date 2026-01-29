@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-25
-## Version: 2.7.9
+## Last revisit: 2026-01-29
+## Version: 2.3.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -13,12 +13,13 @@
 # -----------------------------------------------------------------------------
 # Bootstrap e-bash (discover E_BASH location)
 # -----------------------------------------------------------------------------
-[ "$E_BASH" ] || {
-  _src=${BASH_SOURCE:-$0}
-  E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts)
-  readonly E_BASH
-}
-# shellcheck disable=SC1091
+# Get script directory and find e-bash .scripts
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+E_BASH="$(cd "$PROJECT_ROOT/.scripts" 2>&- && pwd)"
+readonly E_BASH
+
+# shellcheck disable=SC1091 source=../.scripts/_gnu.sh
 . "$E_BASH/_gnu.sh"
 PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
 
@@ -28,50 +29,51 @@ set -o pipefail
 # -----------------------------------------------------------------------------
 # Load e-bash modules
 # -----------------------------------------------------------------------------
+# Tag-based logging (must be before _dependencies.sh)
+DEBUG=${DEBUG:-"-edocs,ok,warn,error,parse,generate,ctags,validate,-loader"}
 
 # Colors for output
-# shellcheck disable=SC1091
+# shellcheck disable=SC1091 source=../.scripts/_colors.sh
 source "$E_BASH/_colors.sh"
 
-# Tag-based logging (must be before _dependencies.sh)
-DEBUG="${DEBUG:-edocs,err,ok,warn}"
-# shellcheck disable=SC1091
+# shellcheck disable=SC1091 source=../.scripts/_logger.sh
 source "$E_BASH/_logger.sh"
-# shellcheck disable=SC2154
-# Note: cl_* variables are exported by _colors.sh above
-logger:init edocs "[${cl_blue}e-docs${cl_reset}] " ">&2"
-# shellcheck disable=SC2154
+
+# shellcheck disable=SC1091 source=../.scripts/_dependencies.sh
+source "$E_BASH/_dependencies.sh"
+
+# Skip automatic argument parsing - we'll use modern args:i pattern
+export SKIP_ARGS_PARSING=1
+
+# Source arguments module after SKIP_ARGS_PARSING is set
+# shellcheck disable=SC1091 source=../.scripts/_arguments.sh
+source "$E_BASH/_arguments.sh"
+
+# Source traps module for cleanup handlers
+# shellcheck disable=SC1091 source=../.scripts/_traps.sh
+source "$E_BASH/_traps.sh"
+
+# Source dry-run module for command wrapping (AFTER logger is initialized)
+# shellcheck disable=SC1091 source=../.scripts/_dryrun.sh
+source "$E_BASH/_dryrun.sh"
+
+# Generate dry-run wrappers for commands we'll use
+# This creates run:mkdir, dry:mkdir, rollback:mkdir, undo:mkdir
+dryrun mkdir
+
+# Domain-specific loggers
+logger:init edocs "[${cl_blue}edocs${cl_reset}] " ">&2"
+logger:init parse "[${cl_cyan}parse${cl_reset}] " ">&2"
+logger:init generate "[${cl_purple}gen${cl_reset}] " ">&2"
+logger:init ctags "[${cl_yellow}ctags${cl_reset}] " ">&2"
+logger:init validate "[${cl_yellow}valid${cl_reset}] " ">&2"
+logger:init warn "[${cl_yellow}Warning${cl_reset}] " ">&2"
 logger:init ok "[${cl_green}OK${cl_reset}] " ">&2"
-# shellcheck disable=SC2154
-logger:init warn "[${cl_yellow}WARN${cl_reset}] " ">&2"
-# shellcheck disable=SC2154
 logger:init err "[${cl_red}ERROR${cl_reset}] " ">&2"
-
-# Dependency checking (must be after _logger.sh)
-# Skip dependency checks for --help flag only (showing help doesn't need ctags)
-# Also skip if no file arguments provided (catches unknown options early)
-skip_deps=false
-[[ " $* " == *" --help "* ]] || [[ " $* " == *" -h "* ]] && skip_deps=true
-
-# Check if file arguments are provided
-has_file_arg=false
-for arg in "$@"; do
-  [[ "$arg" != -* ]] && has_file_arg=true && break
-done
-
-# Only check dependencies if we have file arguments AND not showing help
-if ! $skip_deps && $has_file_arg; then
-  # shellcheck disable=SC1091
-  source "$E_BASH/_dependencies.sh"
-  dependency ctags "6.*.*" "brew install universal-ctags"
-fi
 
 # -----------------------------------------------------------------------------
 # Configuration
 # -----------------------------------------------------------------------------
-
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Load user configuration
 if [[ -f "$PROJECT_ROOT/.edocsrc" ]]; then
@@ -86,6 +88,15 @@ EDOCS_STYLE="${EDOCS_STYLE:-github}"
 EDOCS_TOC="${EDOCS_TOC:-true}"
 EDOCS_INCLUDE_PRIVATE="${EDOCS_INCLUDE_PRIVATE:-false}"
 EDOCS_VALIDATE="${EDOCS_VALIDATE:-true}"
+
+# Normalize EDOCS_OUTPUT_DIR to absolute path if relative
+if [[ ! "$EDOCS_OUTPUT_DIR" =~ ^/ ]]; then
+  EDOCS_OUTPUT_DIR="$PROJECT_ROOT/$EDOCS_OUTPUT_DIR"
+fi
+
+# Temporary directory for processing (cleaned up on exit)
+readonly TEMP_DIR=$(mktemp -d -t e-docs.XXXXXX)
+trap:on "rm -rf '$TEMP_DIR'" EXIT INT TERM
 
 # -----------------------------------------------------------------------------
 # Utility Functions
@@ -124,7 +135,8 @@ show_progress() {
     "$percent" "$bar" "$current" "$total" "$(basename "$filename")"
 
   # Newline on last file
-  [[ $current -eq $total ]] && echo
+  # [[ $current -eq $total ]] && echo
+  echo ""
 }
 
 # -----------------------------------------------------------------------------
@@ -181,6 +193,48 @@ validate_doc_block() {
   fi
 }
 
+# Validate ctags version and installation
+# Arguments: none
+# Returns: 0 if ctags is available and meets version requirements, 1 otherwise
+validate_ctags() {
+  if ! command -v ctags >/dev/null 2>&1; then
+    echo:Err "ctags is not installed"
+    echo:Err "Install with: brew install universal-ctags"
+    return 1
+  fi
+
+  local ctags_version
+  ctags_version=$(ctags --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+
+  if [[ ! "$ctags_version" =~ ^[6-9]\..* ]]; then
+    echo:Err "ctags version $ctags_version does not meet requirement (>= 6.0.0)"
+    return 1
+  fi
+
+  return 0
+}
+
+# Validate gawk version and installation
+# Arguments: none
+# Returns: 0 if gawk is available and meets version requirements, 1 otherwise
+validate_gawk() {
+  if ! command -v gawk >/dev/null 2>&1; then
+    echo:Err "gawk is not installed"
+    echo:Err "Install with: brew install gawk"
+    return 1
+  fi
+
+  local gawk_version
+  gawk_version=$(gawk --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+
+  if [[ ! "$gawk_version" =~ ^[4-9]\..* ]]; then
+    echo:Err "gawk version $gawk_version does not meet requirement (>= 4.0.0)"
+    return 1
+  fi
+
+  return 0
+}
+
 # Validate script structure (6-zone format)
 # Arguments: $1 = script file
 # Output: Warnings to stderr if structure issues found
@@ -217,6 +271,27 @@ validate_structure() {
     done
   fi
 }
+
+# -----------------------------------------------------------------------------
+# Dependency Checking
+# -----------------------------------------------------------------------------
+
+# Skip dependency checks for --help flag only (showing help doesn't need ctags)
+# Also skip if no file arguments provided (catches unknown options early)
+skip_deps=false
+[[ " $* " == *" --help "* ]] || [[ " $* " == *" -h "* ]] && skip_deps=true
+
+# Check if file arguments are provided
+has_file_arg=false
+for arg in "$@"; do
+  [[ "$arg" != -* ]] && has_file_arg=true && break
+done
+
+# Only check dependencies if we have file arguments AND not showing help
+if ! $skip_deps && $has_file_arg; then
+  validate_ctags || exit 1
+  validate_gawk || exit 1
+fi
 
 # -----------------------------------------------------------------------------
 # @{keyword} Hint Parsing
@@ -314,6 +389,70 @@ parse_ctags_json() {
 # -----------------------------------------------------------------------------
 # Documentation Parsing
 # -----------------------------------------------------------------------------
+# Check if line is a documentation comment (##)
+# Arguments: $1 = line to check
+# Returns: 0 if ## comment, 1 otherwise
+is_doc_comment() {
+  local line="$1"
+  [[ "$line" =~ ^[[:space:]]*## ]]
+}
+
+# Check if line is a regular comment (#)
+# Arguments: $1 = line to check
+# Returns: 0 if # comment, 1 otherwise
+is_regular_comment() {
+  local line="$1"
+  [[ "$line" =~ ^[[:space:]]*# && ! "$line" =~ ^[[:space:]]*## ]]
+}
+
+# Find documentation block boundaries in lines array
+# Arguments: $1 = lines array name (passed by reference)
+# Outputs: doc_start and doc_end variables
+find_doc_boundaries() {
+  local -n lines_ref=$1
+  local doc_start=-1
+  local doc_end=-1
+  local in_gap=false
+  local line_count
+
+  # Get array length
+  eval "line_count=\${#${lines_ref}[@]}"
+
+  # Search backwards from end
+  for ((i = line_count - 1; i >= 0; i--)); do
+    local line
+    eval "line=\${${lines_ref}[\$i]}"
+
+    # Skip empty lines at start
+    if [[ $doc_end -eq -1 && -z "${line// /}" ]]; then
+      continue
+    fi
+
+    if is_doc_comment "$line"; then
+      # Found ## comment
+      if [[ $doc_end -eq -1 ]]; then
+        doc_end=$i
+      fi
+      doc_start=$i
+      in_gap=false
+    elif is_regular_comment "$line"; then
+      # Other # comments - skip if we're in a block or gap
+      [[ $doc_start -ne -1 || $in_gap == true ]] && continue
+    else
+      # Non-comment line
+      if [[ $doc_start -ne -1 ]]; then
+        break
+      fi
+      # Haven't found docs yet
+      if [[ -n "${line// /}" ]]; then
+        break
+      fi
+      in_gap=true
+    fi
+  done
+
+  echo "$doc_start $doc_end"
+}
 
 # Extract documentation block above a given line number
 # Arguments: $1 = script file, $2 = function line number
@@ -610,6 +749,7 @@ generate_toc() {
 # Input: "- name - description, type, default"
 # Output: Markdown table row or empty if parsing fails
 # Note: Uses smarter parsing to handle commas in descriptions/examples
+# shellcheck disable=SC2155,SC2310
 format_parameter_row() {
   local line="$1"
 
@@ -784,7 +924,7 @@ process_script() {
   # Generate header
   generate_header "$basename" "$module_summary"
 
-  # Get all functions via ctags
+  # Get all functions via ctags (read-only operation)
   local functions
   functions=$(get_functions "$script" | parse_ctags_json)
 
@@ -882,43 +1022,70 @@ check_mode() {
 # CLI Interface
 # -----------------------------------------------------------------------------
 
+# Declare variables for argument parsing
+declare help version OUTPUT_DIR FORCE VERBOSE KEEP_TEMP DEBUG \
+  args_check args_dry_run args_stdout args_no_toc args_validate args_no_validate \
+  args_include_private
+
+# Build argument definition using args:i COMPOSER pattern
+export COMPOSER="
+  $(args:i help -a "-h,--help" -h "Show help and exit." -g global)
+  $(args:i version -a "--version" -h "Show version and exit." -g global)
+  $(args:i OUTPUT_DIR -a "-o,--output-dir" -q 1 -h "Output directory for documentation." -g options)
+  $(args:i args_check -a "-c,--check" -h "Check if docs are up to date (exit 1 if not)." -g options)
+  $(args:i args_dry_run -a "-n,--dry-run" -h "Print to stdout without creating files/directories." -g options)
+  $(args:i args_stdout -a "-s,--stdout" -h "Alias for --dry-run (for backwards compatibility)." -g options)
+  $(args:i args_no_toc -a "--no-toc" -h "Disable table of contents." -g options)
+  $(args:i args_validate -a "-v,--validate" -h "Enable validation warnings." -g options)
+  $(args:i args_no_validate -a "--no-validate" -h "Disable validation warnings." -g options)
+  $(args:i args_include_private -a "--include-private" -h "Include private functions (starting with _)." -g options)
+  $(args:i DEBUG -a "--debug" -d "*" -h "Enable debug mode." -g debug)
+"
+eval "$COMPOSER" >/dev/null
+parse:arguments "$@"
+
+# Manual collection of positional arguments (files)
+# ARGS_NO_FLAGS doesn't work properly with args:i pattern that has options with values
+ARGS_NO_FLAGS=()
+skip_next=false
+for arg in "$@"; do
+  if $skip_next; then
+    skip_next=false
+    continue
+  fi
+  case "$arg" in
+  -h | --help | --version | -c | --check | -n | --dry-run | -s | --stdout | --no-toc | -v | --validate | --no-validate | --include-private | --debug)
+    # Flags without values
+    ;;
+  -o | --output-dir)
+    # Flags with values - skip next arg too
+    skip_next=true
+    ;;
+  -*)
+    # Unknown flag, skip it
+    ;;
+  *)
+    # Positional argument (file)
+    ARGS_NO_FLAGS+=("$arg")
+    ;;
+  esac
+done
+
+# Simplified usage function using print:help
 usage() {
-  cat <<EOF
-Usage: $(basename "$0") [OPTIONS] [FILE...]
-
-Generate documentation from e-bash script files.
-
-Options:
-  -h, --help         Show this help message
-  -o, --output DIR   Output directory (default: $EDOCS_OUTPUT_DIR)
-  -n, --dry-run      Print to stdout without creating files/directories
-  -s, --stdout       Alias for --dry-run (for backwards compatibility)
-  -c, --check        Check if docs are up to date (exit 1 if not)
-  -v, --validate     Enable validation warnings (default: on)
-  --no-validate      Disable validation warnings
-  --no-toc           Disable table of contents
-  --include-private  Include private functions (starting with _)
-
-Arguments:
-  FILE...            Specific files to process (default: all in EDOCS_SOURCE_DIRS)
-
-@{keyword} Hints:
-  @{internal}        Skip this function in output (internal implementation)
-  @{ignore}          Skip this function in output (explicit exclusion)
-  @{deprecated:msg}  Mark function as deprecated with message
-  @{since:version}   Version when function was added
-  @{example}...@{example:end}  Multi-line example block
-
-Examples:
-  $(basename "$0")                        # Generate docs for all scripts
-  $(basename "$0") .scripts/_logger.sh    # Generate docs for specific file
-  $(basename "$0") --dry-run file.sh      # Preview docs without writing
-  $(basename "$0") --check                # Verify docs are current
-  $(basename "$0") --no-validate          # Skip validation warnings
-
-Configuration:
-  Settings can be customized in .edocsrc file.
-EOF
+  print:help
+  echo ""
+  echo "Examples:"
+  echo "  $(basename "$0")                        # Generate docs for all scripts"
+  echo "  $(basename "$0") .scripts/_logger.sh    # Generate docs for specific file"
+  echo "  $(basename "$0") --dry-run file.sh      # Preview docs without writing"
+  echo "  $(basename "$0") --check                # Verify docs are current"
+  echo ""
+  echo "@{keyword} Hints:"
+  echo "  @{internal}        Skip this function in output (internal implementation)"
+  echo "  @{ignore}          Skip this function in output (explicit exclusion)"
+  echo "  @{deprecated:msg}  Mark function as deprecated with message"
+  echo "  @{since:version}   Version when function was added"
 }
 
 main() {
@@ -926,60 +1093,43 @@ main() {
   local dry_run=false
   local files=()
 
-  # Parse arguments
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    -h | --help)
-      usage
-      exit 0
-      ;;
-    -o | --output)
-      EDOCS_OUTPUT_DIR="$2"
-      shift 2
-      ;;
-    -c | --check)
-      check_only=true
-      shift
-      ;;
-    --no-toc)
-      EDOCS_TOC="false"
-      shift
-      ;;
-    -v | --validate)
-      EDOCS_VALIDATE="true"
-      shift
-      ;;
-    --no-validate)
-      EDOCS_VALIDATE="false"
-      shift
-      ;;
-    --include-private)
-      EDOCS_INCLUDE_PRIVATE="true"
-      shift
-      ;;
-    -n | --dry-run | -s | --stdout)
-      dry_run=true
-      shift
-      ;;
-    -*)
-      echo:Err "Unknown option: $1"
-      usage >&2
-      exit 1
-      ;;
-    *)
-      files+=("$1")
-      shift
-      ;;
-    esac
-  done
+  # Apply parsed arguments
+  [[ "${args_check:-}" == "1" ]] && check_only=true
+  [[ "${args_dry_run:-}" == "1" ]] && dry_run=true
+  [[ "${args_stdout:-}" == "1" ]] && dry_run=true
+  [[ "${args_no_toc:-}" == "1" ]] && EDOCS_TOC="false"
+  [[ "${args_validate:-}" == "1" ]] && EDOCS_VALIDATE="true"
+  [[ "${args_no_validate:-}" == "1" ]] && EDOCS_VALIDATE="false"
+  [[ "${args_include_private:-}" == "1" ]] && EDOCS_INCLUDE_PRIVATE="true"
+  if [[ -n "${OUTPUT_DIR:-}" ]]; then
+    # Normalize to absolute path
+    if [[ "$OUTPUT_DIR" =~ ^/ ]]; then
+      EDOCS_OUTPUT_DIR="$OUTPUT_DIR"
+    else
+      EDOCS_OUTPUT_DIR="$PROJECT_ROOT/$OUTPUT_DIR"
+    fi
+  fi
+
+  # Handle help and version flags
+  if [[ "${help:-}" == "1" ]]; then
+    usage
+    exit 0
+  fi
+
+  if [[ -n "${version:-}" ]]; then
+    echo "version: 2.7.9"
+    exit 0
+  fi
 
   # Create output directory only when writing files (not in dry-run mode)
   if ! $dry_run && ! $check_only; then
-    mkdir -p "$PROJECT_ROOT/$EDOCS_OUTPUT_DIR"
+    mkdir -p "$EDOCS_OUTPUT_DIR"
   fi
 
   # Determine files to process
-  if [[ ${#files[@]} -eq 0 ]]; then
+  # ARGS_NO_FLAGS contains all positional arguments (populated by parse:exclude_flags_from_args)
+  # This is the preferred way to handle variadic positional arguments in _arguments.sh
+  if [[ ${#ARGS_NO_FLAGS[@]} -eq 0 ]]; then
     # Process all files in source directories
     for dir in $EDOCS_SOURCE_DIRS; do
       for script in "$PROJECT_ROOT/$dir"/*.sh; do
@@ -989,14 +1139,14 @@ main() {
       done
     done
   else
-    # Filter files: only process those within configured source directories
+    # Process files from positional arguments (ARGS_NO_FLAGS)
     # Skip filtering in dry-run mode to allow testing with fixture files
     if $dry_run; then
       # In dry-run mode, allow any file
-      :
+      files+=("${ARGS_NO_FLAGS[@]}")
     else
       local filtered_files=()
-      for file in "${files[@]}"; do
+      for file in "${ARGS_NO_FLAGS[@]}"; do
         local is_allowed=false
         local file_abs_path
 
@@ -1037,7 +1187,7 @@ main() {
     ((current++))
     local script_basename output_file
     script_basename=$(basename "$script" .sh)
-    output_file="$PROJECT_ROOT/$EDOCS_OUTPUT_DIR/${script_basename}.md"
+    output_file="$EDOCS_OUTPUT_DIR/${script_basename}.md"
 
     # Show progress for multiple files
     if [[ $total -gt 1 ]]; then
@@ -1058,6 +1208,7 @@ main() {
         # Suppress logger messages in dry-run mode for cleaner output
         process_script "$script" 2>/dev/null
       else
+        # Write output file (state-mutating operation)
         process_script "$script" >"$output_file"
         if [[ $total -eq 1 ]]; then
           echo:Ok "Generated: $output_file"
@@ -1080,7 +1231,8 @@ main() {
 
 # Run main if not sourced
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  main "$@"
+  # ARGS_NO_FLAGS is populated by parse:exclude_flags_from_args (called during module load)
+  main "${ARGS_NO_FLAGS[@]}"
 fi
 
 ##

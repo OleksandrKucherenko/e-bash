@@ -110,7 +110,7 @@ Check and optionally install a dependency with version constraint
 
 #### Globals
 
-- reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, SKIP_DEALIAS, __DEPS_CACHE
+- reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, E_BASH_SKIP_CACHE, SKIP_DEALIAS, __DEPS_CACHE
 - mutate/publish: __DEPS_CACHE (stores verification results)
 
 #### Side Effects
