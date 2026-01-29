@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-27
-## Version: 2.0.0
+## Last revisit: 2026-01-29
+## Version: 2.3.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -114,13 +114,42 @@ Describe 'e-docs /'
   Context 'Table of Contents /'
     It 'generates TOC with function links'
       When call edocs "spec/fixtures/e-docs/full_function.sh"
-      The output should include 'Index'
+      The output should include '<!-- TOC -->'
       The output should include '[`full_func`]'
     End
 
     It 'can disable TOC with --no-toc flag'
       When call bin/e-docs.sh --stdout --no-toc "spec/fixtures/e-docs/simple_function.sh"
-      The output should not include '## Index'
+      The output should not include '<!-- TOC -->'
+    End
+  End
+
+  Context 'Anchor generation /'
+    It 'generates GitHub-compatible anchors for function names'
+      When call bin/e-docs.sh --stdout --include-private ".scripts/_traps.sh"
+      The output should include '[`_Trap::capture_legacy`](#_trapcapture_legacy)'
+      The output should include '[`Trap::dispatch`](#trapdispatch)'
+      The output should include '[`trap:scope:begin`](#trapscopebegin)'
+    End
+
+    It 'preserves underscores in anchors'
+      When call bin/e-docs.sh --stdout --include-private ".scripts/_traps.sh"
+      The output should include '(#_trapcapture_legacy)'
+      The output should include '(#_trapcontains)'
+    End
+
+    It 'removes colons from anchors'
+      When call bin/e-docs.sh --stdout --include-private ".scripts/_traps.sh"
+      The output should include '](#trapdispatch)'
+      The output should include '](#trapon)'
+      The output should include '](#_trapcapture_legacy)'
+      The output should include '](#_trapcontains)'
+    End
+
+    It 'converts anchors to lowercase'
+      When call bin/e-docs.sh --stdout ".scripts/_commons.sh"
+      The output should include '(#argsishelp)'
+      The output should include '(#confighierarchy)'
     End
   End
 End

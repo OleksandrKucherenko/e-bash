@@ -22,20 +22,23 @@ session management for long-running scripts.
 - TMUX_PROGRESS_ACTIVE - Whether progress display is active
 - TMUX_FIFO_PATH - FIFO path for progress updates
 
-## Index
-
-* [`tmux:check_mouse_support`](#tmux-check_mouse_support)
-* [`tmux:cleanup_all`](#tmux-cleanup_all)
-* [`tmux:cleanup_progress`](#tmux-cleanup_progress)
-* [`tmux:ensure_session`](#tmux-ensure_session)
-* [`tmux:init_progress`](#tmux-init_progress)
-* [`tmux:setup_trap`](#tmux-setup_trap)
-* [`tmux:show_progress_bar`](#tmux-show_progress_bar)
-* [`tmux:update_progress`](#tmux-update_progress)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_tmux.sh](#_tmuxsh)
+    - [`tmux:check_mouse_support`](#tmuxcheck_mouse_support)
+    - [`tmux:cleanup_all`](#tmuxcleanup_all)
+    - [`tmux:cleanup_progress`](#tmuxcleanup_progress)
+    - [`tmux:ensure_session`](#tmuxensure_session)
+    - [`tmux:init_progress`](#tmuxinit_progress)
+    - [`tmux:setup_trap`](#tmuxsetup_trap)
+    - [`tmux:show_progress_bar`](#tmuxshow_progress_bar)
+    - [`tmux:update_progress`](#tmuxupdate_progress)
+
+<!-- /TOC -->
 
 ---
 

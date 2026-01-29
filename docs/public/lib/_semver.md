@@ -12,26 +12,29 @@ parsing, comparison, constraint checking, and version sorting.
 - documentation: Referenced in docs/public/version-up.md
 - tests: spec/semver_spec.sh
 
-## Index
-
-* [`semver:compare`](#semver-compare)
-* [`semver:compare:readable`](#semver-compare-readable)
-* [`semver:compare:to:operator`](#semver-compare-to-operator)
-* [`semver:constraints`](#semver-constraints)
-* [`semver:constraints:complex`](#semver-constraints-complex)
-* [`semver:constraints:simple`](#semver-constraints-simple)
-* [`semver:constraints:v1`](#semver-constraints-v1)
-* [`semver:constraints:v2`](#semver-constraints-v2)
-* [`semver:grep`](#semver-grep)
-* [`semver:increase:major`](#semver-increase-major)
-* [`semver:increase:minor`](#semver-increase-minor)
-* [`semver:increase:patch`](#semver-increase-patch)
-* [`semver:parse`](#semver-parse)
-* [`semver:recompose`](#semver-recompose)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_semver.sh](#_semversh)
+    - [`semver:compare`](#semvercompare)
+    - [`semver:compare:readable`](#semvercomparereadable)
+    - [`semver:compare:to:operator`](#semvercomparetooperator)
+    - [`semver:constraints`](#semverconstraints)
+    - [`semver:constraints:complex`](#semverconstraintscomplex)
+    - [`semver:constraints:simple`](#semverconstraintssimple)
+    - [`semver:constraints:v1`](#semverconstraintsv1)
+    - [`semver:constraints:v2`](#semverconstraintsv2)
+    - [`semver:grep`](#semvergrep)
+    - [`semver:increase:major`](#semverincreasemajor)
+    - [`semver:increase:minor`](#semverincreaseminor)
+    - [`semver:increase:patch`](#semverincreasepatch)
+    - [`semver:parse`](#semverparse)
+    - [`semver:recompose`](#semverrecompose)
+
+<!-- /TOC -->
 
 ---
 

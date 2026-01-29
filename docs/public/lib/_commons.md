@@ -6,38 +6,40 @@ This module provides a collection of frequently used utility functions
 for time handling, cursor position, input validation, git operations,
 config file discovery, and user interaction.
 
-## Index
-
-* [`_env:resolve:string`](#_env-resolve-string)
-* [`args:isHelp`](#args-ishelp)
-* [`config:hierarchy`](#config-hierarchy)
-* [`config:hierarchy:xdg`](#config-hierarchy-xdg)
-* [`confirm:by:input`](#confirm-by-input)
-* [`cursor:position`](#cursor-position)
-* [`cursor:position:col`](#cursor-position-col)
-* [`cursor:position:row`](#cursor-position-row)
-* [`env:resolve`](#env-resolve)
-* [`env:variable:or:secret:file`](#env-variable-or-secret-file)
-* [`env:variable:or:secret:file:optional`](#env-variable-or-secret-file-optional)
-* [`git:root`](#git-root)
-* [`input:readpwd`](#input-readpwd)
-* [`input:selector`](#input-selector)
-* [`print:confirmation`](#print-confirmation)
-* [`time:diff`](#time-diff)
-* [`time:now`](#time-now)
-* [`to:slug`](#to-slug)
-* [`to:slug:hash`](#to-slug-hash)
-* [`val:l0`](#val-l0)
-* [`val:l1`](#val-l1)
-* [`validate:input`](#validate-input)
-* [`validate:input:masked`](#validate-input-masked)
-* [`validate:input:yn`](#validate-input-yn)
-* [`var:l0`](#var-l0)
-* [`var:l1`](#var-l1)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_commons.sh](#_commonssh)
+    - [`args:isHelp`](#argsishelp)
+    - [`config:hierarchy`](#confighierarchy)
+    - [`config:hierarchy:xdg`](#confighierarchyxdg)
+    - [`confirm:by:input`](#confirmbyinput)
+    - [`cursor:position`](#cursorposition)
+    - [`cursor:position:col`](#cursorpositioncol)
+    - [`cursor:position:row`](#cursorpositionrow)
+    - [`env:resolve`](#envresolve)
+    - [`env:variable:or:secret:file`](#envvariableorsecretfile)
+    - [`env:variable:or:secret:file:optional`](#envvariableorsecretfileoptional)
+    - [`git:root`](#gitroot)
+    - [`input:readpwd`](#inputreadpwd)
+    - [`input:selector`](#inputselector)
+    - [`print:confirmation`](#printconfirmation)
+    - [`time:diff`](#timediff)
+    - [`time:now`](#timenow)
+    - [`to:slug`](#toslug)
+    - [`to:slug:hash`](#toslughash)
+    - [`val:l0`](#vall0)
+    - [`val:l1`](#vall1)
+    - [`validate:input`](#validateinput)
+    - [`validate:input:masked`](#validateinputmasked)
+    - [`validate:input:yn`](#validateinputyn)
+    - [`var:l0`](#varl0)
+    - [`var:l1`](#varl1)
+
+<!-- /TOC -->
 
 ---
 

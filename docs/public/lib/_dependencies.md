@@ -61,32 +61,26 @@ ref:
  https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
 
 
-## Index
-
-* [`_cache:clear`](#_cache-clear)
-* [`_cache:ensure:loaded`](#_cache-ensure-loaded)
-* [`_cache:get`](#_cache-get)
-* [`_cache:is:valid`](#_cache-is-valid)
-* [`_cache:key`](#_cache-key)
-* [`_cache:load`](#_cache-load)
-* [`_cache:path:hash`](#_cache-path-hash)
-* [`_cache:save`](#_cache-save)
-* [`_cache:set`](#_cache-set)
-* [`dependency`](#dependency)
-* [`dependency:dealias`](#dependency-dealias)
-* [`dependency:exists`](#dependency-exists)
-* [`dependency:known:flags`](#dependency-known-flags)
-* [`isCIAutoInstallEnabled`](#isciautoinstallenabled)
-* [`isDebug`](#isdebug)
-* [`isExec`](#isexec)
-* [`isNoCache`](#isnocache)
-* [`isOptional`](#isoptional)
-* [`isSilent`](#issilent)
-* [`optional`](#optional)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_dependencies.sh](#_dependenciessh)
+    - [`dependency`](#dependency)
+    - [`dependency:dealias`](#dependencydealias)
+    - [`dependency:exists`](#dependencyexists)
+    - [`dependency:known:flags`](#dependencyknownflags)
+    - [`isCIAutoInstallEnabled`](#isciautoinstallenabled)
+    - [`isDebug`](#isdebug)
+    - [`isExec`](#isexec)
+    - [`isNoCache`](#isnocache)
+    - [`isOptional`](#isoptional)
+    - [`isSilent`](#issilent)
+    - [`optional`](#optional)
+
+<!-- /TOC -->
 
 ---
 

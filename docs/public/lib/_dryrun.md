@@ -41,17 +41,19 @@ This module provides a three-mode execution system: Normal, Dry-run, and Undo/Ro
   rollback:docker rmi $(docker images -q)  # only in UNDO_RUN mode
 
 
-## Index
-
-* [`_dryrun:exec`](#_dryrun-exec)
-* [`dry-run`](#dry-run)
-* [`dryrun`](#dryrun)
-* [`rollback:func`](#rollback-func)
-* [`undo:func`](#undo-func)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_dryrun.sh](#_dryrunsh)
+    - [`dry-run`](#dry-run)
+    - [`dryrun`](#dryrun)
+    - [`rollback:func`](#rollbackfunc)
+    - [`undo:func`](#undofunc)
+
+<!-- /TOC -->
 
 ---
 

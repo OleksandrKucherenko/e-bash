@@ -24,23 +24,26 @@ pipe/redirect support, and dynamic function creation.
 - TAGS_REDIRECT - Associative array of tag to redirection string
 - TAGS_STACK - Stack level counter for push/pop operations
 
-## Index
-
-* [`logger`](#logger)
-* [`logger:cleanup`](#logger-cleanup)
-* [`logger:compose`](#logger-compose)
-* [`logger:compose:helpers`](#logger-compose-helpers)
-* [`logger:init`](#logger-init)
-* [`logger:listen`](#logger-listen)
-* [`logger:pop`](#logger-pop)
-* [`logger:prefix`](#logger-prefix)
-* [`logger:push`](#logger-push)
-* [`logger:redirect`](#logger-redirect)
-* [`pipe:killer:compose`](#pipe-killer-compose)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_logger.sh](#_loggersh)
+    - [`logger`](#logger)
+    - [`logger:cleanup`](#loggercleanup)
+    - [`logger:compose`](#loggercompose)
+    - [`logger:compose:helpers`](#loggercomposehelpers)
+    - [`logger:init`](#loggerinit)
+    - [`logger:listen`](#loggerlisten)
+    - [`logger:pop`](#loggerpop)
+    - [`logger:prefix`](#loggerprefix)
+    - [`logger:push`](#loggerpush)
+    - [`logger:redirect`](#loggerredirect)
+    - [`pipe:killer:compose`](#pipekillercompose)
+
+<!-- /TOC -->
 
 ---
 

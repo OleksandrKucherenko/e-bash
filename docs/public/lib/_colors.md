@@ -28,13 +28,16 @@ All variables use tput for terminal capability detection.
 - st_underline, st_u - Underline
 - st_no_u - Reset underline
 
-## Index
-
-* [`cl:unset`](#cl-unset)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_colors.sh](#_colorssh)
+    - [`cl:unset`](#clunset)
+
+<!-- /TOC -->
 
 ---
 

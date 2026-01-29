@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-01-29
-## Version: 2.3.0
+## Version: 2.3.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -732,16 +732,55 @@ generate_header() {
   fi
 }
 
+# Generate GitHub-compatible anchor from text
+# Arguments: $1 = text to convert to anchor
+# Output: anchor string
+# GitHub's anchor format: lowercase, remove non-alphanumeric except hyphen and underscore,
+# collapse multiple hyphens, trim leading/trailing hyphens
+github_anchor() {
+  local text="$1"
+  # Convert to lowercase
+  text="${text,,}"
+  # Remove all characters except alphanumeric, hyphen, and underscore (GitHub preserves underscores)
+  text="${text//[^a-z0-9_-]/}"
+  # Collapse multiple consecutive hyphens to single hyphen
+  text="${text//--/-}"
+  # Remove leading/trailing hyphens (but keep leading underscores)
+  text="${text#-}"
+  text="${text%-}"
+  echo "$text"
+}
+
 # Generate table of contents
-# Arguments: function names (one per line on stdin)
+# Arguments: $1 = script basename, stdin = function names (format: name@line)
+# Output: Full TOC with proper hierarchy and GitHub-compatible anchors
 generate_toc() {
-  echo "## Index"
-  echo ""
+  local basename="$1"
+
+  # Read all functions into an array
+  local -a func_names=()
   while IFS=@ read -r name line_num; do
-    local anchor="${name//[^a-zA-Z0-9_-]/-}"
-    anchor="${anchor,,}" # lowercase
-    echo "* [\`${name}\`](#${anchor})"
+    [[ -n "$name" ]] && func_names+=("$name")
   done
+
+  # TOC wrapper markers
+  echo "<!-- TOC -->"
+  echo ""
+
+  # Level 1: File title
+  local file_anchor
+  file_anchor=$(github_anchor "$basename")
+  echo "- [${basename}](#${file_anchor})"
+
+  # Level 2: Function names (TOC is inside ## Functions section)
+  for name in "${func_names[@]}"; do
+    local func_anchor
+    func_anchor=$(github_anchor "$name")
+    echo "    - [\`${name}\`](#${func_anchor})"
+  done
+
+  echo ""
+  echo "<!-- /TOC -->"
   echo ""
 }
 
@@ -928,6 +967,19 @@ process_script() {
   local functions
   functions=$(get_functions "$script" | parse_ctags_json)
 
+  # Filter functions for documentation (exclude private if not included)
+  local filtered_functions=""
+  while IFS=@ read -r func_name func_line; do
+    if [[ "$EDOCS_INCLUDE_PRIVATE" != "true" && "$func_name" =~ ^_ ]]; then
+      continue
+    fi
+    if [[ -n "$filtered_functions" ]]; then
+      filtered_functions+=$'\n'
+    fi
+    filtered_functions+="${func_name}@${func_line}"
+  done <<<"$functions"
+  functions="$filtered_functions"
+
   if [[ -z "$functions" ]]; then
     echo:Warn "No functions found in $script"
     # Still output a note for configuration scripts
@@ -938,22 +990,20 @@ process_script() {
     return
   fi
 
-  # Generate TOC if enabled
-  if [[ "$EDOCS_TOC" == "true" ]]; then
-    echo "$functions" | generate_toc
-  fi
-
   echo "---"
   echo ""
   echo "## Functions"
   echo ""
 
+  # Generate TOC if enabled (inside Functions section)
+  if [[ "$EDOCS_TOC" == "true" ]]; then
+    echo "$functions" | generate_toc "$basename"
+  fi
+
   # Process each function
   while IFS=@ read -r func_name func_line; do
-    # Skip private functions if not included
-    if [[ "$EDOCS_INCLUDE_PRIVATE" != "true" && "$func_name" =~ ^_ ]]; then
-      continue
-    fi
+    # Skip empty entries (can occur from trailing newlines in filtered list)
+    [[ -z "$func_name" ]] && continue
 
     # Extract and parse documentation
     local doc_block sections
