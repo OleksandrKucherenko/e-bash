@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-30
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -70,21 +70,28 @@ function parse:exclude_flags_from_args() {
 ## - Echoes "variable_name|default_value|args_quantity"
 ##
 function parse:extract_output_definition() {
-  local definition=$1
+  local definition="" full_definition="" name="" name_as_value="" output=""
+  local variable="" default="1" args_qt="0" tmp=""
+
+  definition="$1"
+  full_definition="$2"
 
   # extract output variable name, examples:
-  local name=${definition%%=*}
-  local name_as_value=${name//-/}
-  local output=$(echo "$2" | awk -v def="$definition" -F'=' '{ if ($2) {print $2} else {print def} }')
-  local variable=""
-  local default="1"
-  local args_qt="0"
+  name=${definition%%=*}
+  name_as_value=${name//-/}
+  if [[ "$full_definition" == *"="* ]]; then
+    output=${full_definition#*=}
+    [[ -n "$output" ]] || output="$definition"
+  else
+    output="$definition"
+  fi
 
   # extract variable name
   if [[ "$output" == "$definition" ]]; then # simplest: --cookies
     variable=$name_as_value
   elif [[ "$output" == *:* ]]; then # extended: --cookies=first:*, --cookies=first:default:1, --cookies=::1, --cookies=:, --cookies=first:
-    local tmp=${output%%:*} && variable=${tmp:-"$name_as_value"}
+    tmp=${output%%:*}
+    variable=${tmp:-"$name_as_value"}
   else
     variable=$output # extended: --cookies=first
   fi
@@ -123,12 +130,22 @@ function parse:extract_output_definition() {
 ##
 function parse:mapping() {
   local args=("$@")
+  local preParsed=""
+  local -a definitions=()
+  local i=0
+  local keys=()
+  local cleaned_keys=()
+  local cleaned_keys_joined=""
+  local key=""
+  local name=""
+  local helper=""
+  local helper_output="" helper_default="" helper_args_qt=""
 
   # TODO (olku): trim whitespaces in $ARGS_DEFINITION, no spaces in beginning or end, no double spaces
   echo:Common "${cl_grey}Definition: $ARGS_DEFINITION${cl_reset}" >&2
 
   # Remove Windows line endings, replace newlines with spaces, convert multiple spaces to single space
-  local preParsed="$(echo -n -e "$ARGS_DEFINITION" | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g') "
+  preParsed="$(echo -n -e "$ARGS_DEFINITION" | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g') "
 
   # extract definition of each argument, separated by space, remove last empty element
   readarray -td ' ' definitions <<<"$preParsed" && unset 'definitions[-1]'
@@ -142,21 +159,28 @@ function parse:mapping() {
   declare -A -g index_to_keys && index_to_keys=()       # index-to-keys_definition
 
   # build parameters mapping
-  local i=0 # make $i local to avoid conflicts
+  # make $i local to avoid conflicts
   for i in "${!definitions[@]}"; do
     # TODO (olku): validate the pattern format, otherwise throw an error
     # shellcheck disable=SC2206
-    local keys=(${definitions[i]//,/ })
+    keys=(${definitions[i]//,/ })
+    cleaned_keys=()
     for key in "${keys[@]}"; do
-      local name=${key%%=*} # extract clean key name, e.g. --cookies=first -> --cookies
-      local helper=$(parse:extract_output_definition "$key" "${definitions[i]}")
+      cleaned_keys+=("${key%%=*}")
+    done
+    cleaned_keys_joined="${cleaned_keys[*]}"
+
+    for key in "${keys[@]}"; do
+      name=${key%%=*} # extract clean key name, e.g. --cookies=first -> --cookies
+      helper=$(parse:extract_output_definition "$key" "${definitions[i]}")
+      IFS='|' read -r helper_output helper_default helper_args_qt <<<"$helper"
 
       # do the mapping
       lookup_arguments[$name]=$i
-      index_to_outputs[$i]=$(echo "$helper" | awk -F'|' '{print $1}')
-      index_to_args_qt[$i]=$(echo "$helper" | awk -F'|' '{print $3}')
-      index_to_default[$i]=$(echo "$helper" | awk -F'|' '{print $2}')
-      index_to_keys[$i]=$(echo "${keys[*]}" | awk -F= '{print $1}')
+      index_to_outputs[$i]="$helper_output"
+      index_to_args_qt[$i]="$helper_args_qt"
+      index_to_default[$i]="$helper_default"
+      index_to_keys[$i]="$cleaned_keys_joined"
     done
   done
 

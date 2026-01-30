@@ -2,7 +2,7 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-30
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -40,8 +40,9 @@ function logger:compose() {
   local tag=${1}
   local suffix=${2}
   local flags=${3:-""}
+  local code=""
 
-  cat <<EOF
+  read -r -d '' code <<EOF
   #
   # begin
   #
@@ -54,6 +55,47 @@ function logger:compose() {
   }
   #
 EOF
+  printf '%s' "$code"
+}
+
+##
+## Generate and eval Bash code to create dynamic echo:Tag and printf:Tag functions
+##
+## Parameters:
+## - tag - The logger tag name (lowercase), string, required, e.g. "debug"
+## - suffix - Capitalized tag name for function suffix, string, required, e.g. "Debug"
+## - flags - Additional flags (unused), string, default: ""
+##
+## Globals:
+## - reads/listen: TAGS, TAGS_PREFIX, TAGS_REDIRECT
+## - mutate/publish: none (defines functions via eval)
+##
+## Usage:
+## - logger:compose:eval "mytag" "Mytag"
+##
+function logger:compose:eval() {
+  local tag="" suffix="" flags="" code=""
+
+  tag=${1}
+  suffix=${2}
+  flags=${3:-""}
+
+  read -r -d '' code <<EOF
+  #
+  # begin
+  #
+  function echo:${suffix}() {
+    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@"; } ${TAGS_REDIRECT[$tag]})
+  }
+  #
+  function printf:${suffix}() {
+    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin printf "%s\${@:1:1}" "\${TAGS_PREFIX[$tag]}" "\${@:2}"; } ${TAGS_REDIRECT[$tag]})
+  }
+  #
+EOF
+
+  # evaluate the code
+  eval "$code"
 }
 
 ##
@@ -75,8 +117,9 @@ function logger:compose:helpers() {
   local tag=${1}
   local suffix=${2}
   local flags=${3:-""}
+  local code=""
 
-  cat <<EOF
+  read -r -d '' code <<EOF
   #
   # begin
   #
@@ -101,6 +144,59 @@ function logger:compose:helpers() {
   }
   #
 EOF
+  printf '%s' "$code"
+}
+
+##
+## Generate and eval helper functions (log:Tag, config:logger:Tag)
+##
+## Parameters:
+## - tag - The logger tag name (lowercase), string, required, e.g. "debug"
+## - suffix - Capitalized tag name for function suffix, string, required, e.g. "Debug"
+## - flags - Additional flags (unused), string, default: ""
+##
+## Globals:
+## - reads/listen: DEBUG, TAGS
+## - mutate/publish: TAGS (may modify tag state)
+##
+## Usage:
+## - logger:compose:helpers:eval "mytag" "Mytag"
+##
+function logger:compose:helpers:eval() {
+  local tag="" suffix="" flags="" code=""
+
+  tag=${1}
+  suffix=${2}
+  flags=${3:-""}
+
+  read -r -d '' code <<EOF
+  #
+  # begin
+  #
+  function config:logger:${suffix}() {
+    local args=("\$@")
+    IFS="," read -r -a tags <<<\$(echo "\$DEBUG")
+    [[ "\${args[*]}" =~ "--debug" ]] && TAGS+=([$tag]=1)
+    [[ "\${tags[*]}" =~ "$tag" ]] && TAGS+=([$tag]=1)
+    [[ "\${tags[*]}" =~ "*" ]] && TAGS+=([$tag]=1)
+    [[ "\${tags[*]}" =~ "-$tag" ]] && TAGS+=([$tag]=0)
+    #builtin echo "done! \${!TAGS[@]} \${TAGS[@]}"
+  }
+  #
+  function log:${suffix}() {
+    # if no input params and stdin is tty, then print named_pipe name
+    if [ \$# -eq 0 ] && [ -t 0 ]; then echo "\${TAGS_PIPE[$tag]}"; else
+      local prefix=\${1:-""} && shift
+      if [ -t 0 ] && [ -t 1 ]; then set - "\${prefix}" "\$@"; fi
+      if [ -t 0 ]; then echo:${suffix} "\$@"; return 0; fi
+      while read -r -t 0.1 line; do echo:${suffix} "\${prefix}\${line}"; done
+    fi
+  }
+  #
+EOF
+
+  # evaluate the code
+  eval "$code"
 }
 
 ##
@@ -123,11 +219,13 @@ EOF
 function pipe:killer:compose() {
   local pipe=${1}
   local myPid=${2:-"${BASHPID}"}
+  local code=""
 
-  cat <<EOF
+  read -r -d '' code <<EOF
     trap "rm -f \"${pipe}\" >/dev/null" HUP INT QUIT ABRT TERM KILL EXIT
     while kill -0 "${myPid}" 2>/dev/null; do sleep 0.1; done
 EOF
+  printf '%s' "$code"
 }
 
 ##
@@ -172,8 +270,8 @@ function logger() {
 
   # declare logger functions
   # source /dev/stdin <<EOF
-  eval "$(logger:compose "$tag" "$suffix")"
-  eval "$(logger:compose:helpers "$tag" "$suffix")"
+  logger:compose:eval "$tag" "$suffix"
+  logger:compose:helpers:eval "$tag" "$suffix"
 
   # configure logger
   # shellcheck disable=SC2294

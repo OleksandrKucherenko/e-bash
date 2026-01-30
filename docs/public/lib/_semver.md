@@ -333,28 +333,6 @@ Increment major version number (resets minor and patch to 0)
 #### Usage
 
 ```bash
-# shellcheck disable=SC2154
-Increment major version number (resets minor and patch to 0)
-```
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `version` | string | required | Version string to increment |
-
-#### Globals
-
-- reads/listen: none
-- mutate/publish: creates temporary __major associative array
-
-#### Returns
-
-- Echoes incremented version (major+1.0.0)
-
-#### Usage
-
-```bash
 semver:increase:major "1.2.3"  # Returns "2.0.0"
 ```
 
@@ -362,23 +340,6 @@ semver:increase:major "1.2.3"  # Returns "2.0.0"
 
 ### semver:increase:minor
 
-Increment minor version number (resets patch to 0)
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `version` | string | required | Version string to increment |
-
-#### Globals
-
-- reads/listen: none
-- mutate/publish: creates temporary __minor associative array
-
-#### Returns
-
-- Echoes incremented version (major.minor+1.0)
-# shellcheck disable=SC2154
 Increment minor version number (resets patch to 0)
 
 #### Parameters
@@ -406,23 +367,6 @@ semver:increase:minor "1.2.3"  # Returns "1.3.0"
 
 ### semver:increase:patch
 
-Increment patch version number
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `version` | string | required | Version string to increment |
-
-#### Globals
-
-- reads/listen: none
-- mutate/publish: creates temporary __patch associative array
-
-#### Returns
-
-- Echoes incremented version (major.minor.patch+1)
-# shellcheck disable=SC2154
 Increment patch version number
 
 #### Parameters

@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-29
-## Version: 2.3.2
+## Last revisit: 2026-01-30
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -18,8 +18,8 @@ no_colors_stdout() { echo -n "$1" | sed -E $'s/\x1B\[[0-9;]*[A-Za-z]//g; s/\x1B\
 
 Describe 'e-docs /'
   # Helper to run e-docs on fixture
-  edocs() { bin/e-docs.sh --stdout "$1"; }
-  edocs_private() { bin/e-docs.sh --stdout --include-private "$1"; }
+  edocs() { bin/e-docs.sh --stdout --no-validate "$1"; }
+  edocs_private() { bin/e-docs.sh --stdout --no-validate --include-private "$1"; }
 
   Context 'Basic functionality /'
     It 'shows help with --help flag'
@@ -100,6 +100,14 @@ Describe 'e-docs /'
     End
   End
 
+  Context 'Internal helpers /'
+    It 'includes private helpers with --include-private'
+      When call edocs_private "bin/e-docs.sh"
+      The status should be success
+      The output should include '_edocs:hints:has'
+    End
+  End
+
   Context 'Module Summary parsing /'
     It 'extracts module title from end of file'
       When call edocs "spec/fixtures/e-docs/full_function.sh"
@@ -120,7 +128,7 @@ Describe 'e-docs /'
     End
 
     It 'can disable TOC with --no-toc flag'
-      When call bin/e-docs.sh --stdout --no-toc "spec/fixtures/e-docs/simple_function.sh"
+      When call bin/e-docs.sh --stdout --no-validate --no-toc "spec/fixtures/e-docs/simple_function.sh"
       The output should not include '<!-- TOC -->'
     End
   End
@@ -158,24 +166,28 @@ Describe 'e-docs /'
     It 'validates doc block with missing description'
       When call bin/e-docs.sh --stdout --validate "spec/fixtures/e-docs/validation_test.sh"
       The status should be success
+      The stderr should include "typo in 'Parameters' section name"
       The output should include "Function missing description"
     End
 
     It 'validates doc block with typo in Parameters'
       When call bin/e-docs.sh --stdout --validate "spec/fixtures/e-docs/validation_test.sh"
       The status should be success
+      The stderr should include "typo in 'Parameters' section name"
       The output should include "Paramters:"
     End
 
     It 'validates deprecated function hint'
       When call bin/e-docs.sh --stdout --validate "spec/fixtures/e-docs/validation_test.sh"
       The status should be success
+      The stderr should include "typo in 'Parameters' section name"
       The output should include "@{deprecated:Use new_function instead}"
     End
 
     It 'validates internal function hint'
       When call bin/e-docs.sh --stdout --validate "spec/fixtures/e-docs/validation_test.sh"
       The status should be success
+      The stderr should include "typo in 'Parameters' section name"
       The output should include "func_internal"
     End
 
@@ -188,6 +200,7 @@ Describe 'e-docs /'
     It 'validates successfully with proper documentation'
       When call bin/e-docs.sh --stdout --validate "spec/fixtures/e-docs/validation_test.sh"
       The status should be success
+      The stderr should include "typo in 'Parameters' section name"
       The output should include "func_with_valid_docs"
     End
   End
@@ -250,6 +263,7 @@ Describe 'e-docs /'
     It 'checks mode with --check flag on unchanged file'
       When run script bin/e-docs.sh --check "spec/fixtures/e-docs/simple_function.sh"
       The status should be success
+      The stderr should include "Skipping file outside source directories"
     End
   End
 
@@ -261,6 +275,7 @@ Describe 'e-docs /'
 
     It 'enables validation with --validate'
       When call bin/e-docs.sh --stdout --validate "spec/fixtures/e-docs/validation_test.sh"
+      The stderr should include "typo in 'Parameters' section name"
       The output should include "Function missing description"
     End
   End
@@ -320,7 +335,7 @@ Describe 'e-docs /'
 
   Context 'Documentation Format /'
     It 'handles functions with only comments (no doc blocks)'
-      When call bin/e-docs.sh --stdout "spec/fixtures/e-docs/regular_comments.sh"
+      When call bin/e-docs.sh --stdout --no-validate "spec/fixtures/e-docs/regular_comments.sh"
       The status should be success
       The output should include "regular_func"
     End
@@ -347,12 +362,12 @@ Describe 'e-docs /'
 
     It 'generates docs for files with no functions'
       # Create a file with no functions
-      cat > "/tmp/no-functions.sh" << 'EOF'
+      cat >"/tmp/no-functions.sh" <<'EOF'
 #!/usr/bin/env bash
 # This file has no functions
 echo "just a script"
 EOF
-      When call bin/e-docs.sh --stdout "/tmp/no-functions.sh"
+      When call bin/e-docs.sh --stdout --no-validate "/tmp/no-functions.sh"
       The status should be success
       The output should include "# no-functions.sh"
       rm -f "/tmp/no-functions.sh"
@@ -360,13 +375,13 @@ EOF
 
     It 'handles scripts with only comments'
       # Create a file with only comments
-      cat > "/tmp/comments-only.sh" << 'EOF'
+      cat >"/tmp/comments-only.sh" <<'EOF'
 #!/usr/bin/env bash
 # Comment 1
 # Comment 2
 # Comment 3
 EOF
-      When call bin/e-docs.sh --stdout "/tmp/comments-only.sh"
+      When call bin/e-docs.sh --stdout --no-validate "/tmp/comments-only.sh"
       The status should be success
       The output should include "# comments-only.sh"
       rm -f "/tmp/comments-only.sh"
@@ -374,7 +389,7 @@ EOF
 
     It 'handles large number of functions'
       # Create a file with many functions
-      cat > "/tmp/many-functions.sh" << 'EOF'
+      cat >"/tmp/many-functions.sh" <<'EOF'
 #!/usr/bin/env bash
 ## Function 1
 function func1() { echo "1"; }
@@ -387,7 +402,7 @@ function func4() { echo "4"; }
 ## Function 5
 function func5() { echo "5"; }
 EOF
-      When call bin/e-docs.sh --stdout "/tmp/many-functions.sh"
+      When call bin/e-docs.sh --stdout --no-validate "/tmp/many-functions.sh"
       The status should be success
       The output should include "func1"
       The output should include "func5"
@@ -396,14 +411,14 @@ EOF
 
     It 'handles files with special characters in filename'
       # Create a test file with special characters
-      cat > "/tmp/file-with-dashes.sh" << 'EOF'
+      cat >"/tmp/file-with-dashes.sh" <<'EOF'
 #!/usr/bin/env bash
 ## test function
 function test_func() {
   echo "test"
 }
 EOF
-      When call bin/e-docs.sh --stdout "/tmp/file-with-dashes.sh"
+      When call bin/e-docs.sh --stdout --no-validate "/tmp/file-with-dashes.sh"
       The status should be success
       The output should include "test_func"
       rm -f "/tmp/file-with-dashes.sh"
@@ -411,7 +426,7 @@ EOF
 
     It 'handles invalid function names'
       # Create a file with invalid function names
-      cat > "/tmp/invalid-names.sh" << 'EOF'
+      cat >"/tmp/invalid-names.sh" <<'EOF'
 #!/usr/bin/env bash
 ## Function with spaces
 function "func with spaces"() {
@@ -423,7 +438,7 @@ function func-with-hyphens() {
   echo "hyphens"
 }
 EOF
-      When call bin/e-docs.sh --stdout "/tmp/invalid-names.sh"
+      When call bin/e-docs.sh --stdout --no-validate "/tmp/invalid-names.sh"
       The status should be success
       # Should still generate header even with no valid functions
       The output should include "# invalid-names.sh"

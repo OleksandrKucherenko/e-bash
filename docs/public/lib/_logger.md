@@ -34,7 +34,9 @@ pipe/redirect support, and dynamic function creation.
     - [`logger`](#logger)
     - [`logger:cleanup`](#loggercleanup)
     - [`logger:compose`](#loggercompose)
+    - [`logger:compose:eval`](#loggercomposeeval)
     - [`logger:compose:helpers`](#loggercomposehelpers)
+    - [`logger:compose:helpers:eval`](#loggercomposehelperseval)
     - [`logger:init`](#loggerinit)
     - [`logger:listen`](#loggerlisten)
     - [`logger:pop`](#loggerpop)
@@ -138,6 +140,31 @@ eval "$(logger:compose "mytag" "Mytag")" # creates echo:Mytag and printf:Mytag
 
 ---
 
+### logger:compose:eval
+
+Generate and eval Bash code to create dynamic echo:Tag and printf:Tag functions
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `tag` | string | required, e.g. "debug" | The logger tag name (lowercase) |
+| `suffix` | string | required, e.g. "Debug" | Capitalized tag name for function suffix |
+| `flags` | string | default: "" | Additional flags (unused) |
+
+#### Globals
+
+- reads/listen: TAGS, TAGS_PREFIX, TAGS_REDIRECT
+- mutate/publish: none (defines functions via eval)
+
+#### Usage
+
+```bash
+logger:compose:eval "mytag" "Mytag"
+```
+
+---
+
 ### logger:compose:helpers
 
 Generate Bash code to create helper functions (log:Tag, config:logger:Tag)
@@ -159,6 +186,31 @@ Generate Bash code to create helper functions (log:Tag, config:logger:Tag)
 
 ```bash
 eval "$(logger:compose:helpers "mytag" "Mytag")"
+```
+
+---
+
+### logger:compose:helpers:eval
+
+Generate and eval helper functions (log:Tag, config:logger:Tag)
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `tag` | string | required, e.g. "debug" | The logger tag name (lowercase) |
+| `suffix` | string | required, e.g. "Debug" | Capitalized tag name for function suffix |
+| `flags` | string | default: "" | Additional flags (unused) |
+
+#### Globals
+
+- reads/listen: DEBUG, TAGS
+- mutate/publish: TAGS (may modify tag state)
+
+#### Usage
+
+```bash
+logger:compose:helpers:eval "mytag" "Mytag"
 ```
 
 ---

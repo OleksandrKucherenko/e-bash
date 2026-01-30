@@ -2,13 +2,13 @@
 # shellcheck disable=SC2155,SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-01-30
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # One-time initialization guard
-if type "trap:on" &>/dev/null; then return 0; fi
+if [[ "${__TRAPS_MODULE_INITIALIZED:-}" == "yes" ]]; then return 0; fi
 
 # Ensure E_BASH is set
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -62,11 +62,14 @@ function trap:on() {
   # Parse flags
   while [[ "$1" == --* ]]; do
     case "$1" in
-      --allow-duplicates) allow_duplicates=true; shift ;;
-      *)
-        echo:Trap "${cl_red}✗${cl_reset} Unknown flag: $1"
-        return 1
-        ;;
+    --allow-duplicates)
+      allow_duplicates=true
+      shift
+      ;;
+    *)
+      echo:Trap "${cl_red}✗${cl_reset} Unknown flag: $1"
+      return 1
+      ;;
     esac
   done
 
@@ -294,7 +297,7 @@ function trap:restore() {
       if [[ -n "$legacy_cmd" ]]; then
         trap "$legacy_cmd" "$signal"
       else
-        trap - "$signal"  # Remove trap
+        trap - "$signal" # Remove trap
       fi
 
       # Clear our handlers
@@ -413,7 +416,7 @@ function trap:pop() {
     local saved_handlers_str="${saved_state[$signal]}"
     if [[ -n "$saved_handlers_str" ]]; then
       local -a saved_handlers
-      IFS=' ' read -r -a saved_handlers <<< "$saved_handlers_str"
+      IFS=' ' read -r -a saved_handlers <<<"$saved_handlers_str"
 
       local -n handlers="$var_name"
       handlers=("${saved_handlers[@]}")
