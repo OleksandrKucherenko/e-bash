@@ -282,16 +282,25 @@ Describe 'e-docs /'
 
   Context 'Error Handling /'
     It 'handles missing ctags gracefully'
-      # Temporarily rename ctags
-      if command -v ctags >/dev/null 2>&1; then
-        ctags_path=$(command -v ctags)
-        mv "$ctags_path" "${ctags_path}.bak"
-        When run script bin/e-docs.sh "spec/fixtures/e-docs/simple_function.sh"
-        The status should be failure
-        The stderr should include "ctags is not installed"
-        # Restore ctags
-        mv "${ctags_path}.bak" "$ctags_path"
-      fi
+      stub_bin=$(mktemp -d -t edocs-bin.XXXXXX)
+
+      tools=(
+        bash dirname mkdir ln rm grep sed awk head tput mktemp cut tr date tee cat mkfifo sleep
+      )
+
+      printf '#!/usr/bin/env bash\necho Darwin\n' >"$stub_bin/uname"
+      chmod +x "$stub_bin/uname"
+
+      for tool in "${tools[@]}"; do
+        tool_path=$(command -v "$tool" 2>/dev/null || true)
+        [ -n "$tool_path" ] && ln -s "$tool_path" "$stub_bin/$tool"
+      done
+
+      BeforeRun "export PATH=\"$stub_bin\""
+      When run script bin/e-docs.sh "spec/fixtures/e-docs/simple_function.sh"
+      The status should be failure
+      The stderr should include "ctags version"
+      /bin/rm -rf "$stub_bin"
     End
 
     It 'handles non-existent file'
@@ -361,88 +370,35 @@ Describe 'e-docs /'
     End
 
     It 'generates docs for files with no functions'
-      # Create a file with no functions
-      cat >"/tmp/no-functions.sh" <<'EOF'
-#!/usr/bin/env bash
-# This file has no functions
-echo "just a script"
-EOF
-      When call bin/e-docs.sh --stdout --no-validate "/tmp/no-functions.sh"
+      When call bin/e-docs.sh --stdout --no-validate "spec/fixtures/e-docs/no-functions.sh"
       The status should be success
       The output should include "# no-functions.sh"
-      rm -f "/tmp/no-functions.sh"
     End
 
     It 'handles scripts with only comments'
-      # Create a file with only comments
-      cat >"/tmp/comments-only.sh" <<'EOF'
-#!/usr/bin/env bash
-# Comment 1
-# Comment 2
-# Comment 3
-EOF
-      When call bin/e-docs.sh --stdout --no-validate "/tmp/comments-only.sh"
+      When call bin/e-docs.sh --stdout --no-validate "spec/fixtures/e-docs/comments-only.sh"
       The status should be success
       The output should include "# comments-only.sh"
-      rm -f "/tmp/comments-only.sh"
     End
 
     It 'handles large number of functions'
-      # Create a file with many functions
-      cat >"/tmp/many-functions.sh" <<'EOF'
-#!/usr/bin/env bash
-## Function 1
-function func1() { echo "1"; }
-## Function 2
-function func2() { echo "2"; }
-## Function 3
-function func3() { echo "3"; }
-## Function 4
-function func4() { echo "4"; }
-## Function 5
-function func5() { echo "5"; }
-EOF
-      When call bin/e-docs.sh --stdout --no-validate "/tmp/many-functions.sh"
+      When call bin/e-docs.sh --stdout --no-validate "spec/fixtures/e-docs/many-functions.sh"
       The status should be success
       The output should include "func1"
       The output should include "func5"
-      rm -f "/tmp/many-functions.sh"
     End
 
     It 'handles files with special characters in filename'
-      # Create a test file with special characters
-      cat >"/tmp/file-with-dashes.sh" <<'EOF'
-#!/usr/bin/env bash
-## test function
-function test_func() {
-  echo "test"
-}
-EOF
-      When call bin/e-docs.sh --stdout --no-validate "/tmp/file-with-dashes.sh"
+      When call bin/e-docs.sh --stdout --no-validate "spec/fixtures/e-docs/file-with-dashes.sh"
       The status should be success
       The output should include "test_func"
-      rm -f "/tmp/file-with-dashes.sh"
     End
 
     It 'handles invalid function names'
-      # Create a file with invalid function names
-      cat >"/tmp/invalid-names.sh" <<'EOF'
-#!/usr/bin/env bash
-## Function with spaces
-function "func with spaces"() {
-  echo "spaces"
-}
-
-## Function with hyphens
-function func-with-hyphens() {
-  echo "hyphens"
-}
-EOF
-      When call bin/e-docs.sh --stdout --no-validate "/tmp/invalid-names.sh"
+      When call bin/e-docs.sh --stdout --no-validate "spec/fixtures/e-docs/invalid-names.sh"
       The status should be success
       # Should still generate header even with no valid functions
       The output should include "# invalid-names.sh"
-      rm -f "/tmp/invalid-names.sh"
     End
   End
 End

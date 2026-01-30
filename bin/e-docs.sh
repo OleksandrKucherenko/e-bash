@@ -80,6 +80,10 @@ EDOCS_TOC="${EDOCS_TOC:-true}"
 EDOCS_INCLUDE_PRIVATE="${EDOCS_INCLUDE_PRIVATE:-false}"
 EDOCS_VALIDATE="${EDOCS_VALIDATE:-true}"
 
+# Dependency resolution
+CTAGS_BIN="ctags"
+CTAGS_VERSION=""
+
 # Normalize EDOCS_OUTPUT_DIR to absolute path if relative
 if [[ ! "$EDOCS_OUTPUT_DIR" =~ ^/ ]]; then
   EDOCS_OUTPUT_DIR="$PROJECT_ROOT/$EDOCS_OUTPUT_DIR"
@@ -256,20 +260,33 @@ _edocs:validate:docblock() {
 ## - _edocs:validate:ctags
 ##
 _edocs:validate:ctags() {
-  if ! command -v ctags >/dev/null 2>&1; then
-    echo:Err "ctags is not installed"
-    echo:Err "Install with: brew install universal-ctags"
-    return 1
+  local min_version="6.0.0"
+  local version_regex='[0-9]+\.[0-9]+\.[0-9]+'
+  local resolved_path=""
+  local found_status=""
+  local found_version=""
+
+  resolved_path=$(dependency:find:version "ctags" "$min_version" "--version" "$version_regex")
+  if [[ $? -ne 0 ]]; then
+    found_status="${__DEPS_FOUND_STATUS:-}"
+    found_version="${__DEPS_FOUND_VERSION:-}"
+
+    case "$found_status" in
+    not_found)
+      echo:Err "ctags is not installed"
+      echo:Err "Install with: brew install universal-ctags"
+      return 1
+      ;;
+    no_version | version_mismatch | *)
+      echo:Err "ctags version $found_version does not meet requirement (>= 6.0.0)"
+      echo:Err "Install with: brew install universal-ctags"
+      return 1
+      ;;
+    esac
   fi
 
-  local ctags_version
-  ctags_version=$(ctags --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-
-  if [[ ! "$ctags_version" =~ ^[6-9]\..* ]]; then
-    echo:Err "ctags version $ctags_version does not meet requirement (>= 6.0.0)"
-    return 1
-  fi
-
+  CTAGS_BIN="$resolved_path"
+  CTAGS_VERSION="${__DEPS_FOUND_VERSION:-}"
   return 0
 }
 
@@ -503,7 +520,7 @@ _edocs:get:functions() {
   local script="$1"
 
   # Use ctags with JSON output format
-  ctags --language-force=sh \
+  "$CTAGS_BIN" --language-force=sh \
     --kinds-sh=f \
     --output-format=json \
     --fields=+n \
