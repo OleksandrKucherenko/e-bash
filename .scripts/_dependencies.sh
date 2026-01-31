@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-27
+## Last revisit: 2026-01-30
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -124,6 +124,11 @@ declare -gA __DEPS_CACHE
 declare -g __DEPS_CACHE_LOADED=false
 declare -g __DEPS_CACHE_PATH_HASH=""
 
+# Global: last dependency discovery result
+declare -g __DEPS_FOUND_STATUS=""
+declare -g __DEPS_FOUND_PATH=""
+declare -g __DEPS_FOUND_VERSION=""
+
 ##
 ## Generate hash of PATH variable for cache invalidation
 ##
@@ -155,6 +160,29 @@ function _cache:path:hash() {
 }
 
 ##
+## Check if cache is disabled globally
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: SKIP_DEPS_CACHE
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if cache is disabled, 1 otherwise
+##
+## Usage:
+## - if _cache:is:disabled; then echo "cache off"; fi
+##
+function _cache:is:disabled() {
+  case "${SKIP_DEPS_CACHE:-}" in
+  1 | true | yes) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+##
 ## Check if cache file is valid (exists, not expired, PATH matches)
 ##
 ## Parameters:
@@ -168,6 +196,7 @@ function _cache:path:hash() {
 ## - 0 if cache is valid, 1 otherwise
 ##
 function _cache:is:valid() {
+  _cache:is:disabled && return 1
   [[ -f "$__DEPS_CACHE_FILE" ]] || return 1
 
   # Check TTL (file modification time)
@@ -204,6 +233,7 @@ function _cache:is:valid() {
 ## - 0 always
 ##
 function _cache:load() {
+  _cache:is:disabled && return 0
   __DEPS_CACHE=()
   __DEPS_CACHE_PATH_HASH=$(_cache:path:hash)
 
@@ -238,6 +268,7 @@ function _cache:load() {
 ## - 0 on success, 1 on failure
 ##
 function _cache:save() {
+  _cache:is:disabled && return 0
   # Ensure cache directory exists
   mkdir -p "$__DEPS_CACHE_DIR" 2>/dev/null || return 1
 
@@ -247,7 +278,7 @@ function _cache:save() {
     for key in "${!__DEPS_CACHE[@]}"; do
       echo "${key}=${__DEPS_CACHE[$key]}"
     done
-  } > "$__DEPS_CACHE_FILE" 2>/dev/null
+  } >"$__DEPS_CACHE_FILE" 2>/dev/null
 }
 
 ##
@@ -264,6 +295,10 @@ function _cache:save() {
 ## - 0 always
 ##
 function _cache:ensure:loaded() {
+  if _cache:is:disabled; then
+    __DEPS_CACHE_LOADED=true
+    return 0
+  fi
   $__DEPS_CACHE_LOADED || _cache:load
 }
 
@@ -297,6 +332,33 @@ function _cache:key() {
 }
 
 ##
+## Generate cache key for dependency path search with minimum version
+##
+## Parameters:
+## - tool_name - Tool name (resolved), string, required
+## - min_version - Minimum version, string, required
+## - version_flag - Version flag, string, required
+## - version_regex - Version regex, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Cache key string
+##
+## Usage:
+## - key=$(_cache:key:find "ctags" "6.0.0" "--version" "[0-9]+\.[0-9]+\.[0-9]+")
+##
+function _cache:key:find() {
+  local tool_name="$1"
+  local min_version="$2"
+  local version_flag="$3"
+  local version_regex="$4"
+  echo "find:${tool_name}:${min_version}:${version_flag}:${version_regex}"
+}
+
+##
 ## Get cached dependency verification result
 ##
 ## Parameters:
@@ -317,6 +379,8 @@ function _cache:key() {
 ##
 function _cache:get() {
   local key="$1"
+
+  _cache:is:disabled && return 1
 
   _cache:ensure:loaded
 
@@ -357,6 +421,8 @@ function _cache:set() {
   local version="${3:-}"
   local cmd_path="${4:-}"
 
+  _cache:is:disabled && return 0
+
   _cache:ensure:loaded
   __DEPS_CACHE[$key]="${status}:${version}:${cmd_path}"
   _cache:save
@@ -381,6 +447,7 @@ function _cache:set() {
 function _cache:clear() {
   __DEPS_CACHE=()
   __DEPS_CACHE_LOADED=true
+  _cache:is:disabled && return 0
   rm -f "$__DEPS_CACHE_FILE" 2>/dev/null
 }
 
@@ -460,20 +527,20 @@ function dependency:dealias() {
   local alias_name="$1"
 
   case "$alias_name" in
-    rust|rustc)         echo "rustc" ;;
-    golang|go)          echo "go" ;;
-    nodejs|node)        echo "node" ;;
-    jre|java)           echo "java" ;;
-    jdk|javac)          echo "javac" ;;
-    homebrew|brew)      echo "brew" ;;
-    awsebcli|eb)        echo "eb" ;;
-    awscli|aws)         echo "aws" ;;
-    postgresql|psql)    echo "psql" ;;
-    mongodb|mongo)      echo "mongo" ;;
-    openssh)            echo "ssh" ;;
-    goreplay|gor)       echo "gor" ;;
-    httpie|http)        echo "http" ;;
-    *)                  echo "$alias_name" ;;
+  rust | rustc) echo "rustc" ;;
+  golang | go) echo "go" ;;
+  nodejs | node) echo "node" ;;
+  jre | java) echo "java" ;;
+  jdk | javac) echo "javac" ;;
+  homebrew | brew) echo "brew" ;;
+  awsebcli | eb) echo "eb" ;;
+  awscli | aws) echo "aws" ;;
+  postgresql | psql) echo "psql" ;;
+  mongodb | mongo) echo "mongo" ;;
+  openssh) echo "ssh" ;;
+  goreplay | gor) echo "gor" ;;
+  httpie | http) echo "http" ;;
+  *) echo "$alias_name" ;;
   esac
 }
 
@@ -509,6 +576,218 @@ function dependency:known:flags() {
 }
 
 ##
+## Compare two semantic versions (major.minor.patch)
+##
+## Parameters:
+## - left - Left version string, string, required
+## - right - Right version string, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes: 1 if left > right, -1 if left < right, 0 if equal
+##
+## Usage:
+## - dependency:version:compare "1.2.3" "1.2.4"
+##
+function dependency:version:compare() {
+  local left="$1" right="$2"
+  local left_major left_minor left_patch
+  local right_major right_minor right_patch
+
+  IFS='.' read -r left_major left_minor left_patch <<<"$left"
+  IFS='.' read -r right_major right_minor right_patch <<<"$right"
+
+  left_major=${left_major:-0}
+  left_minor=${left_minor:-0}
+  left_patch=${left_patch:-0}
+  right_major=${right_major:-0}
+  right_minor=${right_minor:-0}
+  right_patch=${right_patch:-0}
+
+  if ((left_major > right_major)); then
+    echo 1
+    return 0
+  fi
+  if ((left_major < right_major)); then
+    echo -1
+    return 0
+  fi
+  if ((left_minor > right_minor)); then
+    echo 1
+    return 0
+  fi
+  if ((left_minor < right_minor)); then
+    echo -1
+    return 0
+  fi
+  if ((left_patch > right_patch)); then
+    echo 1
+    return 0
+  fi
+  if ((left_patch < right_patch)); then
+    echo -1
+    return 0
+  fi
+
+  echo 0
+}
+
+##
+## Check if version is greater than or equal to minimum
+##
+## Parameters:
+## - version - Version string, string, required
+## - minimum - Minimum version string, string, required
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none
+##
+## Returns:
+## - 0 if version >= minimum, 1 otherwise
+##
+## Usage:
+## - dependency:version:gte "6.0.0" "6.0.0"
+##
+function dependency:version:gte() {
+  local version="$1" minimum="$2"
+  local compare_result
+
+  compare_result=$(dependency:version:compare "$version" "$minimum")
+  [[ "$compare_result" -ge 0 ]]
+}
+
+##
+## Find a tool in PATH that satisfies a minimum version
+##
+## Parameters:
+## - tool_name - Tool name or alias, string, required
+## - min_version - Minimum semver, string, required
+## - version_flag - Version flag, string, optional
+## - version_regex - Version regex, string, optional (default: "[0-9]+\.[0-9]+\.[0-9]+")
+##
+## Globals:
+## - reads/listen: PATH, __DEPS_VERSION_FLAGS_EXCEPTIONS
+## - mutate/publish: __DEPS_FOUND_STATUS, __DEPS_FOUND_PATH, __DEPS_FOUND_VERSION
+##
+## Returns:
+## - 0 if a matching tool is found, echoes path
+## - 1 otherwise (sets __DEPS_FOUND_STATUS: not_found, no_version, version_mismatch)
+##
+## Usage:
+## - tool_path=$(dependency:find:version "ctags" "6.0.0" "--version")
+##
+function dependency:find:version() {
+  local tool_name="$1" min_version="$2" version_flag="$3" version_regex="$4"
+  local tool_name_resolved
+  local path_dirs path_dir candidate
+  local found_any=false
+  local first_candidate_path=""
+  local best_match_path="" best_match_version=""
+  local best_seen_version="" best_seen_path=""
+  local version_message version_found compare_result
+  local cache_key="" cache_status="" cache_version="" cache_path=""
+
+  __DEPS_FOUND_STATUS="not_found"
+  __DEPS_FOUND_PATH=""
+  __DEPS_FOUND_VERSION=""
+
+  version_regex=${version_regex:-"[0-9]+\.[0-9]+\.[0-9]+"}
+  tool_name_resolved=$(dependency:dealias "$tool_name")
+  version_flag=$(dependency:known:flags "$tool_name_resolved" "$version_flag")
+
+  cache_key=$(_cache:key:find "$tool_name_resolved" "$min_version" "$version_flag" "$version_regex")
+  if [[ -z "${E_BASH_SKIP_CACHE:-}" ]] && _cache:get "$cache_key"; then
+    cache_status="$__DEPS_CACHE_STATUS"
+    cache_version="$__DEPS_CACHE_VERSION"
+    cache_path="$__DEPS_CACHE_PATH"
+
+    if [[ "$cache_status" == "0" ]]; then
+      __DEPS_FOUND_STATUS="ok"
+      __DEPS_FOUND_PATH="$cache_path"
+      __DEPS_FOUND_VERSION="$cache_version"
+      echo "$cache_path"
+      return 0
+    fi
+
+    __DEPS_FOUND_PATH="$cache_path"
+    __DEPS_FOUND_VERSION="$cache_version"
+    if [[ -z "$cache_path" ]]; then
+      __DEPS_FOUND_STATUS="not_found"
+    elif [[ -z "$cache_version" ]]; then
+      __DEPS_FOUND_STATUS="no_version"
+    else
+      __DEPS_FOUND_STATUS="version_mismatch"
+    fi
+    return 1
+  fi
+
+  IFS=':' read -r -a path_dirs <<<"$PATH"
+  for path_dir in "${path_dirs[@]}"; do
+    [[ -z "$path_dir" ]] && continue
+    candidate="${path_dir}/${tool_name_resolved}"
+    [[ -x "$candidate" ]] || continue
+
+    found_any=true
+    [[ -z "$first_candidate_path" ]] && first_candidate_path="$candidate"
+
+    version_message=$("$candidate" "$version_flag" 2>&1)
+    version_found=$(echo "$version_message" | grep -oE "$version_regex" | head -1)
+    [[ -z "$version_found" ]] && continue
+
+    if [[ -z "$best_seen_version" ]]; then
+      best_seen_version="$version_found"
+      best_seen_path="$candidate"
+    else
+      compare_result=$(dependency:version:compare "$version_found" "$best_seen_version")
+      [[ "$compare_result" -gt 0 ]] && best_seen_version="$version_found" && best_seen_path="$candidate"
+    fi
+
+    if dependency:version:gte "$version_found" "$min_version"; then
+      if [[ -z "$best_match_version" ]]; then
+        best_match_version="$version_found"
+        best_match_path="$candidate"
+      else
+        compare_result=$(dependency:version:compare "$version_found" "$best_match_version")
+        [[ "$compare_result" -gt 0 ]] && best_match_version="$version_found" && best_match_path="$candidate"
+      fi
+    fi
+  done
+
+  if [[ -n "$best_match_path" ]]; then
+    __DEPS_FOUND_STATUS="ok"
+    __DEPS_FOUND_PATH="$best_match_path"
+    __DEPS_FOUND_VERSION="$best_match_version"
+    _cache:set "$cache_key" 0 "$best_match_version" "$best_match_path"
+    echo "$best_match_path"
+    return 0
+  fi
+
+  if [[ "$found_any" != true ]]; then
+    __DEPS_FOUND_STATUS="not_found"
+    _cache:set "$cache_key" 1 "" ""
+    return 1
+  fi
+
+  if [[ -z "$best_seen_version" ]]; then
+    [[ -z "$best_seen_path" ]] && best_seen_path="$first_candidate_path"
+    __DEPS_FOUND_STATUS="no_version"
+    __DEPS_FOUND_PATH="$best_seen_path"
+    _cache:set "$cache_key" 1 "" "$best_seen_path"
+    return 1
+  fi
+
+  __DEPS_FOUND_STATUS="version_mismatch"
+  __DEPS_FOUND_PATH="$best_seen_path"
+  __DEPS_FOUND_VERSION="$best_seen_version"
+  _cache:set "$cache_key" 1 "$best_seen_version" "$best_seen_path"
+  return 1
+}
+
+##
 ## Check if CI auto-install mode is enabled
 ##
 ## Parameters:
@@ -531,8 +810,8 @@ function isCIAutoInstallEnabled() {
     # Convert to lowercase for case-insensitive comparison (bash 4.0+ syntax)
     value="${value,,}"
     case "$value" in
-      1|true|yes) echo true ;;
-      *) echo false ;;
+    1 | true | yes) echo true ;;
+    *) echo false ;;
     esac
   else
     echo false
@@ -584,8 +863,8 @@ function dependency() {
   local filtered_args=()
   for arg in "$@"; do
     case "$arg" in
-      --exec|--optional|--silent|--no-cache|--debug) continue ;;
-      *) filtered_args+=("$arg") ;;
+    --exec | --optional | --silent | --no-cache | --debug) continue ;;
+    *) filtered_args+=("$arg") ;;
     esac
   done
 
@@ -779,8 +1058,8 @@ function optional() {
   # Ensure we have minimum required parameters before adding --optional flag
   # This prevents --optional from being treated as a positional parameter
   case ${#args[@]} in
-    2) args+=("No details. Please google it." "--version") ;;
-    3) args+=("--version") ;;
+  2) args+=("No details. Please google it." "--version") ;;
+  3) args+=("--version") ;;
   esac
 
   # Add --optional flag and forward to dependency()
@@ -823,6 +1102,7 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 ## - CI - Set by CI environments (GitHub Actions, GitLab CI, etc.)
 ## - CI_E_BASH_INSTALL_DEPENDENCIES - Enable auto-install in CI (1/true/yes)
 ## - SKIP_DEALIAS - Bypass alias resolution when set to "1"
+## - SKIP_DEPS_CACHE - Disable cache layer when set to 1/true/yes
 ##
 ## Caching:
 ## Dependency verification results are cached persistently on disk:
@@ -832,6 +1112,7 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 ## - First call verifies the tool and caches the result
 ## - Subsequent calls with same arguments return cached result (marked "(cached)")
 ## - Use --no-cache flag to bypass cache and force re-verification
+## - Use SKIP_DEPS_CACHE=1 to disable cache globally
 ## - Use _cache:clear to clear all cached entries (memory and disk)
 ##
 ## Short Form (Existence Check):

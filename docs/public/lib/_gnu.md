@@ -27,7 +27,13 @@ naming conventions.
 - WSL: Same as Linux (creates symlinks)
 
 
+---
 
-> **Note:** This is a configuration module that executes initialization code when sourced.
-> It does not provide reusable functions.
+## Functions
+
+<!-- TOC -->
+
+- [_gnu.sh](#_gnush)
+
+<!-- /TOC -->
 

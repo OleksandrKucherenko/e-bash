@@ -73,13 +73,25 @@ Describe 'Self-Update Initialization /'
   # Do not try to override them in setup
   Include .scripts/_self-update.sh
 
+  # Track if ~/.e-bash existed before our tests (don't delete if it was pre-existing)
+  __pre_existing_e_bash=false
+  [[ -d "$HOME/.e-bash" ]] && __pre_existing_e_bash=true
+
   cleanup() {
     # Clean up test artifacts
     __REPO_VERSIONS=()
     declare -g -A __REPO_MAPPING=()
   }
 
+  cleanup_dir() {
+    # Clean up ~/.e-bash directory only if we created it during tests
+    if [[ "${__pre_existing_e_bash}" != "true" ]] && [[ -d "$HOME/.e-bash" ]]; then
+      rm -rf "$HOME/.e-bash" 2>/dev/null || true
+    fi
+  }
+
   AfterEach 'cleanup'
+  AfterAll 'cleanup_dir'
 
   Describe 'self-update:initialize behavior /'
     It 'creates .e-bash directory if it does not exist'

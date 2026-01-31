@@ -24,6 +24,7 @@ result caching for performance, and optional auto-installation in CI environment
 - CI - Set by CI environments (GitHub Actions, GitLab CI, etc.)
 - CI_E_BASH_INSTALL_DEPENDENCIES - Enable auto-install in CI (1/true/yes)
 - SKIP_DEALIAS - Bypass alias resolution when set to "1"
+- SKIP_DEPS_CACHE - Disable cache layer when set to 1/true/yes
 
 ## Additional Information
 
@@ -35,6 +36,7 @@ result caching for performance, and optional auto-installation in CI environment
 - First call verifies the tool and caches the result
 - Subsequent calls with same arguments return cached result (marked "(cached)")
 - Use --no-cache flag to bypass cache and force re-verification
+- Use SKIP_DEPS_CACHE=1 to disable cache globally
 - Use _cache:clear to clear all cached entries (memory and disk)
 Short Form (Existence Check):
 When called with only a tool name (no version pattern), checks existence only:
@@ -61,32 +63,29 @@ ref:
  https://stackoverflow.com/questions/4023830/how-to-compare-two-strings-in-dot-separated-version-format-in-bash
 
 
-## Index
-
-* [`_cache:clear`](#_cache-clear)
-* [`_cache:ensure:loaded`](#_cache-ensure-loaded)
-* [`_cache:get`](#_cache-get)
-* [`_cache:is:valid`](#_cache-is-valid)
-* [`_cache:key`](#_cache-key)
-* [`_cache:load`](#_cache-load)
-* [`_cache:path:hash`](#_cache-path-hash)
-* [`_cache:save`](#_cache-save)
-* [`_cache:set`](#_cache-set)
-* [`dependency`](#dependency)
-* [`dependency:dealias`](#dependency-dealias)
-* [`dependency:exists`](#dependency-exists)
-* [`dependency:known:flags`](#dependency-known-flags)
-* [`isCIAutoInstallEnabled`](#isciautoinstallenabled)
-* [`isDebug`](#isdebug)
-* [`isExec`](#isexec)
-* [`isNoCache`](#isnocache)
-* [`isOptional`](#isoptional)
-* [`isSilent`](#issilent)
-* [`optional`](#optional)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_dependencies.sh](#_dependenciessh)
+    - [`dependency`](#dependency)
+    - [`dependency:dealias`](#dependencydealias)
+    - [`dependency:exists`](#dependencyexists)
+    - [`dependency:find:version`](#dependencyfindversion)
+    - [`dependency:known:flags`](#dependencyknownflags)
+    - [`dependency:version:compare`](#dependencyversioncompare)
+    - [`dependency:version:gte`](#dependencyversiongte)
+    - [`isCIAutoInstallEnabled`](#isciautoinstallenabled)
+    - [`isDebug`](#isdebug)
+    - [`isExec`](#isexec)
+    - [`isNoCache`](#isnocache)
+    - [`isOptional`](#isoptional)
+    - [`isSilent`](#issilent)
+    - [`optional`](#optional)
+
+<!-- /TOC -->
 
 ---
 
@@ -110,7 +109,7 @@ Check and optionally install a dependency with version constraint
 
 #### Globals
 
-- reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, SKIP_DEALIAS, __DEPS_CACHE
+- reads/listen: CI, CI_E_BASH_INSTALL_DEPENDENCIES, E_BASH_SKIP_CACHE, SKIP_DEALIAS, __DEPS_CACHE
 - mutate/publish: __DEPS_CACHE (stores verification results)
 
 #### Side Effects
@@ -191,6 +190,37 @@ dependency:exists python && python --version
 
 ---
 
+### dependency:find:version
+
+Find a tool in PATH that satisfies a minimum version
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `tool_name` | string | required | Tool name or alias |
+| `min_version` | string | required | Minimum semver |
+| `version_flag` | string | optional | Version flag |
+| `version_regex` | string | optional (default: "[0-9]+\.[0-9]+\.[0-9]+") | Version regex |
+
+#### Globals
+
+- reads/listen: PATH, __DEPS_VERSION_FLAGS_EXCEPTIONS
+- mutate/publish: __DEPS_FOUND_STATUS, __DEPS_FOUND_PATH, __DEPS_FOUND_VERSION
+
+#### Returns
+
+- 0 if a matching tool is found, echoes path
+- 1 otherwise (sets __DEPS_FOUND_STATUS: not_found, no_version, version_mismatch)
+
+#### Usage
+
+```bash
+tool_path=$(dependency:find:version "ctags" "6.0.0" "--version")
+```
+
+---
+
 ### dependency:known:flags
 
 Get the version flag for a tool (exception or default --version)
@@ -216,6 +246,62 @@ Get the version flag for a tool (exception or default --version)
 ```bash
 dependency:known:flags "java" -> "-version"
 dependency:known:flags "git" -> "--version"
+```
+
+---
+
+### dependency:version:compare
+
+Compare two semantic versions (major.minor.patch)
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `left` | string | required | Left version string |
+| `right` | string | required | Right version string |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Returns
+
+- Echoes: 1 if left > right, -1 if left < right, 0 if equal
+
+#### Usage
+
+```bash
+dependency:version:compare "1.2.3" "1.2.4"
+```
+
+---
+
+### dependency:version:gte
+
+Check if version is greater than or equal to minimum
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `version` | string | required | Version string |
+| `minimum` | string | required | Minimum version string |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Returns
+
+- 0 if version >= minimum, 1 otherwise
+
+#### Usage
+
+```bash
+dependency:version:gte "6.0.0" "6.0.0"
 ```
 
 ---

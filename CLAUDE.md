@@ -10,6 +10,55 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **License:** MIT
 **Repository:** https://github.com/OleksandrKucherenko/e-bash
 
+## Naming Conventions
+
+**IMPORTANT:** Before modifying or adding code, please review the [comprehensive naming conventions](docs/conventions/NAMING_CONVENTIONS.md).
+
+### Quick Reference
+
+- **Module Functions** (in `.scripts/_*.sh`): `{domain}:{verb}` - **ALL LOWERCASE ONLY**
+  - Examples: `logger:init`, `hooks:do`, `semver:compare`, `trap:on`
+  - ❌ Never: `logger:Init`, `Logger:init`, `loggerInit`
+- **Internal Functions** (in `.scripts/_*.sh`): `_{domain}:*` - **ALL LOWERCASE ONLY**
+  - Examples: `_hooks:capture:run`, `_cache:load`, `_hooks:middleware:default`
+- **Generated Functions** (dynamic): `action:Tag` - **CamelCase ALLOWED**
+  - Examples: `echo:Common`, `printf:MyApp`, `log:DatabaseMigration`
+- **Script Functions** (in `bin/*.sh`, user scripts): **Mixed case allowed**
+  - Examples: `gitsv:add_keyword`, `processCommit`, `calculateVersion`
+- **Module Files:** `.scripts/_{short_name}.sh`
+  - Underscore prefix indicates it's a library module, not an executable
+- **Executable Tools:** `bin/{domain}.{purpose}.sh` or `bin/{tool-name}.sh`
+  - Examples: `git.semantic-version.sh`, `install.e-bash.sh`
+- **Versioned Scripts** (rewrites): `bin/{script-name}.v{N}.sh`
+  - Examples: `version-up.v2.sh`, `install.e-bash.v1.sh`
+  - Use for major rewrites or reimplementations
+- **Variables (Library Config):** `E_BASH_FEATURE`
+  - Examples: `E_BASH`, `E_BASH_SKIP_CACHE`
+- **Variables (Module Config):** `MODULE_CONFIG`
+  - Examples: `DEBUG`, `HOOKS_DIR`, `SKIP_ARGS_PARSING`
+- **Variables (Module Internal):** `__{UPPER_CASE_NAME}`
+  - Examples: `__HOOKS_DEFINED`, `__DEPS_CACHE`, `__TRAP_PREFIX`
+- **Variables (Local):** `snake_case`
+  - Examples: `local version="1.0.0"`, `local exit_code=0`
+- **Logger Tags:** `lowercase` (no special characters)
+  - Examples: `logger hooks`, `logger dependencies`, `DEBUG=hooks,error`
+- **Tests:** `spec/**/{script_under_test}_spec.sh`
+  - Examples: `spec/logger_spec.sh`, `spec/bin/git.verify-all-commits_spec.sh`
+- **Demos:** `demos/demo.{purpose}.sh`
+  - Examples: `demo.logger.sh`, `demo.hooks.sh`
+- **Benchmarks:** `demos/benchmark.{purpose}.sh`
+  - Examples: `benchmark.colors.sh`, `benchmark.ecs.sh`
+
+**Full Documentation:** See [docs/conventions/](docs/conventions/) for detailed conventions on:
+- [Functions](docs/conventions/naming-functions.md)
+- [Variables](docs/conventions/naming-variables.md)
+- [Files](docs/conventions/naming-files.md)
+- [Loggers/Tags](docs/conventions/naming-loggers.md)
+- [Constants](docs/conventions/naming-constants.md)
+- [Arrays](docs/conventions/naming-arrays.md)
+
+---
+
 ## Core Architecture
 
 ### Library Structure

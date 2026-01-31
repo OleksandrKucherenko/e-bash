@@ -25,35 +25,38 @@ for projects using e-bash scripts library.
 - __REPO_MAPPING - Associative array: version -> tag mapping
 - __REPO_VERSIONS - Array of sorted versions
 
-## Index
-
-* [`array:qsort`](#array-qsort)
-* [`compare:versions`](#compare-versions)
-* [`path:resolve`](#path-resolve)
-* [`self-update`](#self-update)
-* [`self-update:dependencies`](#self-update-dependencies)
-* [`self-update:file:hash`](#self-update-file-hash)
-* [`self-update:initialize`](#self-update-initialize)
-* [`self-update:rollback:backup`](#self-update-rollback-backup)
-* [`self-update:rollback:version`](#self-update-rollback-version)
-* [`self-update:self:version`](#self-update-self-version)
-* [`self-update:unlink`](#self-update-unlink)
-* [`self-update:version:bind`](#self-update-version-bind)
-* [`self-update:version:find`](#self-update-version-find)
-* [`self-update:version:find:highest_tag`](#self-update-version-find-highest_tag)
-* [`self-update:version:find:latest_stable`](#self-update-version-find-latest_stable)
-* [`self-update:version:get`](#self-update-version-get)
-* [`self-update:version:get:first`](#self-update-version-get-first)
-* [`self-update:version:get:latest`](#self-update-version-get-latest)
-* [`self-update:version:has`](#self-update-version-has)
-* [`self-update:version:hash`](#self-update-version-hash)
-* [`self-update:version:remove`](#self-update-version-remove)
-* [`self-update:version:resolve`](#self-update-version-resolve)
-* [`self-update:version:tags`](#self-update-version-tags)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_self-update.sh](#_self-updatesh)
+    - [`array:qsort`](#arrayqsort)
+    - [`compare:versions`](#compareversions)
+    - [`path:resolve`](#pathresolve)
+    - [`self-update`](#self-update)
+    - [`self-update:dependencies`](#self-updatedependencies)
+    - [`self-update:file:hash`](#self-updatefilehash)
+    - [`self-update:initialize`](#self-updateinitialize)
+    - [`self-update:rollback:backup`](#self-updaterollbackbackup)
+    - [`self-update:rollback:version`](#self-updaterollbackversion)
+    - [`self-update:self:version`](#self-updateselfversion)
+    - [`self-update:unlink`](#self-updateunlink)
+    - [`self-update:version:bind`](#self-updateversionbind)
+    - [`self-update:version:find`](#self-updateversionfind)
+    - [`self-update:version:find:highest_tag`](#self-updateversionfindhighest_tag)
+    - [`self-update:version:find:latest_stable`](#self-updateversionfindlatest_stable)
+    - [`self-update:version:get`](#self-updateversionget)
+    - [`self-update:version:get:first`](#self-updateversiongetfirst)
+    - [`self-update:version:get:latest`](#self-updateversiongetlatest)
+    - [`self-update:version:has`](#self-updateversionhas)
+    - [`self-update:version:hash`](#self-updateversionhash)
+    - [`self-update:version:remove`](#self-updateversionremove)
+    - [`self-update:version:resolve`](#self-updateversionresolve)
+    - [`self-update:version:tags`](#self-updateversiontags)
+
+<!-- /TOC -->
 
 ---
 

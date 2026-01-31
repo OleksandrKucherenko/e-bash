@@ -12,26 +12,29 @@ parsing, comparison, constraint checking, and version sorting.
 - documentation: Referenced in docs/public/version-up.md
 - tests: spec/semver_spec.sh
 
-## Index
-
-* [`semver:compare`](#semver-compare)
-* [`semver:compare:readable`](#semver-compare-readable)
-* [`semver:compare:to:operator`](#semver-compare-to-operator)
-* [`semver:constraints`](#semver-constraints)
-* [`semver:constraints:complex`](#semver-constraints-complex)
-* [`semver:constraints:simple`](#semver-constraints-simple)
-* [`semver:constraints:v1`](#semver-constraints-v1)
-* [`semver:constraints:v2`](#semver-constraints-v2)
-* [`semver:grep`](#semver-grep)
-* [`semver:increase:major`](#semver-increase-major)
-* [`semver:increase:minor`](#semver-increase-minor)
-* [`semver:increase:patch`](#semver-increase-patch)
-* [`semver:parse`](#semver-parse)
-* [`semver:recompose`](#semver-recompose)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_semver.sh](#_semversh)
+    - [`semver:compare`](#semvercompare)
+    - [`semver:compare:readable`](#semvercomparereadable)
+    - [`semver:compare:to:operator`](#semvercomparetooperator)
+    - [`semver:constraints`](#semverconstraints)
+    - [`semver:constraints:complex`](#semverconstraintscomplex)
+    - [`semver:constraints:simple`](#semverconstraintssimple)
+    - [`semver:constraints:v1`](#semverconstraintsv1)
+    - [`semver:constraints:v2`](#semverconstraintsv2)
+    - [`semver:grep`](#semvergrep)
+    - [`semver:increase:major`](#semverincreasemajor)
+    - [`semver:increase:minor`](#semverincreaseminor)
+    - [`semver:increase:patch`](#semverincreasepatch)
+    - [`semver:parse`](#semverparse)
+    - [`semver:recompose`](#semverrecompose)
+
+<!-- /TOC -->
 
 ---
 
@@ -330,28 +333,6 @@ Increment major version number (resets minor and patch to 0)
 #### Usage
 
 ```bash
-# shellcheck disable=SC2154
-Increment major version number (resets minor and patch to 0)
-```
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `version` | string | required | Version string to increment |
-
-#### Globals
-
-- reads/listen: none
-- mutate/publish: creates temporary __major associative array
-
-#### Returns
-
-- Echoes incremented version (major+1.0.0)
-
-#### Usage
-
-```bash
 semver:increase:major "1.2.3"  # Returns "2.0.0"
 ```
 
@@ -359,23 +340,6 @@ semver:increase:major "1.2.3"  # Returns "2.0.0"
 
 ### semver:increase:minor
 
-Increment minor version number (resets patch to 0)
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `version` | string | required | Version string to increment |
-
-#### Globals
-
-- reads/listen: none
-- mutate/publish: creates temporary __minor associative array
-
-#### Returns
-
-- Echoes incremented version (major.minor+1.0)
-# shellcheck disable=SC2154
 Increment minor version number (resets patch to 0)
 
 #### Parameters
@@ -403,23 +367,6 @@ semver:increase:minor "1.2.3"  # Returns "1.3.0"
 
 ### semver:increase:patch
 
-Increment patch version number
-
-#### Parameters
-
-| Name | Type | Default | Description |
-|------|------|---------|-------------|
-| `version` | string | required | Version string to increment |
-
-#### Globals
-
-- reads/listen: none
-- mutate/publish: creates temporary __patch associative array
-
-#### Returns
-
-- Echoes incremented version (major.minor.patch+1)
-# shellcheck disable=SC2154
 Increment patch version number
 
 #### Parameters

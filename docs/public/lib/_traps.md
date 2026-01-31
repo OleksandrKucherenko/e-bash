@@ -26,28 +26,25 @@ per signal, LIFO execution order, legacy trap preservation, and stack-based scop
 - __TRAP_LEGACY_SIG_{signal} - Original trap command before module loaded
 - __TRAP_STACK_{N} - Stack snapshot at level N (associative array)
 
-## Index
-
-* [`Trap::dispatch`](#trap--dispatch)
-* [`_Trap::capture_legacy`](#_trap--capture_legacy)
-* [`_Trap::contains`](#_trap--contains)
-* [`_Trap::initialize_signal`](#_trap--initialize_signal)
-* [`_Trap::list_all_signals`](#_trap--list_all_signals)
-* [`_Trap::normalize_signal`](#_trap--normalize_signal)
-* [`_Trap::remove_handler`](#_trap--remove_handler)
-* [`trap:clear`](#trap-clear)
-* [`trap:list`](#trap-list)
-* [`trap:off`](#trap-off)
-* [`trap:on`](#trap-on)
-* [`trap:pop`](#trap-pop)
-* [`trap:push`](#trap-push)
-* [`trap:restore`](#trap-restore)
-* [`trap:scope:begin`](#trap-scope-begin)
-* [`trap:scope:end`](#trap-scope-end)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_traps.sh](#_trapssh)
+    - [`Trap::dispatch`](#trapdispatch)
+    - [`trap:clear`](#trapclear)
+    - [`trap:list`](#traplist)
+    - [`trap:off`](#trapoff)
+    - [`trap:on`](#trapon)
+    - [`trap:pop`](#trappop)
+    - [`trap:push`](#trappush)
+    - [`trap:restore`](#traprestore)
+    - [`trap:scope:begin`](#trapscopebegin)
+    - [`trap:scope:end`](#trapscopeend)
+
+<!-- /TOC -->
 
 ---
 

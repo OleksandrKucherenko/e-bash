@@ -60,35 +60,31 @@ Contract Directives (output from hooks to middleware):
 - contract:exit:42 - Exit with code
 
 
-## Index
-
-* [`_hooks:capture:run`](#_hooks-capture-run)
-* [`_hooks:env:apply`](#_hooks-env-apply)
-* [`_hooks:logger:refresh`](#_hooks-logger-refresh)
-* [`_hooks:middleware:default`](#_hooks-middleware-default)
-* [`_hooks:middleware:modes`](#_hooks-middleware-modes)
-* [`_hooks:on_exit`](#_hooks-on_exit)
-* [`_hooks:trap:end`](#_hooks-trap-end)
-* [`hooks:bootstrap`](#hooks-bootstrap)
-* [`hooks:declare`](#hooks-declare)
-* [`hooks:do`](#hooks-do)
-* [`hooks:do:script`](#hooks-do-script)
-* [`hooks:do:source`](#hooks-do-source)
-* [`hooks:exec:mode`](#hooks-exec-mode)
-* [`hooks:flow:apply`](#hooks-flow-apply)
-* [`hooks:known`](#hooks-known)
-* [`hooks:list`](#hooks-list)
-* [`hooks:middleware`](#hooks-middleware)
-* [`hooks:pattern:script`](#hooks-pattern-script)
-* [`hooks:pattern:source`](#hooks-pattern-source)
-* [`hooks:register`](#hooks-register)
-* [`hooks:reset`](#hooks-reset)
-* [`hooks:runnable`](#hooks-runnable)
-* [`hooks:unregister`](#hooks-unregister)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_hooks.sh](#_hookssh)
+    - [`hooks:bootstrap`](#hooksbootstrap)
+    - [`hooks:declare`](#hooksdeclare)
+    - [`hooks:do`](#hooksdo)
+    - [`hooks:do:script`](#hooksdoscript)
+    - [`hooks:do:source`](#hooksdosource)
+    - [`hooks:exec:mode`](#hooksexecmode)
+    - [`hooks:flow:apply`](#hooksflowapply)
+    - [`hooks:known`](#hooksknown)
+    - [`hooks:list`](#hookslist)
+    - [`hooks:middleware`](#hooksmiddleware)
+    - [`hooks:pattern:script`](#hookspatternscript)
+    - [`hooks:pattern:source`](#hookspatternsource)
+    - [`hooks:register`](#hooksregister)
+    - [`hooks:reset`](#hooksreset)
+    - [`hooks:runnable`](#hooksrunnable)
+    - [`hooks:unregister`](#hooksunregister)
+
+<!-- /TOC -->
 
 ---
 

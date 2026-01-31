@@ -60,10 +60,9 @@ function function_name() {
 - List all parameters in order
 - For each parameter include:
   - **Name**: Parameter identifier
-  - **Description**: What the parameter is for
-  - **Type**: string, number, boolean, array, associative array
-  - **Requirement**: required, optional, variadic
-  - **Default**: For optional parameters, specify default value
+  - **Description**: What parameter is for
+  - **Type**: string, number, boolean, array, variadic, flag
+  - **Requirement**: required, optional, default value
 
 #### Globals
 Divide into two categories:
@@ -226,7 +225,7 @@ This prevents execution when the file is sourced (e.g., in tests).
 ## - mutate/publish: __TRAP_HANDLERS_SIG_{signal} array, __TRAP_INITIALIZED_SIG_{signal}
 ##
 ## Side effects:
-## - Creates trap on signal using Trap::dispatch
+## - Creates trap on signal using trap:dispatch
 ## - Initializes signal state on first registration
 ##
 ## Usage:
@@ -283,7 +282,7 @@ Before committing code, verify:
 ## Tooling Integration
 
 The `##` prefix standard enables:
-- Automated documentation generation
+- Automated documentation generation via `bin/e-docs`
 - IDE hover tooltips
 - LSP integration for shell scripts
 - Consistent formatting across the codebase
@@ -294,3 +293,4 @@ The `##` prefix standard enables:
 - `.shellspec` - Test configuration
 - `CLAUDE.md` - Project documentation
 - `docs/public/*.md` - Public documentation
+- `bin/e-docs.sh` - Documentation generator

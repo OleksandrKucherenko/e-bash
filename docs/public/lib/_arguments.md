@@ -49,21 +49,24 @@ This module provides a declarative argument parsing system with auto-generated h
   # Variables $verbose, $output, $port are now set
 
 
-## Index
-
-* [`args:d`](#args-d)
-* [`args:e`](#args-e)
-* [`args:i`](#args-i)
-* [`args:v`](#args-v)
-* [`parse:arguments`](#parse-arguments)
-* [`parse:exclude_flags_from_args`](#parse-exclude_flags_from_args)
-* [`parse:extract_output_definition`](#parse-extract_output_definition)
-* [`parse:mapping`](#parse-mapping)
-* [`print:help`](#print-help)
-
 ---
 
 ## Functions
+
+<!-- TOC -->
+
+- [_arguments.sh](#_argumentssh)
+    - [`args:d`](#argsd)
+    - [`args:e`](#argse)
+    - [`args:i`](#argsi)
+    - [`args:v`](#argsv)
+    - [`parse:arguments`](#parsearguments)
+    - [`parse:exclude_flags_from_args`](#parseexclude_flags_from_args)
+    - [`parse:extract_output_definition`](#parseextract_output_definition)
+    - [`parse:mapping`](#parsemapping)
+    - [`print:help`](#printhelp)
+
+<!-- /TOC -->
 
 ---
 

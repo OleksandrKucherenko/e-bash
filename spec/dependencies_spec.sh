@@ -4,7 +4,7 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-27
+## Last revisit: 2026-01-30
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
@@ -298,6 +298,19 @@ Describe "_dependencies.sh /"
       The error should eq ''
       unset CI CI_E_BASH_INSTALL_DEPENDENCIES
       # Dump
+    End
+  End
+
+  Describe "Cache /"
+    BeforeEach '_cache:clear; unset SKIP_DEPS_CACHE'
+    AfterEach 'unset SKIP_DEPS_CACHE'
+
+    It "skips cache when SKIP_DEPS_CACHE is set"
+      export SKIP_DEPS_CACHE=1
+      _cache:set "test:key" 0 "1.0.0" "/tmp/tool"
+      When call _cache:get "test:key"
+
+      The status should be failure
     End
   End
 
