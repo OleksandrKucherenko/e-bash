@@ -2090,12 +2090,18 @@ function repo_versions() {
     # First number: commits in remote not in local (if > 0, branch is outdated)
     # Second number: commits in local not in remote (if > 0, branch is behind)
     # shellcheck disable=SC1083
-    master_version_state=$(git fetch &&
-      git rev-list --count --left-right @{upstream}...HEAD |
-      awk '{if($1>0) print "outdated by "$1" commit(s)"; else print "up-to-date"}')
+    # Note: git fetch may fail if remote is unavailable - handle gracefully
+    master_version_state=$(git fetch 2>/dev/null &&
+      git rev-list --count --left-right @{upstream}...HEAD 2>/dev/null |
+      awk '{if($1>0) print "outdated by "$1" commit(s)"; else print "up-to-date"}' || echo "status unknown")
 
     master_version="master ${GRAY}($master_version_state)${PURPLE}"
-    global_versions="${PURPLE}${master_version}\n$(ls .versions)${NC}"
+    # Note: .versions directory may not exist if no specific versions are installed yet
+    local versions_list=""
+    if [[ -d "${__WORKTREES}" ]]; then
+      versions_list=$(ls "${__WORKTREES}" 2>/dev/null || true)
+    fi
+    global_versions="${PURPLE}${master_version}\n${versions_list}${NC}"
     popd >/dev/null || exit 1
   fi
 
