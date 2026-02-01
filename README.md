@@ -4,6 +4,7 @@
 
 - [Enhanced BASH Scripts](#enhanced-bash-scripts)
   - [Usage](#usage)
+    - [Homebrew (macOS/Linux)](#homebrew-macoslinux)
     - [Direct Download (Manual User)](#direct-download-manual-user)
     - [Using e-bash in Your Scripts](#using-e-bash-in-your-scripts)
     - [Manual installation](#manual-installation)
@@ -766,11 +767,13 @@ demos/demo.colors.sh
 
 ### Emoji support in my terminal
 
-Run this command if you want to see how your terminal setup support emojis.
+Run this command if you want to see how your terminal setup support emojis. Usually Windows WSL2 teminals has very limited support enabled by default, so you should be carefull when selecting emojis for your scripts.
 
 ```bash
 demos/demo.emojis.sh
 ```
+
+![Emoji Support In Terminal](./docs/images/public/demo-emoji-support.gif)
 
 ### References
 
