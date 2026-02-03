@@ -7,7 +7,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-02-03
-## Version: 2.4.0
+## Version: 2.4.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -198,10 +198,20 @@ display_image_preview() {
   local preview_label="Preview: $protocol"
   [[ "$passthrough" != "none" ]] && preview_label="$preview_label via $passthrough"
 
-  echo -e "\033[90m┌─ $preview_label ─────────────────────────────────────\033[0m"
-  chafa "${chafa_args[@]}" "$image_path" 2>/dev/null || {
-    echo -e "\033[33m[Graphics preview failed, trying ASCII fallback]\033[0m"
-    chafa --format=symbols --symbols=braille+stipple --size="${preview_width}x${preview_height}" "$image_path" 2>/dev/null
+  # Show graphics preview first (if not symbols)
+  if [[ "$protocol" != "symbols" ]]; then
+    echo -e "\033[90m┌─ $preview_label ─────────────────────────────────────\033[0m"
+    chafa "${chafa_args[@]}" "$image_path" 2>/dev/null || {
+      echo -e "\033[33m[Graphics preview failed]\033[0m"
+    }
+    echo -e "\033[90m└───────────────────────────────────────────────────────\033[0m"
+    echo ""
+  fi
+
+  # Always show ASCII fallback for compatibility (logs, non-graphics terminals, etc.)
+  echo -e "\033[90m┌─ Preview: ASCII (braille) ────────────────────────────\033[0m"
+  chafa --format=symbols --symbols=braille+stipple --size="${preview_width}x${preview_height}" "$image_path" 2>/dev/null || {
+    echo -e "\033[33m[ASCII preview failed]\033[0m"
   }
   echo -e "\033[90m└───────────────────────────────────────────────────────\033[0m"
 }
