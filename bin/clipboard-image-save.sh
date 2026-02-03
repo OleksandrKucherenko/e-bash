@@ -7,7 +7,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-02-03
-## Version: 2.4.1
+## Version: 2.5.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -209,8 +209,9 @@ display_image_preview() {
   fi
 
   # Always show ASCII fallback for compatibility (logs, non-graphics terminals, etc.)
-  echo -e "\033[90m┌─ Preview: ASCII (braille) ────────────────────────────\033[0m"
-  chafa --format=symbols --symbols=braille+stipple --size="${preview_width}x${preview_height}" "$image_path" 2>/dev/null || {
+  # Use sextant for highest detail (2x3 pixel blocks per character)
+  echo -e "\033[90m┌─ Preview: ASCII (sextant blocks) ─────────────────────\033[0m"
+  chafa --format=symbols --symbols=sextant --size="${preview_width}x${preview_height}" "$image_path" 2>/dev/null || {
     echo -e "\033[33m[ASCII preview failed]\033[0m"
   }
   echo -e "\033[90m└───────────────────────────────────────────────────────\033[0m"
