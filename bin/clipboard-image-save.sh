@@ -7,7 +7,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-02-03
-## Version: 2.3.0
+## Version: 2.4.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -112,6 +112,7 @@ detect_terminal_graphics() {
   local protocol="symbols"
   local term_program="${TERM_PROGRAM:-}"
   local term="${TERM:-}"
+  local in_ssh="${SSH_CONNECTION:+yes}"
 
   # Phase 1: Quick detection based on known terminals
   case "$term_program" in
@@ -126,6 +127,14 @@ detect_terminal_graphics() {
     case "$term" in
       *kitty*) protocol="kitty" ;;
       *sixel*) protocol="sixels" ;;
+      xterm-256color)
+        # Over SSH, many modern terminals support sixels
+        # This includes Tabby, WezTerm, and others
+        if [[ -n "$in_ssh" ]]; then
+          # Try sixels first for SSH sessions with modern terminals
+          protocol="sixels"
+        fi
+        ;;
     esac
   fi
 
