@@ -15,10 +15,10 @@ export DEBUG=${DEBUG:-"demo-curl,-loader,-parser,-common"}
   readonly E_BASH
 }
 
+export SKIP_ARGS_PARSING=1
+
 # shellcheck disable=SC1090 source=../.scripts/_arguments.sh
 source "$E_BASH/_arguments.sh"
-
-export SKIP_ARGS_PARSING=1
 
 # pre-declare variables to make shellcheck happy
 declare help request header data url verbose args_command
