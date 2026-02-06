@@ -336,4 +336,99 @@ Describe 'args:completion /'
       The stdout should not include '<package-name>'
     End
   End
+
+  Describe '_args:completion:dir /'
+
+    It 'returns a bash completion directory path'
+      When call _args:completion:dir bash
+
+      The status should be success
+      The stdout should include 'bash-completion/completions'
+    End
+
+    It 'returns a zsh completion directory path'
+      When call _args:completion:dir zsh
+
+      The status should be success
+      The stdout should be present
+    End
+
+    It 'rejects unsupported shell type'
+      When call _args:completion:dir fish
+
+      The status should be failure
+      The stderr should include 'unsupported shell type'
+    End
+
+    It 'respects BASH_COMPLETION_USER_DIR override'
+      setup() {
+        export BASH_COMPLETION_USER_DIR="${SHELLSPEC_TMPBASE}/custom-bash"
+        mkdir -p "${BASH_COMPLETION_USER_DIR}/completions"
+      }
+      BeforeCall 'setup'
+
+      When call _args:completion:dir bash
+
+      The status should be success
+      The stdout should include 'custom-bash/completions'
+    End
+  End
+
+  Describe 'args:completion:install /'
+
+    It 'prints usage on missing arguments'
+      When call args:completion:install
+
+      The status should be failure
+      The stderr should include 'Usage:'
+    End
+
+    It 'installs bash completion to discovered directory'
+      setup() {
+        export ARGS_DEFINITION="-h,--help"
+        parse:mapping
+        export BASH_COMPLETION_USER_DIR="${SHELLSPEC_TMPBASE}/install-test-bash"
+        mkdir -p "${BASH_COMPLETION_USER_DIR}/completions"
+      }
+      BeforeCall 'setup'
+
+      When call args:completion:install bash testcmd
+
+      The status should be success
+      The stdout should include 'install-test-bash/completions/testcmd'
+      The file "${SHELLSPEC_TMPBASE}/install-test-bash/completions/testcmd" should be exist
+    End
+
+    It 'installs zsh completion with underscore prefix'
+      setup() {
+        export ARGS_DEFINITION="-h,--help"
+        parse:mapping
+        export install_dir="${SHELLSPEC_TMPBASE}/install-test-zsh"
+        mkdir -p "$install_dir"
+      }
+      BeforeCall 'setup'
+
+      # Override the dir function for test isolation
+      _args:completion:dir() { echo "$install_dir"; }
+
+      When call args:completion:install zsh testcmd
+
+      The status should be success
+      The stdout should include '_testcmd'
+    End
+
+    It 'creates directory if it does not exist'
+      setup() {
+        export ARGS_DEFINITION="-h,--help"
+        parse:mapping
+        export BASH_COMPLETION_USER_DIR="${SHELLSPEC_TMPBASE}/nonexistent-dir"
+      }
+      BeforeCall 'setup'
+
+      When call args:completion:install bash testcmd
+
+      The status should be success
+      The path "${SHELLSPEC_TMPBASE}/nonexistent-dir/completions" should be directory
+    End
+  End
 End

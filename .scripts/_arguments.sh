@@ -945,6 +945,145 @@ function args:completion() {
   fi
 }
 
+##
+## Discover the OS completion directory for the given shell type
+##
+## Parameters:
+## - shell_type - "bash" or "zsh", string, required
+##
+## Globals:
+## - reads/listen: BASH_COMPLETION_USER_DIR, XDG_DATA_HOME,
+##                 HOMEBREW_PREFIX
+## - mutate/publish: none (outputs directory path to stdout)
+##
+## Usage:
+## - dir=$(_args:completion:dir bash)
+## - dir=$(_args:completion:dir zsh)
+##
+function _args:completion:dir() {
+  local shell_type="$1"
+
+  case "$shell_type" in
+  bash)
+    # 1. Per-user (bash-completion v2 auto-discovers this)
+    local user_dir="${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions"
+
+    # If BASH_COMPLETION_USER_DIR is explicitly set, always honour it
+    if [[ -n "${BASH_COMPLETION_USER_DIR:-}" ]]; then
+      echo "$user_dir"
+      return 0
+    fi
+
+    # 2. Homebrew (macOS)
+    local brew_prefix="${HOMEBREW_PREFIX:-}"
+    [[ -z "$brew_prefix" ]] && command -v brew &>/dev/null && brew_prefix="$(brew --prefix 2>/dev/null)"
+    local brew_dir="${brew_prefix:+${brew_prefix}/share/bash-completion/completions}"
+
+    # 3. pkg-config (Linux with bash-completion-dev)
+    local pkg_dir=""
+    if command -v pkg-config &>/dev/null && pkg-config --exists bash-completion 2>/dev/null; then
+      pkg_dir="$(pkg-config --variable=completionsdir bash-completion 2>/dev/null)"
+    fi
+
+    # 4. Standard system dirs
+    local sys_dirs=(/usr/share/bash-completion/completions /usr/local/share/bash-completion/completions)
+
+    # Return the first writable directory that exists
+    for dir in "$user_dir" "$brew_dir" "$pkg_dir" "${sys_dirs[@]}"; do
+      [[ -z "$dir" ]] && continue
+      if [[ -d "$dir" ]] && [[ -w "$dir" ]]; then
+        echo "$dir"
+        return 0
+      fi
+    done
+
+    # Fall back to user dir (create it during install)
+    echo "$user_dir"
+    ;;
+  zsh)
+    # 1. Homebrew (macOS) — already in fpath
+    local brew_prefix="${HOMEBREW_PREFIX:-}"
+    [[ -z "$brew_prefix" ]] && command -v brew &>/dev/null && brew_prefix="$(brew --prefix 2>/dev/null)"
+    local brew_dir="${brew_prefix:+${brew_prefix}/share/zsh/site-functions}"
+
+    # 2. System dirs
+    local sys_dirs=(/usr/local/share/zsh/site-functions /usr/share/zsh/site-functions)
+
+    # 3. Per-user fallback
+    local user_dir="$HOME/.zsh/completions"
+
+    for dir in "$brew_dir" "${sys_dirs[@]}" "$user_dir"; do
+      [[ -z "$dir" ]] && continue
+      if [[ -d "$dir" ]] && [[ -w "$dir" ]]; then
+        echo "$dir"
+        return 0
+      fi
+    done
+
+    # Fall back to user dir
+    echo "$user_dir"
+    ;;
+  *)
+    echo "Error: unsupported shell type '${shell_type}'." >&2
+    return 1
+    ;;
+  esac
+}
+
+##
+## Install completion script to the appropriate OS directory
+##
+## Discovers the correct completion directory for the target shell,
+## creates it if necessary, and writes the generated script.
+##
+## Parameters:
+## - shell_type - "bash" or "zsh", string, required
+## - script_name - Command name for completion, string, required
+##
+## Globals:
+## - reads/listen: ARGS_DEFINITION, lookup_arguments, etc.
+## - mutate/publish: none (writes file, outputs path to stdout)
+##
+## Usage:
+## - args:completion:install bash myscript
+## - args:completion:install zsh myscript
+##
+function args:completion:install() {
+  local shell_type="$1"
+  local script_name="$2"
+
+  if [[ -z "$shell_type" ]] || [[ -z "$script_name" ]]; then
+    echo "Usage: args:completion:install <bash|zsh> <script_name>" >&2
+    return 1
+  fi
+
+  local dir="" file=""
+  dir=$(_args:completion:dir "$shell_type") || return 1
+
+  case "$shell_type" in
+  bash)
+    file="${dir}/${script_name}"
+    ;;
+  zsh)
+    local safe_name="${script_name//[^a-zA-Z0-9_]/_}"
+    file="${dir}/_${safe_name}"
+    ;;
+  esac
+
+  # Create directory if needed
+  if [[ ! -d "$dir" ]]; then
+    mkdir -p "$dir" || {
+      echo "Error: cannot create directory '${dir}'." >&2
+      return 1
+    }
+  fi
+
+  # Generate and write
+  args:completion "$shell_type" "$script_name" "$file" || return 1
+
+  echo "$file"
+}
+
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 # DO NOT allow execution of code bellow those line in shellspec tests

@@ -47,8 +47,16 @@ if [[ "$help" == "1" ]]; then
   exit 0
 fi
 
-# Handle --generate-completion (manual check since it's meta, not part of ARGS_DEFINITION)
+# Handle --install-completion (auto-discover OS directory and install)
 for arg in "$@"; do
+  if [[ "$arg" == "--install-completion" ]]; then
+    shift
+    shell_type="${1:-bash}"
+    file=$(args:completion:install "$shell_type" "demo.completion.sh")
+    echo "Completion installed: $file"
+    [[ "$shell_type" == "zsh" ]] && echo "Note: run 'rm -f ~/.zcompdump; compinit' or restart your shell."
+    exit 0
+  fi
   if [[ "$arg" == "--generate-completion" ]]; then
     shift
     shell_type="${1:-bash}"
@@ -68,11 +76,15 @@ Samples:
   demos/demo.completion.sh --help
   demos/demo.completion.sh --verbose -o result.txt -f json
 
-Generate completion scripts:
-  demos/demo.completion.sh --generate-completion bash > ~/.local/share/bash-completion/completions/demo.completion.sh
-  demos/demo.completion.sh --generate-completion zsh  > ~/.zsh/completion/_demo_completion
+Install completion (auto-discovers the right OS directory):
+  demos/demo.completion.sh --install-completion bash
+  demos/demo.completion.sh --install-completion zsh
 
-Or use args:completion directly (after sourcing _arguments.sh):
-  args:completion bash demo.completion.sh
-  args:completion zsh demo.completion.sh /path/to/_demo_completion
+Generate completion scripts (manual):
+  demos/demo.completion.sh --generate-completion bash
+  demos/demo.completion.sh --generate-completion zsh
+
+Or use the API directly (after sourcing _arguments.sh):
+  args:completion:install bash demo.completion.sh    # auto-install
+  args:completion bash demo.completion.sh            # print to stdout
 OUTPUT
