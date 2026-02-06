@@ -124,9 +124,11 @@ Scripts can offer `--install-completion` as a convenience flag:
 
 ```bash
 #!/usr/bin/env bash
-source "$E_BASH/_arguments.sh"
 
+export SKIP_ARGS_PARSING=1
 export ARGS_DEFINITION="-h,--help -o,--output=output::1"
+
+source "$E_BASH/_arguments.sh"
 
 if [[ "$1" == "--install-completion" ]]; then
   shell="${2:-bash}"
@@ -137,6 +139,10 @@ fi
 
 parse:arguments "$@"
 ```
+
+**Important:** `SKIP_ARGS_PARSING` and `ARGS_DEFINITION` must be set
+*before* `source "$E_BASH/_arguments.sh"`. The module auto-parses `$@`
+during sourcing unless `SKIP_ARGS_PARSING` is set.
 
 ## Example
 
