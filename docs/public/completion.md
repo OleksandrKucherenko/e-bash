@@ -158,6 +158,10 @@ demos/demo.completion.sh --generate-completion bash
 demos/demo.completion.sh --generate-completion zsh
 ```
 
+For an end-to-end terminal validation flow (generation, installation, and
+interactive Tab checks), see
+`docs/public/completion-zsh-manual-testing.md`.
+
 ## OS Completion Directory Discovery
 
 The `_args:completion:dir` function uses this priority for finding a writable
