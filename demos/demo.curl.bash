@@ -11,13 +11,39 @@ __demo_curl_value_flags=()
 __demo_curl_commands=()
 __demo_curl_request_enum=()
 
+__demo_curl_resolve_data_file() {
+  local command_word="${1:-}" data_file="" command_path="" script_dir=""
+
+  script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>&- && pwd)
+
+  if [[ -n "$command_word" ]]; then
+    if [[ "$command_word" == */* ]] && [[ -f "$command_word" ]]; then
+      command_path=$(cd "$(dirname "$command_word")" 2>&- && pwd)/$(basename "$command_word")
+    elif command -v "$command_word" >/dev/null 2>&1; then
+      command_path="$(command -v "$command_word")"
+    fi
+  fi
+
+  [[ -f "$command_path" ]] && {
+    echo "$command_path"
+    return 0
+  }
+
+  data_file="${script_dir}/demo.curl.sh"
+  [[ -f "$data_file" ]] && {
+    echo "$data_file"
+    return 0
+  }
+
+  return 1
+}
+
 __demo_curl_load_data() {
-  local data_line="" data_file="" script_dir=""
+  local data_line="" data_file="" command_word="${1:-}"
 
   [[ -n "$__demo_curl_loaded" ]] && return 0
 
-  script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>&- && pwd)
-  data_file="${script_dir}/demo.curl.sh"
+  data_file="$(__demo_curl_resolve_data_file "$command_word")" || return 1
 
   while IFS= read -r data_line; do
     case "$data_line" in
@@ -40,7 +66,7 @@ __demo_curl_load_data() {
 }
 
 _demo_curl_complete() {
-  local cur="" prev="" words=() cword=0
+  local cur="" prev="" words=() cword=0 command_word=""
 
   if declare -F _init_completion >/dev/null 2>&1; then
     _init_completion -n : || return
@@ -51,7 +77,8 @@ _demo_curl_complete() {
     cword=$COMP_CWORD
   fi
 
-  __demo_curl_load_data
+  command_word="${COMP_WORDS[0]}"
+  __demo_curl_load_data "$command_word" || return 0
 
   if [[ " ${__demo_curl_value_flags[*]} " == *" ${prev} "* ]]; then
     if [[ "$prev" == "--request" || "$prev" == "-X" ]]; then
@@ -72,4 +99,18 @@ _demo_curl_complete() {
   fi
 }
 
-complete -F _demo_curl_complete demo-curl
+_demo_curl_register() {
+  local names=(
+    demo-curl
+    demo.curl.sh
+    demos/demo.curl.sh
+    ./demos/demo.curl.sh
+  )
+  local one=""
+
+  for one in "${names[@]}"; do
+    complete -F _demo_curl_complete "$one"
+  done
+}
+
+_demo_curl_register

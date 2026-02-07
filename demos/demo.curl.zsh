@@ -1,23 +1,49 @@
-#compdef demo-curl
+#compdef demo-curl demo.curl.sh demos/demo.curl.sh ./demos/demo.curl.sh
 
 # Zsh completion for demo.curl.sh
 # Usage (zsh):
-#   fpath=("${0:A:h}" $fpath)
-#   autoload -U compinit && compinit
+#   autoload -Uz compinit && compinit
+#   source demos/demo.curl.zsh
 
 __demo_curl_loaded=""
 __demo_curl_flags=()
 __demo_curl_value_flags=()
 __demo_curl_commands=()
 __demo_curl_request_enum=()
+__demo_curl_source_file="${${(%):-%N}:A}"
+__demo_curl_script_dir="${__demo_curl_source_file:h}"
+
+__demo_curl_resolve_data_file() {
+  local command_word="${1:-}" command_path="" data_file=""
+
+  if [[ -n "$command_word" ]]; then
+    if [[ "$command_word" == */* ]] && [[ -f "$command_word" ]]; then
+      command_path="${command_word:A}"
+    elif (( ${+commands[$command_word]} )); then
+      command_path="${commands[$command_word]}"
+    fi
+  fi
+
+  [[ -f "$command_path" ]] && {
+    echo "$command_path"
+    return 0
+  }
+
+  data_file="${__demo_curl_script_dir}/demo.curl.sh"
+  [[ -f "$data_file" ]] && {
+    echo "$data_file"
+    return 0
+  }
+
+  return 1
+}
 
 __demo_curl_load_data() {
-  local data_line="" data_file="" script_dir=""
+  local data_line="" data_file="" command_word="${1:-}"
 
   [[ -n "$__demo_curl_loaded" ]] && return 0
 
-  script_dir="${0:A:h}"
-  data_file="${script_dir}/demo.curl.sh"
+  data_file="$(__demo_curl_resolve_data_file "$command_word")" || return 1
 
   while IFS= read -r data_line; do
     case "$data_line" in
@@ -40,14 +66,15 @@ __demo_curl_load_data() {
 }
 
 _demo_curl_complete() {
-  local cur="" prev=""
+  local cur="" prev="" command_word=""
 
   setopt local_options no_aliases
 
   cur="${words[CURRENT]}"
   prev="${words[CURRENT-1]}"
 
-  __demo_curl_load_data
+  command_word="${words[1]}"
+  __demo_curl_load_data "$command_word" || return 0
 
   if [[ " ${__demo_curl_value_flags[*]} " == *" ${prev} "* ]]; then
     if [[ "$prev" == "--request" || "$prev" == "-X" ]]; then
@@ -68,4 +95,16 @@ _demo_curl_complete() {
   fi
 }
 
-compdef _demo_curl_complete demo-curl
+_demo_curl_register() {
+  local script_path="${__demo_curl_script_dir}/demo.curl.sh"
+  local -a names=(
+    demo-curl
+    demo.curl.sh
+    demos/demo.curl.sh
+    ./demos/demo.curl.sh
+    "${script_path}"
+  )
+  compdef _demo_curl_complete "${names[@]}"
+}
+
+(( $+functions[compdef] )) && _demo_curl_register

@@ -43,3 +43,16 @@ alias demo-curl="$(pwd)/demos/demo.curl.sh"
 fpath=("$(pwd)/demos" $fpath)
 autoload -U compinit && compinit
 ```
+
+## Auto-install completion
+
+The demo script can install completion files automatically:
+
+```bash
+# Use explicit shell or pass current shell path, for example: "$SHELL"
+demos/demo.curl.sh --completion-install zsh
+demos/demo.curl.sh --completion-install bash
+```
+
+After installation, the script prints activation instructions for the selected
+shell.
