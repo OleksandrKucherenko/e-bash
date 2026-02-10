@@ -1444,6 +1444,658 @@ function config:hierarchy:xdg() {
   fi
 }
 
+# --- Multi-line Input: Internal State ---
+
+# Module-internal state for multi-line editor
+declare -g -a __ML_LINES=("")
+declare -g -i __ML_ROW=0
+declare -g -i __ML_COL=0
+declare -g -i __ML_SCROLL=0
+declare -g -i __ML_WIDTH=80
+declare -g -i __ML_HEIGHT=24
+
+##
+## Initialize multi-line editor state
+##
+## Parameters:
+## - width - Editor width in columns, integer, default: 80
+## - height - Editor height in rows, integer, default: 24
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_WIDTH, __ML_HEIGHT
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:init 80 24
+##
+function _input:ml:init() {
+  __ML_WIDTH=${1:-80}
+  __ML_HEIGHT=${2:-24}
+  __ML_ROW=0
+  __ML_COL=0
+  __ML_SCROLL=0
+  __ML_LINES=("")
+}
+
+##
+## Insert a character at current cursor position
+##
+## Parameters:
+## - char - Character to insert, string, required
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES
+## - mutate/publish: __ML_LINES, __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:insert-char "a"
+##
+function _input:ml:insert-char() {
+  local char="$1"
+  local line="${__ML_LINES[$__ML_ROW]}"
+  __ML_LINES[$__ML_ROW]="${line:0:$__ML_COL}${char}${line:$__ML_COL}"
+  __ML_COL=$((__ML_COL + 1))
+}
+
+##
+## Delete character before cursor (backspace behavior)
+##
+## When cursor is at column 0 and not on the first line,
+## joins the current line with the previous line.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES, __ML_HEIGHT
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:delete-char
+##
+function _input:ml:delete-char() {
+  if [[ $__ML_COL -gt 0 ]]; then
+    local line="${__ML_LINES[$__ML_ROW]}"
+    __ML_LINES[$__ML_ROW]="${line:0:$((__ML_COL - 1))}${line:$__ML_COL}"
+    __ML_COL=$((__ML_COL - 1))
+  elif [[ $__ML_ROW -gt 0 ]]; then
+    # Join with previous line
+    local current_line="${__ML_LINES[$__ML_ROW]}"
+    unset "__ML_LINES[$__ML_ROW]"
+    __ML_LINES=("${__ML_LINES[@]}") # Re-index
+    __ML_ROW=$((__ML_ROW - 1))
+    local prev_line="${__ML_LINES[$__ML_ROW]}"
+    __ML_COL=${#prev_line}
+    __ML_LINES[$__ML_ROW]="${prev_line}${current_line}"
+    _input:ml:scroll
+  fi
+}
+
+##
+## Delete word backward from cursor position
+##
+## Deletes characters backward until a space boundary or beginning of line.
+## Deletes trailing spaces first, then the word.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES
+## - mutate/publish: __ML_LINES, __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:delete-word
+##
+function _input:ml:delete-word() {
+  [[ $__ML_COL -eq 0 ]] && return 0
+  local line="${__ML_LINES[$__ML_ROW]}"
+  # Delete trailing spaces first
+  while [[ $__ML_COL -gt 0 && "${line:$((__ML_COL - 1)):1}" == " " ]]; do
+    line="${line:0:$((__ML_COL - 1))}${line:$__ML_COL}"
+    __ML_COL=$((__ML_COL - 1))
+  done
+  # Delete word characters
+  while [[ $__ML_COL -gt 0 && "${line:$((__ML_COL - 1)):1}" != " " ]]; do
+    line="${line:0:$((__ML_COL - 1))}${line:$__ML_COL}"
+    __ML_COL=$((__ML_COL - 1))
+  done
+  __ML_LINES[$__ML_ROW]="$line"
+}
+
+##
+## Insert newline at cursor position (split current line)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES, __ML_HEIGHT
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:insert-newline
+##
+function _input:ml:insert-newline() {
+  local line="${__ML_LINES[$__ML_ROW]}"
+  local before="${line:0:$__ML_COL}"
+  local after="${line:$__ML_COL}"
+  __ML_LINES[$__ML_ROW]="$before"
+  __ML_LINES=("${__ML_LINES[@]:0:$((__ML_ROW + 1))}" "$after" "${__ML_LINES[@]:$((__ML_ROW + 1))}")
+  __ML_ROW=$((__ML_ROW + 1))
+  __ML_COL=0
+  _input:ml:scroll
+}
+
+##
+## Move cursor up one line
+##
+## Clamps column to target line length if shorter.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES
+## - mutate/publish: __ML_ROW, __ML_COL, __ML_SCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:move-up
+##
+function _input:ml:move-up() {
+  [[ $__ML_ROW -le 0 ]] && return 0
+  ((__ML_ROW--))
+  local len=${#__ML_LINES[$__ML_ROW]}
+  [[ $__ML_COL -gt $len ]] && __ML_COL=$len
+  _input:ml:scroll
+}
+
+##
+## Move cursor down one line
+##
+## Clamps column to target line length if shorter.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES
+## - mutate/publish: __ML_ROW, __ML_COL, __ML_SCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:move-down
+##
+function _input:ml:move-down() {
+  local last=$(( ${#__ML_LINES[@]} - 1 ))
+  [[ $__ML_ROW -ge $last ]] && return 0
+  __ML_ROW=$((__ML_ROW + 1))
+  local len=${#__ML_LINES[$__ML_ROW]}
+  [[ $__ML_COL -gt $len ]] && __ML_COL=$len
+  _input:ml:scroll
+}
+
+##
+## Move cursor left one column
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_COL
+## - mutate/publish: __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:move-left
+##
+function _input:ml:move-left() {
+  [[ $__ML_COL -gt 0 ]] && __ML_COL=$((__ML_COL - 1))
+  return 0
+}
+
+##
+## Move cursor right one column
+##
+## Clamps to end of current line.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_COL, __ML_ROW, __ML_LINES
+## - mutate/publish: __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:move-right
+##
+function _input:ml:move-right() {
+  local len=${#__ML_LINES[$__ML_ROW]}
+  [[ $__ML_COL -lt $len ]] && __ML_COL=$((__ML_COL + 1))
+  return 0
+}
+
+##
+## Move cursor to beginning of current line
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:move-home
+##
+function _input:ml:move-home() {
+  __ML_COL=0
+}
+
+##
+## Move cursor to end of current line
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_LINES
+## - mutate/publish: __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:move-end
+##
+function _input:ml:move-end() {
+  __ML_COL=${#__ML_LINES[$__ML_ROW]}
+}
+
+##
+## Adjust scroll offset to keep cursor visible
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_HEIGHT, __ML_SCROLL
+## - mutate/publish: __ML_SCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:scroll
+##
+function _input:ml:scroll() {
+  # Scroll down
+  if [[ $__ML_ROW -ge $((__ML_SCROLL + __ML_HEIGHT)) ]]; then
+    __ML_SCROLL=$((__ML_ROW - __ML_HEIGHT + 1))
+  fi
+  # Scroll up
+  if [[ $__ML_ROW -lt $__ML_SCROLL ]]; then
+    __ML_SCROLL=$__ML_ROW
+  fi
+}
+
+##
+## Get buffer content as multi-line string
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_LINES
+## - mutate/publish: none
+##
+## Returns:
+## - Echoes all lines joined by newlines
+##
+## Usage:
+## - content=$(_input:ml:get-content)
+##
+function _input:ml:get-content() {
+  local i
+  for ((i = 0; i < ${#__ML_LINES[@]}; i++)); do
+    if [[ $i -gt 0 ]]; then
+      printf '\n'
+    fi
+    printf '%s' "${__ML_LINES[$i]}"
+  done
+  printf '\n'
+}
+
+##
+## Insert tab as spaces at cursor position
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES
+## - mutate/publish: __ML_LINES, __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:insert-tab
+##
+function _input:ml:insert-tab() {
+  _input:ml:insert-char " "
+  _input:ml:insert-char " "
+}
+
+##
+## Paste text at cursor position (handles multi-line)
+##
+## Parameters:
+## - text - Text to paste (may contain newlines), string, required
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:paste "Hello\nWorld"
+##
+function _input:ml:paste() {
+  local text="$1"
+  local -a paste_lines
+  local line
+
+  # Split text by newlines
+  while IFS= read -r line; do
+    paste_lines+=("$line")
+  done <<<"$text"
+
+  # Insert first line at cursor position
+  if [[ ${#paste_lines[@]} -eq 1 ]]; then
+    # Single line paste - insert characters
+    local chars="${paste_lines[0]}"
+    local current="${__ML_LINES[$__ML_ROW]}"
+    __ML_LINES[$__ML_ROW]="${current:0:$__ML_COL}${chars}${current:$__ML_COL}"
+    __ML_COL=$((__ML_COL + ${#chars}))
+  else
+    # Multi-line paste
+    local current="${__ML_LINES[$__ML_ROW]}"
+    local before="${current:0:$__ML_COL}"
+    local after="${current:$__ML_COL}"
+
+    # First line: append to current position
+    __ML_LINES[$__ML_ROW]="${before}${paste_lines[0]}"
+
+    # Middle lines: insert after current row
+    local i
+    for ((i = 1; i < ${#paste_lines[@]} - 1; i++)); do
+      __ML_LINES=("${__ML_LINES[@]:0:$((__ML_ROW + i))}" "${paste_lines[$i]}" "${__ML_LINES[@]:$((__ML_ROW + i))}")
+    done
+
+    # Last line: prepend remaining content
+    local last_idx=$(( ${#paste_lines[@]} - 1 ))
+    local last_line="${paste_lines[$last_idx]}"
+    __ML_LINES=("${__ML_LINES[@]:0:$((__ML_ROW + last_idx))}" "${last_line}${after}" "${__ML_LINES[@]:$((__ML_ROW + last_idx))}")
+
+    __ML_ROW=$((__ML_ROW + last_idx))
+    __ML_COL=${#last_line}
+  fi
+}
+
+##
+## Delete current line content (Ctrl+U behavior)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW
+## - mutate/publish: __ML_LINES, __ML_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:delete-line
+##
+function _input:ml:delete-line() {
+  __ML_LINES[$__ML_ROW]=""
+  __ML_COL=0
+}
+
+##
+## Render the multi-line editor to terminal
+##
+## Parameters:
+## - pos_x - Left offset, integer, default: 0
+## - pos_y - Top offset, integer, default: 0
+##
+## Globals:
+## - reads/listen: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_WIDTH, __ML_HEIGHT
+## - mutate/publish: none
+##
+## Side effects:
+## - Writes ANSI escape sequences to stderr
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:render 0 0
+##
+function _input:ml:render() {
+  local pos_x=${1:-0} pos_y=${2:-0}
+
+  # Hide cursor during render
+  printf "\033[?25l" >&2
+
+  local i buf_idx line_content padding
+  for ((i = 0; i < __ML_HEIGHT; i++)); do
+    buf_idx=$((i + __ML_SCROLL))
+    line_content=""
+
+    if [[ $buf_idx -lt ${#__ML_LINES[@]} ]]; then
+      line_content="${__ML_LINES[$buf_idx]}"
+    elif [[ $buf_idx -eq ${#__ML_LINES[@]} ]]; then
+      line_content="~"
+    fi
+
+    # Truncate to fit width
+    if [[ ${#line_content} -gt $__ML_WIDTH ]]; then
+      line_content="${line_content:0:$__ML_WIDTH}"
+    fi
+
+    # Pad with spaces
+    padding=$((__ML_WIDTH - ${#line_content}))
+    if [[ $padding -gt 0 ]]; then
+      line_content="${line_content}$(printf '%*s' "$padding" "")"
+    fi
+
+    # Draw at position
+    printf "\033[%d;%dH" "$((pos_y + i + 1))" "$((pos_x + 1))" >&2
+    printf "\033[44m\033[37m%s\033[0m" "$line_content" >&2
+  done
+
+  # Show cursor at correct position
+  local visual_row=$((__ML_ROW - __ML_SCROLL))
+  local visual_col=$__ML_COL
+  [[ $visual_col -ge $__ML_WIDTH ]] && visual_col=$((__ML_WIDTH - 1))
+
+  printf "\033[%d;%dH" "$((pos_y + visual_row + 1))" "$((pos_x + visual_col + 1))" >&2
+  printf "\033[?25h" >&2
+}
+
+##
+## Interactive multi-line text editor in terminal
+##
+## Opens a modal text editor at specified position with configurable dimensions.
+## Supports arrow key navigation, backspace, word delete, newline, tab, paste.
+## Press Ctrl+D to save and exit, Esc to cancel.
+##
+## Parameters:
+## - -x pos_x - Left offset, integer, default: 0
+## - -y pos_y - Top offset, integer, default: 0
+## - -w width - Editor width, integer, default: terminal width
+## - -h height - Editor height, integer, default: terminal height
+##
+## Globals:
+## - reads/listen: TERM, cl_grey, cl_reset
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL
+##
+## Side effects:
+## - Saves/restores terminal state (stty)
+## - Traps INT/TERM/EXIT for cleanup
+## - Reads raw keyboard input
+## - Renders to terminal via ANSI escape sequences
+##
+## Returns:
+## - 0 on save (Ctrl+D), 1 on cancel (Esc)
+## - Echoes captured text to stdout
+##
+## Usage:
+## - text=$(input:multi-line)
+## - text=$(input:multi-line -w 60 -h 10 -x 5 -y 2)
+##
+function input:multi-line() {
+  local pos_x=0 pos_y=0 width height
+
+  # Detect terminal dimensions
+  width=$(tput cols 2>/dev/null || echo 80)
+  height=$(tput lines 2>/dev/null || echo 24)
+
+  # Parse arguments
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+    -x) pos_x="$2"; shift ;;
+    -y) pos_y="$2"; shift ;;
+    -w) width="$2"; shift ;;
+    -h) height="$2"; shift ;;
+    *) shift; continue ;;
+    esac
+    shift
+  done
+
+  _input:ml:init "$width" "$height"
+
+  # Detect clipboard paste command
+  local paste_cmd=""
+  if command -v xclip >/dev/null 2>&1; then
+    paste_cmd="xclip -o -selection clipboard"
+  elif command -v pbpaste >/dev/null 2>&1; then
+    paste_cmd="pbpaste"
+  fi
+
+  # Save terminal state
+  local saved_stty
+  saved_stty=$(stty -g)
+  stty raw -echo
+
+  # Cleanup on exit
+  local __ml_cancelled=0
+  function _input:ml:cleanup() {
+    stty "$saved_stty"
+    printf "\033[%d;0H\n" "$((pos_y + __ML_HEIGHT + 1))" >&2
+  }
+  trap '_input:ml:cleanup; exit' INT TERM
+
+  local c0 code esc rest
+
+  while true; do
+    _input:ml:render "$pos_x" "$pos_y"
+
+    IFS= read -rsn1 c0
+
+    if [[ "$c0" == $'\x1b' ]]; then
+      read -rsn2 -t 0.1 rest
+      case "$rest" in
+      "[A") _input:ml:move-up ;;      # Up arrow
+      "[B") _input:ml:move-down ;;    # Down arrow
+      "[C") _input:ml:move-right ;;   # Right arrow
+      "[D") _input:ml:move-left ;;    # Left arrow
+      "[H") _input:ml:move-home ;;    # Home
+      "[F") _input:ml:move-end ;;     # End
+      "")   __ml_cancelled=1; break ;; # Esc (cancel)
+      *) ;;                            # Ignore other sequences
+      esac
+    else
+      code=$(printf '%02x' "'$c0")
+      case "$code" in
+      04)                              # Ctrl+D (save)
+        break
+        ;;
+      7f | 08)                         # Backspace / Delete
+        _input:ml:delete-char
+        ;;
+      17)                              # Ctrl+W (delete word)
+        _input:ml:delete-word
+        ;;
+      15)                              # Ctrl+U (delete line)
+        _input:ml:delete-line
+        ;;
+      16)                              # Ctrl+V (paste)
+        if [[ -n "$paste_cmd" ]]; then
+          local clipboard_text
+          clipboard_text=$($paste_cmd 2>/dev/null)
+          [[ -n "$clipboard_text" ]] && _input:ml:paste "$clipboard_text"
+        fi
+        ;;
+      ""|00|0a|0d)                     # Enter
+        _input:ml:insert-newline
+        ;;
+      09)                              # Tab
+        _input:ml:insert-tab
+        ;;
+      *)                               # Printable character
+        if [[ "$c0" =~ [[:print:]] ]]; then
+          _input:ml:insert-char "$c0"
+        fi
+        ;;
+      esac
+    fi
+  done
+
+  # Restore terminal
+  _input:ml:cleanup
+  trap - INT TERM
+
+  if [[ $__ml_cancelled -eq 1 ]]; then
+    return 1
+  fi
+
+  _input:ml:get-content
+}
+
 ##
 ## Interactive menu selector from associative array
 ##
@@ -1631,6 +2283,7 @@ alias isHelp=args:isHelp
 ## Input Functions:
 ## - input:readpwd() - Read password with masking and line editing
 ## - input:selector() - Interactive menu selector from array
+## - input:multi-line() - Interactive multi-line text editor
 ## - validate:input() - Generic input validation
 ## - validate:input:masked() - Masked input validation
 ## - validate:input:yn() - Yes/no input validation
