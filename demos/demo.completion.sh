@@ -14,7 +14,7 @@ export DEBUG=${DEBUG:-"-loader,-parser,-common"}
 export SKIP_ARGS_PARSING=1
 
 # pre-declare variables to make shellcheck happy
-declare help version verbose output format
+declare help version verbose output format completion install_completion
 
 ARGS_DEFINITION=""
 ARGS_DEFINITION+=" -h,--help"
@@ -32,8 +32,13 @@ parse:arguments "$@"
 args:d "-h" "Show help and exit." "global"
 args:d "-v" "Show version and exit." "global"
 args:d "--verbose" "Enable verbose output." "global"
+args:d "--completion" "Print shell completion script (bash or zsh)." "global"
+args:d "--install-completion" "Install shell completion to system directory." "global"
 args:d "-o" "Output file path." "options"
 args:d "-f" "Output format (text, json, csv)." "options"
+
+# auto-dispatch --version, --debug, --completion, --install-completion
+args:dispatch
 
 if [[ "$help" == "1" ]]; then
   echo "demo.completion.sh - demonstrates completion generation from ARGS_DEFINITION"
@@ -41,29 +46,8 @@ if [[ "$help" == "1" ]]; then
   echo "Usage: demos/demo.completion.sh [flags]"
   echo ""
   print:help
-  echo "Completion generation:"
-  echo "  demos/demo.completion.sh --generate-completion bash"
-  echo "  demos/demo.completion.sh --generate-completion zsh"
   exit 0
 fi
-
-# Handle --install-completion (auto-discover OS directory and install)
-for arg in "$@"; do
-  if [[ "$arg" == "--install-completion" ]]; then
-    shift
-    shell_type="${1:-bash}"
-    file=$(args:completion:install "$shell_type" "demo.completion.sh")
-    echo "Completion installed: $file"
-    [[ "$shell_type" == "zsh" ]] && echo "Note: run 'rm -f ~/.zcompdump; compinit' or restart your shell."
-    exit 0
-  fi
-  if [[ "$arg" == "--generate-completion" ]]; then
-    shift
-    shell_type="${1:-bash}"
-    args:completion "$shell_type" "demo.completion.sh"
-    exit 0
-  fi
-done
 
 cat <<OUTPUT
 Demo completion script
@@ -76,13 +60,11 @@ Samples:
   demos/demo.completion.sh --help
   demos/demo.completion.sh --verbose -o result.txt -f json
 
-Install completion (auto-discovers the right OS directory):
+Completion (auto-dispatched by args:dispatch):
+  demos/demo.completion.sh --completion bash
+  demos/demo.completion.sh --completion zsh
   demos/demo.completion.sh --install-completion bash
   demos/demo.completion.sh --install-completion zsh
-
-Generate completion scripts (manual):
-  demos/demo.completion.sh --generate-completion bash
-  demos/demo.completion.sh --generate-completion zsh
 
 Or use the API directly (after sourcing _arguments.sh):
   args:completion:install bash demo.completion.sh    # auto-install

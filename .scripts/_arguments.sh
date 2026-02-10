@@ -52,6 +52,10 @@ function parse:exclude_flags_from_args() {
 # pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 [ -z "$ARGS_DEFINITION" ] && export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
 
+# auto-register completion flags for every script (append only if not already present)
+[[ "$ARGS_DEFINITION" != *"--completion"* ]] && ARGS_DEFINITION+=" --completion=completion::1"
+[[ "$ARGS_DEFINITION" != *"--install-completion"* ]] && ARGS_DEFINITION+=" --install-completion=install_completion::1"
+
 ##
 ## Extract variable name, default value, and quantity from argument definition
 ##
@@ -1084,6 +1088,59 @@ function args:completion:install() {
   echo "$file"
 }
 
+##
+## Auto-dispatch built-in flags after argument parsing.
+##
+## Handles --version, --debug, --completion, and --install-completion
+## so that individual scripts do not need to repeat this boilerplate.
+## NOTE: --help is NOT handled here (scripts have custom help patterns).
+##
+## The function exits the process (exit 0) when a handled flag is detected,
+## so it must be called AFTER parse:arguments.
+##
+## Parameters:
+## - none (reads exported variables set by parse:arguments)
+##
+## Globals:
+## - reads/listen: version, DEBUG, completion, install_completion,
+##                 BASH_SOURCE (to derive the script name)
+## - mutate/publish: DEBUG (for --debug)
+##
+## Usage:
+## - args:dispatch   # call right after parse:arguments
+##
+function args:dispatch() {
+  # --version: print version and exit
+  if [[ -n "${version:-}" ]] && [[ "$version" != "1" ]]; then
+    echo "$version"
+    exit 0
+  fi
+
+  # --debug: ensure DEBUG is exported (parse:arguments already set it)
+  if [[ -n "${DEBUG:-}" ]]; then
+    export DEBUG
+  fi
+
+  # derive script name from the outermost caller
+  local script_name=""
+  script_name="$(basename "${BASH_SOURCE[-1]}" .sh)"
+
+  # --completion <bash|zsh>: print completion script to stdout and exit
+  if [[ -n "${completion:-}" ]]; then
+    args:completion "$completion" "$script_name"
+    exit 0
+  fi
+
+  # --install-completion <bash|zsh>: install completion and exit
+  if [[ -n "${install_completion:-}" ]]; then
+    local file=""
+    file=$(args:completion:install "$install_completion" "$script_name")
+    echo "Completion installed: $file"
+    [[ "$install_completion" == "zsh" ]] && echo "Note: run 'rm -f ~/.zcompdump; compinit' or restart your shell."
+    exit 0
+  fi
+}
+
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 # DO NOT allow execution of code bellow those line in shellspec tests
@@ -1097,6 +1154,7 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 parse:exclude_flags_from_args "$@"                  # pre-filter arguments from flags
 [ -z "$SKIP_ARGS_PARSING" ] && parse:arguments "$@" # parse arguments and assign them to output variables
+[ -z "$SKIP_ARGS_PARSING" ] && args:dispatch         # auto-handle --version, --debug, --completion, --install-completion
 
 ##
 ## Module: Declarative Command-Line Argument Parser
