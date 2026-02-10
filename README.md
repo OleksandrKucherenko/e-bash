@@ -16,6 +16,7 @@
     - [Common(s) Functions And Inputs](#commons-functions-and-inputs)
     - [UI: Selector](#ui-selector)
     - [UI: Ask for Password](#ui-ask-for-password)
+    - [UI: Multi-line Text Editor](#ui-multi-line-text-editor)
     - [Dry-Run Wrapper System](#dry-run-wrapper-system)
     - [Hooks](#hooks)
     - [Semver - Semantic Versioning](#semver---semantic-versioning)
@@ -355,6 +356,26 @@ password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
 
 [API Reference](docs/public/lib/_commons.md#inputreadpwd)
+
+### UI: Multi-line Text Editor
+
+```bash
+source ".scripts/_commons.sh"
+
+# Open a multi-line text editor (Ctrl+D to save, Esc to cancel)
+text=$(input:multi-line -w 60 -h 10)
+
+# Full-screen editor
+text=$(input:multi-line)
+
+# Positioned editor (offset from top-left)
+text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+```
+
+Controls: Arrow keys to navigate, Enter for newline, Backspace to delete,
+Ctrl+W delete word, Ctrl+U delete line, Ctrl+V paste, Tab inserts 2 spaces.
+
+[API Reference](docs/public/lib/_commons.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh)
 
 ### Dry-Run Wrapper System
 

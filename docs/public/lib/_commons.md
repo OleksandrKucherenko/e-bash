@@ -24,6 +24,7 @@ config file discovery, and user interaction.
     - [`env:variable:or:secret:file`](#envvariableorsecretfile)
     - [`env:variable:or:secret:file:optional`](#envvariableorsecretfileoptional)
     - [`git:root`](#gitroot)
+    - [`input:multi-line`](#inputmulti-line)
     - [`input:readpwd`](#inputreadpwd)
     - [`input:selector`](#inputselector)
     - [`print:confirmation`](#printconfirmation)
@@ -371,6 +372,95 @@ Find git repository root directory (handles regular repos, worktrees, submodules
 root=$(git:root)
 type=$(git:root "." "type")  # "regular" or "worktree" or "submodule"
 ```
+
+---
+
+### input:multi-line
+
+Interactive multi-line text editor in terminal
+
+Opens a modal text editor at specified position with configurable dimensions.
+Supports arrow key navigation, backspace, word delete, newline, tab, and clipboard paste.
+Press Ctrl+D to save and exit, Esc to cancel.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `-x` | integer | `0` | Left offset (column position) |
+| `-y` | integer | `0` | Top offset (row position) |
+| `-w` | integer | terminal width | Editor width in columns |
+| `-h` | integer | terminal height | Editor height in rows |
+
+#### Globals
+
+- reads/listen: TERM, cl_grey, cl_reset
+- mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL
+
+#### Side Effects
+
+- Saves/restores terminal state (stty)
+- Traps INT/TERM for cleanup
+- Reads raw keyboard input
+- Renders to terminal via ANSI escape sequences (blue background modal)
+
+#### Keyboard Controls
+
+| Key | Action |
+|-----|--------|
+| Arrow keys | Navigate cursor |
+| Enter | Insert newline |
+| Backspace | Delete character (joins lines at boundary) |
+| Ctrl+D | Save and exit |
+| Esc | Cancel and exit (returns status 1) |
+| Ctrl+W | Delete word backward |
+| Ctrl+U | Delete current line content |
+| Ctrl+V | Paste from clipboard |
+| Tab | Insert 2 spaces |
+| Home | Move to beginning of line |
+| End | Move to end of line |
+
+#### Returns
+
+- 0 on save (Ctrl+D), 1 on cancel (Esc)
+- Echoes captured text to stdout
+
+#### Usage
+
+```bash
+# Full-screen editor
+text=$(input:multi-line)
+
+# Sized and positioned editor
+text=$(input:multi-line -w 60 -h 10 -x 5 -y 2)
+
+# Check if user cancelled
+if text=$(input:multi-line -w 80 -h 20); then
+  echo "Saved: $text"
+else
+  echo "Cancelled"
+fi
+```
+
+#### Internal State Functions
+
+The editor logic is separated into testable pure-state functions:
+
+| Function | Description |
+|----------|-------------|
+| `_input:ml:init` | Initialize editor state |
+| `_input:ml:insert-char` | Insert character at cursor |
+| `_input:ml:delete-char` | Backspace with line-joining |
+| `_input:ml:delete-word` | Delete word backward |
+| `_input:ml:delete-line` | Clear current line |
+| `_input:ml:insert-newline` | Split line at cursor |
+| `_input:ml:insert-tab` | Insert 2 spaces |
+| `_input:ml:paste` | Paste text (handles multi-line) |
+| `_input:ml:move-up/down/left/right` | Cursor movement |
+| `_input:ml:move-home/end` | Line start/end |
+| `_input:ml:scroll` | Viewport scroll adjustment |
+| `_input:ml:get-content` | Extract buffer as string |
+| `_input:ml:render` | Terminal rendering |
 
 ---
 
