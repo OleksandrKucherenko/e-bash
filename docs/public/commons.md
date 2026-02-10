@@ -8,6 +8,7 @@
     - [Configuration File Hierarchy](#configuration-file-hierarchy)
     - [XDG-Compliant Configuration Discovery](#xdg-compliant-configuration-discovery)
     - [Template Variable Expansion](#template-variable-expansion)
+    - [Multi-line Text Input](#multi-line-text-input)
   - [Git Repository Functions](#git-repository-functions)
     - [git:root - Find Git Repository Root](#gitroot---find-git-repository-root)
       - [Function Signature](#function-signature)
@@ -47,6 +48,10 @@
     - [Error Handling](#error-handling)
     - [Configuration File Precedence](#configuration-file-precedence)
     - [Security Considerations](#security-considerations)
+  - [UI Components - Interactive Input](#ui-components---interactive-input)
+    - [input:multi-line - Multi-line Text Editor](#inputmulti-line---multi-line-text-editor)
+    - [input:readpwd - Password Input](#inputreadpwd---password-input)
+    - [input:selector - Menu Selector](#inputselector---menu-selector)
   - [Reference](#reference)
     - [Safety Features](#safety-features-2)
     - [Cross-Platform Compatibility](#cross-platform-compatibility)
@@ -126,6 +131,19 @@ echo "$result"
 
 # Process templates from files using pipeline mode
 cat template.conf | env:resolve > config.conf
+```
+
+### Multi-line Text Input
+
+```bash
+source "$E_BASH/_commons.sh"
+
+# Open a multi-line text editor (Ctrl+D to save, Esc to cancel)
+text=$(input:multi-line -w 60 -h 10)
+echo "Captured: $text"
+
+# Full-screen editor
+commit_msg=$(input:multi-line)
 ```
 
 ## Git Repository Functions
@@ -1009,6 +1027,110 @@ load_safe_config() {
   done <<< "$configs"
 }
 ```
+
+## UI Components - Interactive Input
+
+The `_commons.sh` module provides three interactive terminal input components, each designed for different use cases.
+
+### input:multi-line - Multi-line Text Editor
+
+A full-featured modal text editor that opens directly in the terminal. Supports multi-line editing with arrow key navigation, scrolling, word/line deletion, and clipboard paste.
+
+#### Function Signature
+
+```bash
+text=$(input:multi-line [-x pos_x] [-y pos_y] [-w width] [-h height])
+```
+
+#### Arguments
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `-x` | integer | `0` | Left offset (column position) |
+| `-y` | integer | `0` | Top offset (row position) |
+| `-w` | integer | terminal width | Editor width in columns |
+| `-h` | integer | terminal height | Editor height in rows |
+
+#### Examples
+
+```bash
+source "$E_BASH/_commons.sh"
+
+# Full-screen editor
+text=$(input:multi-line)
+
+# Sized editor (60 columns x 10 rows)
+text=$(input:multi-line -w 60 -h 10)
+
+# Positioned editor with dimensions
+text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+
+# Handle save vs cancel
+if text=$(input:multi-line -w 60 -h 10); then
+  echo "User saved:"
+  echo "$text"
+else
+  echo "User cancelled (Esc)"
+fi
+```
+
+#### Keyboard Controls
+
+| Key | Action |
+|-----|--------|
+| Arrow keys | Navigate cursor (up, down, left, right) |
+| Enter | Insert newline (splits line at cursor) |
+| Backspace | Delete character before cursor; joins lines at boundary |
+| Ctrl+D | Save and exit (returns 0) |
+| Esc | Cancel and exit (returns 1) |
+| Ctrl+W | Delete word backward |
+| Ctrl+U | Clear current line |
+| Ctrl+V | Paste from system clipboard (xclip or pbpaste) |
+| Tab | Insert 2 spaces |
+| Home | Move cursor to beginning of line |
+| End | Move cursor to end of line |
+
+#### Architecture
+
+The editor separates **pure state logic** from **terminal I/O** for testability. All editing operations are implemented as internal `_input:ml:*` functions that manipulate shared state arrays (`__ML_LINES[]`, `__ML_ROW`, `__ML_COL`, `__ML_SCROLL`). These functions are fully unit-testable with ShellSpec (44 tests).
+
+The rendering and input loop (`_input:ml:render`, `input:multi-line`) form a thin I/O wrapper around the state logic.
+
+#### Clipboard Support
+
+Paste (Ctrl+V) auto-detects the available clipboard command:
+- **Linux**: `xclip -o -selection clipboard`
+- **macOS**: `pbpaste`
+
+Multi-line clipboard content is properly split and inserted across multiple lines.
+
+### input:readpwd - Password Input
+
+Single-line password input with character masking (asterisks) and line editing support.
+
+```bash
+source "$E_BASH/_commons.sh"
+
+echo -n "Enter password: "
+password=$(input:readpwd) && echo ""
+echo "Password: $password"
+```
+
+Supports: left/right arrow keys, Home/End, backspace, Esc (reset), Ctrl+U (clear).
+
+### input:selector - Menu Selector
+
+Horizontal menu selector from an associative array with arrow key navigation and character search.
+
+```bash
+source "$E_BASH/_commons.sh"
+
+declare -A -g connections=(["d"]="production" ["s"]="staging" ["p"]="local")
+echo -n "Select: " && tput civis
+selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_reset}"
+```
+
+Supports: left/right arrow keys, Enter (select), Esc (reset), character search.
 
 ## Reference
 

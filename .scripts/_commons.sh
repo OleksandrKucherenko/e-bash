@@ -2260,10 +2260,10 @@ alias isHelp=args:isHelp
 ## config file discovery, and user interaction.
 #
 ## References:
-## - demo: demo.readpswd.sh, demo.selector.sh
+## - demo: demo.readpswd.sh, demo.selector.sh, demo.multi-line.sh
 ## - bin: git.semantic-version.sh, ci.validate-envrc.sh
 ## - documentation: docs/public/commons.md
-## - tests: spec/commons_spec.sh
+## - tests: spec/commons_spec.sh, spec/multi_line_input_spec.sh
 ##
 ## Globals:
 ## - E_BASH - Path to .scripts directory

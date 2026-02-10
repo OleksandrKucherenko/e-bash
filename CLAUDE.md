@@ -332,6 +332,7 @@ trap:on on_exit_update EXIT
 - `docs/public/installation.md` - Detailed installation scenarios
 - `docs/public/logger.md` - Logger usage patterns
 - `docs/public/arguments.md` - Argument parsing guide
+- `docs/public/commons.md` - Commons utilities, UI components, input functions guide
 - `docs/public/hooks.md` - Hooks system comprehensive guide
 - `docs/public/dryrun-wrapper.md` - Dry-run wrapper system guide
 - `docs/public/version-up.md` - Version management guide
