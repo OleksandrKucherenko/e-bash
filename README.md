@@ -368,17 +368,20 @@ text=$(input:multi-line -w 60 -h 10)
 # Full-screen editor with alternative buffer (preserves scroll history)
 text=$(input:multi-line --alt-buffer)
 
-# Positioned editor with custom keybindings
-ML_KEY_SAVE=$'\x13' text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+# Custom keybinding: Ctrl+S to save (use _input:capture-key to discover tokens)
+ML_KEY_SAVE="ctrl-s" text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
 
 # Ctrl+E opens readline for current line (full word movement, history)
+
+# Key capture diagnostic: see hex bytes and tokens for any keypress
+_input:capture-key
 ```
 
 Controls: Arrow keys, Page Up/Down, Home/End to navigate, Enter for newline,
 Backspace to delete, Ctrl+W delete word, Ctrl+U delete line, Ctrl+V paste,
 Ctrl+E readline edit, Tab inserts 2 spaces. Status bar shows position and [+] modified indicator.
 
-[API Reference](docs/public/lib/_commons.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh)
+[API Reference](docs/public/lib/_commons.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh), [Key Capture Demo](demos/demo.capture-key.sh)
 
 ### Dry-Run Wrapper System
 

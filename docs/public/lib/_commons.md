@@ -23,6 +23,8 @@ config file discovery, and user interaction.
     - [`env:resolve`](#envresolve)
     - [`env:variable:or:secret:file`](#envvariableorsecretfile)
     - [`env:variable:or:secret:file:optional`](#envvariableorsecretfileoptional)
+    - [`_input:read-key`](#_inputread-key)
+    - [`_input:capture-key`](#_inputcapture-key)
     - [`git:root`](#gitroot)
     - [`input:multi-line`](#inputmulti-line)
     - [`input:readpwd`](#inputreadpwd)
@@ -375,6 +377,89 @@ type=$(git:root "." "type")  # "regular" or "worktree" or "submodule"
 
 ---
 
+### _input:read-key
+
+Unified key reader for all interactive input components
+
+Reads one logical keypress (including multi-byte escape sequences, xterm modifier encoding, UTF-8, and SS3 sequences) and returns a human-readable semantic token.
+
+All `input:*` functions use this internally. It provides a single, consistent key parsing implementation instead of duplicated hex-matching code.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `-t` | float | (blocking) | Read timeout in seconds |
+| `--raw` | flag | off | Also populate `__INPUT_RAW_BYTES` and `__INPUT_RAW_CHARS` |
+
+#### Token Format
+
+| Category | Examples |
+|----------|---------|
+| Navigation | `up`, `down`, `left`, `right`, `home`, `end`, `page-up`, `page-down` |
+| Modified navigation | `ctrl-up`, `shift-left`, `ctrl-alt-delete`, `shift-f5` |
+| Function keys | `f1`..`f12`, `shift-f5`, `ctrl-f1` |
+| Control | `enter`, `backspace`, `tab`, `escape` |
+| Named ctrl | `ctrl-a`..`ctrl-z`, `ctrl-d`, `ctrl-u`, `ctrl-w` |
+| Alt combos | `alt-a`, `alt-x`, `ctrl-alt-c` |
+| Printable | `char:a`, `char:Z`, `char:1`, `char:!` |
+| Timeout | `timeout` (when `-t` used) |
+
+#### Modifier Encoding (xterm)
+
+Follows the xterm standard: `modifier_code = 1 + sum(Shift=1, Alt=2, Ctrl=4, Meta=8)`
+
+| Code | Modifiers |
+|------|-----------|
+| 2 | Shift |
+| 3 | Alt |
+| 5 | Ctrl |
+| 6 | Ctrl+Shift |
+| 7 | Ctrl+Alt |
+| 8 | Ctrl+Alt+Shift |
+
+#### Usage
+
+```bash
+# Blocking read
+key=$(_input:read-key)
+
+# With timeout (returns 1 and "timeout" token on timeout)
+key=$(_input:read-key -t 0.1) || continue
+
+# With raw byte capture
+_input:read-key --raw
+echo "Token: $key, Hex: $__INPUT_RAW_BYTES"
+```
+
+---
+
+### _input:capture-key
+
+Interactive diagnostic tool that displays every keypress with its semantic token, hex bytes, and bash literal representation.
+
+Use this to discover the exact byte sequence your terminal sends for any key combination, which simplifies `ML_KEY_*` keybinding configuration.
+
+#### Usage
+
+```bash
+source "$E_BASH/_commons.sh"
+_input:capture-key
+```
+
+#### Output Format
+
+```
+Token                    Hex                      Bash literal
+ctrl-up                  1b5b313b3541             $'\x1b\x5b\x31\x3b\x35\x41'
+shift-f5                 1b5b31353b327e           $'\x1b\x5b\x31\x35\x3b\x32\x7e'
+alt-a                    1b61                     $'\x1b\x61'
+```
+
+See also: [Demo script](../../../demos/demo.capture-key.sh)
+
+---
+
 ### input:multi-line
 
 Interactive multi-line text editor in terminal
@@ -401,15 +486,21 @@ Press Ctrl+D to save and exit, Esc to cancel.
 
 #### Configurable Keybindings
 
-All keys can be overridden via environment variables (inspired by the bed editor):
+All keys can be overridden via environment variables using semantic token names
+(use `_input:capture-key` to discover tokens for your terminal):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ML_KEY_SAVE` | Ctrl+D | Save and exit |
-| `ML_KEY_EDIT` | Ctrl+E | Enter readline editing mode for current line |
-| `ML_KEY_PASTE` | Ctrl+V | Paste from clipboard |
-| `ML_KEY_DEL_WORD` | Ctrl+W | Delete word backward |
-| `ML_KEY_DEL_LINE` | Ctrl+U | Clear current line |
+| Variable | Default Token | Description |
+|----------|---------------|-------------|
+| `ML_KEY_SAVE` | `ctrl-d` | Save and exit |
+| `ML_KEY_EDIT` | `ctrl-e` | Enter readline editing mode for current line |
+| `ML_KEY_PASTE` | `ctrl-v` | Paste from clipboard |
+| `ML_KEY_DEL_WORD` | `ctrl-w` | Delete word backward |
+| `ML_KEY_DEL_LINE` | `ctrl-u` | Clear current line |
+
+```bash
+# Example: use Ctrl+S to save instead of Ctrl+D
+ML_KEY_SAVE="ctrl-s" text=$(input:multi-line)
+```
 
 #### Side Effects
 
