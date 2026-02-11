@@ -213,43 +213,24 @@ function input:readpwd() {
 
   reprint "$filler$hint"
 
-  local c0 c1 c2 c3 c4 c5 code esc
-
+  local key
   while :; do
     echo:Common "- $PWORD,$pos"
-    # Note: a NULL will return a empty string; Ctrl + Alt + Shift + Key produce 6 chars
-    IFS= read -r -n 1 -s c0
-    IFS= read -r -n 1 -s -t 0.0001 c1
-    IFS= read -r -n 1 -s -t 0.0001 c2
-    IFS= read -r -n 1 -s -t 0.0001 c3
-    IFS= read -r -n 1 -s -t 0.0001 c4
-    IFS= read -r -n 1 -s -t 0.0001 c5
 
-    # Convert users key press to hexadecimal character code
-    code=$(printf '%02x' "'$c0") # EOL (empty c0) -> 00
-    esc="$(printf '%02x%02x%02x' "'$c0" "'$c1" "'$c2")"
-    printf:Common 'none: %02x%02x%02x%02x%02x%02x' "'$c0" "'$c1" "'$c2" "'$c3" "'$c4" "'$c5"
+    key=$(_input:read-key)
+    echo:Common "key: $key"
 
-    case "$code" in
-    # Escape sequence, read in two more chars
-    1b)
-      # reset input on single escape sequences
-      if [ "$c1" == '' ]; then reset && continue; fi
-
-      case "$esc" in
-      1b5b41) home ;;    # up arrow
-      1b5b42) endline ;; # down arrow
-      1b5b43) right ;;   # right arrow
-      1b5b44) left ;;    # left arrow
-      *) ;;              # Ignore any other escape sequence
-      esac
-      ;;
-    '' | 00 | 0a | 0d) break ;; # Exit EOF, Linefeed or Return
-    08 | 7f) delete ;;          # backspace or delete
-    15) reset ;;                # ^U or kill line
-    [01]?) ;;                   # Ignore ALL other control characters
-    # Note: insert from clipboard can be treated as many chars at once
-    *) add "$c0$c1$c2$c3$c4$c5" ;;
+    case "$key" in
+    up | home)     home ;;
+    down | end)    endline ;;
+    right)         right ;;
+    left)          left ;;
+    enter)         break ;;
+    backspace)     delete ;;
+    escape)        reset ;;
+    ctrl-u)        reset ;;
+    char:*)        add "${key#char:}" ;;
+    *)             ;; # Ignore all other keys
     esac
   done
   # tput rc # Restore cursor position
@@ -1444,6 +1425,365 @@ function config:hierarchy:xdg() {
   fi
 }
 
+# --- Unified Key Input ---
+
+# xterm modifier encoding: modifier_code = 1 + sum(Shift=1, Alt=2, Ctrl=4, Meta=8)
+# Reference: https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+declare -g -A __INPUT_MODIFIER_NAMES=(
+  [1]="" [2]="shift" [3]="alt" [4]="shift-alt"
+  [5]="ctrl" [6]="ctrl-shift" [7]="ctrl-alt" [8]="ctrl-alt-shift"
+  [9]="meta" [10]="meta-shift" [11]="meta-alt" [12]="meta-alt-shift"
+  [13]="meta-ctrl" [14]="meta-ctrl-shift" [15]="meta-ctrl-alt" [16]="meta-ctrl-alt-shift"
+)
+
+# CSI final byte → semantic key name mapping
+declare -g -A __INPUT_CSI_KEYS=(
+  [A]="up" [B]="down" [C]="right" [D]="left" [H]="home" [F]="end"
+)
+# CSI number ~ → semantic key name mapping
+declare -g -A __INPUT_CSI_TILDE_KEYS=(
+  [1]="home" [2]="insert" [3]="delete" [4]="end"
+  [5]="page-up" [6]="page-down"
+  [11]="f1" [12]="f2" [13]="f3" [14]="f4"
+  [15]="f5" [17]="f6" [18]="f7" [19]="f8"
+  [20]="f9" [21]="f10" [23]="f11" [24]="f12"
+)
+
+##
+## Read one logical keypress and output a semantic token
+##
+## Reads raw bytes from the terminal, parses escape sequences
+## (including xterm modifier encoding), and outputs a human-readable
+## token like "ctrl-up", "shift-f5", "char:a", "enter", etc.
+##
+## Parameters:
+## - -t timeout - Read timeout in seconds, float, default: (blocking)
+## - --raw - Also set __INPUT_RAW_BYTES with hex representation
+##
+## Globals:
+## - reads/listen: __INPUT_CSI_KEYS, __INPUT_CSI_TILDE_KEYS, __INPUT_MODIFIER_NAMES
+## - mutate/publish: __INPUT_RAW_BYTES (when --raw), __INPUT_RAW_CHARS (when --raw)
+##
+## Side effects:
+## - Reads from stdin/terminal (expects raw mode: stty raw -echo)
+##
+## Returns:
+## - 0 on key read, 1 on timeout
+## - Echoes semantic token to stdout
+##
+## Tokens:
+## - Navigation: up, down, left, right, home, end, page-up, page-down
+## - Modified: ctrl-up, shift-left, ctrl-alt-delete, etc.
+## - Function: f1..f12, shift-f5, ctrl-f1, etc.
+## - Control: enter, backspace, tab, escape
+## - Named ctrl: ctrl-a..ctrl-z, ctrl-d, ctrl-u, ctrl-w, etc.
+## - Printable: char:a, char:Z, char:1, char:!, char:é (multi-byte UTF-8)
+## - Special: timeout (when -t used and no input)
+##
+## Usage:
+## - key=$(_input:read-key)
+## - key=$(_input:read-key -t 0.1) || continue  # with timeout
+## - _input:read-key --raw; echo "$__INPUT_RAW_BYTES"
+##
+function _input:read-key() {
+  local timeout="" use_raw=false
+
+  while [[ "$#" -gt 0 ]]; do
+    case $1 in
+    -t) timeout="$2"; shift ;;
+    --raw) use_raw=true ;;
+    esac
+    shift
+  done
+
+  local c0=""
+  # First byte: blocking or with timeout
+  if [[ -n "$timeout" ]]; then
+    IFS= read -rsn1 -t "$timeout" c0 || { echo "timeout"; return 1; }
+  else
+    IFS= read -rsn1 c0
+  fi
+
+  # Collect raw bytes for --raw mode
+  local raw_chars="$c0"
+
+  # Handle empty read (Enter/EOF - NULL becomes empty string)
+  if [[ -z "$c0" ]]; then
+    if [[ "$use_raw" == "true" ]]; then
+      __INPUT_RAW_BYTES="0a"
+      __INPUT_RAW_CHARS=""
+    fi
+    echo "enter"
+    return 0
+  fi
+
+  local code
+  code=$(printf '%02x' "'$c0")
+
+  # --- Escape sequences ---
+  if [[ "$code" == "1b" ]]; then
+    local rest=""
+    IFS= read -rsn1 -t 0.01 rest
+    raw_chars+="$rest"
+
+    # Bare escape (no followup byte within timeout)
+    if [[ -z "$rest" ]]; then
+      if [[ "$use_raw" == "true" ]]; then
+        __INPUT_RAW_BYTES="1b"
+        __INPUT_RAW_CHARS=$'\x1b'
+      fi
+      echo "escape"
+      return 0
+    fi
+
+    # CSI sequence: ESC [
+    if [[ "$rest" == "[" ]]; then
+      # Read the parameter bytes and final byte
+      # CSI format: ESC [ (params) (final_byte)
+      # params: digits and semicolons
+      # final_byte: 0x40-0x7E (letter or ~)
+      local params="" byte=""
+      while true; do
+        IFS= read -rsn1 -t 0.05 byte
+        raw_chars+="$byte"
+        if [[ "$byte" =~ [0-9\;] ]]; then
+          params+="$byte"
+        else
+          break  # final byte
+        fi
+      done
+
+      local final="$byte"
+      local modifier="" base_key=""
+
+      if [[ "$final" == "~" ]]; then
+        # Tilde-terminated: CSI number ; modifier ~
+        local num="${params%%;*}"
+        local mod_str="${params#*;}"
+        [[ "$mod_str" == "$params" ]] && mod_str=""
+
+        base_key="${__INPUT_CSI_TILDE_KEYS[$num]:-unknown}"
+
+        if [[ -n "$mod_str" ]]; then
+          modifier="${__INPUT_MODIFIER_NAMES[$mod_str]:-}"
+        fi
+      else
+        # Letter-terminated: CSI 1 ; modifier letter  OR  CSI letter
+        base_key="${__INPUT_CSI_KEYS[$final]:-unknown}"
+
+        if [[ -n "$params" ]]; then
+          local mod_str="${params#*;}"
+          [[ "$mod_str" == "$params" ]] && mod_str=""
+          if [[ -n "$mod_str" ]]; then
+            modifier="${__INPUT_MODIFIER_NAMES[$mod_str]:-}"
+          fi
+        fi
+      fi
+
+      if [[ "$use_raw" == "true" ]]; then
+        __INPUT_RAW_CHARS="$raw_chars"
+        __INPUT_RAW_BYTES=""
+        local i ch
+        for ((i = 0; i < ${#raw_chars}; i++)); do
+          ch="${raw_chars:$i:1}"
+          __INPUT_RAW_BYTES+="$(printf '%02x' "'$ch")"
+        done
+      fi
+
+      if [[ -n "$modifier" ]]; then
+        echo "${modifier}-${base_key}"
+      else
+        echo "$base_key"
+      fi
+      return 0
+    fi
+
+    # SS3 sequence: ESC O (some terminals send this for arrow keys/F1-F4)
+    if [[ "$rest" == "O" ]]; then
+      local ss3_byte=""
+      IFS= read -rsn1 -t 0.05 ss3_byte
+      raw_chars+="$ss3_byte"
+
+      if [[ "$use_raw" == "true" ]]; then
+        __INPUT_RAW_CHARS="$raw_chars"
+        __INPUT_RAW_BYTES=""
+        local i ch
+        for ((i = 0; i < ${#raw_chars}; i++)); do
+          ch="${raw_chars:$i:1}"
+          __INPUT_RAW_BYTES+="$(printf '%02x' "'$ch")"
+        done
+      fi
+
+      case "$ss3_byte" in
+      A) echo "up" ;; B) echo "down" ;; C) echo "right" ;; D) echo "left" ;;
+      H) echo "home" ;; F) echo "end" ;;
+      P) echo "f1" ;; Q) echo "f2" ;; R) echo "f3" ;; S) echo "f4" ;;
+      *) echo "unknown" ;;
+      esac
+      return 0
+    fi
+
+    # Alt+key: ESC followed by printable character
+    if [[ "$use_raw" == "true" ]]; then
+      __INPUT_RAW_CHARS="$raw_chars"
+      __INPUT_RAW_BYTES="$(printf '%02x' "'$c0")$(printf '%02x' "'$rest")"
+    fi
+
+    local rest_code
+    rest_code=$(printf '%02x' "'$rest")
+    # Alt + Ctrl combination (ESC + control char)
+    if [[ "$rest_code" =~ ^0[1-9a-f]$ || "$rest_code" == "1[0-9a]" ]]; then
+      local ctrl_num=$((16#$rest_code))
+      local ctrl_letter
+      ctrl_letter=$(printf '%02x' $((ctrl_num + 0x60)))
+      echo "ctrl-alt-$(printf "\\x$ctrl_letter")"
+      return 0
+    fi
+    echo "alt-${rest}"
+    return 0
+  fi
+
+  # --- Control characters (0x01-0x1a except 0x1b=ESC already handled) ---
+  case "$code" in
+  01) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-a" ;; # Ctrl+A
+  02) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-b" ;; # Ctrl+B
+  03) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-c" ;; # Ctrl+C
+  04) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-d" ;; # Ctrl+D
+  05) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-e" ;; # Ctrl+E
+  06) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-f" ;; # Ctrl+F
+  07) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-g" ;; # Ctrl+G
+  08) _input:_raw "$use_raw" "$code" "$c0"; echo "backspace" ;; # Ctrl+H / BS
+  09) _input:_raw "$use_raw" "$code" "$c0"; echo "tab" ;;       # Ctrl+I / Tab
+  0a) _input:_raw "$use_raw" "$code" "$c0"; echo "enter" ;;     # Ctrl+J / LF
+  0b) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-k" ;; # Ctrl+K
+  0c) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-l" ;; # Ctrl+L
+  0d) _input:_raw "$use_raw" "$code" "$c0"; echo "enter" ;;     # Ctrl+M / CR
+  0e) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-n" ;; # Ctrl+N
+  0f) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-o" ;; # Ctrl+O
+  10) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-p" ;; # Ctrl+P
+  11) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-q" ;; # Ctrl+Q
+  12) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-r" ;; # Ctrl+R
+  13) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-s" ;; # Ctrl+S
+  14) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-t" ;; # Ctrl+T
+  15) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-u" ;; # Ctrl+U
+  16) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-v" ;; # Ctrl+V
+  17) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-w" ;; # Ctrl+W
+  18) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-x" ;; # Ctrl+X
+  19) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-y" ;; # Ctrl+Y
+  1a) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-z" ;; # Ctrl+Z
+  7f) _input:_raw "$use_raw" "$code" "$c0"; echo "backspace" ;; # DEL (0x7f)
+  00) _input:_raw "$use_raw" "$code" "$c0"; echo "ctrl-space" ;; # Ctrl+Space / NUL
+  *)
+    # --- Printable character (possibly multi-byte UTF-8) ---
+    local first_byte=$((16#$code))
+    local extra_bytes=0 full_char="$c0"
+
+    # UTF-8 leading byte detection
+    if ((first_byte >= 0xC0 && first_byte <= 0xDF)); then
+      extra_bytes=1
+    elif ((first_byte >= 0xE0 && first_byte <= 0xEF)); then
+      extra_bytes=2
+    elif ((first_byte >= 0xF0 && first_byte <= 0xF7)); then
+      extra_bytes=3
+    fi
+
+    if ((extra_bytes > 0)); then
+      local utf_rest=""
+      IFS= read -rsn"$extra_bytes" -t 0.01 utf_rest
+      full_char+="$utf_rest"
+    fi
+
+    if [[ "$use_raw" == "true" ]]; then
+      __INPUT_RAW_CHARS="$full_char"
+      __INPUT_RAW_BYTES=""
+      local i ch
+      for ((i = 0; i < ${#full_char}; i++)); do
+        ch="${full_char:$i:1}"
+        __INPUT_RAW_BYTES+="$(printf '%02x' "'$ch")"
+      done
+    fi
+
+    echo "char:${full_char}"
+    ;;
+  esac
+  return 0
+}
+
+## Helper: set __INPUT_RAW_BYTES and __INPUT_RAW_CHARS for --raw mode
+function _input:_raw() {
+  [[ "$1" == "true" ]] || return 0
+  __INPUT_RAW_BYTES="$2"
+  __INPUT_RAW_CHARS="$3"
+}
+
+##
+## Interactive key capture diagnostic tool
+##
+## Displays every keypress with its semantic token, hex bytes,
+## and human-readable modifier breakdown. Useful for discovering
+## the exact byte sequence your terminal sends for any key combo,
+## which simplifies ML_KEY_* keybinding configuration.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __INPUT_RAW_BYTES, __INPUT_RAW_CHARS
+## - mutate/publish: none
+##
+## Side effects:
+## - Saves/restores terminal state (stty raw -echo)
+## - Traps INT/TERM for cleanup
+## - Reads raw keyboard input
+## - Outputs key info to stderr
+##
+## Returns:
+## - 0 on exit (Ctrl+C or Ctrl+D)
+##
+## Output format per keypress:
+##   Key: ctrl-up    Hex: 1b5b313b3541    Bash: $'\x1b[1;5A'
+##
+## Usage:
+## - _input:capture-key
+## - source "$E_BASH/_commons.sh" && _input:capture-key
+##
+function _input:capture-key() {
+  local saved_stty
+  saved_stty=$(stty -g)
+  stty raw -echo
+
+  function __capture_cleanup() {
+    stty "$saved_stty"
+    printf "\r\n" >&2
+  }
+  trap '__capture_cleanup; return 0' INT TERM
+
+  printf "Press keys to see their sequences. Ctrl+D to exit.\r\n" >&2
+  printf "%-24s %-24s %-30s\r\n" "Token" "Hex" "Bash literal" >&2
+  printf "%-24s %-24s %-30s\r\n" "------------------------" "------------------------" "------------------------------" >&2
+
+  while true; do
+    local key
+    key=$(_input:read-key --raw)
+
+    [[ "$key" == "ctrl-d" ]] && break
+    [[ "$key" == "ctrl-c" ]] && break
+
+    # Build bash literal string: $'\xHH\xHH...'
+    local bash_literal="" hex="$__INPUT_RAW_BYTES"
+    local i
+    for ((i = 0; i < ${#hex}; i += 2)); do
+      bash_literal+="\x${hex:$i:2}"
+    done
+    [[ -n "$bash_literal" ]] && bash_literal="\$'${bash_literal}'"
+
+    printf "%-24s %-24s %-30s\r\n" "$key" "$hex" "$bash_literal" >&2
+  done
+
+  __capture_cleanup
+  trap - INT TERM
+}
+
 # --- Multi-line Input: Internal State ---
 
 # Module-internal state for multi-line editor
@@ -2117,12 +2457,12 @@ function input:multi-line() {
 
   _input:ml:init "$width" "$height"
 
-  # Configurable keybindings (env var overrides, inspired by bed editor)
-  local key_save=${ML_KEY_SAVE:-$'\x04'}       # Ctrl+D
-  local key_edit=${ML_KEY_EDIT:-$'\x05'}        # Ctrl+E
-  local key_paste=${ML_KEY_PASTE:-$'\x16'}      # Ctrl+V
-  local key_del_word=${ML_KEY_DEL_WORD:-$'\x17'} # Ctrl+W
-  local key_del_line=${ML_KEY_DEL_LINE:-$'\x15'} # Ctrl+U
+  # Configurable keybindings as semantic tokens (use _input:capture-key to find tokens)
+  local key_save=${ML_KEY_SAVE:-"ctrl-d"}
+  local key_edit=${ML_KEY_EDIT:-"ctrl-e"}
+  local key_paste=${ML_KEY_PASTE:-"ctrl-v"}
+  local key_del_word=${ML_KEY_DEL_WORD:-"ctrl-w"}
+  local key_del_line=${ML_KEY_DEL_LINE:-"ctrl-u"}
 
   # Detect clipboard paste command
   local paste_cmd=""
@@ -2160,64 +2500,43 @@ function input:multi-line() {
   }
   trap '_input:ml:winch' WINCH
 
-  local c0 code rest
+  local key
 
   while true; do
     _input:ml:render "$pos_x" "$pos_y"
 
     # Read with timeout for responsive WINCH handling (bed pattern)
-    IFS= read -rsn1 -t 0.1 c0 || continue
+    key=$(_input:read-key -t 0.1) || continue
 
-    if [[ "$c0" == $'\x1b' ]]; then
-      read -rsn2 -t 0.1 rest
-      case "$rest" in
-      "[A") _input:ml:move-up ;;      # Up arrow
-      "[B") _input:ml:move-down ;;    # Down arrow
-      "[C") _input:ml:move-right ;;   # Right arrow
-      "[D") _input:ml:move-left ;;    # Left arrow
-      "[H") _input:ml:move-home ;;    # Home
-      "[F") _input:ml:move-end ;;     # End
-      "[5") read -rsn1 -t 0.01 _      # Page Up (consume ~)
-            local i; for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-up; done ;;
-      "[6") read -rsn1 -t 0.01 _      # Page Down (consume ~)
-            local i; for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-down; done ;;
-      "")   __ml_cancelled=1; break ;; # Esc (cancel)
-      *) ;;                            # Ignore other sequences
-      esac
-    elif [[ "$c0" == "$key_save" ]]; then
-      break
-    elif [[ "$c0" == "$key_edit" ]]; then
-      # Readline-based line editing (bed pattern: full readline for current line)
-      _input:ml:edit-line "$saved_stty" "$pos_y"
-    elif [[ "$c0" == "$key_paste" ]]; then
+    case "$key" in
+    # Configurable action keys
+    "$key_save")    break ;;
+    "$key_edit")    _input:ml:edit-line "$saved_stty" "$pos_y" ;;
+    "$key_paste")
       if [[ -n "$paste_cmd" ]]; then
         local clipboard_text
         clipboard_text=$($paste_cmd 2>/dev/null)
         [[ -n "$clipboard_text" ]] && _input:ml:paste "$clipboard_text"
-      fi
-    elif [[ "$c0" == "$key_del_word" ]]; then
-      _input:ml:delete-word
-    elif [[ "$c0" == "$key_del_line" ]]; then
-      _input:ml:delete-line
-    else
-      code=$(printf '%02x' "'$c0")
-      case "$code" in
-      7f | 08)                         # Backspace / Delete
-        _input:ml:delete-char
-        ;;
-      ""|00|0a|0d)                     # Enter
-        _input:ml:insert-newline
-        ;;
-      09)                              # Tab
-        _input:ml:insert-tab
-        ;;
-      *)                               # Printable character
-        if [[ "$c0" =~ [[:print:]] ]]; then
-          _input:ml:insert-char "$c0"
-        fi
-        ;;
-      esac
-    fi
+      fi ;;
+    "$key_del_word")  _input:ml:delete-word ;;
+    "$key_del_line")  _input:ml:delete-line ;;
+    # Navigation
+    up)        _input:ml:move-up ;;
+    down)      _input:ml:move-down ;;
+    left)      _input:ml:move-left ;;
+    right)     _input:ml:move-right ;;
+    home)      _input:ml:move-home ;;
+    end)       _input:ml:move-end ;;
+    page-up)   local i; for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-up; done ;;
+    page-down) local i; for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-down; done ;;
+    # Editing
+    escape)    __ml_cancelled=1; break ;;
+    backspace) _input:ml:delete-char ;;
+    enter)     _input:ml:insert-newline ;;
+    tab)       _input:ml:insert-tab ;;
+    char:*)    _input:ml:insert-char "${key#char:}" ;;
+    *)         ;; # Ignore unknown sequences
+    esac
   done
 
   # Restore terminal
@@ -2318,39 +2637,20 @@ function input:selector() {
 
   reset
 
-  local c0 c1 c2 c3 c4 c5 code esc
-
+  local key
   while :; do
     echo:Common "- $pos"
-    # Note: a NULL will return a empty string; Ctrl + Alt + Shift + Key produce 6 chars
-    IFS= read -r -n 1 -s c0
-    IFS= read -r -n 1 -s -t 0.0001 c1
-    IFS= read -r -n 1 -s -t 0.0001 c2
-    IFS= read -r -n 1 -s -t 0.0001 c3
-    IFS= read -r -n 1 -s -t 0.0001 c4
-    IFS= read -r -n 1 -s -t 0.0001 c5
 
-    # Convert users key press to hexadecimal character code
-    code=$(printf '%02x' "'$c0") # EOL (empty c0) -> 00
-    esc="$(printf '%02x%02x%02x' "'$c0" "'$c1" "'$c2")"
-    printf:Common 'none: %02x%02x%02x%02x%02x%02x' "'$c0" "'$c1" "'$c2" "'$c3" "'$c4" "'$c5"
+    key=$(_input:read-key)
+    echo:Common "key: $key"
 
-    case "$code" in
-    # Escape sequence, read in two more chars
-    1b)
-      # reset input on single escape sequences
-      if [ "$c1" == '' ]; then reset && continue; fi
-
-      case "$esc" in
-      1b5b43) right ;; # right arrow
-      1b5b44) left ;;  # left arrow
-      *) ;;            # Ignore any other escape sequence
-      esac
-      ;;
-    '' | 00 | 0a | 0d) break ;; # Exit EOF, Linefeed or Return
-    [01]?) ;;                   # Ignore ALL other control characters
-    # Note: insert from clipboard can be treated as many chars at once
-    *) search "$c0$c1$c2$c3$c4$c5" ;;
+    case "$key" in
+    right)   right ;;
+    left)    left ;;
+    enter)   break ;;
+    escape)  reset && continue ;;
+    char:*)  search "${key#char:}" ;;
+    *)       ;; # Ignore all other keys
     esac
   done
 
@@ -2395,7 +2695,7 @@ alias isHelp=args:isHelp
 ## config file discovery, and user interaction.
 #
 ## References:
-## - demo: demo.readpswd.sh, demo.selector.sh, demo.multi-line.sh
+## - demo: demo.readpswd.sh, demo.selector.sh, demo.multi-line.sh, demo.capture-key.sh
 ## - bin: git.semantic-version.sh, ci.validate-envrc.sh
 ## - documentation: docs/public/commons.md
 ## - tests: spec/commons_spec.sh, spec/multi_line_input_spec.sh

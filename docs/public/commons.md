@@ -1098,15 +1098,16 @@ fi
 
 #### Configurable Keybindings
 
-All control keys can be overridden via environment variables:
+All control keys can be overridden via environment variables using semantic token names
+(use `_input:capture-key` to discover tokens):
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ML_KEY_SAVE` | Ctrl+D | Save and exit |
-| `ML_KEY_EDIT` | Ctrl+E | Enter readline editing mode |
-| `ML_KEY_PASTE` | Ctrl+V | Paste from clipboard |
-| `ML_KEY_DEL_WORD` | Ctrl+W | Delete word backward |
-| `ML_KEY_DEL_LINE` | Ctrl+U | Clear current line |
+| Variable | Default Token | Description |
+|----------|---------------|-------------|
+| `ML_KEY_SAVE` | `ctrl-d` | Save and exit |
+| `ML_KEY_EDIT` | `ctrl-e` | Enter readline editing mode |
+| `ML_KEY_PASTE` | `ctrl-v` | Paste from clipboard |
+| `ML_KEY_DEL_WORD` | `ctrl-w` | Delete word backward |
+| `ML_KEY_DEL_LINE` | `ctrl-u` | Clear current line |
 
 #### Architecture
 
