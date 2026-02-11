@@ -144,6 +144,9 @@ echo "Captured: $text"
 
 # Full-screen editor
 commit_msg=$(input:multi-line)
+
+# Stream mode - inline editor at cursor position (5 lines, full width)
+description=$(input:multi-line -m stream)
 ```
 
 ## Git Repository Functions
@@ -1039,18 +1042,19 @@ A full-featured modal text editor that opens directly in the terminal. Supports 
 #### Function Signature
 
 ```bash
-text=$(input:multi-line [-x pos_x] [-y pos_y] [-w width] [-h height] [--alt-buffer] [--no-status])
+text=$(input:multi-line [-m mode] [-x pos_x] [-y pos_y] [-w width] [-h height] [--alt-buffer] [--no-status])
 ```
 
 #### Arguments
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
-| `-x` | integer | `0` | Left offset (column position) |
-| `-y` | integer | `0` | Top offset (row position) |
+| `-m` | string | `box` | Rendering mode: `box` (positioned overlay) or `stream` (inline at cursor) |
+| `-x` | integer | `0` | Left offset (column position, box mode only) |
+| `-y` | integer | `0` | Top offset (row position, box mode only) |
 | `-w` | integer | terminal width | Editor width in columns |
-| `-h` | integer | terminal height | Editor height in rows |
-| `--alt-buffer` | flag | off | Use alternative terminal buffer (preserves scroll history) |
+| `-h` | integer | terminal height (box) or `5` (stream) | Editor height in rows |
+| `--alt-buffer` | flag | off | Use alternative terminal buffer (box mode only, preserves scroll history) |
 | `--no-status` | flag | off | Hide the status bar |
 
 #### Examples
@@ -1058,7 +1062,7 @@ text=$(input:multi-line [-x pos_x] [-y pos_y] [-w width] [-h height] [--alt-buff
 ```bash
 source "$E_BASH/_commons.sh"
 
-# Full-screen editor
+# Full-screen editor (box mode, default)
 text=$(input:multi-line)
 
 # Sized editor (60 columns x 10 rows)
@@ -1066,6 +1070,13 @@ text=$(input:multi-line -w 60 -h 10)
 
 # Alternative buffer (preserves scroll history, like vim)
 text=$(input:multi-line --alt-buffer)
+
+# Stream mode - inline editor at current cursor position
+# Uses full terminal width, default height of 5 lines
+text=$(input:multi-line -m stream)
+
+# Stream mode with custom height (10 lines)
+text=$(input:multi-line -m stream -h 10)
 
 # Custom save keybinding (Ctrl+S instead of Ctrl+D)
 ML_KEY_SAVE=$'\x13' text=$(input:multi-line -w 60 -h 10)
@@ -1078,6 +1089,18 @@ else
   echo "User cancelled (Esc)"
 fi
 ```
+
+#### Rendering Modes
+
+**Box mode** (default): Position and size the editor explicitly with `-x`, `-y`, `-w`, `-h`.
+Useful for modal dialog overlays. Width and height are clamped to terminal boundaries
+so the editor cannot exceed available space. Supports `--alt-buffer` to preserve
+terminal scroll history.
+
+**Stream mode** (`-m stream`): Uses the current cursor position and full terminal width.
+Defaults to 5 lines of height. If the cursor is near the bottom of the terminal,
+emits newlines to scroll up and make room. On exit, repositions the cursor to the
+editor area so output reuses those lines. Does not support `--alt-buffer`.
 
 #### Keyboard Controls
 
@@ -1114,6 +1137,12 @@ All control keys can be overridden via environment variables using semantic toke
 The editor separates **pure state logic** from **terminal I/O** for testability. All editing operations are implemented as internal `_input:ml:*` functions that manipulate shared state arrays (`__ML_LINES[]`, `__ML_ROW`, `__ML_COL`, `__ML_SCROLL`). These functions are fully unit-testable with ShellSpec (55 tests).
 
 The rendering and input loop (`_input:ml:render`, `input:multi-line`) form a thin I/O wrapper around the state logic.
+
+**Terminal modes managed by the editor:**
+- **Bracketed paste** (`\033[?2004h`): Enabled on entry, disabled on exit. When the terminal sends `ESC[200~`...`ESC[201~` around pasted text, `_input:read-key` returns a `paste:payload` token containing the pasted content, which is inserted directly into the buffer.
+- **Line-wrap** (`\033[?7l`/`\033[?7h`): Disabled during each render pass to prevent visual glitches when drawing full-width lines, then re-enabled after rendering completes.
+
+**Stream mode helpers** (`_input:ml:stream:*`): Four functions handle cursor detection, height normalization, terminal scrolling when at the bottom, and cursor restoration on exit.
 
 #### Status Bar
 

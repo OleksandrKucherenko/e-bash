@@ -368,6 +368,13 @@ text=$(input:multi-line -w 60 -h 10)
 # Full-screen editor with alternative buffer (preserves scroll history)
 text=$(input:multi-line --alt-buffer)
 
+# Stream mode - inline editor at cursor position (5 lines, full terminal width)
+# Handles bottom-of-terminal by scrolling up; repositions cursor on exit
+text=$(input:multi-line -m stream)
+
+# Stream mode with custom height
+text=$(input:multi-line -m stream -h 10)
+
 # Custom keybinding: Ctrl+S to save (use _input:capture-key to discover tokens)
 ML_KEY_SAVE="ctrl-s" text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
 
@@ -380,6 +387,7 @@ _input:capture-key
 Controls: Arrow keys, Page Up/Down, Home/End to navigate, Enter for newline,
 Backspace to delete, Ctrl+W delete word, Ctrl+U delete line, Ctrl+V paste,
 Ctrl+E readline edit, Tab inserts 2 spaces. Status bar shows position and [+] modified indicator.
+Supports bracketed paste detection and box mode clamping to terminal boundaries.
 
 [API Reference](docs/public/lib/_commons.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh), [Key Capture Demo](demos/demo.capture-key.sh)
 

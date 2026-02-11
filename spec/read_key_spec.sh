@@ -319,6 +319,30 @@ Describe "_commons.sh"
       End
     End
 
+    Describe "bracketed paste /"
+      It "detects single-line bracketed paste"
+        When call feed_key $'\x1b' "[200~Hello World" $'\x1b' "[201~"
+        The output should eq "paste:Hello World"
+      End
+
+      It "detects multi-line bracketed paste"
+        feed_multiline_paste() {
+          printf '%s' $'\x1b[200~'"Line1
+Line2
+Line3"$'\x1b[201~' | _input:read-key
+        }
+        When call feed_multiline_paste
+        The line 1 of output should eq "paste:Line1"
+        The line 2 of output should eq "Line2"
+        The line 3 of output should eq "Line3"
+      End
+
+      It "detects empty bracketed paste"
+        When call feed_key $'\x1b' "[200~" $'\x1b' "[201~"
+        The output should eq "paste:"
+      End
+    End
+
     Describe "token consistency /"
       # Verify the tokens match what input:multi-line and others expect
       It "all ctrl keys return ctrl-{letter} format"

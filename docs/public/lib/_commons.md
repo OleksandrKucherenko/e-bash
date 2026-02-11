@@ -25,6 +25,10 @@ config file discovery, and user interaction.
     - [`env:variable:or:secret:file:optional`](#envvariableorsecretfileoptional)
     - [`_input:read-key`](#_inputread-key)
     - [`_input:capture-key`](#_inputcapture-key)
+    - [`_input:ml:stream:cursor`](#_inputmlstreamcursor)
+    - [`_input:ml:stream:fit-height`](#_inputmlstreamfit-height)
+    - [`_input:ml:stream:allocate`](#_inputmlstreamallocate)
+    - [`_input:ml:stream:restore`](#_inputmlstreamrestore)
     - [`git:root`](#gitroot)
     - [`input:multi-line`](#inputmulti-line)
     - [`input:readpwd`](#inputreadpwd)
@@ -403,6 +407,7 @@ All `input:*` functions use this internally. It provides a single, consistent ke
 | Named ctrl | `ctrl-a`..`ctrl-z`, `ctrl-d`, `ctrl-u`, `ctrl-w` |
 | Alt combos | `alt-a`, `alt-x`, `ctrl-alt-c` |
 | Printable | `char:a`, `char:Z`, `char:1`, `char:!` |
+| Paste | `paste:payload` (bracketed paste `ESC[200~`...`ESC[201~`, payload is the pasted text) |
 | Timeout | `timeout` (when `-t` used) |
 
 #### Modifier Encoding (xterm)
@@ -460,6 +465,139 @@ See also: [Demo script](../../../demos/demo.capture-key.sh)
 
 ---
 
+### _input:ml:stream:cursor
+
+Read cursor row and column with timeout (stream mode)
+
+Queries the terminal for cursor position using DSR (Device Status Report).
+Falls back to "1;1" if the terminal does not respond in time.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `timeout` | float | `0.15` | Read timeout in seconds |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Returns
+
+- Echoes "row;col" (1-based), defaults to "1;1" when unavailable
+
+#### Usage
+
+```bash
+pos=$(_input:ml:stream:cursor)
+row="${pos%;*}" col="${pos#*;}"
+```
+
+---
+
+### _input:ml:stream:fit-height
+
+Normalize stream mode height
+
+Clamps to minimum 1 line.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `requested_height` | integer | `1` | Requested height |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Returns
+
+- Echoes normalized height (>= 1)
+
+#### Usage
+
+```bash
+height=$(_input:ml:stream:fit-height "$height")
+```
+
+---
+
+### _input:ml:stream:allocate
+
+Allocate stream editor lines from anchor row
+
+When the editor would overflow the bottom of the terminal,
+emits newlines to scroll the terminal up and returns an
+adjusted anchor row so rendering stays on-screen.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `anchor_row` | integer | required | Row where stream starts |
+| `line_count` | integer | required | Number of lines to allocate |
+| `terminal_height` | integer | required | Total terminal rows |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Side Effects
+
+- Writes newlines to stderr when overflow occurs
+
+#### Returns
+
+- 0 on success
+- Echoes adjusted anchor row
+
+#### Usage
+
+```bash
+anchor=$(_input:ml:stream:allocate "$cursor_row" "$editor_height" "$term_height")
+```
+
+---
+
+### _input:ml:stream:restore
+
+Restore cursor position after stream editor closes
+
+Moves cursor to the original anchor position so that
+the lines occupied by the editor can be reused for output.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `anchor_row` | integer | required | Row where stream started |
+| `anchor_col` | integer | `1` | Column where output continues |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none
+
+#### Side Effects
+
+- Repositions cursor via ANSI escape
+
+#### Returns
+
+- 0 on success
+
+#### Usage
+
+```bash
+_input:ml:stream:restore "$anchor_row" "$anchor_col"
+```
+
+---
+
 ### input:multi-line
 
 Interactive multi-line text editor in terminal
@@ -472,11 +610,12 @@ Press Ctrl+D to save and exit, Esc to cancel.
 
 | Name | Type | Default | Description |
 |------|------|---------|-------------|
-| `-x` | integer | `0` | Left offset (column position) |
-| `-y` | integer | `0` | Top offset (row position) |
+| `-m` | string | `box` | Rendering mode: `box` (positioned overlay) or `stream` (inline at cursor) |
+| `-x` | integer | `0` | Left offset (column position, box mode only) |
+| `-y` | integer | `0` | Top offset (row position, box mode only) |
 | `-w` | integer | terminal width | Editor width in columns |
-| `-h` | integer | terminal height | Editor height in rows |
-| `--alt-buffer` | flag | off | Use alternative terminal buffer (preserves scroll history) |
+| `-h` | integer | terminal height (box) or `5` (stream) | Editor height in rows |
+| `--alt-buffer` | flag | off | Use alternative terminal buffer (box mode only, preserves scroll history) |
 | `--no-status` | flag | off | Hide the status bar |
 
 #### Globals
@@ -506,10 +645,14 @@ ML_KEY_SAVE="ctrl-s" text=$(input:multi-line)
 
 - Saves/restores terminal state (stty)
 - Traps INT/TERM/WINCH for cleanup and terminal resize
-- Uses alternative terminal buffer when `--alt-buffer` specified
+- Uses alternative terminal buffer when `--alt-buffer` specified (box mode only)
+- Enables bracketed paste mode (`\033[?2004h`) on entry, disables on exit
+- Disables line-wrap (`\033[?7l`) during rendering to prevent glitches on full-width lines, re-enables (`\033[?7h`) after each render pass
 - Reads raw keyboard input with timeout for responsive resize handling
 - Renders to terminal via ANSI escape sequences (blue background modal)
 - Status bar shows cursor position, modified indicator [+], and line count
+- Box mode clamps width/height to terminal boundaries (editor cannot exceed available space)
+- Stream mode emits newlines to scroll the terminal when the cursor is near the bottom
 
 #### Keyboard Controls
 
@@ -536,14 +679,20 @@ ML_KEY_SAVE="ctrl-s" text=$(input:multi-line)
 #### Usage
 
 ```bash
-# Full-screen editor
+# Full-screen editor (box mode, default)
 text=$(input:multi-line)
 
-# Sized and positioned editor
+# Sized and positioned editor (box mode)
 text=$(input:multi-line -w 60 -h 10 -x 5 -y 2)
 
 # Alternative buffer (preserves scroll history, like vim)
 text=$(input:multi-line --alt-buffer)
+
+# Stream mode - inline editor at cursor position (5 lines, full terminal width)
+text=$(input:multi-line -m stream)
+
+# Stream mode with custom height
+text=$(input:multi-line -m stream -h 10)
 
 # Custom save key (Ctrl+S instead of Ctrl+D)
 ML_KEY_SAVE=$'\x13' text=$(input:multi-line)
@@ -575,6 +724,10 @@ The editor logic is separated into testable pure-state functions:
 | `_input:ml:scroll` | Viewport scroll adjustment |
 | `_input:ml:get-content` | Extract buffer as string |
 | `_input:ml:render` | Terminal rendering |
+| `_input:ml:stream:cursor` | Read cursor position with timeout (stream mode) |
+| `_input:ml:stream:fit-height` | Normalize and clamp stream mode height |
+| `_input:ml:stream:allocate` | Allocate lines, scroll terminal if near bottom |
+| `_input:ml:stream:restore` | Reposition cursor after stream editor closes |
 
 ---
 

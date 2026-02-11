@@ -1478,6 +1478,7 @@ declare -g -A __INPUT_CSI_TILDE_KEYS=(
 ## - Control: enter, backspace, tab, escape
 ## - Named ctrl: ctrl-a..ctrl-z, ctrl-d, ctrl-u, ctrl-w, etc.
 ## - Printable: char:a, char:Z, char:1, char:!, char:é (multi-byte UTF-8)
+## - Paste: paste:payload (bracketed paste - text pasted from clipboard)
 ## - Special: timeout (when -t used and no input)
 ##
 ## Usage:
@@ -1555,6 +1556,25 @@ function _input:read-key() {
 
       local final="$byte"
       local modifier="" base_key=""
+
+      # Bracketed paste: CSI 200 ~ ... CSI 201 ~
+      if [[ "$final" == "~" && "$params" == "200" ]]; then
+        local payload="" paste_ch="" paste_end=$'\x1b[201~'
+        while IFS= read -rsn1 -d '' paste_ch; do
+          payload+="$paste_ch"
+          if [[ ${#payload} -ge ${#paste_end} ]] &&
+            [[ "${payload: -${#paste_end}}" == "$paste_end" ]]; then
+            payload="${payload:0:$(( ${#payload} - ${#paste_end} ))}"
+            break
+          fi
+        done
+        if [[ "$use_raw" == "true" ]]; then
+          __INPUT_RAW_CHARS="$raw_chars$payload"
+          __INPUT_RAW_BYTES="paste"
+        fi
+        printf "paste:%s" "$payload"
+        return 0
+      fi
 
       if [[ "$final" == "~" ]]; then
         # Tilde-terminated: CSI number ; modifier ~
@@ -2147,6 +2167,129 @@ function _input:ml:get-content() {
 }
 
 ##
+## Read cursor row and column with timeout (stream mode)
+##
+## Queries the terminal for cursor position using DSR (Device Status Report).
+## Falls back to "1;1" if the terminal does not respond in time.
+##
+## Parameters:
+## - timeout - Read timeout in seconds, float, default: 0.15
+##
+## Returns:
+## - Echoes "row;col" (1-based), defaults to "1;1" when unavailable
+##
+## Usage:
+## - pos=$(_input:ml:stream:cursor)
+## - row="${pos%;*}" col="${pos#*;}"
+##
+function _input:ml:stream:cursor() {
+  local timeout=${1:-0.15}
+  local row=1 col=1 prefix=""
+
+  if IFS=';' read -rsdR -t "$timeout" -p $'\E[6n' prefix col 2>/dev/null; then
+    row=${prefix#*[}
+    [[ "$row" =~ ^[0-9]+$ ]] || row=1
+    [[ "$col" =~ ^[0-9]+$ ]] || col=1
+  fi
+
+  printf "%s;%s" "$row" "$col"
+  return 0
+}
+
+##
+## Normalize stream mode height
+##
+## Clamps to minimum 1 line.
+##
+## Parameters:
+## - requested_height - Requested height, integer, required
+##
+## Returns:
+## - Echoes normalized height (>= 1)
+##
+function _input:ml:stream:fit-height() {
+  local requested_height=${1:-1}
+  [[ "$requested_height" =~ ^[0-9]+$ ]] || requested_height=1
+  [[ "$requested_height" -lt 1 ]] && requested_height=1
+
+  printf "%s" "$requested_height"
+  return 0
+}
+
+##
+## Allocate stream editor lines from anchor row
+##
+## When the editor would overflow the bottom of the terminal,
+## emits newlines to scroll the terminal up and returns an
+## adjusted anchor row so rendering stays on-screen.
+##
+## Parameters:
+## - anchor_row - Row where stream starts, integer, required
+## - line_count - Number of lines to allocate, integer, required
+## - terminal_height - Total terminal rows, integer, required
+##
+## Side effects:
+## - Writes newlines to stderr when overflow occurs
+##
+## Returns:
+## - 0 on success
+## - Echoes adjusted anchor row
+##
+function _input:ml:stream:allocate() {
+  local anchor_row=${1:-1} line_count=${2:-0} terminal_height=${3:-24}
+  local overflow=0 adjusted_row=1 i=0
+
+  [[ "$anchor_row" =~ ^[0-9]+$ ]] || anchor_row=1
+  [[ "$line_count" =~ ^[0-9]+$ ]] || line_count=0
+  [[ "$terminal_height" =~ ^[0-9]+$ ]] || terminal_height=24
+  [[ "$anchor_row" -lt 1 ]] && anchor_row=1
+  [[ "$line_count" -lt 1 ]] && line_count=1
+  [[ "$terminal_height" -lt 1 ]] && terminal_height=1
+
+  overflow=$((anchor_row + line_count - terminal_height - 1))
+  [[ "$overflow" -lt 0 ]] && overflow=0
+  adjusted_row=$((anchor_row - overflow))
+  [[ "$adjusted_row" -lt 1 ]] && adjusted_row=1
+
+  if [[ -t 2 ]]; then
+    for ((i = 0; i < overflow; i++)); do
+      printf "\n" >&2
+    done
+  fi
+
+  printf "%s" "$adjusted_row"
+  return 0
+}
+
+##
+## Restore cursor position after stream editor closes
+##
+## Moves cursor to the original anchor position so that
+## the lines occupied by the editor can be reused for output.
+##
+## Parameters:
+## - anchor_row - Row where stream started, integer, required
+## - anchor_col - Column where output continues, integer, default: 1
+##
+## Side effects:
+## - Repositions cursor via ANSI escape
+##
+## Returns:
+## - 0 on success
+##
+function _input:ml:stream:restore() {
+  local anchor_row=${1:-1} anchor_col=${2:-1}
+
+  [[ "$anchor_row" =~ ^[0-9]+$ ]] || anchor_row=1
+  [[ "$anchor_col" =~ ^[0-9]+$ ]] || anchor_col=1
+  [[ "$anchor_row" -lt 1 ]] && anchor_row=1
+  [[ "$anchor_col" -lt 1 ]] && anchor_col=1
+
+  printf "\033[%d;%dH" "$anchor_row" "$anchor_col" >&2
+  return 0
+}
+
+##
 ## Insert tab as spaces at cursor position
 ##
 ## Parameters:
@@ -2321,8 +2464,8 @@ function _input:ml:edit-line() {
 function _input:ml:render() {
   local pos_x=${1:-0} pos_y=${2:-0}
 
-  # Hide cursor during render
-  printf "\033[?25l" >&2
+  # Hide cursor and disable line-wrap during render (prevents glitches on full-width lines)
+  printf "\033[?25l\033[?7l" >&2
 
   # Status bar (line 0) - inspired by bed editor
   if [[ "$__ML_STATUS_BAR" == "true" ]]; then
@@ -2384,31 +2527,39 @@ function _input:ml:render() {
   [[ $visual_col -ge $__ML_WIDTH ]] && visual_col=$((__ML_WIDTH - 1))
 
   printf "\033[%d;%dH" "$((pos_y + visual_row + 1 + render_start))" "$((pos_x + visual_col + 1))" >&2
-  printf "\033[?25h" >&2
+  printf "\033[?7h\033[?25h" >&2  # Re-enable line-wrap, show cursor
 }
 
 ##
 ## Interactive multi-line text editor in terminal
 ##
-## Opens a modal text editor at specified position with configurable dimensions.
-## Supports arrow key navigation, backspace, word delete, newline, tab, paste.
-## Press Ctrl+D to save and exit, Esc to cancel.
-## Press Ctrl+E for readline-based editing of current line (full word movement).
+## Opens a modal text editor with two rendering modes:
+##
+## **Box mode** (default): Position and size the editor explicitly with
+## -x, -y, -w, -h. Useful for modal dialog overlays. Supports --alt-buffer
+## to preserve terminal scroll history.
+##
+## **Stream mode** (-m stream): Uses current cursor position, full terminal
+## width, and a configurable height (default 5 lines). If the cursor is near
+## the bottom of the terminal, emits newlines to scroll up and make room.
+## On exit, repositions cursor to the editor area so output reuses those lines.
 ##
 ## Features inspired by the bed (bash editor) project:
-## - Alternative terminal buffer (--alt-buffer) to preserve scroll history
+## - Alternative terminal buffer (--alt-buffer, box mode only)
 ## - WINCH signal handling for terminal resize
 ## - Configurable keybindings via ML_KEY_* environment variables
+## - Bracketed paste detection (paste from clipboard)
 ## - Modified indicator in status bar
 ## - Readline-based line editing (Ctrl+E)
 ## - Status bar with position info and help hints
 ##
 ## Parameters:
-## - -x pos_x - Left offset, integer, default: 0
-## - -y pos_y - Top offset, integer, default: 0
+## - -m mode - Rendering mode: "box" (default) or "stream"
+## - -x pos_x - Left offset (box mode only), integer, default: 0
+## - -y pos_y - Top offset (box mode only), integer, default: 0
 ## - -w width - Editor width, integer, default: terminal width
-## - -h height - Editor height, integer, default: terminal height
-## - --alt-buffer - Use alternative terminal buffer (preserves scroll history)
+## - -h height - Editor height, integer, default: terminal height (box) or 5 (stream)
+## - --alt-buffer - Use alternative terminal buffer (box mode only)
 ## - --no-status - Hide status bar
 ##
 ## Globals:
@@ -2421,24 +2572,32 @@ function _input:ml:render() {
 ## - Traps INT/TERM/WINCH for cleanup and resize
 ## - Reads raw keyboard input
 ## - Renders to terminal via ANSI escape sequences
+## - Enables/disables bracketed paste mode
 ##
 ## Returns:
 ## - 0 on save (Ctrl+D), 1 on cancel (Esc)
 ## - Echoes captured text to stdout
 ##
 ## Usage:
-## - text=$(input:multi-line)
-## - text=$(input:multi-line -w 60 -h 10 -x 5 -y 2)
-## - text=$(input:multi-line --alt-buffer)
-## - ML_KEY_SAVE=$'\x13' text=$(input:multi-line)  # Ctrl+S to save
+## - text=$(input:multi-line)                            # box mode, full screen
+## - text=$(input:multi-line -w 60 -h 10 -x 5 -y 2)     # box mode, positioned
+## - text=$(input:multi-line --alt-buffer)                # box mode, alt buffer
+## - text=$(input:multi-line -m stream)                   # stream mode, 5 lines
+## - text=$(input:multi-line -m stream -h 10)             # stream mode, 10 lines
+## - ML_KEY_SAVE="ctrl-s" text=$(input:multi-line)        # custom save key
 ##
 function input:multi-line() {
-  local pos_x=0 pos_y=0 width height
-  local use_alt_buffer=false
+  local pos_x=0 pos_y=0 width="" height=""
+  local mode="box" use_alt_buffer=false
+  local height_is_explicit=0
+  local term_width term_height
+  local stream_row=0 stream_col=1
 
   # Detect terminal dimensions
-  width=$(tput cols 2>/dev/null || echo 80)
-  height=$(tput lines 2>/dev/null || echo 24)
+  term_width=$(tput cols 2>/dev/null || echo 80)
+  term_height=$(tput lines 2>/dev/null || echo 24)
+  [[ "$term_width" =~ ^[0-9]+$ ]] || term_width=80
+  [[ "$term_height" =~ ^[0-9]+$ ]] || term_height=24
   __ML_STATUS_BAR=true
 
   # Parse arguments
@@ -2446,8 +2605,9 @@ function input:multi-line() {
     case $1 in
     -x) pos_x="$2"; shift ;;
     -y) pos_y="$2"; shift ;;
+    -m|--mode) mode="$2"; shift ;;
     -w) width="$2"; shift ;;
-    -h) height="$2"; shift ;;
+    -h) height="$2"; height_is_explicit=1; shift ;;
     --alt-buffer) use_alt_buffer=true ;;
     --no-status) __ML_STATUS_BAR=false ;;
     *) shift; continue ;;
@@ -2455,7 +2615,54 @@ function input:multi-line() {
     shift
   done
 
+  # Validate mode
+  [[ "$mode" != "box" && "$mode" != "stream" ]] && mode="box"
+
+  # Mode-specific dimension setup
+  if [[ "$mode" == "stream" ]]; then
+    # Stream mode: cursor position, terminal width, default height 5
+    local stream_pos
+    stream_pos=$(_input:ml:stream:cursor)
+    stream_row="${stream_pos%;*}"
+    stream_col="${stream_pos#*;}"
+    [[ "$stream_row" =~ ^[0-9]+$ ]] || stream_row=1
+    [[ "$stream_col" =~ ^[0-9]+$ ]] || stream_col=1
+
+    [[ "$height_is_explicit" -eq 0 ]] && height=5
+    height=$(_input:ml:stream:fit-height "$height")
+    [[ "$height" -gt "$term_height" ]] && height="$term_height"
+    width="$term_width"
+    pos_x=0
+
+    # Alt buffer not used in stream mode
+    use_alt_buffer=false
+  else
+    # Box mode: explicit or full-terminal positioning
+    [[ -n "$width" ]] || width="$term_width"
+    [[ -n "$height" ]] || height="$term_height"
+    [[ "$width" =~ ^[0-9]+$ ]] || width="$term_width"
+    [[ "$height" =~ ^[0-9]+$ ]] || height="$term_height"
+    [[ "$pos_x" =~ ^[0-9]+$ ]] || pos_x=0
+    [[ "$pos_y" =~ ^[0-9]+$ ]] || pos_y=0
+
+    # Clamp to terminal boundaries
+    local max_width=$((term_width - pos_x))
+    [[ "$max_width" -lt 1 ]] && max_width=1
+    [[ "$width" -gt "$max_width" ]] && width="$max_width"
+    local max_height=$((term_height - pos_y))
+    [[ "$max_height" -lt 1 ]] && max_height=1
+    [[ "$height" -gt "$max_height" ]] && height="$max_height"
+  fi
+
   _input:ml:init "$width" "$height"
+
+  # Stream mode: allocate lines (handles bottom-of-terminal scrolling)
+  if [[ "$mode" == "stream" ]]; then
+    stream_row=$(_input:ml:stream:allocate "$stream_row" "$__ML_HEIGHT" "$term_height")
+    [[ "$stream_row" =~ ^[0-9]+$ ]] || stream_row=1
+    [[ "$stream_row" -lt 1 ]] && stream_row=1
+    pos_y=$((stream_row - 1))
+  fi
 
   # Configurable keybindings as semantic tokens (use _input:capture-key to find tokens)
   local key_save=${ML_KEY_SAVE:-"ctrl-d"}
@@ -2477,15 +2684,23 @@ function input:multi-line() {
   saved_stty=$(stty -g)
   stty raw -echo
 
-  # Alternative buffer (preserves terminal scroll history)
+  # Alternative buffer (preserves terminal scroll history, box mode only)
   [[ "$use_alt_buffer" == "true" ]] && printf "\033[?1049h" >&2
+
+  # Enable bracketed paste mode (terminal sends ESC[200~ ... ESC[201~ around pastes)
+  printf "\033[?2004h" >&2
 
   # Cleanup on exit
   local __ml_cancelled=0
   function _input:ml:cleanup() {
+    printf "\033[?2004l" >&2  # Disable bracketed paste
     stty "$saved_stty"
-    [[ "$use_alt_buffer" == "true" ]] && printf "\033[?1049l" >&2
-    printf "\033[%d;0H\n" "$((pos_y + __ML_HEIGHT + 1))" >&2
+    if [[ "$mode" == "stream" ]]; then
+      _input:ml:stream:restore "$stream_row" "$stream_col"
+    else
+      [[ "$use_alt_buffer" == "true" ]] && printf "\033[?1049l" >&2
+      printf "\033[%d;0H\n" "$((pos_y + __ML_HEIGHT + 1))" >&2
+    fi
   }
   trap '_input:ml:cleanup; exit' INT TERM
 
@@ -2494,8 +2709,12 @@ function input:multi-line() {
     local new_w new_h
     new_w=$(tput cols 2>/dev/null || echo "$__ML_WIDTH")
     new_h=$(tput lines 2>/dev/null || echo "$__ML_HEIGHT")
-    __ML_WIDTH=$new_w
-    __ML_HEIGHT=$new_h
+    if [[ "$mode" == "stream" ]]; then
+      __ML_WIDTH=$new_w  # Stream mode uses full terminal width
+    else
+      __ML_WIDTH=$new_w
+      __ML_HEIGHT=$new_h
+    fi
     _input:ml:scroll
   }
   trap '_input:ml:winch' WINCH
@@ -2534,6 +2753,7 @@ function input:multi-line() {
     backspace) _input:ml:delete-char ;;
     enter)     _input:ml:insert-newline ;;
     tab)       _input:ml:insert-tab ;;
+    paste:*)   _input:ml:paste "${key#paste:}" ;;
     char:*)    _input:ml:insert-char "${key#char:}" ;;
     *)         ;; # Ignore unknown sequences
     esac

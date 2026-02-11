@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-02-11
-## Version: 1.1.0
+## Version: 1.2.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -19,12 +19,21 @@ source "$E_BASH/_commons.sh"
 # Controls: Arrow keys to navigate, Enter for newline, Ctrl+D to save, Esc to cancel
 #           Ctrl+E readline edit, Ctrl+W delete word, Ctrl+U delete line, Tab inserts 2 spaces
 #           Page Up/Down to scroll, --alt-buffer preserves scroll history
+# Modes: box (default, explicit positioning) or stream (cursor-based, inline)
+# Paste: bracketed paste (Ctrl+V via terminal) and clipboard paste (Ctrl+V via xclip/pbpaste)
 
-echo "Multi-line editor demo (Ctrl+D to save, Esc to cancel):"
-echo "Features: status bar, Ctrl+E readline edit, Page Up/Down, resize handling"
-echo "---"
+mode=${1:-"box"}
 
-text=$(input:multi-line -w 60 -h 10)
+if [[ "$mode" == "stream" ]]; then
+  echo "Stream mode demo (cursor-based, 5-line editor):"
+  echo "Features: auto-detects cursor position, scrolls if at terminal bottom"
+  text=$(input:multi-line -m stream -h 5)
+else
+  echo "Box mode demo (Ctrl+D to save, Esc to cancel):"
+  echo "Features: status bar, Ctrl+E readline edit, Page Up/Down, resize handling"
+  echo "---"
+  text=$(input:multi-line -w 60 -h 10)
+fi
 exit_code=$?
 
 echo "---"
