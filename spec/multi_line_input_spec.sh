@@ -4,8 +4,8 @@
 # shellcheck disable=SC2317,SC2016,SC2288,SC2155,SC2329
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-10
-## Version: 1.0.0
+## Last revisit: 2026-02-11
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -19,9 +19,9 @@ Mock echo:Common
   echo "$@"
 End
 
-Include ".scripts/_commons.sh"
+Include ".scripts/_tui.sh"
 
-Describe "_commons.sh / input:multi-line /"
+Describe "_tui.sh / input:multi-line /"
   # remove colors in output
   BeforeCall "unset cl_red cl_green cl_blue cl_purple cl_yellow cl_reset cl_grey cl_selected"
   BeforeCall 'export DEBUG="*"'
@@ -549,6 +549,99 @@ Describe "_commons.sh / input:multi-line /"
       The variable __ML_LINES[0] should eq ""
       The variable __ML_LINES[1] should eq "World"
       The variable __ML_COL should eq 0
+    End
+  End
+
+  Describe "_input:ml:stream:fit-height /"
+    It "keeps requested stream height"
+      When call _input:ml:stream:fit-height 10
+
+      The status should be success
+      The output should eq "10"
+    End
+
+    It "normalizes non-positive height to one line"
+      When call _input:ml:stream:fit-height 0
+
+      The status should be success
+      The output should eq "1"
+    End
+  End
+
+  Describe "_input:ml:stream:cursor /"
+    It "falls back to 1;1 when cursor position is unavailable"
+      When call _input:ml:stream:cursor 0
+
+      The status should be success
+      The output should eq "1;1"
+    End
+  End
+
+  Describe "_input:ml:stream:allocate /"
+    It "returns the same row when no overflow is needed"
+      When call _input:ml:stream:allocate 7 3 24
+
+      The status should be success
+      The output should eq "7"
+    End
+
+    It "scrolls terminal with new lines when stream would overflow bottom"
+      When call _input:ml:stream:allocate 24 5 24
+
+      The status should be success
+      The output should eq "20"
+    End
+  End
+
+  Describe "_input:ml:stream:restore /"
+    It "moves cursor to reusable output row"
+      When call _input:ml:stream:restore 7 1
+
+      The status should be success
+      The stderr should include "[7;1H"
+    End
+  End
+
+  Describe "_input:ml:restore-screen /"
+    setup() {
+      _input:ml:init 5 2
+    }
+    Before setup
+
+    It "restores stream mode by moving cursor to reusable output row"
+      _input:ml:stream:restore() { printf "<stream:%s:%s>" "$1" "$2" >&2; }
+      When call _input:ml:restore-screen 1 2 "stream" 9 4
+
+      The status should be success
+      The stderr should include "[?2004l"
+      The stderr should include "[?7h"
+      The stderr should include "<stream:9:4>"
+    End
+
+    It "clears modal area on box restore"
+      When call _input:ml:restore-screen 0 0 "box" 0 0
+
+      The status should be success
+      The stderr should include "[?2004l"
+      The stderr should include "[?7h"
+      The stderr should include "[1;1H"
+      The stderr should include "[2;1H"
+    End
+  End
+
+  Describe "_input:ml:render /"
+    setup() {
+      _input:ml:init 5 2
+      __ML_LINES=("line1" "line2")
+    }
+    Before setup
+
+    It "disables and restores line wrapping while rendering"
+      When call _input:ml:render 0 0
+
+      The status should be success
+      The stderr should include "[?7l"
+      The stderr should include "[?7h"
     End
   End
 

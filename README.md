@@ -151,7 +151,8 @@ Then source the modules you need:
 - `source "$E_BASH/_hooks.sh"` - [Declarative hooks system](docs/public/lib/_hooks.md)
 - `source "$E_BASH/_traps.sh"` - [Enhanced trap management](docs/public/lib/_traps.md)
 - `source "$E_BASH/_semver.sh"` - [Semantic versioning support](docs/public/lib/_semver.md)
-- `source "$E_BASH/_commons.sh"` - [Common utilities and UI components](docs/public/lib/_commons.md)
+- `source "$E_BASH/_commons.sh"` - [Common utilities](docs/public/lib/_commons.md)
+- `source "$E_BASH/_tui.sh"` - [Terminal UI inputs and key handling](docs/public/lib/_tui.md)
 - `source "$E_BASH/_colors.sh"` - [Terminal color detection and ANSI definitions](docs/public/lib/_colors.md)
 
 See `.scripts/` directory for all available modules.
@@ -302,7 +303,7 @@ More details: [Arguments Parsing](docs/public/arguments.md), [Demo script](demos
 
 ### Common(s) Functions And Inputs
 
-[Complete Documentation](docs/public/commons.md) | [API Reference](docs/public/lib/_commons.md)
+[Complete Documentation](docs/public/commons.md) | [API Reference](docs/public/lib/_commons.md) | [TUI API Reference](docs/public/lib/_tui.md)
 
 ```bash
 source ".scripts/_commons.sh"
@@ -333,7 +334,7 @@ echo "Extracted: ${new_value}"
 ![Selector](docs/images/public/ui.selector.gif)
 
 ```bash
-source ".scripts/_commons.sh"
+source ".scripts/_tui.sh"
 
 # Select value from short list of choices
 declare -A -g connections && connections=(["d"]="production" ["s"]="cors-proxy:staging" ["p"]="cors-proxy:local")
@@ -341,26 +342,26 @@ echo -n "Select connection type: " && tput civis # hide cursor
 selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_reset}"
 ```
 
-[API Reference](docs/public/lib/_commons.md#inputselector)
+[API Reference](docs/public/lib/_tui.md#inputselector)
 
 ### UI: Ask for Password
 
 ![Ask for Password](docs/images/public/ui.ask-for-password.gif)
 
 ```bash
-source ".scripts/_commons.sh"
+source ".scripts/_tui.sh"
 
 # Usage:
 echo -n "Enter password: "
 password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
 
-[API Reference](docs/public/lib/_commons.md#inputreadpwd)
+[API Reference](docs/public/lib/_tui.md#inputreadpwd)
 
 ### UI: Multi-line Text Editor
 
 ```bash
-source ".scripts/_commons.sh"
+source ".scripts/_tui.sh"
 
 # Open a multi-line text editor (Ctrl+D to save, Esc to cancel)
 text=$(input:multi-line -w 60 -h 10)
@@ -370,12 +371,35 @@ text=$(input:multi-line)
 
 # Positioned editor (offset from top-left)
 text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+
+# Stream editor (from cursor row, full terminal width)
+text=$(input:multi-line -m stream -h 5)
+
+# Demo:
+bash demos/demo.multi-line.sh stream
 ```
 
 Controls: Arrow keys to navigate, Enter for newline, Backspace to delete,
-Ctrl+W delete word, Ctrl+U delete line, Ctrl+V paste, Tab inserts 2 spaces.
+Ctrl+W delete word, Ctrl+U delete line, terminal paste (bracketed supported), Tab inserts 2 spaces.
 
-[API Reference](docs/public/lib/_commons.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh)
+[API Reference](docs/public/lib/_tui.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh)
+
+### UI: Pseudographics Box
+
+```bash
+source ".scripts/_tui.sh"
+
+# Draw a non-modal box.
+tui:box:draw -x 2 -y 1 -w 40 -h 8 -s single
+
+# Draw a modal box layer and restore the previous region later.
+tui:box:open -x 8 -y 3 -w 24 -h 6 -s double >/dev/null
+layer_id="$__TUI_BOX_LAST_LAYER"
+# ... render dialog content ...
+tui:box:close "$layer_id"
+```
+
+Styles: `single`, `double`, `single_h_double_v`, `double_h_single_v`.
 
 ### Dry-Run Wrapper System
 

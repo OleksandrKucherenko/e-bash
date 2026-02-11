@@ -1034,22 +1034,23 @@ The `_commons.sh` module provides three interactive terminal input components, e
 
 ### input:multi-line - Multi-line Text Editor
 
-A full-featured modal text editor that opens directly in the terminal. Supports multi-line editing with arrow key navigation, scrolling, word/line deletion, and clipboard paste.
+A full-featured modal text editor that opens directly in the terminal. Supports multi-line editing with arrow key navigation, scrolling, word/line deletion, and terminal paste.
 
 #### Function Signature
 
 ```bash
-text=$(input:multi-line [-x pos_x] [-y pos_y] [-w width] [-h height])
+text=$(input:multi-line [-m mode] [-x pos_x] [-y pos_y] [-w width] [-h height])
 ```
 
 #### Arguments
 
 | Argument | Type | Default | Description |
 |----------|------|---------|-------------|
+| `-m` | string | `box` | Render mode: `box` or `stream` |
 | `-x` | integer | `0` | Left offset (column position) |
 | `-y` | integer | `0` | Top offset (row position) |
 | `-w` | integer | terminal width | Editor width in columns |
-| `-h` | integer | terminal height | Editor height in rows |
+| `-h` | integer | terminal height in `box`, `5` in `stream` | Editor height in rows |
 
 #### Examples
 
@@ -1064,6 +1065,9 @@ text=$(input:multi-line -w 60 -h 10)
 
 # Positioned editor with dimensions
 text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+
+# Stream mode: allocate rows from current cursor, use full screen width
+text=$(input:multi-line -m stream -h 5)
 
 # Handle save vs cancel
 if text=$(input:multi-line -w 60 -h 10); then
@@ -1085,7 +1089,7 @@ fi
 | Esc | Cancel and exit (returns 1) |
 | Ctrl+W | Delete word backward |
 | Ctrl+U | Clear current line |
-| Ctrl+V | Paste from system clipboard (xclip or pbpaste) |
+| Paste | Paste from terminal input (bracketed paste supported) |
 | Tab | Insert 2 spaces |
 | Home | Move cursor to beginning of line |
 | End | Move cursor to end of line |
@@ -1096,13 +1100,10 @@ The editor separates **pure state logic** from **terminal I/O** for testability.
 
 The rendering and input loop (`_input:ml:render`, `input:multi-line`) form a thin I/O wrapper around the state logic.
 
-#### Clipboard Support
+#### Paste Support
 
-Paste (Ctrl+V) auto-detects the available clipboard command:
-- **Linux**: `xclip -o -selection clipboard`
-- **macOS**: `pbpaste`
-
-Multi-line clipboard content is properly split and inserted across multiple lines.
+Pasted content is read directly from terminal input.
+When bracketed paste is available, payload is captured as a single block and inserted multi-line.
 
 ### input:readpwd - Password Input
 

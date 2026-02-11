@@ -2,8 +2,8 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-10
-## Version: 1.0.0
+## Last revisit: 2026-02-11
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -18,11 +18,21 @@ source "$E_BASH/_commons.sh"
 # Usage: multi-line text editor with configurable dimensions
 # Controls: Arrow keys to navigate, Enter for newline, Ctrl+D to save, Esc to cancel
 #           Ctrl+W delete word, Ctrl+U delete line, Tab inserts 2 spaces
+#           paste via terminal paste (bracketed paste supported)
 
-echo "Multi-line editor demo (Ctrl+D to save, Esc to cancel):"
+mode="${1:-box}"
+
+echo "Multi-line editor demo [mode=${mode}] (Ctrl+D to save, Esc to cancel):"
 echo "---"
 
-text=$(input:multi-line -w 60 -h 10)
+if [[ "$mode" == "stream" ]]; then
+  text=$(input:multi-line -m stream -h 5)
+elif [[ "$mode" == "box" ]]; then
+  text=$(input:multi-line -m box -x 10 -y 10 -w 60 -h 10)
+else
+  echo "Unknown mode: '$mode' (use: box|stream)" >&2
+  exit 2
+fi
 exit_code=$?
 
 echo "---"
