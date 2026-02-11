@@ -365,15 +365,18 @@ source ".scripts/_commons.sh"
 # Open a multi-line text editor (Ctrl+D to save, Esc to cancel)
 text=$(input:multi-line -w 60 -h 10)
 
-# Full-screen editor
-text=$(input:multi-line)
+# Full-screen editor with alternative buffer (preserves scroll history)
+text=$(input:multi-line --alt-buffer)
 
-# Positioned editor (offset from top-left)
-text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+# Positioned editor with custom keybindings
+ML_KEY_SAVE=$'\x13' text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+
+# Ctrl+E opens readline for current line (full word movement, history)
 ```
 
-Controls: Arrow keys to navigate, Enter for newline, Backspace to delete,
-Ctrl+W delete word, Ctrl+U delete line, Ctrl+V paste, Tab inserts 2 spaces.
+Controls: Arrow keys, Page Up/Down, Home/End to navigate, Enter for newline,
+Backspace to delete, Ctrl+W delete word, Ctrl+U delete line, Ctrl+V paste,
+Ctrl+E readline edit, Tab inserts 2 spaces. Status bar shows position and [+] modified indicator.
 
 [API Reference](docs/public/lib/_commons.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh)
 

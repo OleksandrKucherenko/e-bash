@@ -2,8 +2,8 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-10
-## Version: 1.0.0
+## Last revisit: 2026-02-11
+## Version: 1.1.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -17,9 +17,11 @@ source "$E_BASH/_commons.sh"
 
 # Usage: multi-line text editor with configurable dimensions
 # Controls: Arrow keys to navigate, Enter for newline, Ctrl+D to save, Esc to cancel
-#           Ctrl+W delete word, Ctrl+U delete line, Tab inserts 2 spaces
+#           Ctrl+E readline edit, Ctrl+W delete word, Ctrl+U delete line, Tab inserts 2 spaces
+#           Page Up/Down to scroll, --alt-buffer preserves scroll history
 
 echo "Multi-line editor demo (Ctrl+D to save, Esc to cancel):"
+echo "Features: status bar, Ctrl+E readline edit, Page Up/Down, resize handling"
 echo "---"
 
 text=$(input:multi-line -w 60 -h 10)
