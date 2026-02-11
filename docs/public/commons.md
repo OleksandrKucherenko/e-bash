@@ -1039,7 +1039,7 @@ A full-featured modal text editor that opens directly in the terminal. Supports 
 #### Function Signature
 
 ```bash
-text=$(input:multi-line [-x pos_x] [-y pos_y] [-w width] [-h height])
+text=$(input:multi-line [-x pos_x] [-y pos_y] [-w width] [-h height] [--alt-buffer] [--no-status])
 ```
 
 #### Arguments
@@ -1050,6 +1050,8 @@ text=$(input:multi-line [-x pos_x] [-y pos_y] [-w width] [-h height])
 | `-y` | integer | `0` | Top offset (row position) |
 | `-w` | integer | terminal width | Editor width in columns |
 | `-h` | integer | terminal height | Editor height in rows |
+| `--alt-buffer` | flag | off | Use alternative terminal buffer (preserves scroll history) |
+| `--no-status` | flag | off | Hide the status bar |
 
 #### Examples
 
@@ -1062,8 +1064,11 @@ text=$(input:multi-line)
 # Sized editor (60 columns x 10 rows)
 text=$(input:multi-line -w 60 -h 10)
 
-# Positioned editor with dimensions
-text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+# Alternative buffer (preserves scroll history, like vim)
+text=$(input:multi-line --alt-buffer)
+
+# Custom save keybinding (Ctrl+S instead of Ctrl+D)
+ML_KEY_SAVE=$'\x13' text=$(input:multi-line -w 60 -h 10)
 
 # Handle save vs cancel
 if text=$(input:multi-line -w 60 -h 10); then
@@ -1079,22 +1084,45 @@ fi
 | Key | Action |
 |-----|--------|
 | Arrow keys | Navigate cursor (up, down, left, right) |
+| Page Up/Down | Scroll by page |
+| Home / End | Move cursor to beginning/end of line |
 | Enter | Insert newline (splits line at cursor) |
 | Backspace | Delete character before cursor; joins lines at boundary |
 | Ctrl+D | Save and exit (returns 0) |
 | Esc | Cancel and exit (returns 1) |
+| Ctrl+E | Edit current line with full readline (word movement, history) |
 | Ctrl+W | Delete word backward |
 | Ctrl+U | Clear current line |
 | Ctrl+V | Paste from system clipboard (xclip or pbpaste) |
 | Tab | Insert 2 spaces |
-| Home | Move cursor to beginning of line |
-| End | Move cursor to end of line |
+
+#### Configurable Keybindings
+
+All control keys can be overridden via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ML_KEY_SAVE` | Ctrl+D | Save and exit |
+| `ML_KEY_EDIT` | Ctrl+E | Enter readline editing mode |
+| `ML_KEY_PASTE` | Ctrl+V | Paste from clipboard |
+| `ML_KEY_DEL_WORD` | Ctrl+W | Delete word backward |
+| `ML_KEY_DEL_LINE` | Ctrl+U | Clear current line |
 
 #### Architecture
 
-The editor separates **pure state logic** from **terminal I/O** for testability. All editing operations are implemented as internal `_input:ml:*` functions that manipulate shared state arrays (`__ML_LINES[]`, `__ML_ROW`, `__ML_COL`, `__ML_SCROLL`). These functions are fully unit-testable with ShellSpec (44 tests).
+The editor separates **pure state logic** from **terminal I/O** for testability. All editing operations are implemented as internal `_input:ml:*` functions that manipulate shared state arrays (`__ML_LINES[]`, `__ML_ROW`, `__ML_COL`, `__ML_SCROLL`). These functions are fully unit-testable with ShellSpec (55 tests).
 
 The rendering and input loop (`_input:ml:render`, `input:multi-line`) form a thin I/O wrapper around the state logic.
+
+#### Status Bar
+
+The editor includes a status bar (top row) showing:
+- Help hints: `Ctrl+D save | Esc cancel | Ctrl+E edit line`
+- Cursor position: `L{row}:C{col}`
+- Modified indicator: `[+]` when buffer has been changed
+- Total line count
+
+Disable with `--no-status` flag.
 
 #### Clipboard Support
 

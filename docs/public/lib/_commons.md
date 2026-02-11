@@ -391,34 +391,51 @@ Press Ctrl+D to save and exit, Esc to cancel.
 | `-y` | integer | `0` | Top offset (row position) |
 | `-w` | integer | terminal width | Editor width in columns |
 | `-h` | integer | terminal height | Editor height in rows |
+| `--alt-buffer` | flag | off | Use alternative terminal buffer (preserves scroll history) |
+| `--no-status` | flag | off | Hide the status bar |
 
 #### Globals
 
-- reads/listen: TERM, cl_grey, cl_reset
-- mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL
+- reads/listen: TERM, ML_KEY_SAVE, ML_KEY_EDIT, ML_KEY_PASTE, ML_KEY_DEL_WORD, ML_KEY_DEL_LINE
+- mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED
+
+#### Configurable Keybindings
+
+All keys can be overridden via environment variables (inspired by the bed editor):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ML_KEY_SAVE` | Ctrl+D | Save and exit |
+| `ML_KEY_EDIT` | Ctrl+E | Enter readline editing mode for current line |
+| `ML_KEY_PASTE` | Ctrl+V | Paste from clipboard |
+| `ML_KEY_DEL_WORD` | Ctrl+W | Delete word backward |
+| `ML_KEY_DEL_LINE` | Ctrl+U | Clear current line |
 
 #### Side Effects
 
 - Saves/restores terminal state (stty)
-- Traps INT/TERM for cleanup
-- Reads raw keyboard input
+- Traps INT/TERM/WINCH for cleanup and terminal resize
+- Uses alternative terminal buffer when `--alt-buffer` specified
+- Reads raw keyboard input with timeout for responsive resize handling
 - Renders to terminal via ANSI escape sequences (blue background modal)
+- Status bar shows cursor position, modified indicator [+], and line count
 
 #### Keyboard Controls
 
 | Key | Action |
 |-----|--------|
 | Arrow keys | Navigate cursor |
+| Page Up/Down | Scroll by page |
+| Home / End | Move to beginning/end of line |
 | Enter | Insert newline |
 | Backspace | Delete character (joins lines at boundary) |
 | Ctrl+D | Save and exit |
 | Esc | Cancel and exit (returns status 1) |
+| Ctrl+E | Edit current line with full readline (word movement, history) |
 | Ctrl+W | Delete word backward |
 | Ctrl+U | Delete current line content |
 | Ctrl+V | Paste from clipboard |
 | Tab | Insert 2 spaces |
-| Home | Move to beginning of line |
-| End | Move to end of line |
 
 #### Returns
 
@@ -433,6 +450,12 @@ text=$(input:multi-line)
 
 # Sized and positioned editor
 text=$(input:multi-line -w 60 -h 10 -x 5 -y 2)
+
+# Alternative buffer (preserves scroll history, like vim)
+text=$(input:multi-line --alt-buffer)
+
+# Custom save key (Ctrl+S instead of Ctrl+D)
+ML_KEY_SAVE=$'\x13' text=$(input:multi-line)
 
 # Check if user cancelled
 if text=$(input:multi-line -w 80 -h 20); then

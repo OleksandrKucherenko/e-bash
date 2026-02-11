@@ -407,6 +407,7 @@ Describe "_commons.sh / input:multi-line /"
   Describe "_input:ml:scroll /"
     setup() {
       _input:ml:init 80 5
+      __ML_STATUS_BAR=false
     }
     Before setup
 
@@ -437,6 +438,18 @@ Describe "_commons.sh / input:multi-line /"
       _input:ml:scroll
 
       The variable __ML_SCROLL should eq 0
+    End
+
+    It "accounts for status bar in scroll calculation"
+      __ML_STATUS_BAR=true
+      __ML_LINES=("L1" "L2" "L3" "L4" "L5" "L6" "L7")
+      __ML_ROW=6
+
+      _input:ml:scroll
+
+      # height=5, status_bar=true -> content_height=4
+      # row=6 >= scroll(0) + 4, so scroll = 6 - 4 + 1 = 3
+      The variable __ML_SCROLL should eq 3
     End
   End
 
@@ -604,6 +617,108 @@ Describe "_commons.sh / input:multi-line /"
 
       The variable __ML_ROW should eq 0
       The variable __ML_COL should eq 2
+    End
+  End
+
+  Describe "modified tracking /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "starts unmodified after init"
+      The variable __ML_MODIFIED should eq "false"
+    End
+
+    It "marks modified on insert-char"
+      _input:ml:insert-char "a"
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "marks modified on delete-char"
+      __ML_LINES[0]="Hello"
+      __ML_COL=5
+
+      _input:ml:delete-char
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "marks modified on insert-newline"
+      __ML_LINES[0]="Hello"
+      __ML_COL=3
+
+      _input:ml:insert-newline
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "marks modified on delete-word"
+      __ML_LINES[0]="Hello World"
+      __ML_COL=11
+
+      _input:ml:delete-word
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "marks modified on delete-line"
+      __ML_LINES[0]="Hello"
+      __ML_COL=3
+
+      _input:ml:delete-line
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "marks modified on paste"
+      __ML_LINES[0]=""
+      __ML_COL=0
+
+      _input:ml:paste "pasted text"
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "marks modified on insert-tab"
+      _input:ml:insert-tab
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "does not mark modified on cursor movement"
+      __ML_LINES=("Hello" "World")
+      __ML_ROW=0
+      __ML_COL=3
+
+      _input:ml:move-down
+      _input:ml:move-up
+      _input:ml:move-left
+      _input:ml:move-right
+      _input:ml:move-home
+      _input:ml:move-end
+
+      The variable __ML_MODIFIED should eq "false"
+    End
+  End
+
+  Describe "scroll with status bar /"
+    setup() {
+      _input:ml:init 80 10
+      __ML_STATUS_BAR=true
+    }
+    Before setup
+
+    It "uses content_height minus 1 when status bar enabled"
+      __ML_LINES=("L1" "L2" "L3" "L4" "L5" "L6" "L7" "L8" "L9" "L10" "L11")
+      __ML_ROW=10
+
+      _input:ml:scroll
+
+      # height=10, status_bar=true -> content_height=9
+      # row=10 >= scroll(0) + 9, so scroll = 10 - 9 + 1 = 2
+      The variable __ML_SCROLL should eq 2
     End
   End
 End

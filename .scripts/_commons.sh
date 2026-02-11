@@ -1453,6 +1453,9 @@ declare -g -i __ML_COL=0
 declare -g -i __ML_SCROLL=0
 declare -g -i __ML_WIDTH=80
 declare -g -i __ML_HEIGHT=24
+declare -g __ML_MODIFIED=false
+declare -g __ML_MESSAGE=""
+declare -g __ML_STATUS_BAR=true
 
 ##
 ## Initialize multi-line editor state
@@ -1478,6 +1481,8 @@ function _input:ml:init() {
   __ML_COL=0
   __ML_SCROLL=0
   __ML_LINES=("")
+  __ML_MODIFIED=false
+  __ML_MESSAGE=""
 }
 
 ##
@@ -1501,6 +1506,7 @@ function _input:ml:insert-char() {
   local line="${__ML_LINES[$__ML_ROW]}"
   __ML_LINES[$__ML_ROW]="${line:0:$__ML_COL}${char}${line:$__ML_COL}"
   __ML_COL=$((__ML_COL + 1))
+  __ML_MODIFIED=true
 }
 
 ##
@@ -1527,6 +1533,7 @@ function _input:ml:delete-char() {
     local line="${__ML_LINES[$__ML_ROW]}"
     __ML_LINES[$__ML_ROW]="${line:0:$((__ML_COL - 1))}${line:$__ML_COL}"
     __ML_COL=$((__ML_COL - 1))
+    __ML_MODIFIED=true
   elif [[ $__ML_ROW -gt 0 ]]; then
     # Join with previous line
     local current_line="${__ML_LINES[$__ML_ROW]}"
@@ -1536,6 +1543,7 @@ function _input:ml:delete-char() {
     local prev_line="${__ML_LINES[$__ML_ROW]}"
     __ML_COL=${#prev_line}
     __ML_LINES[$__ML_ROW]="${prev_line}${current_line}"
+    __ML_MODIFIED=true
     _input:ml:scroll
   fi
 }
@@ -1573,6 +1581,7 @@ function _input:ml:delete-word() {
     __ML_COL=$((__ML_COL - 1))
   done
   __ML_LINES[$__ML_ROW]="$line"
+  __ML_MODIFIED=true
 }
 
 ##
@@ -1599,6 +1608,7 @@ function _input:ml:insert-newline() {
   __ML_LINES=("${__ML_LINES[@]:0:$((__ML_ROW + 1))}" "$after" "${__ML_LINES[@]:$((__ML_ROW + 1))}")
   __ML_ROW=$((__ML_ROW + 1))
   __ML_COL=0
+  __ML_MODIFIED=true
   _input:ml:scroll
 }
 
@@ -1757,9 +1767,11 @@ function _input:ml:move-end() {
 ## - _input:ml:scroll
 ##
 function _input:ml:scroll() {
+  local content_height=$__ML_HEIGHT
+  [[ "$__ML_STATUS_BAR" == "true" ]] && content_height=$((__ML_HEIGHT - 1))
   # Scroll down
-  if [[ $__ML_ROW -ge $((__ML_SCROLL + __ML_HEIGHT)) ]]; then
-    __ML_SCROLL=$((__ML_ROW - __ML_HEIGHT + 1))
+  if [[ $__ML_ROW -ge $((__ML_SCROLL + content_height)) ]]; then
+    __ML_SCROLL=$((__ML_ROW - content_height + 1))
   fi
   # Scroll up
   if [[ $__ML_ROW -lt $__ML_SCROLL ]]; then
@@ -1871,6 +1883,7 @@ function _input:ml:paste() {
     __ML_ROW=$((__ML_ROW + last_idx))
     __ML_COL=${#last_line}
   fi
+  __ML_MODIFIED=true
 }
 
 ##
@@ -1892,6 +1905,57 @@ function _input:ml:paste() {
 function _input:ml:delete-line() {
   __ML_LINES[$__ML_ROW]=""
   __ML_COL=0
+  __ML_MODIFIED=true
+}
+
+##
+## Edit current line using readline (full line-editing support)
+##
+## Temporarily restores terminal to cooked mode and uses `read -rei`
+## to provide full readline editing (history, word movement, etc.)
+## for the current line. Inspired by the bed editor pattern.
+##
+## Parameters:
+## - saved_stty - Saved stty state to restore for readline, string, required
+## - pos_y - Top offset for cursor positioning, integer, default: 0
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_LINES, __ML_HEIGHT, __ML_SCROLL
+## - mutate/publish: __ML_LINES, __ML_COL, __ML_MODIFIED
+##
+## Side effects:
+## - Temporarily changes terminal mode
+## - Shows cursor for readline editing
+## - Reads from terminal
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:edit-line "$saved_stty" "$pos_y"
+##
+function _input:ml:edit-line() {
+  local saved_stty="$1" pos_y=${2:-0}
+  local visual_row=$((__ML_ROW - __ML_SCROLL))
+  local line_y=$((pos_y + visual_row + 1))
+
+  # Restore terminal for readline
+  stty "$saved_stty"
+  printf "\033[?25h" >&2  # Show cursor
+  printf "\033[%d;1H\033[K" "$line_y" >&2  # Position and clear line
+
+  # Use readline for editing (full word movement, history, etc.)
+  local REPLY
+  if read -rei "${__ML_LINES[$__ML_ROW]}" -p "$(printf '%4s ' "$((__ML_ROW + 1))")" 2>&1; then
+    if [[ "$REPLY" != "${__ML_LINES[$__ML_ROW]}" ]]; then
+      __ML_LINES[$__ML_ROW]="$REPLY"
+      __ML_MODIFIED=true
+    fi
+    __ML_COL=${#REPLY}
+  fi
+
+  # Return to raw mode
+  stty raw -echo
 }
 
 ##
@@ -1920,8 +1984,29 @@ function _input:ml:render() {
   # Hide cursor during render
   printf "\033[?25l" >&2
 
+  # Status bar (line 0) - inspired by bed editor
+  if [[ "$__ML_STATUS_BAR" == "true" ]]; then
+    local status_modified=""
+    [[ "$__ML_MODIFIED" == "true" ]] && status_modified="[+] "
+    local status_info="L$((__ML_ROW + 1)):C$((__ML_COL + 1)) ${status_modified}${#__ML_LINES[@]}L"
+    local status_msg="${__ML_MESSAGE:-Ctrl+D save | Esc cancel | Ctrl+E edit line}"
+    local status_text=" ${status_msg}"
+    local status_right=" ${status_info} "
+    local status_pad=$((__ML_WIDTH - ${#status_text} - ${#status_right}))
+    [[ $status_pad -lt 0 ]] && status_pad=0
+
+    printf "\033[%d;%dH" "$((pos_y + 1))" "$((pos_x + 1))" >&2
+    printf "\033[100m\033[37m%s%*s%s\033[0m" "$status_text" "$status_pad" "" "$status_right" >&2
+  fi
+
+  local render_start=0
+  [[ "$__ML_STATUS_BAR" == "true" ]] && render_start=1
+
   local i buf_idx line_content padding
-  for ((i = 0; i < __ML_HEIGHT; i++)); do
+  local content_height=$((__ML_HEIGHT))
+  [[ "$__ML_STATUS_BAR" == "true" ]] && content_height=$((__ML_HEIGHT - 1))
+
+  for ((i = 0; i < content_height; i++)); do
     buf_idx=$((i + __ML_SCROLL))
     line_content=""
 
@@ -1942,9 +2027,15 @@ function _input:ml:render() {
       line_content="${line_content}$(printf '%*s' "$padding" "")"
     fi
 
-    # Draw at position
-    printf "\033[%d;%dH" "$((pos_y + i + 1))" "$((pos_x + 1))" >&2
-    printf "\033[44m\033[37m%s\033[0m" "$line_content" >&2
+    # Draw at position (offset by status bar)
+    printf "\033[%d;%dH" "$((pos_y + i + 1 + render_start))" "$((pos_x + 1))" >&2
+
+    # Highlight current line with slightly different background
+    if [[ $buf_idx -eq $__ML_ROW ]]; then
+      printf "\033[44m\033[97m%s\033[0m" "$line_content" >&2
+    else
+      printf "\033[44m\033[37m%s\033[0m" "$line_content" >&2
+    fi
   done
 
   # Show cursor at correct position
@@ -1952,7 +2043,7 @@ function _input:ml:render() {
   local visual_col=$__ML_COL
   [[ $visual_col -ge $__ML_WIDTH ]] && visual_col=$((__ML_WIDTH - 1))
 
-  printf "\033[%d;%dH" "$((pos_y + visual_row + 1))" "$((pos_x + visual_col + 1))" >&2
+  printf "\033[%d;%dH" "$((pos_y + visual_row + 1 + render_start))" "$((pos_x + visual_col + 1))" >&2
   printf "\033[?25h" >&2
 }
 
@@ -1962,20 +2053,32 @@ function _input:ml:render() {
 ## Opens a modal text editor at specified position with configurable dimensions.
 ## Supports arrow key navigation, backspace, word delete, newline, tab, paste.
 ## Press Ctrl+D to save and exit, Esc to cancel.
+## Press Ctrl+E for readline-based editing of current line (full word movement).
+##
+## Features inspired by the bed (bash editor) project:
+## - Alternative terminal buffer (--alt-buffer) to preserve scroll history
+## - WINCH signal handling for terminal resize
+## - Configurable keybindings via ML_KEY_* environment variables
+## - Modified indicator in status bar
+## - Readline-based line editing (Ctrl+E)
+## - Status bar with position info and help hints
 ##
 ## Parameters:
 ## - -x pos_x - Left offset, integer, default: 0
 ## - -y pos_y - Top offset, integer, default: 0
 ## - -w width - Editor width, integer, default: terminal width
 ## - -h height - Editor height, integer, default: terminal height
+## - --alt-buffer - Use alternative terminal buffer (preserves scroll history)
+## - --no-status - Hide status bar
 ##
 ## Globals:
-## - reads/listen: TERM, cl_grey, cl_reset
-## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL
+## - reads/listen: TERM, ML_KEY_SAVE, ML_KEY_CANCEL, ML_KEY_EDIT, ML_KEY_PASTE,
+##                 ML_KEY_DEL_WORD, ML_KEY_DEL_LINE
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED
 ##
 ## Side effects:
 ## - Saves/restores terminal state (stty)
-## - Traps INT/TERM/EXIT for cleanup
+## - Traps INT/TERM/WINCH for cleanup and resize
 ## - Reads raw keyboard input
 ## - Renders to terminal via ANSI escape sequences
 ##
@@ -1986,13 +2089,17 @@ function _input:ml:render() {
 ## Usage:
 ## - text=$(input:multi-line)
 ## - text=$(input:multi-line -w 60 -h 10 -x 5 -y 2)
+## - text=$(input:multi-line --alt-buffer)
+## - ML_KEY_SAVE=$'\x13' text=$(input:multi-line)  # Ctrl+S to save
 ##
 function input:multi-line() {
   local pos_x=0 pos_y=0 width height
+  local use_alt_buffer=false
 
   # Detect terminal dimensions
   width=$(tput cols 2>/dev/null || echo 80)
   height=$(tput lines 2>/dev/null || echo 24)
+  __ML_STATUS_BAR=true
 
   # Parse arguments
   while [[ "$#" -gt 0 ]]; do
@@ -2001,12 +2108,21 @@ function input:multi-line() {
     -y) pos_y="$2"; shift ;;
     -w) width="$2"; shift ;;
     -h) height="$2"; shift ;;
+    --alt-buffer) use_alt_buffer=true ;;
+    --no-status) __ML_STATUS_BAR=false ;;
     *) shift; continue ;;
     esac
     shift
   done
 
   _input:ml:init "$width" "$height"
+
+  # Configurable keybindings (env var overrides, inspired by bed editor)
+  local key_save=${ML_KEY_SAVE:-$'\x04'}       # Ctrl+D
+  local key_edit=${ML_KEY_EDIT:-$'\x05'}        # Ctrl+E
+  local key_paste=${ML_KEY_PASTE:-$'\x16'}      # Ctrl+V
+  local key_del_word=${ML_KEY_DEL_WORD:-$'\x17'} # Ctrl+W
+  local key_del_line=${ML_KEY_DEL_LINE:-$'\x15'} # Ctrl+U
 
   # Detect clipboard paste command
   local paste_cmd=""
@@ -2021,20 +2137,36 @@ function input:multi-line() {
   saved_stty=$(stty -g)
   stty raw -echo
 
+  # Alternative buffer (preserves terminal scroll history)
+  [[ "$use_alt_buffer" == "true" ]] && printf "\033[?1049h" >&2
+
   # Cleanup on exit
   local __ml_cancelled=0
   function _input:ml:cleanup() {
     stty "$saved_stty"
+    [[ "$use_alt_buffer" == "true" ]] && printf "\033[?1049l" >&2
     printf "\033[%d;0H\n" "$((pos_y + __ML_HEIGHT + 1))" >&2
   }
   trap '_input:ml:cleanup; exit' INT TERM
 
-  local c0 code esc rest
+  # WINCH handler: update dimensions on terminal resize
+  function _input:ml:winch() {
+    local new_w new_h
+    new_w=$(tput cols 2>/dev/null || echo "$__ML_WIDTH")
+    new_h=$(tput lines 2>/dev/null || echo "$__ML_HEIGHT")
+    __ML_WIDTH=$new_w
+    __ML_HEIGHT=$new_h
+    _input:ml:scroll
+  }
+  trap '_input:ml:winch' WINCH
+
+  local c0 code rest
 
   while true; do
     _input:ml:render "$pos_x" "$pos_y"
 
-    IFS= read -rsn1 c0
+    # Read with timeout for responsive WINCH handling (bed pattern)
+    IFS= read -rsn1 -t 0.1 c0 || continue
 
     if [[ "$c0" == $'\x1b' ]]; then
       read -rsn2 -t 0.1 rest
@@ -2045,30 +2177,33 @@ function input:multi-line() {
       "[D") _input:ml:move-left ;;    # Left arrow
       "[H") _input:ml:move-home ;;    # Home
       "[F") _input:ml:move-end ;;     # End
+      "[5") read -rsn1 -t 0.01 _      # Page Up (consume ~)
+            local i; for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-up; done ;;
+      "[6") read -rsn1 -t 0.01 _      # Page Down (consume ~)
+            local i; for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-down; done ;;
       "")   __ml_cancelled=1; break ;; # Esc (cancel)
       *) ;;                            # Ignore other sequences
       esac
+    elif [[ "$c0" == "$key_save" ]]; then
+      break
+    elif [[ "$c0" == "$key_edit" ]]; then
+      # Readline-based line editing (bed pattern: full readline for current line)
+      _input:ml:edit-line "$saved_stty" "$pos_y"
+    elif [[ "$c0" == "$key_paste" ]]; then
+      if [[ -n "$paste_cmd" ]]; then
+        local clipboard_text
+        clipboard_text=$($paste_cmd 2>/dev/null)
+        [[ -n "$clipboard_text" ]] && _input:ml:paste "$clipboard_text"
+      fi
+    elif [[ "$c0" == "$key_del_word" ]]; then
+      _input:ml:delete-word
+    elif [[ "$c0" == "$key_del_line" ]]; then
+      _input:ml:delete-line
     else
       code=$(printf '%02x' "'$c0")
       case "$code" in
-      04)                              # Ctrl+D (save)
-        break
-        ;;
       7f | 08)                         # Backspace / Delete
         _input:ml:delete-char
-        ;;
-      17)                              # Ctrl+W (delete word)
-        _input:ml:delete-word
-        ;;
-      15)                              # Ctrl+U (delete line)
-        _input:ml:delete-line
-        ;;
-      16)                              # Ctrl+V (paste)
-        if [[ -n "$paste_cmd" ]]; then
-          local clipboard_text
-          clipboard_text=$($paste_cmd 2>/dev/null)
-          [[ -n "$clipboard_text" ]] && _input:ml:paste "$clipboard_text"
-        fi
         ;;
       ""|00|0a|0d)                     # Enter
         _input:ml:insert-newline
@@ -2087,7 +2222,7 @@ function input:multi-line() {
 
   # Restore terminal
   _input:ml:cleanup
-  trap - INT TERM
+  trap - INT TERM WINCH
 
   if [[ $__ml_cancelled -eq 1 ]]; then
     return 1
