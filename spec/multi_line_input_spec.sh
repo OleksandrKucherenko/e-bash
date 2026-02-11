@@ -703,6 +703,87 @@ Describe "_commons.sh / input:multi-line /"
     End
   End
 
+  Describe "_input:ml:stream:fit-height /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "returns requested height when valid"
+      When call _input:ml:stream:fit-height 10
+      The output should eq "10"
+    End
+
+    It "clamps to 1 when zero requested"
+      When call _input:ml:stream:fit-height 0
+      The output should eq "1"
+    End
+
+    It "clamps to 1 when negative requested"
+      When call _input:ml:stream:fit-height -5
+      The output should eq "1"
+    End
+
+    It "clamps to 1 when non-numeric"
+      When call _input:ml:stream:fit-height "abc"
+      The output should eq "1"
+    End
+
+    It "defaults to 1 when empty"
+      When call _input:ml:stream:fit-height ""
+      The output should eq "1"
+    End
+  End
+
+  Describe "_input:ml:stream:allocate /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "returns anchor row when no overflow"
+      When call _input:ml:stream:allocate 5 10 40
+      The output should eq "5"
+    End
+
+    It "adjusts anchor row when overflow occurs"
+      # anchor=20, lines=10, terminal=24
+      # overflow = 20 + 10 - 24 - 1 = 5
+      # adjusted = 20 - 5 = 15
+      When call _input:ml:stream:allocate 20 10 24
+      The output should eq "15"
+    End
+
+    It "clamps adjusted row to minimum 1"
+      # anchor=2, lines=30, terminal=10
+      # overflow = 2 + 30 - 10 - 1 = 21
+      # adjusted = 2 - 21 = -19 -> clamped to 1
+      When call _input:ml:stream:allocate 2 30 10
+      The output should eq "1"
+    End
+
+    It "returns anchor row when exactly fits"
+      # anchor=15, lines=10, terminal=24
+      # overflow = 15 + 10 - 24 - 1 = 0
+      # adjusted = 15 - 0 = 15
+      When call _input:ml:stream:allocate 15 10 24
+      The output should eq "15"
+    End
+
+    It "handles edge case of cursor at last row"
+      # anchor=24, lines=5, terminal=24
+      # overflow = 24 + 5 - 24 - 1 = 4
+      # adjusted = 24 - 4 = 20
+      When call _input:ml:stream:allocate 24 5 24
+      The output should eq "20"
+    End
+
+    It "handles single line terminal"
+      When call _input:ml:stream:allocate 1 1 1
+      The output should eq "1"
+    End
+  End
+
   Describe "scroll with status bar /"
     setup() {
       _input:ml:init 80 10
