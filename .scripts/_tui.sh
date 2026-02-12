@@ -935,6 +935,199 @@ function _input:ml:init() {
   __ML_LINES=("")
   __ML_MODIFIED=false
   __ML_MESSAGE=""
+  # Selection state
+  __ML_SEL_ACTIVE=false
+  __ML_SEL_ANCHOR_ROW=0
+  __ML_SEL_ANCHOR_COL=0
+}
+
+##
+## Start or extend text selection from current cursor position
+##
+## If selection is not active, sets the anchor to the current cursor position.
+## Called before a shift+arrow movement so the anchor is fixed and the cursor
+## (which represents the moving end of the selection) moves away from it.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_SEL_ACTIVE
+## - mutate/publish: __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:sel-start   # call before shift+arrow movement
+##
+function _input:ml:sel-start() {
+  if [[ "$__ML_SEL_ACTIVE" != "true" ]]; then
+    __ML_SEL_ACTIVE=true
+    __ML_SEL_ANCHOR_ROW=$__ML_ROW
+    __ML_SEL_ANCHOR_COL=$__ML_COL
+  fi
+}
+
+##
+## Clear text selection
+##
+## Deactivates the selection without modifying buffer content.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - mutate/publish: __ML_SEL_ACTIVE
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:sel-clear
+##
+function _input:ml:sel-clear() {
+  __ML_SEL_ACTIVE=false
+}
+
+##
+## Get normalized selection bounds (start <= end)
+##
+## Outputs "start_row;start_col;end_row;end_col" where start is
+## always before or equal to end in document order. The anchor and
+## cursor can be in either order depending on selection direction.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL, __ML_ROW, __ML_COL
+##
+## Returns:
+## - 0 on success
+## - Echoes "start_row;start_col;end_row;end_col"
+##
+## Usage:
+## - local bounds; bounds=$(_input:ml:sel-bounds)
+##
+function _input:ml:sel-bounds() {
+  local ar=$__ML_SEL_ANCHOR_ROW ac=$__ML_SEL_ANCHOR_COL
+  local cr=$__ML_ROW cc=$__ML_COL
+  if [[ $ar -lt $cr ]] || { [[ $ar -eq $cr ]] && [[ $ac -le $cc ]]; }; then
+    echo "${ar};${ac};${cr};${cc}"
+  else
+    echo "${cr};${cc};${ar};${ac}"
+  fi
+}
+
+##
+## Get selected text from the buffer
+##
+## Extracts the text within the current selection bounds.
+## Returns empty string if no selection is active.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_SEL_ACTIVE, __ML_LINES
+##
+## Returns:
+## - 0 on success
+## - Echoes selected text to stdout
+##
+## Usage:
+## - local text; text=$(_input:ml:sel-get-text)
+##
+function _input:ml:sel-get-text() {
+  [[ "$__ML_SEL_ACTIVE" != "true" ]] && return 0
+  local bounds sr sc er ec
+  bounds=$(_input:ml:sel-bounds)
+  IFS=';' read -r sr sc er ec <<<"$bounds"
+  if [[ $sr -eq $er ]]; then
+    echo "${__ML_LINES[$sr]:$sc:$((ec - sc))}"
+  else
+    local result="${__ML_LINES[$sr]:$sc}"
+    local i
+    for ((i = sr + 1; i < er; i++)); do
+      result+=$'\n'"${__ML_LINES[$i]}"
+    done
+    result+=$'\n'"${__ML_LINES[$er]:0:$ec}"
+    echo "$result"
+  fi
+}
+
+##
+## Delete the selected text from the buffer
+##
+## Removes all characters within the selection bounds and positions
+## the cursor at the start of the former selection. Clears the
+## selection state afterward.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_SEL_ACTIVE, __ML_LINES
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED, __ML_SEL_ACTIVE
+##
+## Returns:
+## - 0 on success, 1 if no active selection
+##
+## Usage:
+## - _input:ml:sel-delete
+##
+function _input:ml:sel-delete() {
+  [[ "$__ML_SEL_ACTIVE" != "true" ]] && return 1
+  local bounds sr sc er ec
+  bounds=$(_input:ml:sel-bounds)
+  IFS=';' read -r sr sc er ec <<<"$bounds"
+
+  # Build the merged line: before-selection + after-selection
+  local before="${__ML_LINES[$sr]:0:$sc}"
+  local after="${__ML_LINES[$er]:$ec}"
+  __ML_LINES[$sr]="${before}${after}"
+
+  # Remove lines between sr+1 and er (inclusive)
+  if [[ $er -gt $sr ]]; then
+    local new_lines=("${__ML_LINES[@]:0:$((sr + 1))}" "${__ML_LINES[@]:$((er + 1))}")
+    __ML_LINES=("${new_lines[@]}")
+  fi
+
+  __ML_ROW=$sr
+  __ML_COL=$sc
+  __ML_MODIFIED=true
+  __ML_SEL_ACTIVE=false
+  _input:ml:scroll
+}
+
+##
+## Select all text in the buffer
+##
+## Sets anchor to start of document and cursor to end of document.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_LINES
+## - mutate/publish: __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL,
+##                   __ML_ROW, __ML_COL, __ML_SCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:sel-all
+##
+function _input:ml:sel-all() {
+  __ML_SEL_ACTIVE=true
+  __ML_SEL_ANCHOR_ROW=0
+  __ML_SEL_ANCHOR_COL=0
+  local last=$((${#__ML_LINES[@]} - 1))
+  __ML_ROW=$last
+  __ML_COL=${#__ML_LINES[$last]}
+  _input:ml:scroll
 }
 
 ##
@@ -954,6 +1147,8 @@ function _input:ml:init() {
 ## - _input:ml:insert-char "a"
 ##
 function _input:ml:insert-char() {
+  # Replace selection with typed character if active
+  [[ "$__ML_SEL_ACTIVE" == "true" ]] && _input:ml:sel-delete
   local char="$1"
   local line="${__ML_LINES[$__ML_ROW]}"
   __ML_LINES[$__ML_ROW]="${line:0:$__ML_COL}${char}${line:$__ML_COL}"
@@ -981,6 +1176,11 @@ function _input:ml:insert-char() {
 ## - _input:ml:delete-char
 ##
 function _input:ml:delete-char() {
+  # Delete selection if active, then return
+  if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+    _input:ml:sel-delete
+    return 0
+  fi
   if [[ $__ML_COL -gt 0 ]]; then
     local line="${__ML_LINES[$__ML_ROW]}"
     __ML_LINES[$__ML_ROW]="${line:0:$((__ML_COL - 1))}${line:$__ML_COL}"
@@ -1053,6 +1253,8 @@ function _input:ml:delete-word() {
 ## - _input:ml:insert-newline
 ##
 function _input:ml:insert-newline() {
+  # Replace selection with newline if active
+  [[ "$__ML_SEL_ACTIVE" == "true" ]] && _input:ml:sel-delete
   local line="${__ML_LINES[$__ML_ROW]}"
   local before="${line:0:$__ML_COL}"
   local after="${line:$__ML_COL}"
@@ -1438,6 +1640,8 @@ function _input:ml:insert-tab() {
 ## - _input:ml:paste "Hello\nWorld"
 ##
 function _input:ml:paste() {
+  # Replace selection with pasted text if active
+  [[ "$__ML_SEL_ACTIVE" == "true" ]] && _input:ml:sel-delete
   local text="$1"
   local -a paste_lines
   local line
@@ -1605,6 +1809,14 @@ function _input:ml:render() {
   local content_height=$((__ML_HEIGHT))
   [[ "$__ML_STATUS_BAR" == "true" ]] && content_height=$((__ML_HEIGHT - 1))
 
+  # Pre-compute selection bounds for render loop
+  local sel_sr=-1 sel_sc=-1 sel_er=-1 sel_ec=-1
+  if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+    local sel_bounds
+    sel_bounds=$(_input:ml:sel-bounds)
+    IFS=';' read -r sel_sr sel_sc sel_er sel_ec <<<"$sel_bounds"
+  fi
+
   for ((i = 0; i < content_height; i++)); do
     buf_idx=$((i + __ML_SCROLL))
     line_content=""
@@ -1629,11 +1841,30 @@ function _input:ml:render() {
     # Draw at position (offset by status bar)
     printf "\033[%d;%dH" "$((pos_y + i + 1 + render_start))" "$((pos_x + 1))" >&2
 
-    # Highlight current line with slightly different background
-    if [[ $buf_idx -eq $__ML_ROW ]]; then
-      printf "\033[44m\033[97m%s\033[0m" "$line_content" >&2
+    # Determine line colors: current-line highlight + selection overlay
+    local line_fg="\033[37m" line_bg="\033[44m"
+    [[ $buf_idx -eq $__ML_ROW ]] && line_fg="\033[97m"
+
+    if [[ $sel_sr -ge 0 && $buf_idx -ge $sel_sr && $buf_idx -le $sel_er ]]; then
+      # This line has selection — render in segments: before | selected | after
+      local s_start=0 s_end=${#line_content}
+
+      if [[ $buf_idx -eq $sel_sr ]]; then s_start=$sel_sc; fi
+      if [[ $buf_idx -eq $sel_er ]]; then s_end=$sel_ec; fi
+
+      # Clamp to line width
+      [[ $s_start -gt ${#line_content} ]] && s_start=${#line_content}
+      [[ $s_end -gt ${#line_content} ]] && s_end=${#line_content}
+
+      local part_before="${line_content:0:$s_start}"
+      local part_sel="${line_content:$s_start:$((s_end - s_start))}"
+      local part_after="${line_content:$s_end}"
+
+      printf "%b%b%s" "$line_bg" "$line_fg" "$part_before" >&2
+      printf "%s%s" "$cl_selected" "$part_sel" >&2
+      printf "\033[0m%b%b%s\033[0m" "$line_bg" "$line_fg" "$part_after" >&2
     else
-      printf "\033[44m\033[37m%s\033[0m" "$line_content" >&2
+      printf "%b%b%s\033[0m" "$line_bg" "$line_fg" "$line_content" >&2
     fi
   done
 
@@ -1665,6 +1896,9 @@ function _input:ml:render() {
 ## - WINCH signal handling for terminal resize
 ## - Configurable keybindings via ML_KEY_* environment variables
 ## - Bracketed paste detection (paste from clipboard)
+## - Text selection via Shift+arrow keys (highlighted with cl_selected)
+## - Clipboard integration: Ctrl+C copy, Ctrl+X cut, Ctrl+V paste
+## - Select all with Ctrl+A
 ## - Modified indicator in status bar
 ## - Readline-based line editing (Ctrl+E)
 ## - Status bar with position info and help hints
@@ -1679,9 +1913,10 @@ function _input:ml:render() {
 ## - --no-status - Hide status bar
 ##
 ## Globals:
-## - reads/listen: TERM, ML_KEY_SAVE, ML_KEY_CANCEL, ML_KEY_EDIT, ML_KEY_PASTE,
-##                 ML_KEY_DEL_WORD, ML_KEY_DEL_LINE
-## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED
+## - reads/listen: TERM, ML_KEY_SAVE, ML_KEY_EDIT, ML_KEY_DEL_WORD, ML_KEY_DEL_LINE,
+##                 cl_selected
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED,
+##                   __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL
 ##
 ## Side effects:
 ## - Saves/restores terminal state (stty)
@@ -1802,16 +2037,20 @@ function input:multi-line() {
   # Configurable keybindings as semantic tokens (use _input:capture-key to find tokens)
   local key_save=${ML_KEY_SAVE:-"ctrl-d"}
   local key_edit=${ML_KEY_EDIT:-"ctrl-e"}
-  local key_paste=${ML_KEY_PASTE:-"ctrl-v"}
   local key_del_word=${ML_KEY_DEL_WORD:-"ctrl-w"}
   local key_del_line=${ML_KEY_DEL_LINE:-"ctrl-u"}
 
-  # Detect clipboard paste command
-  local paste_cmd=""
+  # Detect clipboard commands (read from / write to system clipboard)
+  local paste_cmd="" clipboard_cmd=""
   if command -v xclip >/dev/null 2>&1; then
     paste_cmd="xclip -o -selection clipboard"
+    clipboard_cmd="xclip -i -selection clipboard"
+  elif command -v xsel >/dev/null 2>&1; then
+    paste_cmd="xsel --clipboard --output"
+    clipboard_cmd="xsel --clipboard --input"
   elif command -v pbpaste >/dev/null 2>&1; then
     paste_cmd="pbpaste"
+    clipboard_cmd="pbcopy"
   fi
 
   # Save terminal state
@@ -1881,35 +2120,63 @@ function input:multi-line() {
     case "$key" in
     # Configurable action keys
     "$key_save") break ;;
-    "$key_edit") _input:ml:edit-line "$saved_stty" "$pos_y" ;;
-    "$key_paste")
+    "$key_edit") _input:ml:sel-clear; _input:ml:edit-line "$saved_stty" "$pos_y" ;;
+    "$key_del_word") _input:ml:sel-clear; _input:ml:delete-word ;;
+    "$key_del_line") _input:ml:sel-clear; _input:ml:delete-line ;;
+    # Selection: shift+arrow extends selection
+    shift-up) _input:ml:sel-start; _input:ml:move-up ;;
+    shift-down) _input:ml:sel-start; _input:ml:move-down ;;
+    shift-left) _input:ml:sel-start; _input:ml:move-left ;;
+    shift-right) _input:ml:sel-start; _input:ml:move-right ;;
+    shift-home | ctrl-shift-left) _input:ml:sel-start; _input:ml:move-home ;;
+    shift-end | ctrl-shift-right) _input:ml:sel-start; _input:ml:move-end ;;
+    # Select all
+    ctrl-a) _input:ml:sel-all ;;
+    # Clipboard: copy / cut
+    ctrl-c)
+      if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
+        _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+      fi
+      ;;
+    ctrl-x)
+      if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
+        _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+        _input:ml:sel-delete
+      fi
+      ;;
+    # Paste from clipboard (explicit Ctrl+V)
+    ctrl-v)
       if [[ -n "$paste_cmd" ]]; then
         local clipboard_text
         clipboard_text=$($paste_cmd 2>/dev/null)
         [[ -n "$clipboard_text" ]] && _input:ml:paste "$clipboard_text"
       fi
       ;;
-    "$key_del_word") _input:ml:delete-word ;;
-    "$key_del_line") _input:ml:delete-line ;;
-    # Navigation
-    up) _input:ml:move-up ;;
-    down) _input:ml:move-down ;;
-    left) _input:ml:move-left ;;
-    right) _input:ml:move-right ;;
-    home) _input:ml:move-home ;;
-    end) _input:ml:move-end ;;
+    # Navigation (clears selection)
+    up) _input:ml:sel-clear; _input:ml:move-up ;;
+    down) _input:ml:sel-clear; _input:ml:move-down ;;
+    left) _input:ml:sel-clear; _input:ml:move-left ;;
+    right) _input:ml:sel-clear; _input:ml:move-right ;;
+    home) _input:ml:sel-clear; _input:ml:move-home ;;
+    end) _input:ml:sel-clear; _input:ml:move-end ;;
     page-up)
+      _input:ml:sel-clear
       local i
       for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-up; done
       ;;
     page-down)
+      _input:ml:sel-clear
       local i
       for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-down; done
       ;;
     # Editing
     escape)
-      __ml_cancelled=1
-      break
+      if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+        _input:ml:sel-clear
+      else
+        __ml_cancelled=1
+        break
+      fi
       ;;
     backspace) _input:ml:delete-char ;;
     enter) _input:ml:insert-newline ;;
@@ -2117,6 +2384,12 @@ alias validate_yn_input=validate:input:yn
 ## - _input:ml:paste() - Paste text
 ## - _input:ml:insert-tab() - Insert tab as spaces
 ## - _input:ml:delete-line() - Delete line content
+## - _input:ml:sel-start() - Start/extend selection
+## - _input:ml:sel-clear() - Clear selection
+## - _input:ml:sel-bounds() - Get normalized selection bounds
+## - _input:ml:sel-get-text() - Get selected text
+## - _input:ml:sel-delete() - Delete selected text
+## - _input:ml:sel-all() - Select all text
 ## - _input:ml:stream:*() - Stream mode helpers
 ##
 ## Global State:
@@ -2130,6 +2403,8 @@ alias validate_yn_input=validate:input:yn
 ## - __ML_SCROLL - Scroll offset
 ## - __ML_WIDTH, __ML_HEIGHT - Editor dimensions
 ## - __ML_MODIFIED - Modified flag
+## - __ML_SEL_ACTIVE - Selection active flag
+## - __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL - Selection anchor position
 ## - __ML_MESSAGE - Status message
 ## - __ML_STATUS_BAR - Status bar visibility
 ##

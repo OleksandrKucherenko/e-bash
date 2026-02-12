@@ -627,6 +627,251 @@ Describe "_tui.sh / input:multi-line /"
       The variable __ML_LINES[1] should eq "B"
     End
   End
+
+  Describe "_input:ml:sel-start /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "activates selection and sets anchor to cursor position"
+      __ML_ROW=2
+      __ML_COL=5
+
+      _input:ml:sel-start
+
+      The variable __ML_SEL_ACTIVE should eq "true"
+      The variable __ML_SEL_ANCHOR_ROW should eq 2
+      The variable __ML_SEL_ANCHOR_COL should eq 5
+    End
+
+    It "does not move anchor when called again"
+      __ML_ROW=2
+      __ML_COL=5
+      _input:ml:sel-start
+
+      __ML_ROW=3
+      __ML_COL=10
+      _input:ml:sel-start
+
+      The variable __ML_SEL_ANCHOR_ROW should eq 2
+      The variable __ML_SEL_ANCHOR_COL should eq 5
+    End
+  End
+
+  Describe "_input:ml:sel-clear /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "deactivates selection"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=1
+      __ML_SEL_ANCHOR_COL=3
+
+      _input:ml:sel-clear
+
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+  End
+
+  Describe "_input:ml:sel-bounds /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "returns anchor;cursor when anchor is before cursor"
+      __ML_SEL_ANCHOR_ROW=1
+      __ML_SEL_ANCHOR_COL=3
+      __ML_ROW=2
+      __ML_COL=7
+
+      When call _input:ml:sel-bounds
+      The output should eq "1;3;2;7"
+    End
+
+    It "returns cursor;anchor when cursor is before anchor"
+      __ML_SEL_ANCHOR_ROW=3
+      __ML_SEL_ANCHOR_COL=10
+      __ML_ROW=1
+      __ML_COL=2
+
+      When call _input:ml:sel-bounds
+      The output should eq "1;2;3;10"
+    End
+
+    It "returns correct order on same line"
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=8
+      __ML_ROW=0
+      __ML_COL=3
+
+      When call _input:ml:sel-bounds
+      The output should eq "0;3;0;8"
+    End
+  End
+
+  Describe "_input:ml:sel-get-text /"
+    setup() {
+      _input:ml:init 80 24
+      __ML_LINES=("Hello World" "Second line" "Third line")
+    }
+    Before setup
+
+    It "returns empty when no selection"
+      When call _input:ml:sel-get-text
+      The output should eq ""
+    End
+
+    It "returns selected text on single line"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=6
+      __ML_ROW=0
+      __ML_COL=11
+
+      When call _input:ml:sel-get-text
+      The output should eq "World"
+    End
+
+    It "returns selected text across multiple lines"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=6
+      __ML_ROW=1
+      __ML_COL=6
+
+      When call _input:ml:sel-get-text
+      The output should eq "World
+Second"
+    End
+  End
+
+  Describe "_input:ml:sel-delete /"
+    setup() {
+      _input:ml:init 80 24
+      __ML_LINES=("Hello World" "Second line" "Third line")
+    }
+    Before setup
+
+    It "returns 1 when no selection is active"
+      When call _input:ml:sel-delete
+      The status should eq 1
+    End
+
+    It "deletes selected text within single line"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=5
+      __ML_ROW=0
+      __ML_COL=11
+
+      _input:ml:sel-delete
+
+      The variable __ML_LINES[0] should eq "Hello"
+      The variable __ML_ROW should eq 0
+      The variable __ML_COL should eq 5
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "deletes selected text across multiple lines"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=5
+      __ML_ROW=2
+      __ML_COL=5
+
+      _input:ml:sel-delete
+
+      The variable __ML_LINES[0] should eq "Hello line"
+      The variable __ML_ROW should eq 0
+      The variable __ML_COL should eq 5
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "sets modified flag"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=0
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:sel-delete
+
+      The variable __ML_MODIFIED should eq "true"
+    End
+  End
+
+  Describe "_input:ml:sel-all /"
+    setup() {
+      _input:ml:init 80 24
+      __ML_LINES=("Hello" "World" "Test")
+    }
+    Before setup
+
+    It "selects entire buffer"
+      _input:ml:sel-all
+
+      The variable __ML_SEL_ACTIVE should eq "true"
+      The variable __ML_SEL_ANCHOR_ROW should eq 0
+      The variable __ML_SEL_ANCHOR_COL should eq 0
+      The variable __ML_ROW should eq 2
+      The variable __ML_COL should eq 4
+    End
+  End
+
+  Describe "selection + editing integration /"
+    setup() {
+      _input:ml:init 80 24
+      __ML_LINES=("Hello World")
+    }
+    Before setup
+
+    It "insert-char replaces active selection"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=0
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:insert-char "X"
+
+      The variable __ML_LINES[0] should eq "X World"
+      The variable __ML_COL should eq 1
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "delete-char deletes active selection"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=0
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:delete-char
+
+      The variable __ML_LINES[0] should eq " World"
+      The variable __ML_COL should eq 0
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "insert-newline replaces selection with newline"
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=5
+      __ML_ROW=0
+      __ML_COL=11
+
+      _input:ml:insert-newline
+
+      The variable __ML_LINES[0] should eq "Hello"
+      The variable __ML_LINES[1] should eq ""
+      The variable __ML_ROW should eq 1
+      The variable __ML_COL should eq 0
+    End
+  End
 End
 
 Describe "_tui.sh / _input:read-key /"

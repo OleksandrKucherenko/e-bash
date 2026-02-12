@@ -1037,7 +1037,7 @@ The `_commons.sh` module provides three interactive terminal input components, e
 
 ### input:multi-line - Multi-line Text Editor
 
-A full-featured modal text editor that opens directly in the terminal. Supports multi-line editing with arrow key navigation, scrolling, word/line deletion, and clipboard paste.
+A full-featured modal text editor that opens directly in the terminal. Supports multi-line editing with arrow key navigation, scrolling, word/line deletion, text selection, and clipboard integration.
 
 #### Function Signature
 
@@ -1116,7 +1116,13 @@ editor area so output reuses those lines. Does not support `--alt-buffer`.
 | Ctrl+E | Edit current line with full readline (word movement, history) |
 | Ctrl+W | Delete word backward |
 | Ctrl+U | Clear current line |
-| Ctrl+V | Paste from system clipboard (xclip or pbpaste) |
+| Shift+Arrow | Extend text selection in arrow direction |
+| Shift+Home / Shift+End | Extend selection to beginning/end of line |
+| Ctrl+A | Select all text |
+| Ctrl+C | Copy selection to system clipboard |
+| Ctrl+X | Cut selection to system clipboard |
+| Ctrl+V | Paste from system clipboard (xclip/xsel or pbpaste) |
+| Esc (with selection) | Clear selection without cancelling |
 | Tab | Insert 2 spaces |
 
 #### Configurable Keybindings
@@ -1128,7 +1134,6 @@ All control keys can be overridden via environment variables using semantic toke
 |----------|---------------|-------------|
 | `ML_KEY_SAVE` | `ctrl-d` | Save and exit |
 | `ML_KEY_EDIT` | `ctrl-e` | Enter readline editing mode |
-| `ML_KEY_PASTE` | `ctrl-v` | Paste from clipboard |
 | `ML_KEY_DEL_WORD` | `ctrl-w` | Delete word backward |
 | `ML_KEY_DEL_LINE` | `ctrl-u` | Clear current line |
 
@@ -1154,13 +1159,24 @@ The editor includes a status bar (top row) showing:
 
 Disable with `--no-status` flag.
 
-#### Clipboard Support
+#### Text Selection & Clipboard
 
-Paste (Ctrl+V) auto-detects the available clipboard command:
-- **Linux**: `xclip -o -selection clipboard`
-- **macOS**: `pbpaste`
+The editor supports visual text selection with Shift+arrow keys. Selected text is
+highlighted using the `cl_selected` color from `_colors.sh`. Typing, backspace, or
+paste while a selection is active replaces the entire selection.
 
-Multi-line clipboard content is properly split and inserted across multiple lines.
+Clipboard operations auto-detect the available system clipboard tool:
+- **Linux**: `xclip` or `xsel`
+- **macOS**: `pbcopy` / `pbpaste`
+
+| Shortcut | Action |
+|----------|--------|
+| Shift+arrows | Extend selection |
+| Ctrl+A | Select all |
+| Ctrl+C | Copy selection to clipboard |
+| Ctrl+X | Cut selection to clipboard |
+| Ctrl+V | Paste from clipboard (also bracketed paste) |
+| Esc | Clear selection (first press); cancel editor (if no selection) |
 
 ### input:readpwd - Password Input
 
