@@ -1,6 +1,13 @@
 #!/bin/sh
 # shellcheck disable=SC2004
 
+## Copyright (C) 2017-present, Oleksandr Kucherenko
+## Last revisit: 2026-02-12
+## Version: 2.0.0
+## License: MIT
+## Source: https://github.com/OleksandrKucherenko/e-bash
+
+
 # Parse timeout format: 30, 30s, 1m, 1m30s → seconds
 shellspec_parse_timeout() {
   timeout_value="$1"

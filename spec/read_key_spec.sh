@@ -2,8 +2,8 @@
 # shellcheck disable=SC2034,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-11
-## Version: 1.0.0
+## Last revisit: 2026-02-12
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
