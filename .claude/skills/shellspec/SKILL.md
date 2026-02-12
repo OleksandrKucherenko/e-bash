@@ -1,6 +1,6 @@
 ---
 name: shellspec
-description: Comprehensive unit testing framework for Bash and POSIX shell scripts using ShellSpec with TDD/BDD best practices. Use when writing tests for shell scripts, debugging test failures, refactoring scripts for testability, setting up test infrastructure, mocking external dependencies, or implementing test-driven development for Bash/shell projects. Covers test structure, isolation, mocking, output capture, coverage, CI integration, and troubleshooting.
+description: Comprehensive unit testing framework for Bash and POSIX shell scripts using ShellSpec with TDD/BDD best practices. Use when writing tests for shell scripts, debugging test failures, refactoring scripts for testability, setting up test infrastructure, mocking external dependencies, or implementing test-driven development for Bash/shell projects. Covers test structure, isolation, mocking, output capture, coverage, CI integration, and troubleshooting. Use this skill if you are writing tests with shellspec framework or debugging test failures.
 ---
 
 # ShellSpec Unit Testing Guide
@@ -605,11 +605,11 @@ End
 
 **Common Differences**:
 
-| Feature         | GNU (Linux)          | BSD (macOS)          | Portable Alternative    |
-| --------------- | -------------------- | -------------------- | ----------------------- |
-| Remove last line | `head -n -1`         | Not supported        | `sed '$d'`              |
-| Remove first line | `tail -n +2`        | Works differently    | `sed '1d'`              |
-| In-place editing | `sed -i 's/old/new'` | `sed -i '' 's/...'`  | Use `sponge` or temp file |
+| Feature           | GNU (Linux)          | BSD (macOS)         | Portable Alternative      |
+| ----------------- | -------------------- | ------------------- | ------------------------- |
+| Remove last line  | `head -n -1`         | Not supported       | `sed '$d'`                |
+| Remove first line | `tail -n +2`         | Works differently   | `sed '1d'`                |
+| In-place editing  | `sed -i 's/old/new'` | `sed -i '' 's/...'` | Use `sponge` or temp file |
 
 **Real Example**: Function to display function body
 
