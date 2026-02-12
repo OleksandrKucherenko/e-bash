@@ -56,6 +56,12 @@ Multi-line Editor Functions (Internal):
 - _input:ml:paste() - Paste text
 - _input:ml:insert-tab() - Insert tab as spaces
 - _input:ml:delete-line() - Delete line content
+- _input:ml:sel-start() - Start/extend selection
+- _input:ml:sel-clear() - Clear selection
+- _input:ml:sel-bounds() - Get normalized selection bounds
+- _input:ml:sel-get-text() - Get selected text
+- _input:ml:sel-delete() - Delete selected text
+- _input:ml:sel-all() - Select all text
 - _input:ml:stream:*() - Stream mode helpers
 
 ### Global State
@@ -72,6 +78,8 @@ Multi-line Editor Functions (Internal):
 - __ML_MODIFIED - Modified flag
 - __ML_MESSAGE - Status message
 - __ML_STATUS_BAR - Status bar visibility
+- __ML_SEL_ACTIVE - Selection active flag
+- __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL - Selection anchor position
 
 
 ---
@@ -225,6 +233,9 @@ Features inspired by the bed (bash editor) project:
 - WINCH signal handling for terminal resize
 - Configurable keybindings via ML_KEY_* environment variables
 - Bracketed paste detection (paste from clipboard)
+- Text selection via Shift+arrow keys (highlighted with cl_selected)
+- Clipboard integration: Ctrl+C copy, Ctrl+X cut, Ctrl+V paste
+- Select all with Ctrl+A
 - Modified indicator in status bar
 - Readline-based line editing (Ctrl+E)
 - Status bar with position info and help hints
@@ -238,9 +249,10 @@ Features inspired by the bed (bash editor) project:
 
 #### Globals
 
-- reads/listen: TERM, ML_KEY_SAVE, ML_KEY_CANCEL, ML_KEY_EDIT, ML_KEY_PASTE,
-                ML_KEY_DEL_WORD, ML_KEY_DEL_LINE
-- mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED
+- reads/listen: TERM, ML_KEY_SAVE, ML_KEY_EDIT, ML_KEY_DEL_WORD, ML_KEY_DEL_LINE,
+                cl_selected
+- mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED,
+                  __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL
 
 #### Side Effects
 
