@@ -230,6 +230,56 @@ Describe "_tui.sh / input:multi-line /"
     End
   End
 
+  Describe "_input:ml:delete-char-forward /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "deletes character at cursor position"
+      __ML_LINES[0]="Hello World"
+      __ML_COL=5
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq "HelloWorld"
+      The variable __ML_COL should eq 5
+    End
+
+    It "joins with next line at end of line"
+      __ML_LINES=("Hello" "World")
+      __ML_COL=5
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq "HelloWorld"
+    End
+
+    It "does nothing at end of last line"
+      __ML_LINES=("Hello")
+      __ML_COL=5
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq "Hello"
+      The variable __ML_COL should eq 5
+    End
+
+    It "deletes selection when active"
+      __ML_LINES=("Hello World")
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=0
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq " World"
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+  End
+
   Describe "_input:ml:delete-word /"
     setup() {
       _input:ml:init 80 24

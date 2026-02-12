@@ -1201,6 +1201,47 @@ function _input:ml:delete-char() {
 }
 
 ##
+## Delete character at cursor position (forward delete)
+##
+## When cursor is at the end of a line and not on the last line,
+## joins the next line with the current line.
+## If selection is active, deletes the selection instead.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_ROW, __ML_COL, __ML_LINES, __ML_SEL_ACTIVE
+## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:delete-char-forward
+##
+function _input:ml:delete-char-forward() {
+  # Delete selection if active, then return
+  if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+    _input:ml:sel-delete
+    return 0
+  fi
+  local line="${__ML_LINES[$__ML_ROW]}"
+  local len=${#line}
+  if [[ $__ML_COL -lt $len ]]; then
+    # Delete character at cursor
+    __ML_LINES[$__ML_ROW]="${line:0:$__ML_COL}${line:$((__ML_COL + 1))}"
+    __ML_MODIFIED=true
+  elif [[ $__ML_ROW -lt $((${#__ML_LINES[@]} - 1)) ]]; then
+    # Join with next line
+    local next_line="${__ML_LINES[$((__ML_ROW + 1))]}"
+    __ML_LINES[$__ML_ROW]="${line}${next_line}"
+    __ML_LINES=("${__ML_LINES[@]:0:$((__ML_ROW + 1))}" "${__ML_LINES[@]:$((__ML_ROW + 2))}")
+    __ML_MODIFIED=true
+  fi
+}
+
+##
 ## Delete word backward from cursor position
 ##
 ## Deletes characters backward until a space boundary or beginning of line.
@@ -2056,7 +2097,12 @@ function input:multi-line() {
   # Save terminal state
   local saved_stty
   saved_stty=$(stty -g)
-  stty raw -echo
+  # raw mode: character-at-a-time input, no echo
+  # -isig: explicitly disable signal generation from Ctrl+C/Ctrl+Z/Ctrl+\
+  #   POSIX stty raw disables intr/quit chars but may leave isig flag set;
+  #   GNU stty raw also clears isig (non-conforming). Adding -isig explicitly
+  #   ensures Ctrl+C arrives as byte 0x03 on all platforms (Linux, macOS, BSD).
+  stty raw -echo -isig
 
   # Alternative buffer (preserves terminal scroll history, box mode only)
   [[ "$use_alt_buffer" == "true" ]] && printf "\033[?1049h" >&2
@@ -2133,6 +2179,8 @@ function input:multi-line() {
     # Select all
     ctrl-a) _input:ml:sel-all ;;
     # Clipboard: copy / cut
+    # Note: Ctrl+C is safe here because stty raw disables isig, so 0x03 arrives
+    # as a byte (not SIGINT). The INT trap only fires from external kill signals.
     ctrl-c)
       if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
         _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
@@ -2179,6 +2227,7 @@ function input:multi-line() {
       fi
       ;;
     backspace) _input:ml:delete-char ;;
+    delete) _input:ml:delete-char-forward ;;
     enter) _input:ml:insert-newline ;;
     tab) _input:ml:insert-tab ;;
     paste:*) _input:ml:paste "${key#paste:}" ;;
@@ -2373,7 +2422,8 @@ alias validate_yn_input=validate:input:yn
 ## Multi-line Editor Functions (Internal):
 ## - _input:ml:init() - Initialize editor state
 ## - _input:ml:insert-char() - Insert character
-## - _input:ml:delete-char() - Delete character
+## - _input:ml:delete-char() - Delete character (backspace)
+## - _input:ml:delete-char-forward() - Delete character (forward delete)
 ## - _input:ml:delete-word() - Delete word backward
 ## - _input:ml:insert-newline() - Insert newline
 ## - _input:ml:move-up/down/left/right/home/end() - Cursor movement
