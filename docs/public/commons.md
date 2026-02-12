@@ -8,6 +8,7 @@
     - [Configuration File Hierarchy](#configuration-file-hierarchy)
     - [XDG-Compliant Configuration Discovery](#xdg-compliant-configuration-discovery)
     - [Template Variable Expansion](#template-variable-expansion)
+    - [Multi-line Text Input](#multi-line-text-input)
   - [Git Repository Functions](#git-repository-functions)
     - [git:root - Find Git Repository Root](#gitroot---find-git-repository-root)
       - [Function Signature](#function-signature)
@@ -47,6 +48,10 @@
     - [Error Handling](#error-handling)
     - [Configuration File Precedence](#configuration-file-precedence)
     - [Security Considerations](#security-considerations)
+  - [UI Components - Interactive Input](#ui-components---interactive-input)
+    - [input:multi-line - Multi-line Text Editor](#inputmulti-line---multi-line-text-editor)
+    - [input:readpwd - Password Input](#inputreadpwd---password-input)
+    - [input:selector - Menu Selector](#inputselector---menu-selector)
   - [Reference](#reference)
     - [Safety Features](#safety-features-2)
     - [Cross-Platform Compatibility](#cross-platform-compatibility)
@@ -126,6 +131,22 @@ echo "$result"
 
 # Process templates from files using pipeline mode
 cat template.conf | env:resolve > config.conf
+```
+
+### Multi-line Text Input
+
+```bash
+source "$E_BASH/_commons.sh"
+
+# Open a multi-line text editor (Ctrl+D to save, Esc to cancel)
+text=$(input:multi-line -w 60 -h 10)
+echo "Captured: $text"
+
+# Full-screen editor
+commit_msg=$(input:multi-line)
+
+# Stream mode - inline editor at cursor position (5 lines, full width)
+description=$(input:multi-line -m stream)
 ```
 
 ## Git Repository Functions
@@ -1009,6 +1030,182 @@ load_safe_config() {
   done <<< "$configs"
 }
 ```
+
+## UI Components - Interactive Input
+
+The `_commons.sh` module provides three interactive terminal input components, each designed for different use cases.
+
+### input:multi-line - Multi-line Text Editor
+
+A full-featured modal text editor that opens directly in the terminal. Supports multi-line editing with arrow key navigation, scrolling, word/line deletion, text selection, and clipboard integration.
+
+#### Function Signature
+
+```bash
+text=$(input:multi-line [-m mode] [-x pos_x] [-y pos_y] [-w width] [-h height] [--alt-buffer] [--no-status])
+```
+
+#### Arguments
+
+| Argument | Type | Default | Description |
+|----------|------|---------|-------------|
+| `-m` | string | `box` | Rendering mode: `box` (positioned overlay) or `stream` (inline at cursor) |
+| `-x` | integer | `0` | Left offset (column position, box mode only) |
+| `-y` | integer | `0` | Top offset (row position, box mode only) |
+| `-w` | integer | terminal width | Editor width in columns |
+| `-h` | integer | terminal height (box) or `5` (stream) | Editor height in rows |
+| `--alt-buffer` | flag | off | Use alternative terminal buffer (box mode only, preserves scroll history) |
+| `--no-status` | flag | off | Hide the status bar |
+
+#### Examples
+
+```bash
+source "$E_BASH/_commons.sh"
+
+# Full-screen editor (box mode, default)
+text=$(input:multi-line)
+
+# Sized editor (60 columns x 10 rows)
+text=$(input:multi-line -w 60 -h 10)
+
+# Alternative buffer (preserves scroll history, like vim)
+text=$(input:multi-line --alt-buffer)
+
+# Stream mode - inline editor at current cursor position
+# Uses full terminal width, default height of 5 lines
+text=$(input:multi-line -m stream)
+
+# Stream mode with custom height (10 lines)
+text=$(input:multi-line -m stream -h 10)
+
+# Custom save keybinding (Ctrl+S instead of Ctrl+D)
+ML_KEY_SAVE=$'\x13' text=$(input:multi-line -w 60 -h 10)
+
+# Handle save vs cancel
+if text=$(input:multi-line -w 60 -h 10); then
+  echo "User saved:"
+  echo "$text"
+else
+  echo "User cancelled (Esc)"
+fi
+```
+
+#### Rendering Modes
+
+**Box mode** (default): Position and size the editor explicitly with `-x`, `-y`, `-w`, `-h`.
+Useful for modal dialog overlays. Width and height are clamped to terminal boundaries
+so the editor cannot exceed available space. Supports `--alt-buffer` to preserve
+terminal scroll history.
+
+**Stream mode** (`-m stream`): Uses the current cursor position and full terminal width.
+Defaults to 5 lines of height. If the cursor is near the bottom of the terminal,
+emits newlines to scroll up and make room. On exit, repositions the cursor to the
+editor area so output reuses those lines. Does not support `--alt-buffer`.
+
+#### Keyboard Controls
+
+| Key | Action |
+|-----|--------|
+| Arrow keys | Navigate cursor (up, down, left, right) |
+| Page Up/Down | Scroll by page |
+| Home / End | Move cursor to beginning/end of line |
+| Enter | Insert newline (splits line at cursor) |
+| Backspace | Delete character before cursor; joins lines at boundary |
+| Delete | Delete character at cursor; joins with next line at boundary |
+| Ctrl+D | Save and exit (returns 0) |
+| Esc | Cancel and exit (returns 1) |
+| Ctrl+E | Edit current line with full readline (word movement, history) |
+| Ctrl+W | Delete word backward |
+| Ctrl+U | Clear current line |
+| Shift+Arrow | Extend text selection in arrow direction |
+| Shift+Home / Shift+End | Extend selection to beginning/end of line |
+| Ctrl+A | Select all text |
+| Ctrl+C | Copy selection to system clipboard |
+| Ctrl+X | Cut selection to system clipboard |
+| Ctrl+V | Paste from system clipboard (xclip/xsel or pbpaste) |
+| Esc (with selection) | Clear selection without cancelling |
+| Tab | Insert 2 spaces |
+
+#### Configurable Keybindings
+
+All control keys can be overridden via environment variables using semantic token names
+(use `_input:capture-key` to discover tokens):
+
+| Variable | Default Token | Description |
+|----------|---------------|-------------|
+| `ML_KEY_SAVE` | `ctrl-d` | Save and exit |
+| `ML_KEY_EDIT` | `ctrl-e` | Enter readline editing mode |
+| `ML_KEY_DEL_WORD` | `ctrl-w` | Delete word backward |
+| `ML_KEY_DEL_LINE` | `ctrl-u` | Clear current line |
+
+#### Architecture
+
+The editor separates **pure state logic** from **terminal I/O** for testability. All editing operations are implemented as internal `_input:ml:*` functions that manipulate shared state arrays (`__ML_LINES[]`, `__ML_ROW`, `__ML_COL`, `__ML_SCROLL`). These functions are fully unit-testable with ShellSpec (55 tests).
+
+The rendering and input loop (`_input:ml:render`, `input:multi-line`) form a thin I/O wrapper around the state logic.
+
+**Terminal modes managed by the editor:**
+- **Bracketed paste** (`\033[?2004h`): Enabled on entry, disabled on exit. When the terminal sends `ESC[200~`...`ESC[201~` around pasted text, `_input:read-key` returns a `paste:payload` token containing the pasted content, which is inserted directly into the buffer.
+- **Line-wrap** (`\033[?7l`/`\033[?7h`): Disabled during each render pass to prevent visual glitches when drawing full-width lines, then re-enabled after rendering completes.
+
+**Stream mode helpers** (`_input:ml:stream:*`): Four functions handle cursor detection, height normalization, terminal scrolling when at the bottom, and cursor restoration on exit.
+
+#### Status Bar
+
+The editor includes a status bar (top row) showing:
+- Help hints: `Ctrl+D save | Esc cancel | Ctrl+E edit line`
+- Cursor position: `L{row}:C{col}`
+- Modified indicator: `[+]` when buffer has been changed
+- Total line count
+
+Disable with `--no-status` flag.
+
+#### Text Selection & Clipboard
+
+The editor supports visual text selection with Shift+arrow keys. Selected text is
+highlighted using the `cl_selected` color from `_colors.sh`. Typing, backspace, or
+paste while a selection is active replaces the entire selection.
+
+Clipboard operations auto-detect the available system clipboard tool:
+- **Linux**: `xclip` or `xsel`
+- **macOS**: `pbcopy` / `pbpaste`
+
+| Shortcut | Action |
+|----------|--------|
+| Shift+arrows | Extend selection |
+| Ctrl+A | Select all |
+| Ctrl+C | Copy selection to clipboard |
+| Ctrl+X | Cut selection to clipboard |
+| Ctrl+V | Paste from clipboard (also bracketed paste) |
+| Esc | Clear selection (first press); cancel editor (if no selection) |
+
+### input:readpwd - Password Input
+
+Single-line password input with character masking (asterisks) and line editing support.
+
+```bash
+source "$E_BASH/_commons.sh"
+
+echo -n "Enter password: "
+password=$(input:readpwd) && echo ""
+echo "Password: $password"
+```
+
+Supports: left/right arrow keys, Home/End, backspace, Esc (reset), Ctrl+U (clear).
+
+### input:selector - Menu Selector
+
+Horizontal menu selector from an associative array with arrow key navigation and character search.
+
+```bash
+source "$E_BASH/_commons.sh"
+
+declare -A -g connections=(["d"]="production" ["s"]="staging" ["p"]="local")
+echo -n "Select: " && tput civis
+selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_reset}"
+```
+
+Supports: left/right arrow keys, Enter (select), Esc (reset), character search.
 
 ## Reference
 

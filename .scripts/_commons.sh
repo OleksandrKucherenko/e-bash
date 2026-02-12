@@ -2,14 +2,10 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
+## Last revisit: 2026-02-12
 ## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
-
-# is allowed to use macOS extensions (script can be executed in *nix second)
-use_macos_extensions=false
-if [[ "$OSTYPE" == "darwin"* ]]; then use_macos_extensions=true; fi
 
 # shellcheck disable=SC2155
 [ -z "$E_BASH" ] && readonly E_BASH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,6 +15,9 @@ source "$E_BASH/_colors.sh"
 
 # shellcheck disable=SC1090 source=./_logger.sh
 source "$E_BASH/_logger.sh"
+
+# shellcheck disable=SC1090 source=./_tui.sh
+source "$E_BASH/_tui.sh"
 
 ##
 ## Get current epoch timestamp with microsecond precision
@@ -61,348 +60,6 @@ function time:now() {
 function time:diff() {
   local diff="$(time:now) - $1"
   bc <<<$diff
-}
-
-# ref: https://unix.stackexchange.com/questions/88296/get-vertical-cursor-position
-
-##
-## Get cursor position in "row;col" format
-##
-## Parameters:
-## - none
-##
-## Globals:
-## - reads/listen: none
-## - mutate/publish: none
-##
-## Returns:
-## - Echoes "row;col" position
-##
-## Usage:
-## - pos=$(cursor:position)
-##
-function cursor:position() {
-  local CURPOS
-  read -sdR -p $'\E[6n' CURPOS
-  CURPOS=${CURPOS#*[} # Strip decoration characters <ESC>[
-  echo "${CURPOS}"    # Return position in "row;col" format
-}
-
-##
-## Get cursor row position
-##
-## Parameters:
-## - none
-##
-## Globals:
-## - reads/listen: none
-## - mutate/publish: none
-##
-## Returns:
-## - Echoes row number
-##
-## Usage:
-## - row=$(cursor:position:row)
-##
-function cursor:position:row() {
-  local COL
-  local ROW
-  IFS=';' read -sdR -p $'\E[6n' ROW COL
-  echo "${ROW#*[}"
-}
-
-##
-## Get cursor column position
-##
-## Parameters:
-## - none
-##
-## Globals:
-## - reads/listen: none
-## - mutate/publish: none
-##
-## Returns:
-## - Echoes column number
-##
-## Usage:
-## - col=$(cursor:position:col)
-##
-function cursor:position:col() {
-  local COL
-  local ROW
-  IFS=';' read -sdR -p $'\E[6n' ROW COL
-  echo "${COL}"
-}
-
-# ref: https://stackoverflow.com/questions/10679188/casing-arrow-keys-in-bash
-
-##
-## Read user password input with masking and line editing
-##
-## Parameters:
-## - none (interactive input from terminal)
-##
-## Globals:
-## - reads/listen: none
-## - mutate/publish: none
-##
-## Side effects:
-## - Reads from terminal with arrow key navigation
-## - Masks input as asterisks
-##
-## Returns:
-## - Echoes entered password
-##
-## Usage:
-## - password=$(input:readpwd)
-##
-function input:readpwd() {
-  # tput sc # Save cursor position
-  local y_pos=$(cursor:position:row) x_pos=$(cursor:position:col) max_col=$(tput cols)
-  local PWORD='' pos=0 max_length=0
-  echo:Common "$x_pos;$y_pos"
-
-  local hint="${cl_grey}(→,←,↑,↓,↵,Esc,⌫,^U)${cl_reset}"
-  local distance=$((max_col - x_pos - ${#hint} - 4))
-  local filler=$(printf ' %.0s' $(seq 1 $distance))
-
-  function home() {
-    tput cup $((y_pos - 1)) $((x_pos - 1)) 1>&2
-    pos=0
-  }
-  function endline() {
-    tput cup $((y_pos - 1)) $((x_pos + ${#PWORD} - 1)) 1>&2
-    pos=${#PWORD}
-  }
-  function reprint() {
-    tput cup $((y_pos - 1)) $((x_pos - 1)) 1>&2
-    echo -n "$1" 1>&2
-    tput cup $((y_pos - 1)) $((x_pos + pos - 1)) 1>&2
-  }
-  function add() {
-    PWORD+="$1"
-    echo -n "$(echo "$1" | sed 's/./\*/g')" 1>&2
-    pos=$((pos + ${#1}))
-  }
-  function delete() {
-    # pos is more than 0
-    if [ "$pos" -gt 0 ]; then
-      reprint "$filler$hint"
-      # remove c0 at the specified position
-      PWORD="${PWORD:0:pos-1}${PWORD:pos}" && pos=$((pos - 1))
-      reprint "$(echo "$PWORD" | sed 's/./\*/g')"
-    fi
-  }
-  function reset() {
-    reprint "$filler$hint"
-    PWORD='' && pos=0
-    reprint "$(echo "$PWORD" | sed 's/./\*/g')"
-  }
-  function left() {
-    if [ "$pos" -gt 0 ]; then
-      pos=$((pos - 1))
-      tput cub 1 1>&2
-    fi
-  }
-  function right() {
-    if [ "$pos" -lt "${#PWORD}" ]; then
-      pos=$((pos + 1))
-      tput cuf 1 1>&2
-    fi
-  }
-
-  reprint "$filler$hint"
-
-  local c0 c1 c2 c3 c4 c5 code esc
-
-  while :; do
-    echo:Common "- $PWORD,$pos"
-    # Note: a NULL will return a empty string; Ctrl + Alt + Shift + Key produce 6 chars
-    IFS= read -r -n 1 -s c0
-    IFS= read -r -n 1 -s -t 0.0001 c1
-    IFS= read -r -n 1 -s -t 0.0001 c2
-    IFS= read -r -n 1 -s -t 0.0001 c3
-    IFS= read -r -n 1 -s -t 0.0001 c4
-    IFS= read -r -n 1 -s -t 0.0001 c5
-
-    # Convert users key press to hexadecimal character code
-    code=$(printf '%02x' "'$c0") # EOL (empty c0) -> 00
-    esc="$(printf '%02x%02x%02x' "'$c0" "'$c1" "'$c2")"
-    printf:Common 'none: %02x%02x%02x%02x%02x%02x' "'$c0" "'$c1" "'$c2" "'$c3" "'$c4" "'$c5"
-
-    case "$code" in
-    # Escape sequence, read in two more chars
-    1b)
-      # reset input on single escape sequences
-      if [ "$c1" == '' ]; then reset && continue; fi
-
-      case "$esc" in
-      1b5b41) home ;;    # up arrow
-      1b5b42) endline ;; # down arrow
-      1b5b43) right ;;   # right arrow
-      1b5b44) left ;;    # left arrow
-      *) ;;              # Ignore any other escape sequence
-      esac
-      ;;
-    '' | 00 | 0a | 0d) break ;; # Exit EOF, Linefeed or Return
-    08 | 7f) delete ;;          # backspace or delete
-    15) reset ;;                # ^U or kill line
-    [01]?) ;;                   # Ignore ALL other control characters
-    # Note: insert from clipboard can be treated as many chars at once
-    *) add "$c0$c1$c2$c3$c4$c5" ;;
-    esac
-  done
-  # tput rc # Restore cursor position
-
-  echo "${PWORD}"
-}
-
-# shellcheck disable=SC2086
-##
-## Generic input validation with prompt and retry
-##
-## Parameters:
-## - variable - Variable name to store result, string, required
-## - default - Default value to suggest, string, default: ""
-## - hint - Prompt text to display, string, default: ""
-##
-## Globals:
-## - reads/listen: use_macos_extensions, cl_purple, cl_reset, cl_blue
-## - mutate/publish: creates global variable named by first parameter
-##
-## Side effects:
-## - Sets trap for SIGINT during read operation
-##
-## Returns:
-## - 0 on success
-## - Sets variable to user input or default value
-##
-## Usage:
-## - validate:input result "default" "Enter value"
-##
-function validate:input() {
-  local variable=$1
-  local default=${2:-""}
-  local hint=${3:-""}
-  local user_in=""
-
-  local ask="${cl_purple}? ${cl_reset}${hint}${cl_blue}"
-
-  # Ctrl+C during read operation force error exit
-  trap 'exit 1' SIGINT
-
-  # execute at least once
-  while :; do
-    # allow macOs read command extension usage (default value -i)
-    if $use_macos_extensions; then
-      [[ -z "${hint// /}" ]] || read -r -e -i "${default}" -p "$ask" user_in
-      [[ -n "${hint// /}" ]] || read -r -e -i "${default}" user_in
-    else
-      [[ -z "${hint// /}" ]] || echo "$ask"
-      read -r user_in
-    fi
-    printf "${cl_reset}"
-    [[ -z "${user_in// /}" ]] || break
-  done
-
-  local __resultvar=$variable
-  eval $__resultvar="'$user_in'"
-}
-
-# shellcheck disable=SC2086
-##
-## Masked input validation (password-style prompt with asterisks)
-##
-## Parameters:
-## - variable - Variable name to store result, string, required
-## - default - Default value to suggest, string, default: ""
-## - hint - Prompt text to display, string, default: ""
-##
-## Globals:
-## - reads/listen: use_macos_extensions, cl_purple, cl_reset, cl_blue
-## - mutate/publish: creates global variable named by first parameter
-##
-## Side effects:
-## - Displays input as asterisks, supports arrow key navigation
-##
-## Returns:
-## - 0 on success
-## - Sets variable to user input (masked during entry)
-##
-## Usage:
-## - validate:input:masked password "" "Enter password"
-##
-function validate:input:masked() {
-  local variable=$1
-  local default=${2:-""}
-  local hint=${3:-""}
-  local user_in=""
-
-  local ask="${cl_purple}? ${cl_reset}${hint}${cl_blue}"
-
-  while :; do
-    [[ -z "${hint// /}" ]] || echo -n "$ask"
-    local user_in=$(input:readpwd)
-    printf "${cl_reset}\n"
-    [[ -z "${user_in// /}" ]] || break
-  done
-
-  local __resultvar=$variable
-  eval $__resultvar="'$user_in'"
-}
-
-# shellcheck disable=SC2086,SC2059
-##
-## Prompt user for yes/no input and store as boolean value
-##
-## Parameters:
-## - variable - Variable name to store result (passed by reference), string, required
-## - default - Default value to suggest, string, default: ""
-## - hint - Prompt text to display, string, default: ""
-##
-## Globals:
-## - reads/listen: use_macos_extensions
-## - mutate/publish: creates global variable named by first parameter
-##
-## Returns:
-## - 0 on success
-## - Sets variable to 'true' for yes, 'false' for no/other
-##
-## Usage:
-## - validate:input:yn result "y" "Continue?"
-##
-function validate:input:yn() {
-  local variable=$1
-  local default=${2:-""}
-  local hint=${3:-""}
-  local user_in=false
-
-  while true; do
-    if $use_macos_extensions; then
-      [[ -z "${hint// /}" ]] || read -e -i "${default}" -p "${cl_purple}? ${cl_reset}${hint}${cl_blue}" -r yn
-      [[ -n "${hint// /}" ]] || read -e -i "${default}" -r yn
-    else
-      [[ -z "${hint// /}" ]] || echo "${cl_purple}? ${cl_reset}${hint}${cl_blue}"
-      read -r yn
-    fi
-    printf "${cl_reset}"
-    case $yn in
-    [Yy]*)
-      user_in=true
-      break
-      ;;
-    [Nn]*)
-      user_in=false
-      break
-      ;;
-    *)
-      user_in=false
-      break
-      ;;
-    esac
-  done
-  local __resultvar=$variable
-  eval $__resultvar="$user_in"
 }
 
 # shellcheck disable=SC2086
@@ -663,81 +320,6 @@ function _env:resolve:string() {
   done
 
   echo "$expanded_string"
-}
-
-##
-## Cascading confirmation with fallback to input prompts
-##
-## Parameters:
-## - hint - Prompt message, string, required
-## - variable - Variable name to store result, string, required
-## - fallback - Default value, string, required
-## - top - First value to use, string, default: "" (triggers prompt)
-## - second - Second value to use, string, default: "" (uses fallback)
-## - third - Third value to use, string, default: "" (uses input prompt)
-## - masked - Display value instead of prompting, string, default: ""
-##
-## Globals:
-## - reads/listen: cl_purple, cl_reset, cl_blue
-## - mutate/publish: creates global variable named by second parameter
-##
-## Returns:
-## - 0 on success
-## - Sets variable to: top if set, second if set, third if set, or prompts for input
-##
-## Usage:
-## - confirm:by:input "Continue?" result "y" "" "" ""
-##
-function confirm:by:input() {
-  local hint=$1
-  local variable=$2
-  local fallback=$3
-  local top=$4
-  local second=$5
-  local third=$6
-  local masked=$7
-
-  ##
-  ## Print confirmation prompt with value
-  ##
-  ## Parameters:
-  ## - value - Value to display in prompt, string, required
-  ##
-  ## Globals:
-  ## - reads/listen: hint, cl_purple, cl_reset, cl_blue
-  ## - mutate/publish: none
-  ##
-  ## Side effects:
-  ## - Outputs formatted prompt to stdout
-  ##
-  ## Returns:
-  ## - None
-  ##
-  ## Usage:
-  ## - print:confirmation "value"
-  ##
-  print:confirmation() { echo "${cl_purple}? ${cl_reset}${hint}${cl_blue}$1${cl_reset}"; }
-
-  if [ -z "$top" ]; then
-    if [ -z "$second" ]; then
-      if [ -z "$third" ]; then
-        if [ -n "$masked" ]; then
-          validate:input:masked "$variable" "$fallback" "$hint"
-        else
-          validate:input "$variable" "$fallback" "$hint"
-        fi
-      else
-        eval "$variable='$fallback'" # fallback to provided value
-        print:confirmation "${masked:-$fallback}"
-      fi
-    else
-      eval "$variable='$second'"
-      print:confirmation "${masked:-$second}"
-    fi
-  else
-    eval "$variable='$top'"
-    print:confirmation "${masked:-$top}"
-  fi
 }
 
 ##
@@ -1444,142 +1026,8 @@ function config:hierarchy:xdg() {
   fi
 }
 
-##
-## Interactive menu selector from associative array
-##
-## Parameters:
-## - sourceVariableName - Name of associative array to read from, string, required
-## - keyOrValue - Return "key" or "value" from array, string, default: "key"
-##
-## Globals:
-## - reads/listen: cursor:position:row, cursor:position:col
-## - mutate/publish: none
-##
-## Side effects:
-## - Hides/shows cursor during selection
-##
-## Returns:
-## - 0 on success, 1 on escape/abort
-## - Echoes selected key or value from array
-##
-## Usage:
-## - declare -A MENU=([1]="Option 1" [2]="Option 2")
-## - selected=$(input:selector "MENU" "value")
-##
-function input:selector() {
-  local sourceVariableName=$1
-  local keyOrValue=${2:-"key"}
-
-  tput civis >&2 # hide cursor
-  local pos=0 max=-1 keys=() && declare -A items
-  local y_pos=$(cursor:position:row) x_pos=$(cursor:position:col) max_col=$(tput cols)
-  local _keys=$(eval "echo \"\${!${sourceVariableName}[@]}\"")
-  for key in $_keys; do max=$((max + 1)) && keys+=("$key"); done
-  for key in "${keys[@]}"; do items[$key]="$(eval "echo \"\${${sourceVariableName}[\"$key\"]}\"")"; done
-
-  local hint="${cl_grey}(←,→,↵,Esc)${cl_reset}"
-  local distance=$((max_col - x_pos - ${#hint} - 4))
-  local filler=$(printf ' %.0s' $(seq 1 $distance))
-  local eraser=$(printf ' %.0s' $(seq 1 $((max_col - x_pos - 1))))
-
-  function selections() {
-    local highlight=${1:-""}
-    local output="" bg="" seperator="" counter=0 value=""
-    for key in "${keys[@]}"; do
-      if [ "$counter" -eq "$pos" ]; then bg="$cl_selected"; else bg=""; fi
-      if [ "$counter" -eq "$pos" ]; then value="${items[$key]}"; else value="${items[$key]}"; fi
-      output+="${separator}${bg} ${value}${bg} ${cl_reset}"
-      counter=$((counter + 1))
-      separator=" | "
-    done
-    echo "$output"
-  }
-  function reprint() {
-    tput cup $((y_pos - 1)) $((x_pos - 1)) 1>&2
-    echo -n -e "$1" 1>&2
-    tput cup $((y_pos - 1)) $((x_pos + pos - 1)) 1>&2
-  }
-  function reset() {
-    reprint "$filler$hint"
-    pos=0
-    reprint "$(selections)"
-  }
-  function left() {
-    if [ "$pos" -gt 0 ]; then
-      pos=$((pos - 1))
-      reprint "$(selections)"
-    fi
-  }
-  function right() {
-    if [ "$pos" -lt "$max" ]; then
-      pos=$((pos + 1))
-      reprint "$(selections)"
-    fi
-  }
-  function search() {
-    # find first value that contains the search char
-    local search=$1 index=0
-    for key in "${keys[@]}"; do
-      if [[ "${items[$key]}" == *"$search"* ]]; then
-        pos=$index
-        reprint "$(selections "$search")"
-        break
-      fi
-      index=$((index + 1))
-    done
-  }
-
-  reset
-
-  local c0 c1 c2 c3 c4 c5 code esc
-
-  while :; do
-    echo:Common "- $pos"
-    # Note: a NULL will return a empty string; Ctrl + Alt + Shift + Key produce 6 chars
-    IFS= read -r -n 1 -s c0
-    IFS= read -r -n 1 -s -t 0.0001 c1
-    IFS= read -r -n 1 -s -t 0.0001 c2
-    IFS= read -r -n 1 -s -t 0.0001 c3
-    IFS= read -r -n 1 -s -t 0.0001 c4
-    IFS= read -r -n 1 -s -t 0.0001 c5
-
-    # Convert users key press to hexadecimal character code
-    code=$(printf '%02x' "'$c0") # EOL (empty c0) -> 00
-    esc="$(printf '%02x%02x%02x' "'$c0" "'$c1" "'$c2")"
-    printf:Common 'none: %02x%02x%02x%02x%02x%02x' "'$c0" "'$c1" "'$c2" "'$c3" "'$c4" "'$c5"
-
-    case "$code" in
-    # Escape sequence, read in two more chars
-    1b)
-      # reset input on single escape sequences
-      if [ "$c1" == '' ]; then reset && continue; fi
-
-      case "$esc" in
-      1b5b43) right ;; # right arrow
-      1b5b44) left ;;  # left arrow
-      *) ;;            # Ignore any other escape sequence
-      esac
-      ;;
-    '' | 00 | 0a | 0d) break ;; # Exit EOF, Linefeed or Return
-    [01]?) ;;                   # Ignore ALL other control characters
-    # Note: insert from clipboard can be treated as many chars at once
-    *) search "$c0$c1$c2$c3$c4$c5" ;;
-    esac
-  done
-
-  # echo "items: $sourceVariableName" "${items[*]}" "|" "${keys[@]}" "|" "${!items[@]}" >&2
-
-  tput cnorm >&2 # show cursor
-  reprint "$eraser"
-
-  if [ "$keyOrValue" = "key" ]; then
-    # return KEY part of the KEY-VALUE pair
-    [ "$pos" -gt "$max" ] && echo "" || echo "${keys[$pos]}"
-  else
-    # return VALUE part of the KEY-VALUE pair
-    [ "$pos" -gt "$max" ] && echo "" || echo "${items[${keys[$pos]}]}"
-  fi
-}
+# TUI functions have been moved to _tui.sh
+# This file sources _tui.sh for backward compatibility
 
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
@@ -1604,37 +1052,23 @@ alias isHelp=args:isHelp
 ## Module: Common Utilities and Helper Functions
 ##
 ## This module provides a collection of frequently used utility functions
-## for time handling, cursor position, input validation, git operations,
-## config file discovery, and user interaction.
+## for time handling, git operations, config file discovery, and value coalescing.
+## TUI functions (cursor, input, validation) are provided via _tui.sh.
 #
 ## References:
-## - demo: demo.readpswd.sh, demo.selector.sh
+## - demo: demo.readpswd.sh, demo.selector.sh, demo.multi-line.sh, demo.capture-key.sh
 ## - bin: git.semantic-version.sh, ci.validate-envrc.sh
 ## - documentation: docs/public/commons.md
-## - tests: spec/commons_spec.sh
+## - tests: spec/commons_spec.sh, spec/multi_line_input_spec.sh
 ##
 ## Globals:
 ## - E_BASH - Path to .scripts directory
-## - use_macos_extensions - Enable macOS-specific features, boolean, default: based on OSTYPE
 ##
 ## Categories:
 ##
 ## Time Functions:
 ## - time:now() - Get current epoch timestamp with microseconds
 ## - time:diff(start) - Calculate time difference
-##
-## Cursor/Position Functions:
-## - cursor:position() - Get "row;col" position
-## - cursor:position:row() - Get row number
-## - cursor:position:col() - Get column number
-##
-## Input Functions:
-## - input:readpwd() - Read password with masking and line editing
-## - input:selector() - Interactive menu selector from array
-## - validate:input() - Generic input validation
-## - validate:input:masked() - Masked input validation
-## - validate:input:yn() - Yes/no input validation
-## - confirm:by:input() - Cascading default confirmation
 ##
 ## Environment Functions:
 ## - env:variable:or:secret:file() - Get env var or read from secret file
@@ -1658,4 +1092,10 @@ alias isHelp=args:isHelp
 ## Config Discovery Functions:
 ## - config:hierarchy() - Find config files upward in directory tree
 ## - config:hierarchy:xdg() - XDG-compliant config discovery
+##
+## TUI Functions (from _tui.sh):
+## - cursor:position(), cursor:position:row(), cursor:position:col()
+## - input:readpwd(), input:selector(), input:multi-line()
+## - validate:input(), validate:input:masked(), validate:input:yn()
+## - confirm:by:input()
 ##
