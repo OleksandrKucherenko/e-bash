@@ -45,7 +45,8 @@ Key Input Functions (Internal):
 Multi-line Editor Functions (Internal):
 - _input:ml:init() - Initialize editor state
 - _input:ml:insert-char() - Insert character
-- _input:ml:delete-char() - Delete character
+- _input:ml:delete-char() - Delete character (backspace)
+- _input:ml:delete-char-forward() - Delete character (forward delete)
 - _input:ml:delete-word() - Delete word backward
 - _input:ml:insert-newline() - Insert newline
 - _input:ml:move-up/down/left/right/home/end() - Cursor movement

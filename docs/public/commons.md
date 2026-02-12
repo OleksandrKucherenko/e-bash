@@ -1111,6 +1111,7 @@ editor area so output reuses those lines. Does not support `--alt-buffer`.
 | Home / End | Move cursor to beginning/end of line |
 | Enter | Insert newline (splits line at cursor) |
 | Backspace | Delete character before cursor; joins lines at boundary |
+| Delete | Delete character at cursor; joins with next line at boundary |
 | Ctrl+D | Save and exit (returns 0) |
 | Esc | Cancel and exit (returns 1) |
 | Ctrl+E | Edit current line with full readline (word movement, history) |
