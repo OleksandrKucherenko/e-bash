@@ -2,8 +2,8 @@
 # shellcheck disable=SC2034
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-11
-## Version: 1.2.0
+## Last revisit: 2026-02-12
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -32,7 +32,7 @@ else
   echo "Box mode demo (Ctrl+D to save, Esc to cancel):"
   echo "Features: status bar, Ctrl+E readline edit, Page Up/Down, resize handling"
   echo "---"
-  text=$(input:multi-line -w 60 -h 10)
+  text=$(input:multi-line -x 10 -y 10  -w 60 -h 10)
 fi
 exit_code=$?
 
