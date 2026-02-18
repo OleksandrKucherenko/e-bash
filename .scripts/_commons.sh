@@ -2,8 +2,8 @@
 # shellcheck disable=SC2155,SC2034,SC2059,SC2154
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-02-18
+## Version: 2.4.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -577,7 +577,7 @@ function _env:resolve:string() {
   local str="$1"
   local arr_name="$2"
   local expanded_string="$str"
-  local max_iterations=10  # Safety limit to prevent infinite loops
+  local max_iterations=10 # Safety limit to prevent infinite loops
   local iteration=0
 
   # Iterate while there are {{env.VAR_NAME}} patterns in the string
@@ -672,10 +672,10 @@ function _env:resolve:string() {
 ## - hint - Prompt message, string, required
 ## - variable - Variable name to store result, string, required
 ## - fallback - Default value, string, required
-## - top - First value to use, string, default: "" (triggers prompt)
-## - second - Second value to use, string, default: "" (uses fallback)
-## - third - Third value to use, string, default: "" (uses input prompt)
-## - masked - Display value instead of prompting, string, default: ""
+## - top - First value to try, string, default: "" (triggers prompt)
+## - second - Second value to try, string, default: "" (uses fallback)
+## - third - Third value to try, string, default: "" (uses input prompt)
+## - masked - Asked in secure or simple way for value. Any non-empty value enables secure mode, string, default: ""
 ##
 ## Globals:
 ## - reads/listen: cl_purple, cl_reset, cl_blue
@@ -686,16 +686,16 @@ function _env:resolve:string() {
 ## - Sets variable to: top if set, second if set, third if set, or prompts for input
 ##
 ## Usage:
-## - confirm:by:input "Continue?" result "y" "" "" ""
+## - confirm:by:input "What is your name?" result "John Doe" "" "" ""
 ##
 function confirm:by:input() {
   local hint=$1
   local variable=$2
   local fallback=$3
-  local top=$4
-  local second=$5
-  local third=$6
-  local masked=$7
+  local top=${4:-""}
+  local second=${5:-""}
+  local third=${6:-""}
+  local masked=${7:-""}
 
   ##
   ## Print confirmation prompt with value
@@ -931,7 +931,7 @@ function to:slug() {
   # Determine strategy: number (length limit) or "always" (force hash)
   if [[ "$trim_param" == "always" ]]; then
     strategy="always"
-    trim=0  # No length limit when strategy is "always"
+    trim=0 # No length limit when strategy is "always"
   elif [[ "$trim_param" =~ ^[0-9]+$ ]]; then
     strategy="length"
     trim=$trim_param
@@ -1053,7 +1053,7 @@ function git:root() {
   }
 
   # Navigate upward until we find .git (file or directory) or reach root
-  local max_iterations=1000  # Safety limit to prevent infinite loops
+  local max_iterations=1000 # Safety limit to prevent infinite loops
   local iteration=0
 
   while true; do
@@ -1247,7 +1247,7 @@ function config:hierarchy() {
 
   # Search upward from current directory to stop path
   local search_dir="$current_dir"
-  local max_iterations=1000  # Safety limit to prevent infinite loops
+  local max_iterations=1000 # Safety limit to prevent infinite loops
   local iteration=0
 
   while true; do
@@ -1364,7 +1364,7 @@ function config:hierarchy:xdg() {
     done <<<"$hierarchy_result"
 
     # Reverse the array to get highest priority first (current before root)
-    for ((i=${#hierarchy_files[@]}-1; i>=0; i--)); do
+    for ((i = ${#hierarchy_files[@]} - 1; i >= 0; i--)); do
       all_configs+=("${hierarchy_files[i]}")
     done
   fi
