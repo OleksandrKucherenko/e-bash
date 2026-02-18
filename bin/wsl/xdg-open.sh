@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-02-18
-## Version: 2.4.0
+## Version: 2.7.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -178,13 +178,13 @@ function xdg:detect:launcher() {
   local scoop_dir
   scoop_dir=$(xdg:windows:scoop_dir)
   if [[ -n "$scoop_dir" ]]; then
-    [[ -f "$scoop_dir/shims/pwsh.exe" ]] && launchers+=("pwsh (scoop)")
-    [[ -f "$scoop_dir/shims/powershell.exe" ]] && launchers+=("powershell (scoop)")
+    [[ -f "$scoop_dir/shims/pwsh.exe" ]] && launchers+=("pwsh-scoop")
+    [[ -f "$scoop_dir/shims/powershell.exe" ]] && launchers+=("powershell-scoop")
   fi
 
   # Winget/Microsoft Store PowerShell 7 installations
   local pwsh_winget="$XDG_WSL_WIN/PowerShell/7/pwsh.exe"
-  [[ -f "$pwsh_winget" ]] && launchers+=("pwsh (winget)")
+  [[ -f "$pwsh_winget" ]] && launchers+=("pwsh-winget")
 
   printf '%s\n' "${launchers[@]}"
 }
@@ -193,7 +193,7 @@ function xdg:detect:launcher() {
 ## Get the executable name for a launcher selection.
 ##
 ## Parameters:
-## - $1 - launcher selection (e.g., "powershell", "pwsh (scoop)")
+## - $1 - launcher selection (e.g., "powershell", "pwsh-scoop")
 ##
 ## Outputs:
 ## - Executable name (e.g., "powershell.exe", "pwsh.exe")
@@ -201,8 +201,8 @@ function xdg:detect:launcher() {
 function xdg:launcher:exe() {
   local selection="$1"
   case "$selection" in
-  "powershell" | "powershell (scoop)") echo "powershell.exe" ;;
-  "pwsh" | "pwsh (scoop)" | "pwsh (winget)") echo "pwsh.exe" ;;
+  "powershell" | "powershell-scoop") echo "powershell.exe" ;;
+  "pwsh" | "pwsh-scoop" | "pwsh-winget") echo "pwsh.exe" ;;
   "cmd") echo "cmd.exe" ;;
   *) echo "powershell.exe" ;; # Default fallback
   esac
@@ -213,7 +213,7 @@ function xdg:launcher:exe() {
 ## Returns the actual executable path, not just the basename.
 ##
 ## Parameters:
-## - $1 - launcher selection (e.g., "powershell", "pwsh (winget)")
+## - $1 - launcher selection (e.g., "powershell", "pwsh-winget")
 ##
 ## Outputs:
 ## - Full path to launcher executable
@@ -228,17 +228,17 @@ function xdg:launcher:path() {
   scoop_dir=$(xdg:windows:scoop_dir)
 
   case "$selection" in
-  "pwsh (winget)")
+  "pwsh-winget")
     echo "$XDG_WSL_WIN/PowerShell/7/pwsh.exe"
     ;;
-  "pwsh (scoop)")
+  "pwsh-scoop")
     if [[ -n "$scoop_dir" ]]; then
       echo "$scoop_dir/shims/pwsh.exe"
     else
       echo "$launcher_exe"
     fi
     ;;
-  "powershell (scoop)")
+  "powershell-scoop")
     if [[ -n "$scoop_dir" ]]; then
       echo "$scoop_dir/shims/powershell.exe"
     else
@@ -256,7 +256,7 @@ function xdg:launcher:path() {
 ## Verify a launcher is available at its expected path.
 ##
 ## Parameters:
-## - $1 - launcher selection (e.g., "powershell", "pwsh (winget)")
+## - $1 - launcher selection (e.g., "powershell", "pwsh-winget")
 ##
 ## Returns:
 ## - 0 (true) if launcher is available
@@ -343,6 +343,38 @@ function xdg:windows:scoop_dir() {
 }
 
 ##
+## Get the Windows user's LocalAppData directory.
+## Used for per-user browser installations (Chrome, Edge, etc.).
+##
+## Outputs:
+## - Path to Windows user's AppData/Local directory (e.g., /mnt/c/Users/username/AppData/Local)
+##
+function xdg:windows:local_appdata() {
+  local win_user="${XDG_OPEN_WINDOWS_USER:-}"
+
+  # If no user set, try to auto-detect
+  if [[ -z "$win_user" ]]; then
+    local users
+    users=$(xdg:windows:users)
+    local user_count
+    user_count=$(echo "$users" | grep -c .)
+
+    if [[ $user_count -eq 1 ]]; then
+      win_user=$(echo "$users" | head -1)
+    elif [[ $user_count -gt 1 ]]; then
+      local linux_user="${USER:-$(whoami 2>/dev/null)}"
+      if echo "$users" | grep -qx "$linux_user"; then
+        win_user="$linux_user"
+      fi
+    fi
+  fi
+
+  if [[ -n "$win_user" ]]; then
+    echo "$XDG_WSL_USERS/$win_user/AppData/Local"
+  fi
+}
+
+##
 ## Get the Windows path for a browser selection.
 ## Returns the executable path for launching the browser.
 ##
@@ -357,19 +389,22 @@ function xdg:browser:path() {
   local selection="$1"
   local custom_path="${2:-}"
 
-  # Get Windows user's Scoop directory
-  local scoop_dir
+  # Get Windows user's Scoop and LocalAppData directories
+  local scoop_dir local_appdata
   scoop_dir=$(xdg:windows:scoop_dir)
+  local_appdata=$(xdg:windows:local_appdata)
 
   case "$selection" in
     "default") echo "" ;;  # Use Windows default
     "chrome"*)
-      # Chrome - system, Scoop installations (stable only)
+      # Chrome - system, user, Scoop installations (stable only)
       # TODO: Add Chocolatey support
       local chrome_paths=(
         "$XDG_WSL_WIN/Google/Chrome/Application/chrome.exe"
         "$XDG_WSL_WIN86/Google/Chrome/Application/chrome.exe"
       )
+      # Add user-specific AppData\Local path (common for user installs)
+      [[ -n "$local_appdata" ]] && chrome_paths+=("$local_appdata/Google/Chrome/Application/chrome.exe")
       # Add Scoop path if available
       [[ -n "$scoop_dir" ]] && chrome_paths+=("$scoop_dir/apps/googlechrome/current/Google Chrome.exe")
       for path in "${chrome_paths[@]}"; do
@@ -378,12 +413,14 @@ function xdg:browser:path() {
       echo "chrome.exe"  # Fallback to PATH
       ;;
     "firefox"*)
-      # Firefox - system, Scoop installations (stable only)
+      # Firefox - system, user, Scoop installations (stable only)
       # TODO: Add Chocolatey support
       local firefox_paths=(
         "$XDG_WSL_WIN/Mozilla Firefox/firefox.exe"
         "$XDG_WSL_WIN86/Mozilla Firefox/firefox.exe"
       )
+      # Add user-specific AppData\Local path
+      [[ -n "$local_appdata" ]] && firefox_paths+=("$local_appdata/Mozilla Firefox/firefox.exe")
       [[ -n "$scoop_dir" ]] && firefox_paths+=("$scoop_dir/apps/firefox/current/firefox.exe")
       for path in "${firefox_paths[@]}"; do
         [[ -f "$path" ]] && echo "$path" && return 0
@@ -391,12 +428,14 @@ function xdg:browser:path() {
       echo "firefox.exe"
       ;;
     "edge"*)
-      # Edge - usually pre-installed on Windows 10/11 (stable only)
+      # Edge - system, user, Scoop installations (stable only)
       # TODO: Add Chocolatey support
       local edge_paths=(
         "$XDG_WSL_WIN86/Microsoft/Edge/Application/msedge.exe"
         "$XDG_WSL_WIN/Microsoft/Edge/Application/msedge.exe"
       )
+      # Add user-specific AppData\Local path
+      [[ -n "$local_appdata" ]] && edge_paths+=("$local_appdata/Microsoft/Edge/Application/msedge.exe")
       [[ -n "$scoop_dir" ]] && edge_paths+=("$scoop_dir/apps/edge/current/msedge.exe")
       for path in "${edge_paths[@]}"; do
         [[ -f "$path" ]] && echo "$path" && return 0
@@ -404,12 +443,14 @@ function xdg:browser:path() {
       echo "msedge.exe"
       ;;
     "brave"*)
-      # Brave - system, Scoop installations (stable only)
+      # Brave - system, user, Scoop installations (stable only)
       # TODO: Add Chocolatey support
       local brave_paths=(
         "$XDG_WSL_WIN/BraveSoftware/Brave-Browser/Application/brave.exe"
         "$XDG_WSL_WIN86/BraveSoftware/Brave-Browser/Application/brave.exe"
       )
+      # Add user-specific AppData\Local path
+      [[ -n "$local_appdata" ]] && brave_paths+=("$local_appdata/BraveSoftware/Brave-Browser/Application/brave.exe")
       [[ -n "$scoop_dir" ]] && brave_paths+=("$scoop_dir/apps/brave/current/Application/brave.exe")
       for path in "${brave_paths[@]}"; do
         [[ -f "$path" ]] && echo "$path" && return 0
@@ -442,14 +483,16 @@ function xdg:browser:detect() {
   # Default browser is always available
   browsers+=("default")
 
-  # Get Windows user's Scoop directory
-  local scoop_dir
+  # Get Windows user's Scoop and LocalAppData directories
+  local scoop_dir local_appdata
   scoop_dir=$(xdg:windows:scoop_dir)
+  local_appdata=$(xdg:windows:local_appdata)
 
-  # Chrome - system, Scoop paths (stable only)
+  # Chrome - system, user, Scoop paths (stable only)
   local chrome_found=false
   [[ -f "$XDG_WSL_WIN/Google/Chrome/Application/chrome.exe" ]] && chrome_found=true
   [[ -f "$XDG_WSL_WIN86/Google/Chrome/Application/chrome.exe" ]] && chrome_found=true
+  [[ -n "$local_appdata" && -f "$local_appdata/Google/Chrome/Application/chrome.exe" ]] && chrome_found=true
   [[ -n "$scoop_dir" && -f "$scoop_dir/apps/googlechrome/current/Google Chrome.exe" ]] && chrome_found=true
   command -v chrome.exe &>/dev/null && chrome_found=true
   $chrome_found && browsers+=("chrome")
@@ -458,14 +501,16 @@ function xdg:browser:detect() {
   local firefox_found=false
   [[ -f "$XDG_WSL_WIN/Mozilla Firefox/firefox.exe" ]] && firefox_found=true
   [[ -f "$XDG_WSL_WIN86/Mozilla Firefox/firefox.exe" ]] && firefox_found=true
+  [[ -n "$local_appdata" && -f "$local_appdata/Mozilla Firefox/firefox.exe" ]] && firefox_found=true
   [[ -n "$scoop_dir" && -f "$scoop_dir/apps/firefox/current/firefox.exe" ]] && firefox_found=true
   command -v firefox.exe &>/dev/null && firefox_found=true
   $firefox_found && browsers+=("firefox")
 
-  # Edge - pre-installed on Windows 10/11 (stable only)
+  # Edge - system, user, Scoop paths (stable only)
   local edge_found=false
   [[ -f "$XDG_WSL_WIN86/Microsoft/Edge/Application/msedge.exe" ]] && edge_found=true
   [[ -f "$XDG_WSL_WIN/Microsoft/Edge/Application/msedge.exe" ]] && edge_found=true
+  [[ -n "$local_appdata" && -f "$local_appdata/Microsoft/Edge/Application/msedge.exe" ]] && edge_found=true
   [[ -n "$scoop_dir" && -f "$scoop_dir/apps/edge/current/msedge.exe" ]] && edge_found=true
   command -v msedge.exe &>/dev/null && edge_found=true
   $edge_found && browsers+=("edge")
@@ -474,6 +519,7 @@ function xdg:browser:detect() {
   local brave_found=false
   [[ -f "$XDG_WSL_WIN/BraveSoftware/Brave-Browser/Application/brave.exe" ]] && brave_found=true
   [[ -f "$XDG_WSL_WIN86/BraveSoftware/Brave-Browser/Application/brave.exe" ]] && brave_found=true
+  [[ -n "$local_appdata" && -f "$local_appdata/BraveSoftware/Brave-Browser/Application/brave.exe" ]] && brave_found=true
   [[ -n "$scoop_dir" && -f "$scoop_dir/apps/brave/current/Application/brave.exe" ]] && brave_found=true
   command -v brave.exe &>/dev/null && brave_found=true
   $brave_found && browsers+=("brave")
@@ -566,7 +612,7 @@ function xdg:shim:generate() {
 
   # Get the actual path for pwsh (winget/scoop installations)
   local launcher_path="$launcher_exe"
-  if [[ "$XDG_OPEN_LAUNCHER" == "pwsh (winget)" ]]; then
+  if [[ "$XDG_OPEN_LAUNCHER" == "pwsh-winget" ]]; then
     launcher_path="$XDG_WSL_WIN/PowerShell/7/pwsh.exe"
   fi
 
@@ -661,12 +707,32 @@ function xdg:shim:generate:v2() {
   shim_dir=$(dirname "$shim_file")
   mkdir -p "$shim_dir"
 
+  # Launcher path - KEEP as Linux path (called FROM WSL)
   local launcher_path
   launcher_path=$(xdg:launcher:path "$XDG_OPEN_LAUNCHER")
+
+  # Browser path - CONVERT to Windows path (passed TO PowerShell)
+  local browser_path="${XDG_OPEN_BROWSER_PATH:-}"
+  local browser_path_win=""
+  if [[ -n "$browser_path" && -f "$browser_path" ]]; then
+    if [[ "$browser_path" == /* ]] && command -v wslpath >/dev/null 2>&1; then
+      browser_path_win=$(wslpath -w "$browser_path" 2>/dev/null || echo "$browser_path")
+    else
+      browser_path_win="$browser_path"
+    fi
+  fi
 
   # Get absolute path to this script (for delegation)
   local script_path
   script_path=$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")
+
+  # Build the Start-Process command based on browser configuration
+  local start_process_cmd
+  if [[ -n "$browser_path_win" ]]; then
+    start_process_cmd="Start-Process \\\"$browser_path_win\\\" -ArgumentList \\\"\$target\\\""
+  else
+    start_process_cmd="Start-Process \\\"\$target\\\""
+  fi
 
   cat >"$shim_file" <<EOF
 #!/usr/bin/env bash
@@ -678,6 +744,7 @@ function xdg:shim:generate:v2() {
 set -e
 readonly _LAUNCHER="$launcher_path"
 readonly _BROWSER="$XDG_OPEN_BROWSER"
+readonly _BROWSER_PATH="$browser_path_win"
 readonly _CONFIG_TOOL="$script_path"
 
 # Delegate subcommands to the original config tool
@@ -702,7 +769,7 @@ target="\$1"
 target="\${target//\"/}"
 
 # Launch via configured launcher
-\$_LAUNCHER -NoProfile -NonInteractive -Command "Start-Process \\"\$target\\"" >/dev/null 2>&1
+\$_LAUNCHER -NoProfile -NonInteractive -Command "$start_process_cmd" >/dev/null 2>&1
 EOF
 
   chmod +x "$shim_file"
@@ -879,20 +946,28 @@ function xdg:config:wizard() {
   echo "Choose how to open URLs/files in Windows."
   echo ""
 
-  declare -A launcher_options=(
-    ["powershell"]="Windows PowerShell 5.1"
-    ["pwsh"]="PowerShell Core 7+"
-    ["cmd"]="Command Prompt (minimal)"
-  )
+  # Detect available launchers and build options dynamically
+  local -A launcher_options
+  local detected_launchers
+  detected_launchers=$(xdg:detect:launcher)
 
-  # Add detected Scoop/Winget installations using Windows user path
-  local scoop_dir="$XDG_WSL_USERS/${XDG_OPEN_WINDOWS_USER:-}/scoop"
-  if [[ -n "$XDG_OPEN_WINDOWS_USER" && -f "$scoop_dir/shims/pwsh.exe" ]]; then
-    launcher_options["pwsh (scoop)"]="PowerShell Core (Scoop)"
+  if [[ -z "$detected_launchers" ]]; then
+    echo "${cl_red}Error: No Windows launchers detected!${cl_reset}"
+    echo "  Please ensure PowerShell or cmd.exe is available in your WSL PATH."
+    echo ""
+    return 1
   fi
-  if [[ -f "$XDG_WSL_WIN/PowerShell/7/pwsh.exe" ]]; then
-    launcher_options["pwsh (winget)"]="PowerShell Core (Winget)"
-  fi
+
+  while IFS= read -r launcher; do
+    case "$launcher" in
+      "powershell")        launcher_options["powershell"]="Windows PowerShell 5.1" ;;
+      "pwsh")              launcher_options["pwsh"]="PowerShell Core 7+" ;;
+      "cmd")               launcher_options["cmd"]="Command Prompt (minimal)" ;;
+      "pwsh-scoop")        launcher_options["pwsh-scoop"]="PowerShell Core (Scoop)" ;;
+      "powershell-scoop")  launcher_options["powershell-scoop"]="Windows PowerShell (Scoop)" ;;
+      "pwsh-winget")       launcher_options["pwsh-winget"]="PowerShell Core (Winget)" ;;
+    esac
+  done <<< "$detected_launchers"
 
   echo -n "Select launcher: "
   XDG_OPEN_LAUNCHER=$(input:selector "launcher_options" "key")
@@ -905,14 +980,14 @@ function xdg:config:wizard() {
   echo ""
   echo "${cl_green}✓${cl_reset} Selected: ${cl_cyan}$XDG_OPEN_LAUNCHER${cl_reset}"
 
-  # Verify launcher is available
+  # Show resolved launcher path
   local launcher_path
   launcher_path=$(xdg:launcher:path "$XDG_OPEN_LAUNCHER")
-  if ! xdg:launcher:verify "$XDG_OPEN_LAUNCHER"; then
-    echo "${cl_yellow}⚠ Warning: Launcher not found at: ${launcher_path}${cl_reset}"
-    echo "  The shim may not work correctly."
+  if [[ "$launcher_path" != /* ]]; then
+    # System PATH executable
+    echo "  Executable: ${cl_grey}${launcher_path}${cl_reset} (in PATH)"
   else
-    echo "  Resolved path: ${cl_grey}${launcher_path}${cl_reset}"
+    echo "  Resolved: ${cl_grey}${launcher_path}${cl_reset}"
   fi
   echo ""
 
@@ -1107,31 +1182,58 @@ function xdg:open_in_windows() {
 
   # Read user preference
   local launcher="${XDG_OPEN_LAUNCHER:-powershell}"
+  local browser_path="${XDG_OPEN_BROWSER_PATH:-}"
   local launcher_exe
   launcher_exe=$(xdg:launcher:exe "$launcher")
 
   echo:Wsl "launcher: $launcher_exe (preference: $launcher)"
+  echo:Wsl "browser: ${XDG_OPEN_BROWSER:-default} (path: ${browser_path:-<default>})"
+
+  # Convert browser path to Windows format if it's a Linux path
+  local browser_path_win="$browser_path"
+  if [[ -n "$browser_path" && "$browser_path" == /* ]]; then
+    if command -v wslpath >/dev/null 2>&1; then
+      browser_path_win=$(wslpath -w "$browser_path" 2>/dev/null || echo "$browser_path")
+      echo:Wsl "converted browser path: $browser_path -> $browser_path_win"
+    fi
+  fi
+
+  # Build PowerShell command - use specific browser if configured
+  local ps_command
+  if [[ -n "$browser_path_win" ]]; then
+    # Use specific browser with URL as argument
+    ps_command="Start-Process \"${browser_path_win}\" -ArgumentList \"${win_target}\""
+    echo:Wsl "using specific browser: $browser_path_win"
+  else
+    # Use Windows default handler
+    ps_command="Start-Process \"${win_target}\""
+    echo:Wsl "using Windows default handler"
+  fi
 
   # Use configured launcher
   if [[ "$launcher_exe" == "cmd.exe" ]]; then
     if command -v cmd.exe >/dev/null 2>&1; then
-      cmd.exe /c start "" "${win_target}" >/dev/null 2>&1 && return 0
+      if [[ -n "$browser_path_win" ]]; then
+        cmd.exe /c start "" "${browser_path_win}" "${win_target}" >/dev/null 2>&1 && return 0
+      else
+        cmd.exe /c start "" "${win_target}" >/dev/null 2>&1 && return 0
+      fi
     fi
   elif [[ "$launcher_exe" == "pwsh.exe" ]]; then
     # Check for pwsh in various locations
     local pwsh_path="pwsh.exe"
-    if [[ "$launcher" == "pwsh (winget)" ]]; then
+    if [[ "$launcher" == "pwsh-winget" ]]; then
       pwsh_path="$XDG_WSL_WIN/PowerShell/7/pwsh.exe"
     fi
     if command -v "$pwsh_path" >/dev/null 2>&1 || [[ -f "$pwsh_path" ]]; then
-      "$pwsh_path" -NoProfile -NonInteractive -Command "Start-Process \"${win_target}\"" \
+      "$pwsh_path" -NoProfile -NonInteractive -Command "$ps_command" \
         >/dev/null 2>&1 && return 0
     fi
   fi
 
   # Default: PowerShell is preferred - handles UNC paths, spaces, and all URL schemes
   if command -v powershell.exe >/dev/null 2>&1; then
-    powershell.exe -NoProfile -NonInteractive -Command "Start-Process \"${win_target}\"" \
+    powershell.exe -NoProfile -NonInteractive -Command "$ps_command" \
       >/dev/null 2>&1 && return 0
     echo:Wsl "powershell.exe failed, trying cmd.exe"
   fi
@@ -1139,7 +1241,11 @@ function xdg:open_in_windows() {
   # cmd.exe start is the universal fallback on older/minimal Windows setups
   if command -v cmd.exe >/dev/null 2>&1; then
     echo:Wsl "launcher: cmd.exe"
-    cmd.exe /c start "" "${win_target}" >/dev/null 2>&1 && return 0
+    if [[ -n "$browser_path_win" ]]; then
+      cmd.exe /c start "" "${browser_path_win}" "${win_target}" >/dev/null 2>&1 && return 0
+    else
+      cmd.exe /c start "" "${win_target}" >/dev/null 2>&1 && return 0
+    fi
     echo:Wsl "cmd.exe also failed"
   fi
 
