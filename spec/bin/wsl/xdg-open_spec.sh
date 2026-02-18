@@ -194,7 +194,7 @@ Describe 'bin/wsl/xdg-open.sh'
     End
 
     It 'returns scoop path for pwsh (scoop)'
-      When call bash -c "source \"$SCRIPT_PATH\" && xdg:launcher:path 'pwsh (scoop)'"
+      When call bash -c "export XDG_OPEN_WINDOWS_USER=testuser && source \"$SCRIPT_PATH\" && xdg:launcher:path 'pwsh (scoop)'"
       The output should include "scoop/shims/pwsh.exe"
     End
   End
