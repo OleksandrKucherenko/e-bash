@@ -167,30 +167,50 @@ _state_ok "dsl.sh: watchdog invocation"       "shellspec-timeout-watchdog" "lib/
 # 6. Verify patch was applied (functional test)
 log_step "Verifying timeout feature..."
 
-TEST_FILE="$SHELLSPEC_DIR/timeout_verification_spec.sh"
-cat <<'EOF' > "$TEST_FILE"
+# Create an isolated temp directory with a .shellspec project file to avoid
+# "Not a shellspec project directory" warnings and associated startup overhead
+VERIFY_DIR=$(mktemp -d)
+cleanup_verify() { rm -rf "$VERIFY_DIR"; }
+trap cleanup_verify EXIT
+
+# Minimal .shellspec project config
+echo "--shell bash" > "$VERIFY_DIR/.shellspec"
+
+cat <<'EOF' > "$VERIFY_DIR/timeout_spec.sh"
 Describe "timeout verification"
   Example "should timeout in 1 second" % timeout:1
-    sleep 2
+    sleep 10
     The status should equal 0
   End
 End
 EOF
 
 START_TIME=$(date +%s)
-_verify_out=$("$SHELLSPEC_DIR/shellspec" "$TEST_FILE" 2>&1) || true
+_verify_out=$(cd "$VERIFY_DIR" && "$SHELLSPEC_DIR/shellspec" --shell bash "timeout_spec.sh" 2>&1) || true
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
-rm -f "$TEST_FILE"
 
-if [[ $DURATION -lt 2 ]]; then
+cleanup_verify
+trap - EXIT
+
+# Primary check: look for TIMEOUT output marker (proves the feature works)
+# Match "TIMEOUT:" or "exceeded timeout" - NOT just "timeout" which appears in the test name
+if echo "$_verify_out" | grep -q "exceeded timeout"; then
     VERSION="$("$SHELLSPEC_DIR/shellspec" --version 2>/dev/null || echo "unknown")"
     log_info "Timeout feature verified (${DURATION}s). Version: $VERSION"
     touch "$MARKER_FILE" 2>/dev/null || true
     exit 0
-else
-    log_error "Verification failed: test did not timeout (Duration: ${DURATION}s, expected <2s)"
-    log_error "ShellSpec output from verification test:"
-    echo "$_verify_out" >&2
-    exit 1
 fi
+
+# Secondary check: if sleep 10 was killed early, duration should be well under 10s
+if [[ $DURATION -lt 8 ]]; then
+    VERSION="$("$SHELLSPEC_DIR/shellspec" --version 2>/dev/null || echo "unknown")"
+    log_info "Timeout feature verified by duration (${DURATION}s < 8s). Version: $VERSION"
+    touch "$MARKER_FILE" 2>/dev/null || true
+    exit 0
+fi
+
+log_error "Verification failed: test did not timeout (Duration: ${DURATION}s, no TIMEOUT marker in output)"
+log_error "ShellSpec output from verification test:"
+echo "$_verify_out" >&2
+exit 1
