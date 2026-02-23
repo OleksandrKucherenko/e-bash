@@ -3,8 +3,8 @@
 # Uses perl for portable multi-line text manipulation (available on macOS + Linux)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-10
-## Version: 1.0.0
+## Last revisit: 2026-02-23
+## Version: 1.1.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -190,7 +190,9 @@ if ! grep -q "SHELLSPEC_EXAMPLE_TIMEOUT" "$SHELLSPEC_DIR/libexec/shellspec-trans
 fi
 
 # --- 11. dsl.sh: Add timeout execution logic (most complex modification) ---
-if ! grep -q "shellspec_timeout_seconds" "$SHELLSPEC_DIR/lib/core/dsl.sh" 2>/dev/null; then
+# Check for the watchdog invocation specifically - not just shellspec_timeout_seconds,
+# which can be partially written by 'patch --force' without the full functional logic.
+if ! grep -q "shellspec-timeout-watchdog" "$SHELLSPEC_DIR/lib/core/dsl.sh" 2>/dev/null; then
     log_info "Patching dsl.sh (timeout execution logic)..."
     perl -i -0777 -pe '
         # Match the original execution block pattern (flexible whitespace matching)

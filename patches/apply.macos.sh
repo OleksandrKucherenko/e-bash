@@ -2,8 +2,8 @@
 # Apply ShellSpec timeout patch (macOS)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-10
-## Version: 3.0.0
+## Last revisit: 2026-02-23
+## Version: 3.1.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -111,10 +111,12 @@ if command -v patch >/dev/null 2>&1 && [[ -f "$PATCH_FILE" ]]; then
             patch_succeeded=true
         fi
     else
-        log_warn "Patch dry-run failed (source files differ from expected). Trying force-apply..."
-        # Force apply - will apply hunks that match, skip others
-        patch --batch --forward -p1 -N --fuzz=3 --force -i "$PATCH_FILE" 2>&1 || true
-        log_info "Force-apply done (some hunks may have been skipped)"
+        log_warn "Patch dry-run failed (source files differ from expected). Using direct injection..."
+        # Do NOT force-apply: --force with --fuzz on BSD patch (macOS) can write partial
+        # content to files (e.g. dsl.sh gets shellspec_timeout_seconds but not the watchdog
+        # invocation), which then tricks the inject script's idempotency checks into
+        # skipping those files and leaving the timeout feature broken.
+        # The inject script below is the correct robust fallback.
     fi
 
     # Clean up rejection/backup files
