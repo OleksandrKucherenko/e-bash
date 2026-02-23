@@ -302,9 +302,9 @@ jobs:
             fi
           done
 
-          # Add small directories (bin, opt, var/homebrew - contain symlinks and metadata)
+          # Add small directories (bin, lib, opt, var/homebrew - contain symlinks and metadata)
           echo "=== Checking metadata directories ==="
-          for dir in bin opt var/homebrew; do
+          for dir in bin lib opt var/homebrew; do
             if [ -d "${{ steps.brew_path.outputs.path }}/$dir" ]; then
               DIR_SIZE=$(du -sm "${{ steps.brew_path.outputs.path }}/$dir" 2>/dev/null | cut -f1 || echo "0")
               TOTAL_SIZE=$((TOTAL_SIZE + DIR_SIZE))
@@ -340,6 +340,7 @@ jobs:
             ${{ steps.brew_path.outputs.path }}/Cellar/gawk
             ${{ steps.brew_path.outputs.path }}/Cellar/coreutils
             ${{ steps.brew_path.outputs.path }}/bin
+            ${{ steps.brew_path.outputs.path }}/lib
             ${{ steps.brew_path.outputs.path }}/opt
             ${{ steps.brew_path.outputs.path }}/var/homebrew
           key: brew-${{ runner.os }}-ci-only-${{ steps.hashes.outputs.sha256 }}
