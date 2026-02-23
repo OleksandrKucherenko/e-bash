@@ -3,7 +3,7 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-02-23
-## Version: 3.2.0
+## Version: 2.7.1
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -183,13 +183,18 @@ END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 rm -f "$TEST_FILE"
 
-if [[ $DURATION -lt 2 ]]; then
+# Threshold explanation:
+# - 1s timeout duration
+# - 1s graceful termination wait (sleep 1 in watchdog)
+# - ~1-2s macOS process spawning and shell detection overhead
+# Total expected: 2.5-4s on macOS runners
+if [[ $DURATION -lt 4 ]]; then
     VERSION="$("$SHELLSPEC_DIR/shellspec" --version 2>/dev/null || echo "unknown")"
     log_info "Timeout feature verified (${DURATION}s). Version: $VERSION"
     touch "$MARKER_FILE" 2>/dev/null || true
     exit 0
 else
-    log_error "Verification failed: test did not timeout (Duration: ${DURATION}s, expected <2s)"
+    log_error "Verification failed: test did not timeout (Duration: ${DURATION}s, expected <4s)"
     log_error "ShellSpec output from verification test:"
     echo "$_verify_out" >&2
     exit 1
