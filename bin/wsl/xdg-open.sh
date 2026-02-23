@@ -202,7 +202,7 @@ function xdg:launcher:exe() {
   local selection="$1"
   case "$selection" in
   "powershell" | "powershell-scoop") echo "powershell.exe" ;;
-  "pwsh" | "pwsh-scoop" | "pwsh-winget") echo "pwsh.exe" ;;
+  "pwsh" | "pwsh-scoop" | "pwsh-winget" | "pwsh (scoop)" | "pwsh (winget)") echo "pwsh.exe" ;;
   "cmd") echo "cmd.exe" ;;
   *) echo "powershell.exe" ;; # Default fallback
   esac
@@ -228,10 +228,10 @@ function xdg:launcher:path() {
   scoop_dir=$(xdg:windows:scoop_dir)
 
   case "$selection" in
-  "pwsh-winget")
+  "pwsh-winget" | "pwsh (winget)")
     echo "$XDG_WSL_WIN/PowerShell/7/pwsh.exe"
     ;;
-  "pwsh-scoop")
+  "pwsh-scoop" | "pwsh (scoop)")
     if [[ -n "$scoop_dir" ]]; then
       echo "$scoop_dir/shims/pwsh.exe"
     else

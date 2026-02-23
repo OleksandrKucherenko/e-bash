@@ -3,8 +3,8 @@
 # Uses perl for portable multi-line text manipulation (available on macOS + Linux)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-10
-## Version: 1.0.0
+## Last revisit: 2026-02-23
+## Version: 1.2.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -26,6 +26,8 @@ NC='\033[0m'
 log_info() { echo -e "${GREEN}[INJECT]${NC} $*"; }
 log_warn() { echo -e "${YELLOW}[INJECT]${NC} $*"; }
 log_error() { echo -e "${RED}[INJECT]${NC} $*" >&2; }
+log_skip() { echo -e "${YELLOW}[SKIP]${NC}   $*"; }
+log_ok()   { echo -e "${GREEN}[OK]${NC}     $*"; }
 
 # Verify perl is available
 if ! command -v perl >/dev/null 2>&1; then
@@ -43,11 +45,20 @@ cp "$FILES_DIR/lib/libexec/timeout-parser.sh" "$SHELLSPEC_DIR/lib/libexec/timeou
 cp "$FILES_DIR/libexec/shellspec-timeout-watchdog.sh" "$SHELLSPEC_DIR/libexec/shellspec-timeout-watchdog.sh"
 chmod +x "$SHELLSPEC_DIR/libexec/shellspec-timeout-watchdog.sh"
 
+_patched=0
+_skipped=0
+
 # --- 2. shellspec (main binary): Update version ---
 if grep -q "SHELLSPEC_VERSION='0.28" "$SHELLSPEC_DIR/shellspec" 2>/dev/null; then
     if ! grep -q "0.29.0-dev" "$SHELLSPEC_DIR/shellspec"; then
-        log_info "Updating version string..."
+        log_info "Patching shellspec: version string..."
         perl -i -pe "s/SHELLSPEC_VERSION='0\.28\.\d+'/SHELLSPEC_VERSION='0.29.0-dev'/" "$SHELLSPEC_DIR/shellspec"
+        grep -q "0.29.0-dev" "$SHELLSPEC_DIR/shellspec" \
+            && { log_ok "shellspec: version updated to 0.29.0-dev"; _patched=$((_patched + 1)); } \
+            || log_warn "shellspec: version update may have failed"
+    else
+        log_skip "shellspec: already at 0.29.0-dev"
+        _skipped=$((_skipped + 1))
     fi
 fi
 
@@ -60,6 +71,12 @@ if ! grep -q "timeout-parser" "$SHELLSPEC_DIR/lib/bootstrap.sh" 2>/dev/null; the
             $done = 1;
         }
     ' "$SHELLSPEC_DIR/lib/bootstrap.sh"
+    grep -q "timeout-parser" "$SHELLSPEC_DIR/lib/bootstrap.sh" \
+        && { log_ok "bootstrap.sh: timeout-parser injected"; _patched=$((_patched + 1)); } \
+        || log_warn "bootstrap.sh: patch may have failed"
+else
+    log_skip "bootstrap.sh: timeout-parser already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 4. outputs.sh: Add TIMEOUT output function ---
@@ -71,12 +88,24 @@ if ! grep -q "shellspec_output_TIMEOUT" "$SHELLSPEC_DIR/lib/core/outputs.sh" 2>/
             $done = 1;
         }
     ' "$SHELLSPEC_DIR/lib/core/outputs.sh"
+    grep -q "shellspec_output_TIMEOUT" "$SHELLSPEC_DIR/lib/core/outputs.sh" \
+        && { log_ok "outputs.sh: TIMEOUT function injected"; _patched=$((_patched + 1)); } \
+        || log_warn "outputs.sh: patch may have failed"
+else
+    log_skip "outputs.sh: shellspec_output_TIMEOUT already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 5. directives: Add %timeout ---
 if ! grep -q "timeout" "$SHELLSPEC_DIR/lib/libexec/grammar/directives" 2>/dev/null; then
     log_info "Patching directives..."
     echo '%timeout     => timeout_metadata' >> "$SHELLSPEC_DIR/lib/libexec/grammar/directives"
+    grep -q "timeout" "$SHELLSPEC_DIR/lib/libexec/grammar/directives" \
+        && { log_ok "directives: %timeout added"; _patched=$((_patched + 1)); } \
+        || log_warn "directives: patch may have failed"
+else
+    log_skip "directives: %timeout already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 6. optparser.sh: Add check_timeout_format ---
@@ -96,6 +125,12 @@ if ! grep -q "check_timeout_format" "$SHELLSPEC_DIR/lib/libexec/optparser/optpar
             $done = 1;
         }
     ' "$SHELLSPEC_DIR/lib/libexec/optparser/optparser.sh"
+    grep -q "check_timeout_format" "$SHELLSPEC_DIR/lib/libexec/optparser/optparser.sh" \
+        && { log_ok "optparser.sh: check_timeout_format injected"; _patched=$((_patched + 1)); } \
+        || log_warn "optparser.sh: patch may have failed"
+else
+    log_skip "optparser.sh: check_timeout_format already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 7. parser_definition.sh: Add --timeout options ---
@@ -107,6 +142,12 @@ if ! grep -q "TIMEOUT" "$SHELLSPEC_DIR/lib/libexec/optparser/parser_definition.s
             $done = 1;
         }
     ' "$SHELLSPEC_DIR/lib/libexec/optparser/parser_definition.sh"
+    grep -q "TIMEOUT" "$SHELLSPEC_DIR/lib/libexec/optparser/parser_definition.sh" \
+        && { log_ok "parser_definition.sh: TIMEOUT option injected"; _patched=$((_patched + 1)); } \
+        || log_warn "parser_definition.sh: patch may have failed"
+else
+    log_skip "parser_definition.sh: TIMEOUT already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 8. parser_definition_generated.sh: The big one - add exports + CLI parsing + help text ---
@@ -154,6 +195,12 @@ if ! grep -q "SHELLSPEC_TIMEOUT" "$SHELLSPEC_DIR/lib/libexec/optparser/parser_de
             $done = 1;
         }
     ' "$SHELLSPEC_DIR/lib/libexec/optparser/parser_definition_generated.sh"
+    grep -q "SHELLSPEC_TIMEOUT" "$SHELLSPEC_DIR/lib/libexec/optparser/parser_definition_generated.sh" \
+        && { log_ok "parser_definition_generated.sh: SHELLSPEC_TIMEOUT injected"; _patched=$((_patched + 1)); } \
+        || log_warn "parser_definition_generated.sh: patch may have failed"
+else
+    log_skip "parser_definition_generated.sh: SHELLSPEC_TIMEOUT already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 9. translator.sh: Add timeout override parsing ---
@@ -176,6 +223,12 @@ $1}ms;
 
         s{(^include\(\)\s*\{)}{timeout_metadata() {\n  :\n}\n\n$1}ms;
     ' "$SHELLSPEC_DIR/lib/libexec/translator.sh"
+    grep -q "shellspec_timeout_override" "$SHELLSPEC_DIR/lib/libexec/translator.sh" \
+        && { log_ok "translator.sh: timeout_override injected"; _patched=$((_patched + 1)); } \
+        || log_warn "translator.sh: patch may have failed"
+else
+    log_skip "translator.sh: shellspec_timeout_override already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 10. shellspec-translate.sh: Inject SHELLSPEC_EXAMPLE_TIMEOUT ---
@@ -187,10 +240,18 @@ if ! grep -q "SHELLSPEC_EXAMPLE_TIMEOUT" "$SHELLSPEC_DIR/libexec/shellspec-trans
             $done = 1;
         }
     ' "$SHELLSPEC_DIR/libexec/shellspec-translate.sh"
+    grep -q "SHELLSPEC_EXAMPLE_TIMEOUT" "$SHELLSPEC_DIR/libexec/shellspec-translate.sh" \
+        && { log_ok "shellspec-translate.sh: EXAMPLE_TIMEOUT injected"; _patched=$((_patched + 1)); } \
+        || log_warn "shellspec-translate.sh: patch may have failed"
+else
+    log_skip "shellspec-translate.sh: SHELLSPEC_EXAMPLE_TIMEOUT already present"
+    _skipped=$((_skipped + 1))
 fi
 
 # --- 11. dsl.sh: Add timeout execution logic (most complex modification) ---
-if ! grep -q "shellspec_timeout_seconds" "$SHELLSPEC_DIR/lib/core/dsl.sh" 2>/dev/null; then
+# Check for the watchdog invocation specifically - not just shellspec_timeout_seconds,
+# which can be partially written by 'patch --force' without the full functional logic.
+if ! grep -q "shellspec-timeout-watchdog" "$SHELLSPEC_DIR/lib/core/dsl.sh" 2>/dev/null; then
     log_info "Patching dsl.sh (timeout execution logic)..."
     perl -i -0777 -pe '
         # Match the original execution block pattern (flexible whitespace matching)
@@ -268,10 +329,19 @@ $2$3
 }xms' "$SHELLSPEC_DIR/lib/core/dsl.sh"
 
     # Verify the dsl.sh modification worked
-    if ! grep -q "shellspec_timeout_seconds" "$SHELLSPEC_DIR/lib/core/dsl.sh"; then
-        log_warn "dsl.sh regex match failed - timeout per-example may not work"
-        log_warn "This is OK if the patch command already applied this hunk"
+    if grep -q "shellspec-timeout-watchdog" "$SHELLSPEC_DIR/lib/core/dsl.sh"; then
+        log_ok "dsl.sh: timeout execution logic injected"
+        _patched=$((_patched + 1))
+    else
+        log_warn "dsl.sh: perl regex did not match - per-example timeout will NOT work"
+        log_warn "Expected to find 'shellspec_invoke_example 3>&2' block near 'shellspec_profile_start'."
+        log_warn "Actual surrounding context in dsl.sh (for diagnosis):"
+        grep -n "shellspec_invoke_example\|shellspec_profile_start\|set +e" \
+            "$SHELLSPEC_DIR/lib/core/dsl.sh" 2>/dev/null | head -10 >&2 || true
     fi
+else
+    log_skip "dsl.sh: shellspec-timeout-watchdog already present"
+    _skipped=$((_skipped + 1))
 fi
 
-log_info "Direct injection complete"
+log_info "Direct injection complete ($_patched patched, $_skipped skipped)"

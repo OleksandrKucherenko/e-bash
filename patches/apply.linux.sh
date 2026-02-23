@@ -2,8 +2,8 @@
 # Apply ShellSpec timeout patch (Ubuntu/Linux)
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-02-10
-## Version: 3.0.0
+## Last revisit: 2026-02-23
+## Version: 3.2.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -105,16 +105,19 @@ patch_succeeded=false
 if command -v patch >/dev/null 2>&1 && [[ -f "$PATCH_FILE" ]]; then
     PATCH_OPTS=(--batch --forward -p1 -N --fuzz=3)
 
-    if patch "${PATCH_OPTS[@]}" --dry-run -i "$PATCH_FILE" >/dev/null 2>&1; then
+    _dryrun_out=""
+    if _dryrun_out=$(patch "${PATCH_OPTS[@]}" --dry-run -i "$PATCH_FILE" 2>&1); then
         log_info "Patch dry-run OK, applying..."
         if patch "${PATCH_OPTS[@]}" -i "$PATCH_FILE"; then
             patch_succeeded=true
         fi
     else
-        log_warn "Patch dry-run failed (source files differ from expected). Trying force-apply..."
-        # Force apply - will apply hunks that match, skip others
-        patch --batch --forward -p1 -N --fuzz=3 --force -i "$PATCH_FILE" 2>&1 || true
-        log_info "Force-apply done (some hunks may have been skipped)"
+        log_warn "Patch dry-run failed (source files differ from expected). Using direct injection..."
+        log_warn "Failed hunks (dry-run output):"
+        echo "$_dryrun_out" | grep -E "FAILED|failed|patching" >&2 || true
+        # Do NOT force-apply: --force can write partial content to files that tricks
+        # the inject script's idempotency checks into skipping those files.
+        # The inject script below is the correct robust fallback.
     fi
 
     # Clean up rejection/backup files
@@ -141,7 +144,25 @@ else
     fi
 fi
 
-# 5. Verify patch was applied (functional test)
+# 5. Pre-verify state check: confirm each key marker is present before running functional test
+_state_ok() {
+    grep -q "$2" "$SHELLSPEC_DIR/$3" 2>/dev/null \
+        && log_info "  ✓ $1" \
+        || log_warn "  ✗ $1 (marker '$2' missing from $3)"
+}
+log_step "Pre-verify state check..."
+_state_ok "shellspec binary version"          "0.29.0-dev"               "shellspec"
+_state_ok "bootstrap.sh: timeout-parser"      "timeout-parser"           "lib/bootstrap.sh"
+_state_ok "outputs.sh: TIMEOUT function"      "shellspec_output_TIMEOUT" "lib/core/outputs.sh"
+_state_ok "directives: %timeout"              "timeout_metadata"         "lib/libexec/grammar/directives"
+_state_ok "optparser.sh: check_timeout"       "check_timeout_format"     "lib/libexec/optparser/optparser.sh"
+_state_ok "parser_definition.sh: TIMEOUT"     "TIMEOUT"                  "lib/libexec/optparser/parser_definition.sh"
+_state_ok "parser_definition_gen: TIMEOUT"    "SHELLSPEC_TIMEOUT"        "lib/libexec/optparser/parser_definition_generated.sh"
+_state_ok "translator.sh: timeout_override"   "shellspec_timeout_override" "lib/libexec/translator.sh"
+_state_ok "shellspec-translate.sh: EXAMPLE"   "SHELLSPEC_EXAMPLE_TIMEOUT" "libexec/shellspec-translate.sh"
+_state_ok "dsl.sh: watchdog invocation"       "shellspec-timeout-watchdog" "lib/core/dsl.sh"
+
+# 6. Verify patch was applied (functional test)
 log_step "Verifying timeout feature..."
 
 TEST_FILE="$SHELLSPEC_DIR/timeout_verification_spec.sh"
@@ -155,7 +176,7 @@ End
 EOF
 
 START_TIME=$(date +%s)
-"$SHELLSPEC_DIR/shellspec" "$TEST_FILE" >/dev/null 2>&1 || true
+_verify_out=$("$SHELLSPEC_DIR/shellspec" "$TEST_FILE" 2>&1) || true
 END_TIME=$(date +%s)
 DURATION=$((END_TIME - START_TIME))
 rm -f "$TEST_FILE"
@@ -167,5 +188,7 @@ if [[ $DURATION -lt 2 ]]; then
     exit 0
 else
     log_error "Verification failed: test did not timeout (Duration: ${DURATION}s, expected <2s)"
+    log_error "ShellSpec output from verification test:"
+    echo "$_verify_out" >&2
     exit 1
 fi
