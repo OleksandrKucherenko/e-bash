@@ -660,7 +660,7 @@ function _input:read-key() {
     local rest_code
     rest_code=$(printf '%02x' "'$rest")
     # Alt + Ctrl combination (ESC + control char)
-    if [[ "$rest_code" =~ ^0[1-9a-f]$ || "$rest_code" == "1[0-9a]" ]]; then
+    if [[ "$rest_code" =~ ^0[1-9a-f]$ ]] || [[ "$rest_code" =~ ^1[0-9a]$ ]]; then
       local ctrl_num=$((16#$rest_code))
       local ctrl_letter
       ctrl_letter=$(printf '%02x' $((ctrl_num + 0x60)))
