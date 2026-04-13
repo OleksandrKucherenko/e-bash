@@ -42,7 +42,7 @@ readonly EXIT_ERROR=1
 readonly EXIT_CANCELLED=2
 
 # Defaults
-declare help SECRETS_DIR KEY_NAME DRY_RUN FORCE
+declare help version SECRETS_DIR KEY_NAME DRY_RUN FORCE
 
 SECRETS_DIR=${SECRETS_DIR:-.secrets}
 KEY_NAME=${KEY_NAME:-id_ed25519}
@@ -262,6 +262,7 @@ function main() {
   # Argument definition (modern COMPOSER pattern)
   export COMPOSER="
     $(args:i help -a "-h,--help" -h "Show help and exit." -g global)
+    $(args:i version -a "-v,--version" -d "$SCRIPT_VERSION" -h "Show version and exit." -g global)
     $(args:i DRY_RUN -a "--dry-run" -d "true" -h "Preview changes without writing files." -g global)
     $(args:i FORCE -a "-f,--force" -h "Overwrite existing key files." -g global)
     $(args:i SECRETS_DIR -a "--secrets-dir" -d ".secrets" -q 1 -h "Directory for key storage." -g options)
@@ -273,7 +274,12 @@ function main() {
 
   # Quick exits
   if [[ "${help:-}" == "1" ]]; then
+    echo "Usage: ${SCRIPT_NAME} [OPTIONS]"
+    echo ""
     print:help
+    return $EXIT_OK
+  elif [[ -n "${version:-}" ]]; then
+    echo "${SCRIPT_NAME} ${version}"
     return $EXIT_OK
   fi
 
