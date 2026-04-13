@@ -283,8 +283,8 @@ function logger() {
   # dump created loggers
   # shellcheck disable=SC2154
   if [[ "$tag" != "common" ]]; then
-    # ignore output error (|| true guards against pipefail)
-    eval "echo:Common \"Logger tags  :\" \"\${!TAGS[@]}\" \"|\" \"\${TAGS[@]}\" " 2>/dev/null | tee >(cat >&2) || true
+    # ignore output error (subshell ensures process substitution completes; || true guards against pipefail)
+    ( eval "echo:Common \"Logger tags  :\" \"\${!TAGS[@]}\" \"|\" \"\${TAGS[@]}\" " 2>/dev/null | tee >(cat >&2) ) || true
   fi
 
   # create named pipe, if it does not exist
