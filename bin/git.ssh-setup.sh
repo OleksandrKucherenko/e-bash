@@ -31,18 +31,9 @@ source "$E_BASH/_logger.sh"
 source "$E_BASH/_commons.sh"
 # shellcheck source=../.scripts/_dependencies.sh
 source "$E_BASH/_dependencies.sh"
-
-# Configure logging: tag "ssh" with prefix, redirect to stderr
-logger ssh "$@" && logger:prefix ssh " ${cl_grey}[ssh]${cl_reset} " && logger:redirect ssh ">&2"
-# Step logger for user-facing progress
-logger step "$@" && logger:prefix step " " && logger:redirect step ">&2"
-
-# Dependency checks
-dependency git "2.*.*"
-optional ssh "1:*" "brew install openssh"
-
-# Argument definition using e-bash pattern
-export ARGS_DEFINITION="-h,--help --dry-run=DRY_RUN --force=FORCE --secrets-dir=SECRETS_DIR:.secrets --key-name=KEY_NAME:id_ed25519 --debug=DEBUG"
+# shellcheck source=../.scripts/_dryrun.sh
+source "$E_BASH/_dryrun.sh"
+# shellcheck source=../.scripts/_arguments.sh
 source "$E_BASH/_arguments.sh"
 
 # Exit codes
@@ -50,36 +41,43 @@ readonly EXIT_OK=0
 readonly EXIT_ERROR=1
 readonly EXIT_CANCELLED=2
 
-# ── Detect git root ──────────────────────────────────
+# Defaults
+declare help SECRETS_DIR KEY_NAME DRY_RUN FORCE
 
-git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-if [[ -z "$git_root" ]]; then
-  echo:Ssh "Not inside a git repository." >&2
-  exit $EXIT_ERROR
-fi
+SECRETS_DIR=${SECRETS_DIR:-.secrets}
+KEY_NAME=${KEY_NAME:-id_ed25519}
+DRY_RUN=${DRY_RUN:-false}
+FORCE=${FORCE:-false}
+DEBUG=${DEBUG:-"ssh,step,-common,-loader,-parser,-tui"}
 
-echo:Step ""
-echo:Step "${cl_bold}Git SSH Key Setup${cl_reset} ${cl_grey}v${SCRIPT_VERSION}${cl_reset}"
-echo:Step "${cl_grey}Repository: ${git_root}${cl_reset}"
+# Step counter
+TOTAL_STEPS=5
 
-# Derived paths
-secrets_path="${git_root}/${SECRETS_DIR}"
-key_path="${secrets_path}/${KEY_NAME}"
-pub_path="${key_path}.pub"
+# ── Functions ────────────────────────────────────────
 
-total_steps=5
+##
+## Print step header with counter
+##
+function step:header() {
+  local step=$1 label=$2
+  echo:Step ""
+  echo:Step "${cl_blue}[${step}/${TOTAL_STEPS}]${cl_reset} ${cl_bold}${label}${cl_reset}"
+}
 
-# ── Step 1: Git host & user ─────────────────────────
+##
+## Detect git host and user from origin remote URL
+##
+## Globals:
+## - mutate/publish: GIT_HOST, GIT_USER
+##
+function detect:remote() {
+  GIT_HOST="github.com"
+  GIT_USER="git"
 
-echo:Step ""
-echo:Step "${cl_blue}[1/${total_steps}]${cl_reset} ${cl_bold}Git remote configuration${cl_reset}"
+  local origin_url
+  origin_url=$(run:git remote get-url origin 2>/dev/null || echo "")
+  [[ -z "$origin_url" ]] && return 1
 
-GIT_HOST="github.com"
-GIT_USER="git"
-
-# Auto-detect from origin remote
-origin_url=$(git remote get-url origin 2>/dev/null || echo "")
-if [[ -n "$origin_url" ]]; then
   if [[ "$origin_url" =~ ^[a-z]+@([^:]+): ]]; then
     GIT_HOST="${BASH_REMATCH[1]}"
     GIT_USER="${origin_url%%@*}"
@@ -87,165 +85,309 @@ if [[ -n "$origin_url" ]]; then
     GIT_USER="${BASH_REMATCH[1]}"
     GIT_HOST="${BASH_REMATCH[2]}"
   fi
-  echo:Ssh "Detected from origin: ${GIT_USER}@${GIT_HOST}"
-fi
 
-read -rp "  Git host [${GIT_HOST}]: " input_host
-[[ -n "$input_host" ]] && GIT_HOST="$input_host"
+  echo:Ssh "Detected from origin: ${cl_bold}${GIT_USER}@${GIT_HOST}${cl_reset}"
+  return 0
+}
 
-read -rp "  Git user [${GIT_USER}]: " input_user
-[[ -n "$input_user" ]] && GIT_USER="$input_user"
+##
+## Prompt user for git host and user, with auto-detected defaults
+##
+## Globals:
+## - mutate/publish: GIT_HOST, GIT_USER
+##
+function prompt:remote() {
+  local input_host input_user
 
-echo:Step "  ${cl_green}✓${cl_reset} Host: ${GIT_USER}@${GIT_HOST}"
+  read -rp "  Git host [${GIT_HOST}]: " input_host
+  [[ -n "$input_host" ]] && GIT_HOST="$input_host"
 
-# ── Step 2: Key storage ─────────────────────────────
+  read -rp "  Git user [${GIT_USER}]: " input_user
+  [[ -n "$input_user" ]] && GIT_USER="$input_user"
 
-echo:Step ""
-echo:Step "${cl_blue}[2/${total_steps}]${cl_reset} ${cl_bold}Key storage${cl_reset}"
+  echo:Step "  ${cl_green}✓${cl_reset} Host: ${GIT_USER}@${GIT_HOST}"
+}
 
-echo:Ssh "Keys: ${SECRETS_DIR}/${KEY_NAME} / ${SECRETS_DIR}/${KEY_NAME}.pub"
-
-if [[ -f "$key_path" ]] && [[ "${FORCE:-}" != "1" ]]; then
-  echo:Step "  ${cl_yellow}!${cl_reset} Private key already exists: ${key_path}"
-  read -rp "  Overwrite? [y/N]: " overwrite
-  if [[ ! "$overwrite" =~ ^[Yy] ]]; then
-    echo:Ssh "Keeping existing key. Skipping to git config."
-
-    echo:Step ""
-    echo:Step "${cl_blue}[5/${total_steps}]${cl_reset} ${cl_bold}Git SSH configuration${cl_reset}"
-    ssh_cmd="ssh -i ${SECRETS_DIR}/${KEY_NAME} -o IdentitiesOnly=yes"
-
-    if [[ "${DRY_RUN:-}" == "1" ]]; then
-      echo:Step "  Would run: git config core.sshCommand \"$ssh_cmd\""
-    else
-      git config core.sshCommand "$ssh_cmd"
-      echo:Step "  ${cl_green}✓${cl_reset} Set core.sshCommand"
-    fi
-
-    echo:Step ""
-    echo:Step "${cl_green}Done.${cl_reset} SSH key already configured."
-    exit $EXIT_OK
-  fi
-fi
-
-# ── Step 3: Paste private key ────────────────────────
-
-echo:Step ""
-echo:Step "${cl_blue}[3/${total_steps}]${cl_reset} ${cl_bold}Private key${cl_reset}"
-echo:Step "  Paste your SSH private key below (Ctrl+D to save, Esc to cancel):"
-echo ""
-
-private_key=$(input:multi-line -m stream -h 8 --no-status)
-pk_exit=$?
-
-if [[ $pk_exit -ne 0 ]] || [[ -z "$private_key" ]]; then
+##
+## Prompt user for SSH private key via multiline editor
+##
+## Returns:
+## - 0 on success (key captured)
+## - 1 on cancel or empty
+## - Echoes captured key to stdout
+##
+function prompt:private-key() {
+  echo:Step "  Paste your SSH private key below (Ctrl+D to save, Esc to cancel):"
   echo ""
-  echo:Step "  ${cl_red}✗${cl_reset} No private key provided. Aborting."
-  exit $EXIT_CANCELLED
-fi
 
-# Validate PEM format
-if [[ ! "$private_key" =~ ^-----BEGIN ]]; then
-  echo:Step "  ${cl_yellow}!${cl_reset} Key doesn't start with '-----BEGIN'. Might not be a valid PEM key."
-  read -rp "  Continue anyway? [y/N]: " proceed
-  if [[ ! "$proceed" =~ ^[Yy] ]]; then
-    exit $EXIT_CANCELLED
+  local key
+  key=$(input:multi-line -m stream -h 8 --no-status)
+  local exit_code=$?
+
+  if [[ $exit_code -ne 0 ]] || [[ -z "$key" ]]; then
+    echo ""
+    echo:Step "  ${cl_red}✗${cl_reset} No private key provided."
+    return 1
   fi
-fi
 
-echo ""
-pk_lines=$(echo "$private_key" | wc -l | tr -d ' ')
-echo:Step "  ${cl_green}✓${cl_reset} Private key received (${pk_lines} lines)"
+  # Validate PEM format
+  if [[ ! "$key" =~ ^-----BEGIN ]]; then
+    echo:Step "  ${cl_yellow}!${cl_reset} Key doesn't start with '-----BEGIN'. Might not be a valid PEM key."
+    local proceed
+    read -rp "  Continue anyway? [y/N]: " proceed
+    [[ "$proceed" =~ ^[Yy] ]] || return 1
+  fi
 
-# ── Step 4: Paste public key (optional) ──────────────
+  echo ""
+  local lines
+  lines=$(echo "$key" | wc -l | tr -d ' ')
+  echo:Step "  ${cl_green}✓${cl_reset} Private key received (${lines} lines)"
+  echo "$key"
+  return 0
+}
 
-echo:Step ""
-echo:Step "${cl_blue}[4/${total_steps}]${cl_reset} ${cl_bold}Public key (optional)${cl_reset}"
-echo:Step "  Paste public key below, or press Esc to skip:"
-echo ""
+##
+## Prompt user for SSH public key via multiline editor (optional)
+##
+## Returns:
+## - 0 on success (key captured)
+## - 1 on skip/cancel
+## - Echoes captured key to stdout
+##
+function prompt:public-key() {
+  echo:Step "  Paste public key below, or press Esc to skip:"
+  echo ""
 
-public_key=$(input:multi-line -m stream -h 3 --no-status)
-pub_exit=$?
+  local key
+  key=$(input:multi-line -m stream -h 3 --no-status)
+  local exit_code=$?
 
-echo ""
-if [[ $pub_exit -ne 0 ]] || [[ -z "$public_key" ]]; then
-  echo:Ssh "Skipped public key."
-  public_key=""
-else
+  echo ""
+  if [[ $exit_code -ne 0 ]] || [[ -z "$key" ]]; then
+    echo:Ssh "Skipped public key."
+    return 1
+  fi
+
   echo:Step "  ${cl_green}✓${cl_reset} Public key received"
-fi
+  echo "$key"
+  return 0
+}
 
-# ── Step 5: Write files & configure git ──────────────
+##
+## Write key file with specified permissions
+##
+## Parameters:
+## - file_path - Destination path, string, required
+## - content - Key content, string, required
+## - mode - File permissions, string, required (e.g. "600")
+## - label - Display label, string, required
+##
+function write:key-file() {
+  local file_path="$1" content="$2" mode="$3" label="$4"
 
-echo:Step ""
-echo:Step "${cl_blue}[5/${total_steps}]${cl_reset} ${cl_bold}Write files & configure git${cl_reset}"
-
-ssh_cmd="ssh -i ${SECRETS_DIR}/${KEY_NAME} -o IdentitiesOnly=yes"
-
-if [[ "${DRY_RUN:-}" == "1" ]]; then
-  echo:Step "  ${cl_yellow}[DRY RUN]${cl_reset} Would create:"
-  echo:Step "    mkdir -p ${secrets_path}"
-  echo:Step "    write ${key_path} (${pk_lines} lines, mode 600)"
-  [[ -n "$public_key" ]] && echo:Step "    write ${pub_path} (mode 644)"
-  echo:Step "    git config core.sshCommand \"${ssh_cmd}\""
-  if [[ -f "${git_root}/.gitignore" ]]; then
-    grep -qF "${SECRETS_DIR}" "${git_root}/.gitignore" 2>/dev/null || echo:Step "    append '${SECRETS_DIR}/' to .gitignore"
+  if [[ "$DRY_RUN" == "true" || "$DRY_RUN" == "1" ]]; then
+    local lines
+    lines=$(echo "$content" | wc -l | tr -d ' ')
+    echo:Ssh "dry run: write ${file_path} (${lines} lines, mode ${mode})"
   else
-    echo:Step "    create .gitignore with '${SECRETS_DIR}/'"
+    printf "%s\n" "$content" >"$file_path"
+    dry:chmod "$mode" "$file_path"
   fi
+  echo:Step "  ${cl_green}✓${cl_reset} Wrote ${label} (mode ${mode})"
+}
+
+##
+## Ensure .gitignore contains the secrets directory
+##
+## Parameters:
+## - git_root - Repository root path, string, required
+## - secrets_dir - Secrets directory name, string, required
+##
+function ensure:gitignore() {
+  local git_root="$1" secrets_dir="$2"
+  local gitignore="${git_root}/.gitignore"
+
+  if [[ -f "$gitignore" ]]; then
+    if grep -qF "${secrets_dir}" "$gitignore" 2>/dev/null; then
+      echo:Ssh "${secrets_dir}/ already in .gitignore"
+      return 0
+    fi
+    if [[ "$DRY_RUN" != "true" && "$DRY_RUN" != "1" ]]; then
+      echo "${secrets_dir}/" >>"$gitignore"
+    fi
+    echo:Step "  ${cl_green}✓${cl_reset} Added ${secrets_dir}/ to .gitignore"
+  else
+    if [[ "$DRY_RUN" != "true" && "$DRY_RUN" != "1" ]]; then
+      echo "${secrets_dir}/" >"$gitignore"
+    fi
+    echo:Step "  ${cl_green}✓${cl_reset} Created .gitignore with ${secrets_dir}/"
+  fi
+}
+
+##
+## Test SSH connection to the configured host
+##
+## Parameters:
+## - ssh_cmd - SSH command with key, string, required
+## - git_user - Git username, string, required
+## - git_host - Git hostname, string, required
+##
+function test:ssh-connection() {
+  local ssh_cmd="$1" git_user="$2" git_host="$3"
+
+  local test_ssh
+  read -rp "Test SSH connection to ${git_host}? [Y/n]: " test_ssh
+  [[ "$test_ssh" =~ ^[Nn] ]] && return 0
+
+  echo ""
+  echo:Step "  Testing: ssh -T ${git_user}@${git_host} ..."
+  GIT_SSH_COMMAND="$ssh_cmd" run:ssh -T -o StrictHostKeyChecking=accept-new "${git_user}@${git_host}" 2>&1 | sed 's/^/  /'
+  echo ""
+}
+
+##
+## Exit trap: print exit code
+##
+function on_exit() {
+  local exit_code=$?
+  local color="${cl_green}"
+  [[ $exit_code -ne 0 ]] && color="${cl_red}"
+  echo:Ssh "${cl_grey}exit code: ${color}${exit_code}${cl_reset}"
+  return $exit_code
+}
+
+# ── Main ─────────────────────────────────────────────
+
+function main() {
+  # Argument definition (modern COMPOSER pattern)
+  export COMPOSER="
+    $(args:i help -a "-h,--help" -h "Show help and exit." -g global)
+    $(args:i DRY_RUN -a "--dry-run" -d "true" -h "Preview changes without writing files." -g global)
+    $(args:i FORCE -a "-f,--force" -h "Overwrite existing key files." -g global)
+    $(args:i SECRETS_DIR -a "--secrets-dir" -d ".secrets" -q 1 -h "Directory for key storage." -g options)
+    $(args:i KEY_NAME -a "--key-name" -d "id_ed25519" -q 1 -h "Key filename." -g options)
+    $(args:i DEBUG -a "--debug" -d "*" -h "Enable debug logging." -g global)
+  "
+  eval "$COMPOSER" >/dev/null
+  parse:arguments "$@"
+
+  # Quick exits
+  if [[ "${help:-}" == "1" ]]; then
+    print:help
+    return $EXIT_OK
+  fi
+
+  # Apply defaults after parsing
+  SECRETS_DIR=${SECRETS_DIR:-.secrets}
+  KEY_NAME=${KEY_NAME:-id_ed25519}
+  DRY_RUN=${DRY_RUN:-false}
+
+  # Detect git root
+  local git_root
+  git_root=$(run:git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -z "$git_root" ]]; then
+    echo:Ssh "${cl_red}Not inside a git repository.${cl_reset}"
+    return $EXIT_ERROR
+  fi
+
+  # Derived paths
+  local secrets_path="${git_root}/${SECRETS_DIR}"
+  local key_path="${secrets_path}/${KEY_NAME}"
+  local pub_path="${key_path}.pub"
+  local ssh_cmd="ssh -i ${SECRETS_DIR}/${KEY_NAME} -o IdentitiesOnly=yes"
+
   echo:Step ""
-  echo:Step "${cl_green}Dry run complete.${cl_reset} No changes made."
-  exit $EXIT_OK
-fi
+  echo:Step "${cl_bold}Git SSH Key Setup${cl_reset} ${cl_grey}v${SCRIPT_VERSION}${cl_reset}"
+  echo:Step "${cl_grey}Repository: ${git_root}${cl_reset}"
 
-# Create secrets directory
-mkdir -p "$secrets_path"
-echo:Step "  ${cl_green}✓${cl_reset} Created ${SECRETS_DIR}/"
+  # ── Step 1: Git host & user
+  step:header 1 "Git remote configuration"
+  detect:remote
+  prompt:remote
 
-# Write private key (strict permissions)
-printf "%s\n" "$private_key" >"$key_path"
-chmod 600 "$key_path"
-echo:Step "  ${cl_green}✓${cl_reset} Wrote private key (mode 600)"
+  # ── Step 2: Key storage
+  step:header 2 "Key storage"
+  echo:Ssh "Private: ${SECRETS_DIR}/${KEY_NAME}"
+  echo:Ssh "Public:  ${SECRETS_DIR}/${KEY_NAME}.pub"
 
-# Write public key if provided
-if [[ -n "$public_key" ]]; then
-  printf "%s\n" "$public_key" >"$pub_path"
-  chmod 644 "$pub_path"
-  echo:Step "  ${cl_green}✓${cl_reset} Wrote public key (mode 644)"
-fi
-
-# Ensure .gitignore excludes secrets
-if [[ -f "${git_root}/.gitignore" ]]; then
-  if ! grep -qF "${SECRETS_DIR}" "${git_root}/.gitignore" 2>/dev/null; then
-    echo "${SECRETS_DIR}/" >>"${git_root}/.gitignore"
-    echo:Step "  ${cl_green}✓${cl_reset} Added ${SECRETS_DIR}/ to .gitignore"
-  else
-    echo:Ssh "${SECRETS_DIR}/ already in .gitignore"
+  # Check existing key
+  if [[ -f "$key_path" ]] && [[ "${FORCE}" != "true" && "${FORCE}" != "1" ]]; then
+    echo:Step "  ${cl_yellow}!${cl_reset} Private key already exists: ${key_path}"
+    local overwrite
+    read -rp "  Overwrite? [y/N]: " overwrite
+    if [[ ! "$overwrite" =~ ^[Yy] ]]; then
+      echo:Ssh "Keeping existing key. Skipping to git config."
+      step:header 5 "Git SSH configuration"
+      dry:git config core.sshCommand "$ssh_cmd"
+      echo:Step "  ${cl_green}✓${cl_reset} Set core.sshCommand"
+      echo:Step ""
+      echo:Step "${cl_green}Done.${cl_reset} SSH key already configured."
+      return $EXIT_OK
+    fi
   fi
-else
-  echo "${SECRETS_DIR}/" >"${git_root}/.gitignore"
-  echo:Step "  ${cl_green}✓${cl_reset} Created .gitignore with ${SECRETS_DIR}/"
-fi
 
-# Configure git to use the key
-git config core.sshCommand "$ssh_cmd"
-echo:Step "  ${cl_green}✓${cl_reset} Set core.sshCommand"
+  # ── Step 3: Paste private key
+  step:header 3 "Private key"
+  local private_key
+  private_key=$(prompt:private-key) || return $EXIT_CANCELLED
 
-# Summary
-echo:Step ""
-echo:Step "${cl_bold}── Summary ──${cl_reset}"
-echo:Step "  Host:    ${GIT_USER}@${GIT_HOST}"
-echo:Step "  Key:     ${SECRETS_DIR}/${KEY_NAME}"
-echo:Step "  Config:  core.sshCommand = ${ssh_cmd}"
-echo:Step ""
+  # ── Step 4: Paste public key (optional)
+  step:header 4 "Public key (optional)"
+  local public_key=""
+  public_key=$(prompt:public-key) || true
 
-# Verify SSH connection
-read -rp "Test SSH connection to ${GIT_HOST}? [Y/n]: " test_ssh
-if [[ ! "$test_ssh" =~ ^[Nn] ]]; then
-  echo ""
-  echo:Step "  Testing: ssh -T ${GIT_USER}@${GIT_HOST} ..."
-  GIT_SSH_COMMAND="$ssh_cmd" ssh -T -o StrictHostKeyChecking=accept-new "${GIT_USER}@${GIT_HOST}" 2>&1 | sed 's/^/  /'
-  echo ""
-fi
+  # ── Step 5: Write files & configure git
+  step:header 5 "Write files & configure git"
 
-echo:Step "${cl_green}Done.${cl_reset}"
+  dry:mkdir -p "$secrets_path"
+  echo:Step "  ${cl_green}✓${cl_reset} Created ${SECRETS_DIR}/"
+
+  write:key-file "$key_path" "$private_key" "600" "private key"
+
+  if [[ -n "$public_key" ]]; then
+    write:key-file "$pub_path" "$public_key" "644" "public key"
+  fi
+
+  ensure:gitignore "$git_root" "$SECRETS_DIR"
+
+  dry:git config core.sshCommand "$ssh_cmd"
+  echo:Step "  ${cl_green}✓${cl_reset} Set core.sshCommand"
+
+  # Summary
+  echo:Step ""
+  echo:Step "${cl_bold}── Summary ──${cl_reset}"
+  echo:Step "  Host:    ${GIT_USER}@${GIT_HOST}"
+  echo:Step "  Key:     ${SECRETS_DIR}/${KEY_NAME}"
+  echo:Step "  Config:  core.sshCommand = ${ssh_cmd}"
+  echo:Step ""
+
+  test:ssh-connection "$ssh_cmd" "$GIT_USER" "$GIT_HOST"
+
+  echo:Step "${cl_green}Done.${cl_reset}"
+  return $EXIT_OK
+}
+
+# ── Entry point ──────────────────────────────────────
+
+# Return early if sourced (for unit tests)
+${__SOURCED__:+return}
+
+# Initialize loggers after function definitions
+logger:init ssh "${cl_grey}[ssh]${cl_reset} " ">&2"
+logger:init step " " ">&2"
+
+# Dependency checks
+dependency git "2.*.*"
+optional ssh "1:*" "brew install openssh"
+
+# Dry-run wrappers for state-modifying commands
+dryrun git
+dryrun mkdir
+dryrun chmod
+dryrun ssh
+
+# Exit trap
+trap on_exit EXIT
+
+main "$@"
+exit $?

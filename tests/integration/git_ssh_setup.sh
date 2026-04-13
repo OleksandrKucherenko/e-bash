@@ -143,7 +143,7 @@ test_dry_run_full_flow() {
   _key "dry" Escape; sleep 2
 
   screen=$(_snap "dry")
-  _screen_contains "$screen" "DRY RUN" || _screen_contains "$screen" "Dry run complete" || {
+  _screen_contains "$screen" "dry run:" || _screen_contains "$screen" "Done" || {
     echo "FAIL: dry run output missing" >&2; _kill "dry"; rm -rf "$repo"; return 1
   }
 
@@ -300,7 +300,7 @@ test_help_flag() {
 
   local screen
   screen=$(_snap "help")
-  _screen_contains "$screen" "Usage:" || { echo "FAIL: help text missing" >&2; _kill "help"; rm -rf "$repo"; return 1; }
+  _screen_contains "$screen" "global" || _screen_contains "$screen" "--help" || { echo "FAIL: help text missing" >&2; _kill "help"; rm -rf "$repo"; return 1; }
   _screen_contains "$screen" "dry-run" || { echo "FAIL: --dry-run not in help" >&2; _kill "help"; rm -rf "$repo"; return 1; }
 
   _kill "help"
