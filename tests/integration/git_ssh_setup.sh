@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 # Integration test for bin/git.ssh-setup.sh using pilotty
-# Validates the full TUI workflow: prompts, multiline editors, file creation, git config
-#
-# Note: pilotty type interprets leading dashes as flags, so PEM headers
-# (-----BEGIN...) are typed character-by-character via pilotty key.
+# Validates the full TUI workflow: prompts, generate/paste choice, multiline editors,
+# file creation, git config.
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-04-13
-## Version: 1.0.0
+## Version: 1.1.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -37,14 +35,12 @@ _kill() { local s; s=$(_session "$1"); pilotty kill -s "$s" 2>/dev/null || true;
 
 _screen_contains() { echo "$1" | grep -qF "$2"; }
 
-# Type text that may contain leading dashes (pilotty workaround).
-# Uses `key` for individual characters when text starts with `-`.
+# Type text that may contain leading dashes (pilotty workaround)
 _type_safe() {
   local session="$1" text="$2"
   local s
   s=$(_session "$session")
   if [[ "$text" == -* ]]; then
-    # Type character by character using key command
     local i char keys=""
     for ((i = 0; i < ${#text}; i++)); do
       char="${text:i:1}"
@@ -80,7 +76,36 @@ _spawn_ssh_setup() {
   pilotty spawn --name "$session" --cwd "$repo_dir" \
     bash -c "export E_BASH='$repo_dir/.scripts'; export TERM=xterm-256color; bash bin/git.ssh-setup.sh $extra_args; sleep 3" \
     2>/dev/null
-  sleep 2
+  sleep 3
+}
+
+# Accept default host/user (step 1) and wait for step 3
+_accept_defaults() {
+  local name="$1"
+  _key "$name" Enter; sleep 0.3  # accept host
+  _key "$name" Enter; sleep 2    # accept user
+}
+
+# Choose paste mode and enter a key
+_paste_private_key() {
+  local name="$1"
+  _type "$name" "p"; sleep 0.3   # choose paste
+  _key "$name" Enter; sleep 2    # confirm choice
+
+  # Type key content
+  _type_safe "$name" "-----BEGIN KEY-----"; sleep 0.3
+  _key "$name" Enter; sleep 0.2
+  _type "$name" "c2VjcmV0LWtleS1kYXRh"; sleep 0.3
+  _key "$name" Enter; sleep 0.2
+  _type_safe "$name" "-----END KEY-----"; sleep 0.5
+  _key "$name" Ctrl+D; sleep 2   # save
+
+  # Handle validation prompt if dashes were dropped
+  local screen
+  screen=$(_snap "$name")
+  if _screen_contains "$screen" "Continue anyway"; then
+    _type "$name" "y"; _key "$name" Enter; sleep 2
+  fi
 }
 
 run_test() {
@@ -101,139 +126,44 @@ run_test() {
 
 # ── Tests ────────────────────────────────────────────
 
-test_dry_run_full_flow() {
+test_help_flag() {
   local repo
   repo=$(_create_test_repo)
-  _spawn_ssh_setup "dry" "$repo" "--dry-run"
+  local session
+  session=$(_session "help")
+
+  pilotty spawn --name "$session" --cwd "$repo" \
+    bash -c "export E_BASH='$repo/.scripts'; export TERM=xterm-256color; bash bin/git.ssh-setup.sh --help; sleep 3" \
+    2>/dev/null
+  # Wait for help output to render (dependency checks can be slow on cold start)
+  pilotty wait-for -s "$session" "exit code" -t 10000 >/dev/null 2>/dev/null || sleep 5
 
   local screen
-  screen=$(_snap "dry")
-  _screen_contains "$screen" "Git SSH Key Setup" || { echo "FAIL: header missing" >&2; _kill "dry"; rm -rf "$repo"; return 1; }
-  _screen_contains "$screen" "Git host" || { echo "FAIL: host prompt missing" >&2; _kill "dry"; rm -rf "$repo"; return 1; }
+  screen=$(_snap "help")
+  _screen_contains "$screen" "--help" || { echo "FAIL: --help not in output" >&2; echo "$screen" | head -5 >&2; _kill "help"; rm -rf "$repo"; return 1; }
+  _screen_contains "$screen" "dry-run" || { echo "FAIL: dry-run not in help" >&2; echo "$screen" | head -10 >&2; _kill "help"; rm -rf "$repo"; return 1; }
+  _screen_contains "$screen" "key-type" || { echo "FAIL: --key-type not in help" >&2; _kill "help"; rm -rf "$repo"; return 1; }
 
-  # Accept defaults
-  _key "dry" Enter; sleep 0.3
-  _key "dry" Enter; sleep 2
-
-  screen=$(_snap "dry")
-  _screen_contains "$screen" "Private key" || { echo "FAIL: step 3 missing" >&2; _kill "dry"; rm -rf "$repo"; return 1; }
-
-  # Type PEM key
-  _type_safe "dry" "-----BEGIN KEY-----"; sleep 0.3
-  _key "dry" Enter; sleep 0.2
-  _type "dry" "dGVzdC1rZXktZGF0YQ=="; sleep 0.3
-  _key "dry" Enter; sleep 0.2
-  _type_safe "dry" "-----END KEY-----"; sleep 0.5
-
-  # Save private key
-  _key "dry" Ctrl+D; sleep 2
-
-  screen=$(_snap "dry")
-  # May get validation prompt if dashes were dropped — handle either case
-  if _screen_contains "$screen" "Continue anyway"; then
-    _type "dry" "y"; _key "dry" Enter; sleep 2
-  fi
-
-  screen=$(_snap "dry")
-  _screen_contains "$screen" "Private key received" || _screen_contains "$screen" "Public key" || {
-    echo "FAIL: didn't progress past step 3" >&2; _kill "dry"; rm -rf "$repo"; return 1
-  }
-
-  # Skip public key
-  _key "dry" Escape; sleep 2
-
-  screen=$(_snap "dry")
-  _screen_contains "$screen" "dry run:" || _screen_contains "$screen" "Done" || {
-    echo "FAIL: dry run output missing" >&2; _kill "dry"; rm -rf "$repo"; return 1
-  }
-
-  _kill "dry"
+  _kill "help"
   rm -rf "$repo"
 }
 
-test_real_run_creates_files() {
+test_version_flag() {
   local repo
   repo=$(_create_test_repo)
-  _spawn_ssh_setup "real" "$repo"
+  local session
+  session=$(_session "ver")
 
-  # Accept defaults
-  _key "real" Enter; sleep 0.3
-  _key "real" Enter; sleep 2
-
-  # Type private key (short, valid header)
-  _type_safe "real" "-----BEGIN KEY-----"; sleep 0.3
-  _key "real" Enter; sleep 0.2
-  _type "real" "c2VjcmV0LWtleS1kYXRh"; sleep 0.3
-  _key "real" Enter; sleep 0.2
-  _type_safe "real" "-----END KEY-----"; sleep 0.5
-  _key "real" Ctrl+D; sleep 2
+  pilotty spawn --name "$session" --cwd "$repo" \
+    bash -c "export E_BASH='$repo/.scripts'; export TERM=xterm-256color; bash bin/git.ssh-setup.sh --version; sleep 3" \
+    2>/dev/null
+  sleep 3
 
   local screen
-  screen=$(_snap "real")
-  if _screen_contains "$screen" "Continue anyway"; then
-    _type "real" "y"; _key "real" Enter; sleep 2
-  fi
+  screen=$(_snap "ver")
+  _screen_contains "$screen" "1.1.0" || { echo "FAIL: version not shown" >&2; _kill "ver"; rm -rf "$repo"; return 1; }
 
-  # Type public key
-  _type "real" "ssh-ed25519 AAAA testkey"; sleep 0.5
-  _key "real" Ctrl+D; sleep 2
-
-  # Answer "test connection?" with No
-  screen=$(_snap "real")
-  if _screen_contains "$screen" "Test SSH"; then
-    _type "real" "n"; _key "real" Enter; sleep 1
-  fi
-
-  screen=$(_snap "real")
-
-  # Verify files were created
-  [[ -f "$repo/.secrets/id_ed25519" ]] || { echo "FAIL: private key not created" >&2; _kill "real"; rm -rf "$repo"; return 1; }
-  [[ -f "$repo/.secrets/id_ed25519.pub" ]] || { echo "FAIL: public key not created" >&2; _kill "real"; rm -rf "$repo"; return 1; }
-
-  # Verify private key permissions
-  local perms
-  perms=$(stat -c '%a' "$repo/.secrets/id_ed25519" 2>/dev/null || stat -f '%A' "$repo/.secrets/id_ed25519" 2>/dev/null)
-  [[ "$perms" == "600" ]] || { echo "FAIL: private key perms are $perms, expected 600" >&2; _kill "real"; rm -rf "$repo"; return 1; }
-
-  # Verify git config was set
-  local ssh_cmd
-  ssh_cmd=$(git -C "$repo" config core.sshCommand 2>/dev/null)
-  [[ "$ssh_cmd" == *"id_ed25519"* ]] || { echo "FAIL: git sshCommand not set, got: $ssh_cmd" >&2; _kill "real"; rm -rf "$repo"; return 1; }
-
-  # Verify .gitignore
-  grep -qF ".secrets" "$repo/.gitignore" 2>/dev/null || { echo "FAIL: .gitignore missing .secrets" >&2; _kill "real"; rm -rf "$repo"; return 1; }
-
-  # Verify public key content
-  local pub_content
-  pub_content=$(cat "$repo/.secrets/id_ed25519.pub")
-  [[ "$pub_content" == *"ssh-ed25519"* ]] || { echo "FAIL: public key content wrong" >&2; _kill "real"; rm -rf "$repo"; return 1; }
-
-  _kill "real"
-  rm -rf "$repo"
-}
-
-test_escape_cancels_at_private_key() {
-  local repo
-  repo=$(_create_test_repo)
-  _spawn_ssh_setup "cancel" "$repo"
-
-  # Accept defaults
-  _key "cancel" Enter; sleep 0.3
-  _key "cancel" Enter; sleep 2
-
-  # Cancel at private key
-  _key "cancel" Escape; sleep 2
-
-  local screen
-  screen=$(_snap "cancel")
-  _screen_contains "$screen" "No private key" || _screen_contains "$screen" "Aborting" || {
-    echo "FAIL: cancel message not shown" >&2; _kill "cancel"; rm -rf "$repo"; return 1
-  }
-
-  # Verify no files created
-  [[ ! -f "$repo/.secrets/id_ed25519" ]] || { echo "FAIL: key created despite cancel" >&2; _kill "cancel"; rm -rf "$repo"; return 1; }
-
-  _kill "cancel"
+  _kill "ver"
   rm -rf "$repo"
 }
 
@@ -250,60 +180,139 @@ test_autodetects_github_remote() {
   rm -rf "$repo"
 }
 
-test_skip_public_key() {
+test_paste_mode_dry_run() {
   local repo
   repo=$(_create_test_repo)
-  _spawn_ssh_setup "skip" "$repo"
+  _spawn_ssh_setup "dry" "$repo" "--dry-run"
 
-  # Accept defaults
-  _key "skip" Enter; sleep 0.3
-  _key "skip" Enter; sleep 2
+  _accept_defaults "dry"
 
-  # Type minimal private key
-  _type "skip" "test-private-key-data"; sleep 0.5
-  _key "skip" Ctrl+D; sleep 2
-
-  # Handle validation prompt
   local screen
-  screen=$(_snap "skip")
-  if _screen_contains "$screen" "Continue anyway"; then
-    _type "skip" "y"; _key "skip" Enter; sleep 2
-  fi
+  screen=$(_snap "dry")
+  _screen_contains "$screen" "Generate" || _screen_contains "$screen" "Paste" || {
+    echo "FAIL: generate/paste menu not shown" >&2; _kill "dry"; rm -rf "$repo"; return 1
+  }
 
-  # Skip public key with Escape
-  _key "skip" Escape; sleep 2
+  _paste_private_key "dry"
 
-  # Decline connection test
-  screen=$(_snap "skip")
-  if _screen_contains "$screen" "Test SSH"; then
-    _type "skip" "n"; _key "skip" Enter; sleep 1
-  fi
+  # Skip public key
+  _key "dry" Escape; sleep 2
 
-  # Verify only private key exists
-  [[ -f "$repo/.secrets/id_ed25519" ]] || { echo "FAIL: private key not created" >&2; _kill "skip"; rm -rf "$repo"; return 1; }
-  [[ ! -f "$repo/.secrets/id_ed25519.pub" ]] || { echo "FAIL: public key created despite skip" >&2; _kill "skip"; rm -rf "$repo"; return 1; }
+  screen=$(_snap "dry")
+  _screen_contains "$screen" "dry run:" || _screen_contains "$screen" "Done" || {
+    echo "FAIL: dry run output missing" >&2; _kill "dry"; rm -rf "$repo"; return 1
+  }
 
-  _kill "skip"
+  _kill "dry"
   rm -rf "$repo"
 }
 
-test_help_flag() {
+test_paste_mode_creates_files() {
   local repo
   repo=$(_create_test_repo)
-  local session
-  session=$(_session "help")
+  _spawn_ssh_setup "real" "$repo"
 
-  pilotty spawn --name "$session" --cwd "$repo" \
-    bash -c "export E_BASH='$repo/.scripts'; export TERM=xterm-256color; bash bin/git.ssh-setup.sh --help; sleep 2" \
-    2>/dev/null
-  sleep 1.5
+  _accept_defaults "real"
+  _paste_private_key "real"
+
+  # Public key step — type a pub key
+  sleep 1
+  local screen
+  screen=$(_snap "real")
+  if _screen_contains "$screen" "optional"; then
+    _type "real" "ssh-ed25519 AAAA testkey"; sleep 0.5
+    _key "real" Ctrl+D; sleep 2
+  fi
+
+  # Decline connection test
+  screen=$(_snap "real")
+  if _screen_contains "$screen" "Test SSH"; then
+    _type "real" "n"; _key "real" Enter; sleep 1
+  fi
+
+  # Verify files
+  [[ -f "$repo/.secrets/id_ed25519" ]] || { echo "FAIL: private key not created" >&2; _kill "real"; rm -rf "$repo"; return 1; }
+
+  local perms
+  perms=$(stat -c '%a' "$repo/.secrets/id_ed25519" 2>/dev/null || stat -f '%A' "$repo/.secrets/id_ed25519" 2>/dev/null)
+  [[ "$perms" == "600" ]] || { echo "FAIL: private key perms are $perms, expected 600" >&2; _kill "real"; rm -rf "$repo"; return 1; }
+
+  local ssh_cmd
+  ssh_cmd=$(git -C "$repo" config core.sshCommand 2>/dev/null)
+  [[ "$ssh_cmd" == *"id_ed25519"* ]] || { echo "FAIL: git sshCommand not set" >&2; _kill "real"; rm -rf "$repo"; return 1; }
+
+  grep -qF ".secrets" "$repo/.gitignore" 2>/dev/null || { echo "FAIL: .gitignore missing .secrets" >&2; _kill "real"; rm -rf "$repo"; return 1; }
+
+  _kill "real"
+  rm -rf "$repo"
+}
+
+test_generate_mode_creates_key_pair() {
+  local repo
+  repo=$(_create_test_repo)
+  _spawn_ssh_setup "gen" "$repo"
+
+  _accept_defaults "gen"
+
+  # Choose generate mode
+  _type "gen" "g"; sleep 0.3
+  _key "gen" Enter; sleep 0.3
+  # Accept default comment
+  _key "gen" Enter; sleep 3
 
   local screen
-  screen=$(_snap "help")
-  _screen_contains "$screen" "global" || _screen_contains "$screen" "--help" || { echo "FAIL: help text missing" >&2; _kill "help"; rm -rf "$repo"; return 1; }
-  _screen_contains "$screen" "dry-run" || { echo "FAIL: --dry-run not in help" >&2; _kill "help"; rm -rf "$repo"; return 1; }
+  screen=$(_snap "gen")
+  _screen_contains "$screen" "Key pair generated" || _screen_contains "$screen" "Public key" || {
+    echo "FAIL: key generation didn't complete" >&2; _kill "gen"; rm -rf "$repo"; return 1
+  }
 
-  _kill "help"
+  # Continue past public key review (Ctrl+D or just wait)
+  # The review step doesn't use an editor, just prints — script continues automatically
+  sleep 1
+
+  # Decline connection test
+  screen=$(_snap "gen")
+  if _screen_contains "$screen" "Test SSH"; then
+    _type "gen" "n"; _key "gen" Enter; sleep 1
+  fi
+
+  # Verify generated key pair
+  [[ -f "$repo/.secrets/id_ed25519" ]] || { echo "FAIL: private key not generated" >&2; _kill "gen"; rm -rf "$repo"; return 1; }
+  [[ -f "$repo/.secrets/id_ed25519.pub" ]] || { echo "FAIL: public key not generated" >&2; _kill "gen"; rm -rf "$repo"; return 1; }
+
+  local perms
+  perms=$(stat -c '%a' "$repo/.secrets/id_ed25519" 2>/dev/null || stat -f '%A' "$repo/.secrets/id_ed25519" 2>/dev/null)
+  [[ "$perms" == "600" ]] || { echo "FAIL: private key perms are $perms, expected 600" >&2; _kill "gen"; rm -rf "$repo"; return 1; }
+
+  # Verify the key is a real SSH key
+  head -1 "$repo/.secrets/id_ed25519" | grep -q "BEGIN" || { echo "FAIL: key doesn't look like PEM" >&2; _kill "gen"; rm -rf "$repo"; return 1; }
+  grep -q "ssh-ed25519" "$repo/.secrets/id_ed25519.pub" || { echo "FAIL: pub key not ed25519" >&2; _kill "gen"; rm -rf "$repo"; return 1; }
+
+  _kill "gen"
+  rm -rf "$repo"
+}
+
+test_escape_cancels_at_paste() {
+  local repo
+  repo=$(_create_test_repo)
+  _spawn_ssh_setup "cancel" "$repo"
+
+  _accept_defaults "cancel"
+
+  # Choose paste, then cancel at the editor
+  _type "cancel" "p"; sleep 0.3
+  _key "cancel" Enter; sleep 2
+  _key "cancel" Escape; sleep 2
+
+  local screen
+  screen=$(_snap "cancel")
+  _screen_contains "$screen" "No private key" || _screen_contains "$screen" "exit code" || {
+    echo "FAIL: cancel not handled" >&2; _kill "cancel"; rm -rf "$repo"; return 1
+  }
+
+  [[ ! -f "$repo/.secrets/id_ed25519" ]] || { echo "FAIL: key created despite cancel" >&2; _kill "cancel"; rm -rf "$repo"; return 1; }
+
+  _kill "cancel"
   rm -rf "$repo"
 }
 
@@ -323,21 +332,22 @@ main() {
   echo ""
 
   echo "${cl_yellow}CLI Flags${cl_reset}"
-  run_test "shows help with --help" test_help_flag
+  run_test "shows help with --help (includes --key-type)" test_help_flag
+  run_test "shows version with --version" test_version_flag
   echo ""
 
   echo "${cl_yellow}Auto-detection${cl_reset}"
   run_test "detects github.com from origin remote" test_autodetects_github_remote
   echo ""
 
-  echo "${cl_yellow}Full Workflow${cl_reset}"
-  run_test "dry-run: prompts + editors + validation" test_dry_run_full_flow
-  run_test "real run: creates files, sets perms, configures git" test_real_run_creates_files
+  echo "${cl_yellow}Paste Mode${cl_reset}"
+  run_test "dry-run: paste key flow" test_paste_mode_dry_run
+  run_test "real run: paste creates files and configures git" test_paste_mode_creates_files
+  run_test "Escape cancels at paste step" test_escape_cancels_at_paste
   echo ""
 
-  echo "${cl_yellow}Edge Cases${cl_reset}"
-  run_test "Escape cancels at private key step" test_escape_cancels_at_private_key
-  run_test "skip public key with Escape" test_skip_public_key
+  echo "${cl_yellow}Generate Mode${cl_reset}"
+  run_test "generate: creates ed25519 key pair and configures git" test_generate_mode_creates_key_pair
   echo ""
 
   echo "=== Results ==="

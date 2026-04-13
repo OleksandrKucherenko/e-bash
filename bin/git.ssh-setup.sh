@@ -2,11 +2,11 @@
 # shellcheck disable=SC2155,SC1090,SC2034,SC2059
 
 ## Git SSH Key Setup Helper
-## Configure a per-repo SSH key: paste keys, set permissions, update git config.
+## Configure a per-repo SSH key: generate or paste keys, set permissions, update git config.
 ##
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-04-13
-## Version: 1.0.0
+## Version: 1.1.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
@@ -20,7 +20,7 @@ export SKIP_ARGS_PARSING=1
 [ "$E_BASH" ] || { _src=${BASH_SOURCE:-$0}; E_BASH=$(cd "${_src%/*}/../.scripts" 2>&- && pwd || echo ~/.e-bash/.scripts); readonly E_BASH; }
 . "$E_BASH/_gnu.sh"; PATH="$(cd "$E_BASH/../bin/gnubin" 2>&- && pwd):$PATH"
 readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
-readonly SCRIPT_VERSION="1.0.0"
+readonly SCRIPT_VERSION="1.1.0"
 
 # Import e-bash modules
 # shellcheck source=../.scripts/_colors.sh
@@ -42,10 +42,11 @@ readonly EXIT_ERROR=1
 readonly EXIT_CANCELLED=2
 
 # Defaults
-declare help version SECRETS_DIR KEY_NAME DRY_RUN FORCE
+declare help version SECRETS_DIR KEY_NAME KEY_TYPE DRY_RUN FORCE
 
 SECRETS_DIR=${SECRETS_DIR:-.secrets}
 KEY_NAME=${KEY_NAME:-id_ed25519}
+KEY_TYPE=${KEY_TYPE:-ed25519}
 DRY_RUN=${DRY_RUN:-false}
 FORCE=${FORCE:-false}
 DEBUG=${DEBUG:-"ssh,step,-common,-loader,-parser,-tui"}
@@ -106,6 +107,76 @@ function prompt:remote() {
   [[ -n "$input_user" ]] && GIT_USER="$input_user"
 
   echo:Step "  ${cl_green}✓${cl_reset} Host: ${GIT_USER}@${GIT_HOST}"
+}
+
+##
+## Generate a new SSH key pair
+##
+## Parameters:
+## - key_path - Output path for private key, string, required
+## - key_type - Key type (ed25519, rsa, ecdsa), string, required
+## - comment - Key comment, string, required
+##
+## Returns:
+## - 0 on success
+## - 1 on failure
+##
+function generate:ssh-key() {
+  local key_path="$1" key_type="$2" comment="$3"
+
+  echo:Step "  Generating ${cl_bold}${key_type}${cl_reset} key pair..."
+
+  if [[ "$DRY_RUN" == "true" || "$DRY_RUN" == "1" ]]; then
+    echo:Ssh "dry run: ssh-keygen -t ${key_type} -f ${key_path} -N '' -C '${comment}'"
+    return 0
+  fi
+
+  local keygen_args=(-t "$key_type" -f "$key_path" -N "" -C "$comment" -q)
+
+  # RSA keys default to 4096 bits
+  [[ "$key_type" == "rsa" ]] && keygen_args+=(-b 4096)
+
+  if ssh-keygen "${keygen_args[@]}" 2>/dev/null; then
+    chmod 600 "$key_path"
+    chmod 644 "${key_path}.pub"
+    echo:Step "  ${cl_green}✓${cl_reset} Key pair generated"
+    return 0
+  else
+    echo:Step "  ${cl_red}✗${cl_reset} Key generation failed"
+    return 1
+  fi
+}
+
+##
+## Show public key and copy to clipboard if available
+##
+## Parameters:
+## - pub_key_content - Public key string, string, required
+##
+function review:public-key() {
+  local pub_key_content="$1"
+
+  echo:Step "  ${cl_bold}Public key${cl_reset} — add this to your git hosting provider:"
+  echo ""
+  echo "  ${cl_green}${pub_key_content}${cl_reset}"
+  echo ""
+
+  # Try to copy to clipboard automatically
+  local clipboard_cmd=""
+  if command -v xclip >/dev/null 2>&1; then
+    clipboard_cmd="xclip -i -selection clipboard"
+  elif command -v xsel >/dev/null 2>&1; then
+    clipboard_cmd="xsel --clipboard --input"
+  elif command -v pbcopy >/dev/null 2>&1; then
+    clipboard_cmd="pbcopy"
+  fi
+
+  if [[ -n "$clipboard_cmd" ]]; then
+    echo "$pub_key_content" | $clipboard_cmd 2>/dev/null
+    echo:Step "  ${cl_green}✓${cl_reset} Copied to clipboard"
+  else
+    echo:Step "  ${cl_grey}Tip: select the key above and copy manually${cl_reset}"
+  fi
 }
 
 ##
@@ -267,6 +338,7 @@ function main() {
     $(args:i FORCE -a "-f,--force" -h "Overwrite existing key files." -g global)
     $(args:i SECRETS_DIR -a "--secrets-dir" -d ".secrets" -q 1 -h "Directory for key storage." -g options)
     $(args:i KEY_NAME -a "--key-name" -d "id_ed25519" -q 1 -h "Key filename." -g options)
+    $(args:i KEY_TYPE -a "-t,--key-type" -d "ed25519" -q 1 -h "Key type: ed25519, rsa, ecdsa." -g options)
     $(args:i DEBUG -a "--debug" -d "*" -h "Enable debug logging." -g global)
   "
   eval "$COMPOSER" >/dev/null
@@ -286,6 +358,7 @@ function main() {
   # Apply defaults after parsing
   SECRETS_DIR=${SECRETS_DIR:-.secrets}
   KEY_NAME=${KEY_NAME:-id_ed25519}
+  KEY_TYPE=${KEY_TYPE:-ed25519}
   DRY_RUN=${DRY_RUN:-false}
 
   # Detect git root
@@ -332,26 +405,71 @@ function main() {
     fi
   fi
 
-  # ── Step 3: Paste private key
+  # ── Step 3: Generate or paste private key
   step:header 3 "Private key"
-  local private_key
-  private_key=$(prompt:private-key) || return $EXIT_CANCELLED
 
-  # ── Step 4: Paste public key (optional)
-  step:header 4 "Public key (optional)"
-  local public_key=""
-  public_key=$(prompt:public-key) || true
+  local private_key="" public_key="" key_generated=false
+  local action
+  echo:Step "  How would you like to provide the SSH key?"
+  echo:Step ""
+  echo:Step "    ${cl_bold}g${cl_reset}) ${cl_green}Generate${cl_reset} a new ${KEY_TYPE} key pair"
+  echo:Step "    ${cl_bold}p${cl_reset}) ${cl_blue}Paste${cl_reset} an existing private key"
+  echo:Step ""
+  read -rp "  Choice [g/p]: " action
+
+  case "${action,,}" in
+  p | paste)
+    # Paste mode: user provides the key via multiline editor
+    private_key=$(prompt:private-key) || return $EXIT_CANCELLED
+    ;;
+  *)
+    # Generate mode (default): create key pair with ssh-keygen
+    local comment="${GIT_USER}@${GIT_HOST}"
+    read -rp "  Key comment [${comment}]: " input_comment
+    [[ -n "$input_comment" ]] && comment="$input_comment"
+
+    dry:mkdir -p "$secrets_path"
+    generate:ssh-key "$key_path" "$KEY_TYPE" "$comment" || return $EXIT_ERROR
+    key_generated=true
+
+    if [[ "$DRY_RUN" != "true" && "$DRY_RUN" != "1" ]]; then
+      private_key=$(cat "$key_path")
+      public_key=$(cat "$pub_path")
+    fi
+    ;;
+  esac
+
+  # ── Step 4: Public key
+  step:header 4 "Public key"
+
+  if [[ "$key_generated" == "true" ]]; then
+    if [[ -n "$public_key" ]]; then
+      # Show generated public key for review and clipboard copy
+      review:public-key "$public_key"
+    else
+      echo:Ssh "Dry run: public key would be shown here."
+    fi
+  else
+    # Paste mode: optionally paste public key
+    echo:Step "  ${cl_grey}(optional)${cl_reset}"
+    public_key=$(prompt:public-key) || true
+  fi
 
   # ── Step 5: Write files & configure git
   step:header 5 "Write files & configure git"
 
-  dry:mkdir -p "$secrets_path"
-  echo:Step "  ${cl_green}✓${cl_reset} Created ${SECRETS_DIR}/"
+  if [[ "$key_generated" != "true" ]]; then
+    # Only write files if we didn't generate (keygen already wrote them)
+    dry:mkdir -p "$secrets_path"
+    echo:Step "  ${cl_green}✓${cl_reset} Created ${SECRETS_DIR}/"
 
-  write:key-file "$key_path" "$private_key" "600" "private key"
+    write:key-file "$key_path" "$private_key" "600" "private key"
 
-  if [[ -n "$public_key" ]]; then
-    write:key-file "$pub_path" "$public_key" "644" "public key"
+    if [[ -n "$public_key" ]]; then
+      write:key-file "$pub_path" "$public_key" "644" "public key"
+    fi
+  else
+    echo:Step "  ${cl_green}✓${cl_reset} Key files already written by ssh-keygen"
   fi
 
   ensure:gitignore "$git_root" "$SECRETS_DIR"
@@ -364,6 +482,7 @@ function main() {
   echo:Step "${cl_bold}── Summary ──${cl_reset}"
   echo:Step "  Host:    ${GIT_USER}@${GIT_HOST}"
   echo:Step "  Key:     ${SECRETS_DIR}/${KEY_NAME}"
+  [[ "$key_generated" == "true" ]] && echo:Step "  Type:    ${KEY_TYPE}"
   echo:Step "  Config:  core.sshCommand = ${ssh_cmd}"
   echo:Step ""
 
@@ -382,8 +501,7 @@ ${__SOURCED__:+return}
 logger:init ssh "${cl_grey}[ssh]${cl_reset} " ">&2"
 logger:init step " " ">&2"
 
-# Dependency checks
-dependency git "2.*.*"
+# Dependency checks (ssh-keygen is part of the same openssh package as ssh)
 optional ssh "9.*" "brew install openssh" "-V"
 
 # Dry-run wrappers for state-modifying commands
