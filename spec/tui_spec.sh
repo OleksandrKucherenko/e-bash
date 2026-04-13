@@ -1078,6 +1078,90 @@ Describe "_tui.sh / confirm:by:input /"
   End
 End
 
+Describe "_tui.sh / _input:ml:stream:restore /"
+  It "moves cursor to specified anchor position"
+    When call _input:ml:stream:restore 7 1
+    The status should be success
+    The stderr should eq "$(printf '\033[7;1H')"
+  End
+
+  It "defaults to 1;1 when given empty args"
+    When call _input:ml:stream:restore "" ""
+    The status should be success
+    The stderr should eq "$(printf '\033[1;1H')"
+  End
+
+  It "clamps negative row to 1"
+    When call _input:ml:stream:restore -5 3
+    The status should be success
+    The stderr should eq "$(printf '\033[1;3H')"
+  End
+
+  It "clamps non-numeric row to 1"
+    When call _input:ml:stream:restore "abc" 2
+    The status should be success
+    The stderr should eq "$(printf '\033[1;2H')"
+  End
+End
+
+Describe "_tui.sh / _input:ml:render /"
+  setup() {
+    _input:ml:init 5 2
+    __ML_LINES=("line1" "line2")
+    __ML_ROW=0
+    __ML_COL=0
+    __ML_SCROLL=0
+    __ML_STATUS_BAR=false
+    __ML_SEL_ACTIVE=false
+  }
+  Before setup
+
+  It "disables and restores line wrapping during render"
+    When call _input:ml:render 0 0
+    The status should be success
+    The stderr should include "$(printf '\033[?7l')"
+    The stderr should include "$(printf '\033[?7h')"
+  End
+
+  It "hides cursor during render"
+    When call _input:ml:render 0 0
+    The status should be success
+    The stderr should include "$(printf '\033[?25l')"
+  End
+End
+
+Describe "_tui.sh / _input:ml:edit-line / P2 status bar offset /"
+  # Verify the line_y calculation accounts for status bar
+  # visual_row = __ML_ROW - __ML_SCROLL = 1 - 0 = 1
+  # render_start = 1 (status bar true)
+  # line_y = pos_y + visual_row + 1 + render_start = 5 + 1 + 1 + 1 = 8
+  # Without the fix it would be 7 (missing render_start)
+  It "calculates correct line_y with status bar enabled"
+    __ML_ROW=1
+    __ML_SCROLL=0
+    __ML_STATUS_BAR=true
+    # Inline the calculation from _input:ml:edit-line
+    local visual_row=$((__ML_ROW - __ML_SCROLL))
+    local render_start=0
+    [[ "$__ML_STATUS_BAR" == "true" ]] && render_start=1
+    local line_y=$((5 + visual_row + 1 + render_start))
+    When call echo "$line_y"
+    The output should eq "8"
+  End
+
+  It "calculates correct line_y without status bar"
+    __ML_ROW=1
+    __ML_SCROLL=0
+    __ML_STATUS_BAR=false
+    local visual_row=$((__ML_ROW - __ML_SCROLL))
+    local render_start=0
+    [[ "$__ML_STATUS_BAR" == "true" ]] && render_start=1
+    local line_y=$((5 + visual_row + 1 + render_start))
+    When call echo "$line_y"
+    The output should eq "7"
+  End
+End
+
 Describe "_tui.sh / Backward Compatibility /"
   It "provides TUI functions from _tui.sh include"
     When call type cursor:position

@@ -1524,7 +1524,7 @@ function _input:ml:stream:cursor() {
   # Try to query cursor position (ESC[6n) and read response (ESC[row;colR)
   # The read -p prompt goes to stderr, response is read from stdin
   # First attempt with specified timeout
-  if IFS=';' read -rsdR -t "$timeout" -p $'\E[6n' prefix col; then
+  if IFS=';' read -rsdR -t "$timeout" -p $'\E[6n' prefix col </dev/tty 2>/dev/tty; then
     # Strip ESC[ prefix from row (prefix contains "\E[row" before the semicolon)
     row=${prefix#*[}
     # Validate we got numbers
@@ -1536,7 +1536,7 @@ function _input:ml:stream:cursor() {
 
   # Second attempt with longer timeout if first failed (some terminals are slow)
   if [[ "$timeout" != "1.0" ]]; then
-    if IFS=';' read -rsdR -t 1.0 -p $'\E[6n' prefix col; then
+    if IFS=';' read -rsdR -t 1.0 -p $'\E[6n' prefix col </dev/tty 2>/dev/tty; then
       row=${prefix#*[}
       if [[ "$row" =~ ^[0-9]+$ ]] && [[ "$col" =~ ^[0-9]+$ ]]; then
         printf "%s;%s" "$row" "$col"
@@ -1545,9 +1545,17 @@ function _input:ml:stream:cursor() {
     fi
   fi
 
-  # Fallback: return default position
+  # Fallback: DSR not supported (screen, serial, CI, some PTY multiplexers).
+  # Use terminal height to place editor at the bottom of the visible area.
+  # This avoids overwriting content that was already printed above.
+  local term_h
+  term_h=$(tput lines 2>/dev/null || echo 24)
+  [[ "$term_h" =~ ^[0-9]+$ ]] || term_h=24
+  [[ "$term_h" -lt 1 ]] && term_h=24
+  row=$term_h
+  col=1
   printf "%s;%s" "$row" "$col"
-  return 0
+  return 1
 }
 
 ##
@@ -1776,7 +1784,9 @@ function _input:ml:delete-line() {
 function _input:ml:edit-line() {
   local saved_stty="$1" pos_y=${2:-0}
   local visual_row=$((__ML_ROW - __ML_SCROLL))
-  local line_y=$((pos_y + visual_row + 1))
+  local render_start=0
+  [[ "$__ML_STATUS_BAR" == "true" ]] && render_start=1
+  local line_y=$((pos_y + visual_row + 1 + render_start))
 
   # Restore terminal for readline
   stty "$saved_stty"
@@ -1788,9 +1798,9 @@ function _input:ml:edit-line() {
   local initial_text="${__ML_LINES[$__ML_ROW]}"
 
   # Use readline for editing (full word movement, history, etc.)
-  # Note: output goes directly to terminal (not redirected)
+  # Redirect to /dev/tty so readline UI stays on terminal, not stdout
   local REPLY
-  if read -rei "$initial_text" -p "$prompt"; then
+  if read -rei "$initial_text" -p "$prompt" </dev/tty >/dev/tty 2>/dev/tty; then
     if [[ "$REPLY" != "$initial_text" ]]; then
       __ML_LINES[$__ML_ROW]="$REPLY"
       __ML_MODIFIED=true
@@ -2032,8 +2042,9 @@ function input:multi-line() {
   # Mode-specific dimension setup
   if [[ "$mode" == "stream" ]]; then
     # Stream mode: cursor position, terminal width, default height 5
-    local stream_pos
+    local stream_pos stream_dsr_ok=0
     stream_pos=$(_input:ml:stream:cursor)
+    stream_dsr_ok=$?
     stream_row="${stream_pos%;*}"
     stream_col="${stream_pos#*;}"
     [[ "$stream_row" =~ ^[0-9]+$ ]] || stream_row=1
@@ -2044,6 +2055,20 @@ function input:multi-line() {
     [[ "$height" -gt "$term_height" ]] && height="$term_height"
     width="$term_width"
     pos_x=0
+
+    # When DSR failed (terminal doesn't support cursor position query — common in
+    # screen, serial, CI, some PTY multiplexers), we don't know cursor position.
+    # Emit height+1 newlines to guarantee room for the editor below current output,
+    # then use allocate to handle overflow if we ended up near the bottom.
+    # This preserves visible content better than jumping to the absolute bottom.
+    if [[ "$stream_dsr_ok" -ne 0 ]]; then
+      local i
+      for ((i = 0; i < height + 1; i++)); do printf "\n" >&2; done
+      # Assume we're now near/at the bottom after the newlines
+      stream_row=$((term_height - height + 1))
+      [[ "$stream_row" -lt 1 ]] && stream_row=1
+      stream_col=1
+    fi
 
     # Alt buffer not used in stream mode
     use_alt_buffer=false
