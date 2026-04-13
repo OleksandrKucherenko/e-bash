@@ -378,7 +378,7 @@ logger:init step " " ">&2"
 
 # Dependency checks
 dependency git "2.*.*"
-optional ssh "9.*" "brew install openssh" "-V" "[0-9]+\.[0-9]+"
+optional ssh "9.*" "brew install openssh" "-V"
 
 # Dry-run wrappers for state-modifying commands
 dryrun git
