@@ -42,16 +42,16 @@ function logger:compose() {
   local flags=${3:-""}
   local code=""
 
-  read -r -d '' code <<EOF
+  read -r -d '' code <<EOF || true
   #
   # begin
   #
   function echo:${suffix}() {
-    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@"; } ${TAGS_REDIRECT[$tag]})
+    if [[ "\${TAGS[$tag]}" == "1" ]]; then { builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@"; } ${TAGS_REDIRECT[$tag]:-}; fi
   }
   #
   function printf:${suffix}() {
-    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin printf "%s\${@:1:1}" "\${TAGS_PREFIX[$tag]}" "\${@:2}"; } ${TAGS_REDIRECT[$tag]})
+    if [[ "\${TAGS[$tag]}" == "1" ]]; then { builtin printf "%s\${@:1:1}" "\${TAGS_PREFIX[$tag]}" "\${@:2}"; } ${TAGS_REDIRECT[$tag]:-}; fi
   }
   #
 EOF
@@ -80,16 +80,16 @@ function logger:compose:eval() {
   suffix=${2}
   flags=${3:-""}
 
-  read -r -d '' code <<EOF
+  read -r -d '' code <<EOF || true
   #
   # begin
   #
   function echo:${suffix}() {
-    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@"; } ${TAGS_REDIRECT[$tag]})
+    if [[ "\${TAGS[$tag]}" == "1" ]]; then { builtin echo -n "\${TAGS_PREFIX[$tag]}"; builtin echo "\$@"; } ${TAGS_REDIRECT[$tag]:-}; fi
   }
   #
   function printf:${suffix}() {
-    [[ "\${TAGS[$tag]}" == "1" ]] && ({ builtin printf "%s\${@:1:1}" "\${TAGS_PREFIX[$tag]}" "\${@:2}"; } ${TAGS_REDIRECT[$tag]})
+    if [[ "\${TAGS[$tag]}" == "1" ]]; then { builtin printf "%s\${@:1:1}" "\${TAGS_PREFIX[$tag]}" "\${@:2}"; } ${TAGS_REDIRECT[$tag]:-}; fi
   }
   #
 EOF
@@ -119,17 +119,17 @@ function logger:compose:helpers() {
   local flags=${3:-""}
   local code=""
 
-  read -r -d '' code <<EOF
+  read -r -d '' code <<EOF || true
   #
   # begin
   #
   function config:logger:${suffix}() {
     local args=("\$@")
     IFS="," read -r -a tags <<<\$(echo "\$DEBUG")
-    [[ "\${args[*]}" =~ "--debug" ]] && TAGS+=([$tag]=1)
-    [[ "\${tags[*]}" =~ "$tag" ]] && TAGS+=([$tag]=1)
-    [[ "\${tags[*]}" =~ "*" ]] && TAGS+=([$tag]=1)
-    [[ "\${tags[*]}" =~ "-$tag" ]] && TAGS+=([$tag]=0)
+    if [[ "\${args[*]}" =~ "--debug" ]]; then TAGS+=([$tag]=1); fi
+    if [[ "\${tags[*]}" =~ "$tag" ]]; then TAGS+=([$tag]=1); fi
+    if [[ "\${tags[*]}" =~ "*" ]]; then TAGS+=([$tag]=1); fi
+    if [[ "\${tags[*]}" =~ "-$tag" ]]; then TAGS+=([$tag]=0); fi
     #builtin echo "done! \${!TAGS[@]} \${TAGS[@]}"
   }
   #
@@ -169,17 +169,17 @@ function logger:compose:helpers:eval() {
   suffix=${2}
   flags=${3:-""}
 
-  read -r -d '' code <<EOF
+  read -r -d '' code <<EOF || true
   #
   # begin
   #
   function config:logger:${suffix}() {
     local args=("\$@")
     IFS="," read -r -a tags <<<\$(echo "\$DEBUG")
-    [[ "\${args[*]}" =~ "--debug" ]] && TAGS+=([$tag]=1)
-    [[ "\${tags[*]}" =~ "$tag" ]] && TAGS+=([$tag]=1)
-    [[ "\${tags[*]}" =~ "*" ]] && TAGS+=([$tag]=1)
-    [[ "\${tags[*]}" =~ "-$tag" ]] && TAGS+=([$tag]=0)
+    if [[ "\${args[*]}" =~ "--debug" ]]; then TAGS+=([$tag]=1); fi
+    if [[ "\${tags[*]}" =~ "$tag" ]]; then TAGS+=([$tag]=1); fi
+    if [[ "\${tags[*]}" =~ "*" ]]; then TAGS+=([$tag]=1); fi
+    if [[ "\${tags[*]}" =~ "-$tag" ]]; then TAGS+=([$tag]=0); fi
     #builtin echo "done! \${!TAGS[@]} \${TAGS[@]}"
   }
   #
@@ -221,7 +221,7 @@ function pipe:killer:compose() {
   local myPid=${2:-"${BASHPID}"}
   local code=""
 
-  read -r -d '' code <<EOF
+  read -r -d '' code <<EOF || true
     trap "rm -f \"${pipe}\" >/dev/null" HUP INT QUIT ABRT TERM KILL EXIT
     while kill -0 "${myPid}" 2>/dev/null; do sleep 0.1; done
 EOF
@@ -267,6 +267,9 @@ function logger() {
 
   # keep it disabled by default
   TAGS+=([$tag]=0)
+  # initialize prefix and redirect to empty if not already set (required for set -u)
+  if [[ -z ${TAGS_PREFIX[$tag]+x} ]]; then TAGS_PREFIX+=([$tag]=""); fi
+  if [[ -z ${TAGS_REDIRECT[$tag]+x} ]]; then TAGS_REDIRECT+=([$tag]=""); fi
 
   # declare logger functions
   # source /dev/stdin <<EOF
@@ -275,14 +278,14 @@ function logger() {
 
   # configure logger
   # shellcheck disable=SC2294
-  eval "config:logger:${suffix}" "$@" 2>/dev/null
+  eval "config:logger:${suffix}" "$@" 2>/dev/null || true
 
   # dump created loggers
   # shellcheck disable=SC2154
-  [[ "$tag" != "common" ]] && (
-    # ignore output error
-    eval "echo:Common \"Logger tags  :\" \"\${!TAGS[@]}\" \"|\" \"\${TAGS[@]}\" " 2>/dev/null | tee >(cat >&2)
-  )
+  if [[ "$tag" != "common" ]]; then
+    # ignore output error (subshell ensures process substitution completes; || true guards against pipefail)
+    ( eval "echo:Common \"Logger tags  :\" \"\${!TAGS[@]}\" \"|\" \"\${TAGS[@]}\" " 2>/dev/null | tee >(cat >&2) ) || true
+  fi
 
   # create named pipe, if it does not exist
   local pipe="/tmp/_logger.${suffix}.${__SESSION}"
@@ -291,7 +294,7 @@ function logger() {
     TAGS_PIPE+=([$tag]="${pipe}")
 
     # run background process to wait for parent process exit and delete the named pipe
-    bash <(pipe:killer:compose "$pipe" "$myPid") &
+    bash <(pipe:killer:compose "$pipe" "$BASHPID") &
   fi
 
   return 0 # force exit code success
@@ -377,7 +380,7 @@ function logger:pop() {
 function logger:cleanup() {
   # iterate TAGS_PIPE and remove all named pipes
   for pipe in "${TAGS_PIPE[@]}"; do
-    [[ -p "${pipe}" ]] && rm -f "${pipe}"
+    if [[ -p "${pipe}" ]]; then rm -f "${pipe}"; fi
   done
 
   # reset array

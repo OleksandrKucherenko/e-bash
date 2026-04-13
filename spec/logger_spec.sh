@@ -132,7 +132,7 @@ Describe '_logger.sh /'
       BeforeCall 'setup'
 
       When call echo:Test "Hidden"
-      The status should be failure
+      The status should be success
       The output should eq ''
     End
 
@@ -144,7 +144,7 @@ Describe '_logger.sh /'
       BeforeCall 'setup'
 
       When call echo:Test "Hidden"
-      The status should be failure
+      The status should be success
       The output should eq ''
     End
 
@@ -159,7 +159,7 @@ Describe '_logger.sh /'
       The output should eq 'Visible'
     End
 
-    It 'isolates multiple loggers (disabled logger fails)'
+    It 'isolates multiple loggers (disabled logger is silent)'
       setup() {
         export DEBUG="logA"
         logger "logA"
@@ -168,7 +168,7 @@ Describe '_logger.sh /'
       BeforeCall 'setup'
 
       When call echo:LogB "Hidden"
-      The status should be failure
+      The status should be success
       The output should eq ''
     End
   End

@@ -23,9 +23,10 @@ source "$E_BASH/_commons.sh"
 source "$E_BASH/_traps.sh"
 
 # keep error logging enabled by default
-if [[ -z ${DEBUG+x} || -z "$DEBUG" ]]; then
+# Only set default if DEBUG was never exported; respect explicit empty DEBUG=""
+if [[ -z ${DEBUG+x} ]]; then
   export DEBUG="error"
-elif [[ "$DEBUG" != *"error"* && "$DEBUG" != *"*"* && "$DEBUG" != *"-error"* ]]; then
+elif [[ -n "$DEBUG" && "$DEBUG" != *"error"* && "$DEBUG" != *"*"* && "$DEBUG" != *"-error"* ]]; then
   export DEBUG="${DEBUG},error"
 fi
 
@@ -112,7 +113,7 @@ function hooks:declare() {
     # check if hook already exists from a different context
     if [[ -n ${__HOOKS_DEFINED[$hook_name]+x} ]]; then
       # hook already defined - check contexts
-      local existing_contexts="${__HOOKS_CONTEXTS[$hook_name]}"
+      local existing_contexts="${__HOOKS_CONTEXTS[$hook_name]:-}"
 
       # check if this context already registered this hook
       if [[ "|${existing_contexts}|" == *"|${caller_context}|"* ]]; then
@@ -307,7 +308,7 @@ function hooks:register() {
   fi
 
   # Get existing registrations for this hook
-  local existing="${__HOOKS_REGISTERED[$hook_name]}"
+  local existing="${__HOOKS_REGISTERED[$hook_name]:-}"
 
   # Check if friendly name already exists for this hook
   if [[ -n "$existing" && "|${existing}|" == *"|${friendly_name}:"* ]]; then
@@ -398,7 +399,7 @@ function hooks:unregister() {
   fi
 
   # Get existing registrations
-  local existing="${__HOOKS_REGISTERED[$hook_name]}"
+  local existing="${__HOOKS_REGISTERED[$hook_name]:-}"
 
   if [[ -z "$existing" ]]; then
     echo:Error "no registrations found for hook '$hook_name'"
@@ -935,7 +936,7 @@ function hooks:do() {
   fi
 
   # execute registered functions and scripts in a single alphabetical sequence
-  local registered="${__HOOKS_REGISTERED[$hook_name]}"
+  local registered="${__HOOKS_REGISTERED[$hook_name]:-}"
   local -a merged_impls=()
   local reg_count=0
   local script_count=0
@@ -1144,7 +1145,7 @@ function hooks:list() {
     fi
 
     # check for registered functions
-    local registered="${__HOOKS_REGISTERED[$hook_name]}"
+    local registered="${__HOOKS_REGISTERED[$hook_name]:-}"
     if [[ -n "$registered" ]]; then
       local reg_count=$(echo "$registered" | tr '|' '\n' | wc -l | tr -d ' ')
       implementations+=("${reg_count} registered")
