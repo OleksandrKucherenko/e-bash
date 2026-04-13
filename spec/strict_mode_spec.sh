@@ -17,9 +17,6 @@ eval "$(shellspec - -c) exit 1"
 export SCRIPT_DIR=".scripts"
 export E_BASH="$(pwd)/${SCRIPT_DIR}"
 
-# Helper to strip ANSI color codes
-no_colors_stderr() { echo -n "$2" | sed -E $'s/\x1B\\[[0-9;]*[A-Za-z]//g; s/\x1B\\([A-Z]//g; s/\x0F//g' | tr -s ' ' | sed 's/^ *//; s/ *$//'; }
-
 Describe 'strict mode compatibility (set -euo pipefail) /'
 
   Context 'Issue #85.3: echo:Tag returns 0 when tag is disabled /'

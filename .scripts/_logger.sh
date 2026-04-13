@@ -294,7 +294,7 @@ function logger() {
     TAGS_PIPE+=([$tag]="${pipe}")
 
     # run background process to wait for parent process exit and delete the named pipe
-    bash <(pipe:killer:compose "$pipe" "${myPid:-$BASHPID}") &
+    bash <(pipe:killer:compose "$pipe" "$BASHPID") &
   fi
 
   return 0 # force exit code success
