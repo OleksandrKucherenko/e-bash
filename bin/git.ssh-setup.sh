@@ -373,7 +373,10 @@ function main() {
   local secrets_path="${git_root}/${SECRETS_DIR}"
   local key_path="${secrets_path}/${KEY_NAME}"
   local pub_path="${key_path}.pub"
-  local ssh_cmd="ssh -i ${SECRETS_DIR}/${KEY_NAME} -o IdentitiesOnly=yes"
+  # Absolute path with escaping for spaces; -F /dev/null ignores ~/.ssh/config
+  local escaped_root
+  escaped_root=$(printf "%q" "$git_root")
+  local ssh_cmd="ssh -o IdentitiesOnly=yes -i ${escaped_root}/${SECRETS_DIR}/${KEY_NAME} -F /dev/null"
 
   echo:Step ""
   echo:Step "${cl_bold}Git SSH Key Setup${cl_reset} ${cl_grey}v${SCRIPT_VERSION}${cl_reset}"
@@ -381,7 +384,7 @@ function main() {
 
   # Show current SSH configuration
   local current_ssh_cmd
-  current_ssh_cmd=$(run:git config --get core.sshCommand 2>/dev/null || echo "")
+  current_ssh_cmd=$(run:git config --local --get core.sshCommand 2>/dev/null || echo "")
   if [[ -n "$current_ssh_cmd" ]]; then
     echo:Step "  ${cl_yellow}Current config:${cl_reset} core.sshCommand = ${current_ssh_cmd}"
   else
@@ -407,7 +410,7 @@ function main() {
     if [[ ! "$overwrite" =~ ^[Yy] ]]; then
       echo:Ssh "Keeping existing key. Skipping to git config."
       step:header 5 "Git SSH configuration"
-      dry:git config core.sshCommand "$ssh_cmd"
+      dry:git config --local core.sshCommand "$ssh_cmd"
       echo:Step "  ${cl_green}✓${cl_reset} Set core.sshCommand"
       echo:Step ""
       echo:Step "${cl_green}Done.${cl_reset} SSH key already configured."
@@ -484,7 +487,7 @@ function main() {
 
   ensure:gitignore "$git_root" "$SECRETS_DIR"
 
-  dry:git config core.sshCommand "$ssh_cmd"
+  dry:git config --local core.sshCommand "$ssh_cmd"
   echo:Step "  ${cl_green}✓${cl_reset} Set core.sshCommand"
 
   # Summary
@@ -502,7 +505,7 @@ function main() {
   echo:Step ""
   echo:Step "${cl_bold}── Rollback ──${cl_reset}"
   echo:Step "  To reset SSH config to system default:"
-  echo:Step "    ${cl_grey}\$ git config --unset core.sshCommand${cl_reset}"
+  echo:Step "    ${cl_grey}\$ git config --local --unset core.sshCommand${cl_reset}"
   echo:Step "  To remove generated key files:"
   echo:Step "    ${cl_grey}\$ rm -rf ${SECRETS_DIR}/${cl_reset}"
   return $EXIT_OK
