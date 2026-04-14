@@ -2583,8 +2583,8 @@ alias validate_yn_input=validate:input:yn
 ## References:
 ## - demo: demo.readpswd.sh, demo.selector.sh, demo.multi-line.sh, demo.capture-key.sh
 ## - bin: vhd.sh, git.sync-by-patches.sh
-## - documentation: docs/public/tui.md
-## - tests: spec/commons_spec.sh, spec/multi_line_input_spec.sh, spec/read_key_spec.sh
+## - documentation: docs/public/commons.md
+## - tests: spec/tui_spec.sh, spec/multi_line_input_spec.sh, spec/read_key_spec.sh
 ##
 ## Globals:
 ## - E_BASH - Path to .scripts directory

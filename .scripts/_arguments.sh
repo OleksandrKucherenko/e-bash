@@ -1468,8 +1468,11 @@ parse:exclude_flags_from_args "$@"                  # pre-filter arguments from 
 ## - demo: demo.args.sh, completion/demo.completion.sh
 ## - bin: git.log.sh, git.verify-all-commits.sh, git.semantic-version.sh,
 ##   version-up.v2.sh, vhd.sh, npm.versions.sh
-## - documentation: docs/public/arguments.md, docs/public/completion.md
-## - tests: spec/arguments_spec.sh, spec/arguments_completion_spec.sh
+## - documentation: docs/public/arguments.md, docs/public/completion.md,
+##   docs/public/cli-strategy.md
+## - tests: spec/arguments_spec.sh, spec/arguments_completion_spec.sh,
+##   spec/arguments_parser_edge_cases_spec.sh, spec/arguments_stress_spec.sh,
+##   spec/arguments_scoped_spec.sh, spec/arguments_validation_spec.sh
 ##
 ## Globals:
 ## - E_BASH - Path to .scripts directory
