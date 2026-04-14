@@ -232,16 +232,16 @@ function parse:arguments() {
     local value=""
     local by_index="\$$index"
 
-    # extract key and value from argument, if used format `--key=value`
-    if [[ "$argument" == *=* ]]; then value="${argument#*=}" && value="${value:-"<empty>"}" && argument="${argument%%=*}"; fi
-
-    # accumulate arguments that reserved by last processed argument
+    # accumulate arguments that reserved by last processed argument (before = splitting)
     if [ "$skip_next_counter" -gt 0 ]; then
       skip_next_counter=$((skip_next_counter - 1))
       skip_aggregated="${skip_aggregated}${separator}${argument}"
       separator=" "
       continue
     fi
+
+    # extract key and value from argument, if used format `--key=value`
+    if [[ "$argument" == *=* ]]; then value="${argument#*=}" && value="${value:-"<empty>"}" && argument="${argument%%=*}"; fi
 
     # if skipped aggregated var contains value assign it to the last processed argument
     if [ ${#skip_aggregated} -gt 0 ]; then
@@ -250,7 +250,7 @@ function parse:arguments() {
       # assign aggregated value to output variable
       local tmp_index=${lookup_arguments[$last_processed]}
       echo:Parser "assign(aggregated): ${index_to_outputs[$tmp_index]}='$tmpValue'"
-      eval "export ${index_to_outputs[$tmp_index]}='$tmpValue'"
+      export "${index_to_outputs[$tmp_index]}=${tmpValue}"
     fi
 
     # process flags
@@ -261,7 +261,7 @@ function parse:arguments() {
 
       # assign default value to the output variable first
       echo:Parser "assign(default): ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
-      eval "export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
+      export "${index_to_outputs[$tmp_index]}=${index_to_default[$tmp_index]}"
 
       # if expected more arguments than provided, configure skip_next_counter
       if [ "$expected" -gt 0 ]; then
@@ -276,7 +276,7 @@ function parse:arguments() {
         # default value is re-assigned by provided value
         if [ -n "$value" ]; then
           echo:Parser "assign(inline): ${index_to_outputs[$tmp_index]}='$value'"
-          eval "export ${index_to_outputs[$tmp_index]}='$value'"
+          export "${index_to_outputs[$tmp_index]}=${value}"
         fi
       fi
     else
@@ -289,7 +289,7 @@ function parse:arguments() {
           local tmp_index=${lookup_arguments[$by_index]}
 
           echo:Parser "assign(positional): ${index_to_outputs[$tmp_index]}='$argument'"
-          eval "export ${index_to_outputs[$tmp_index]}='$argument'"
+          export "${index_to_outputs[$tmp_index]}=${argument}"
         else
           echo:Parser "${cl_grey}skip: unmatched positional '$argument' (index=$by_index)${cl_reset}"
         fi
@@ -309,7 +309,7 @@ function parse:arguments() {
     local value="$skip_aggregated" && skip_aggregated="" && separator=""
     local tmp_index=${lookup_arguments[$last_processed]}
     echo:Parser "assign(trailing): ${index_to_outputs[$tmp_index]}='$value'"
-    eval "export ${index_to_outputs[$tmp_index]}='$value'"
+    export "${index_to_outputs[$tmp_index]}=${value}"
   fi
 
   # debug: show final variable assignments
