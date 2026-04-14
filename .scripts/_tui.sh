@@ -941,6 +941,7 @@ function _input:ml:init() {
   __ML_SEL_ACTIVE=false
   __ML_SEL_ANCHOR_ROW=0
   __ML_SEL_ANCHOR_COL=0
+  __ML_SELECT_MODE=false
 }
 
 ##
@@ -1872,7 +1873,7 @@ function _input:ml:render() {
     local status_modified=""
     [[ "$__ML_MODIFIED" == "true" ]] && status_modified="[+] "
     local status_info="L$((__ML_ROW + 1)):C$((__ML_COL + 1)) ${status_modified}${#__ML_LINES[@]}L"
-    local status_msg="${__ML_MESSAGE:-Ctrl+D save | Esc cancel | Ctrl+E edit line}"
+    local status_msg="${__ML_MESSAGE:-Ctrl+D save | Esc cancel | Ctrl+E edit | F3 select}"
     local status_text=" ${status_msg}"
     local status_right=" ${status_info} "
     local status_pad=$((__ML_WIDTH - ${#status_text} - ${#status_right}))
@@ -1978,6 +1979,7 @@ function _input:ml:render() {
 ## - Configurable keybindings via ML_KEY_* environment variables
 ## - Bracketed paste detection (paste from clipboard)
 ## - Text selection via Shift+arrow keys (highlighted with cl_selected)
+## - Select mode (F3): modal selection with c=copy, x=cut, Esc=cancel
 ## - Clipboard integration: Ctrl+C copy, Ctrl+X cut, Ctrl+V paste
 ## - Select all with Ctrl+A
 ## - Modified indicator in status bar
@@ -1995,9 +1997,10 @@ function _input:ml:render() {
 ##
 ## Globals:
 ## - reads/listen: TERM, ML_KEY_SAVE, ML_KEY_EDIT, ML_KEY_DEL_WORD, ML_KEY_DEL_LINE,
-##                 cl_selected
+##                 ML_KEY_SELECT, cl_selected
 ## - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED,
-##                   __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL
+##                   __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL,
+##                   __ML_SELECT_MODE
 ##
 ## Side effects:
 ## - Saves/restores terminal state (stty)
@@ -2135,6 +2138,7 @@ function input:multi-line() {
   local key_edit=${ML_KEY_EDIT:-"ctrl-e"}
   local key_del_word=${ML_KEY_DEL_WORD:-"ctrl-w"}
   local key_del_line=${ML_KEY_DEL_LINE:-"ctrl-u"}
+  local key_select=${ML_KEY_SELECT:-"f3"}
 
   # Detect clipboard commands (read from / write to system clipboard)
   local paste_cmd="" clipboard_cmd=""
@@ -2227,6 +2231,68 @@ function input:multi-line() {
     key=$(_input:read-key -t 0.1) || continue
     __ml_dirty=true
 
+    # ── Select mode toggle (F3 by default, mc-style) ──
+    if [[ "$key" == "$key_select" ]]; then
+      if [[ "$__ML_SELECT_MODE" == true ]]; then
+        __ML_SELECT_MODE=false
+        _input:ml:sel-clear
+        __ML_MESSAGE=""
+      else
+        __ML_SELECT_MODE=true
+        _input:ml:sel-start
+        __ML_MESSAGE="SELECT: arrows=select | c=copy | x=cut | Esc=cancel"
+      fi
+      continue
+    fi
+
+    # ── Select mode key handling ──
+    if [[ "$__ML_SELECT_MODE" == true ]]; then
+      case "$key" in
+      # Navigation extends selection
+      up | shift-up) _input:ml:move-up ;;
+      down | shift-down) _input:ml:move-down ;;
+      left | shift-left) _input:ml:move-left ;;
+      right | shift-right) _input:ml:move-right ;;
+      home | shift-home) _input:ml:move-home ;;
+      end | shift-end) _input:ml:move-end ;;
+      page-up)
+        local i
+        for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-up; done
+        ;;
+      page-down)
+        local i
+        for ((i = 0; i < __ML_HEIGHT - 2; i++)); do _input:ml:move-down; done
+        ;;
+      # Copy selection
+      "char:c" | "char:C")
+        if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
+          _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+          __ML_MESSAGE="Copied!"
+        fi
+        __ML_SELECT_MODE=false
+        _input:ml:sel-clear
+        ;;
+      # Cut selection
+      "char:x" | "char:X")
+        if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
+          _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+          _input:ml:sel-delete
+          __ML_MESSAGE="Cut!"
+        fi
+        __ML_SELECT_MODE=false
+        ;;
+      # Cancel selection
+      escape)
+        __ML_SELECT_MODE=false
+        _input:ml:sel-clear
+        __ML_MESSAGE=""
+        ;;
+      *) ;; # Ignore all other keys in select mode
+      esac
+      continue
+    fi
+
+    # ── Normal mode key handling ──
     case "$key" in
     # Configurable action keys
     "$key_save") break ;;
