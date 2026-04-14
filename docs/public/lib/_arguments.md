@@ -6,11 +6,11 @@ This module provides a declarative argument parsing system with auto-generated h
 
 ## References
 
-- demo: demo.args.sh
+- demo: demo.args.sh, completion/demo.completion.sh
 - bin: git.log.sh, git.verify-all-commits.sh, git.semantic-version.sh,
   version-up.v2.sh, vhd.sh, npm.versions.sh
-- documentation: docs/public/arguments.md
-- tests: spec/arguments_spec.sh
+- documentation: docs/public/arguments.md, docs/public/completion.md
+- tests: spec/arguments_spec.sh, spec/arguments_completion_spec.sh
 
 ## Module Globals
 
@@ -56,10 +56,18 @@ This module provides a declarative argument parsing system with auto-generated h
 <!-- TOC -->
 
 - [_arguments.sh](#_argumentssh)
+    - [`args:completion`](#argscompletion)
+    - [`args:completion:install`](#argscompletioninstall)
     - [`args:d`](#argsd)
+    - [`args:dispatch`](#argsdispatch)
     - [`args:e`](#argse)
     - [`args:i`](#argsi)
+    - [`args:reset`](#argsreset)
+    - [`args:scope`](#argsscope)
+    - [`args:t`](#argst)
+    - [`args:unbundle`](#argsunbundle)
     - [`args:v`](#argsv)
+    - [`args:validate`](#argsvalidate)
     - [`parse:arguments`](#parsearguments)
     - [`parse:exclude_flags_from_args`](#parseexclude_flags_from_args)
     - [`parse:extract_output_definition`](#parseextract_output_definition)
@@ -67,6 +75,60 @@ This module provides a declarative argument parsing system with auto-generated h
     - [`print:help`](#printhelp)
 
 <!-- /TOC -->
+
+---
+
+### args:completion
+
+Generate shell completion script from ARGS_DEFINITION metadata
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `shell_type` | string | required | Target shell: "bash" or "zsh" |
+| `script_name` | string | required | Name of the script/command |
+| `output_file` | string | optional | Optional file path (default: stdout) |
+
+#### Globals
+
+- reads/listen: ARGS_DEFINITION, lookup_arguments, index_to_*,
+                args_to_description
+- mutate/publish: none (outputs to stdout or file)
+
+#### Usage
+
+```bash
+args:completion bash myscript
+args:completion zsh myscript /path/to/_myscript
+```
+
+---
+
+### args:completion:install
+
+Install completion script to the appropriate OS directory
+Discovers the correct completion directory for the target shell,
+creates it if necessary, and writes the generated script.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `shell_type` | string | required | "bash" or "zsh" |
+| `script_name` | string | required | Command name for completion |
+
+#### Globals
+
+- reads/listen: ARGS_DEFINITION, lookup_arguments, etc.
+- mutate/publish: none (writes file, outputs path to stdout)
+
+#### Usage
+
+```bash
+args:completion:install bash myscript
+args:completion:install zsh myscript
+```
 
 ---
 
@@ -93,6 +155,34 @@ Add description for an argument flag (for help output)
 ```bash
 args:d "--verbose" "Enable verbose output" "options" 10
 args:d "-h" "Show help message"
+```
+
+---
+
+### args:dispatch
+
+Auto-dispatch built-in flags after argument parsing.
+Handles --version, --debug, --completion, and --install-completion
+so that individual scripts do not need to repeat this boilerplate.
+NOTE: --help is NOT handled here (scripts have custom help patterns).
+The function exits the process (exit 0) when a handled flag is detected,
+so it must be called AFTER parse:arguments.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+
+#### Globals
+
+- reads/listen: version, DEBUG, completion, install_completion,
+                BASH_SOURCE (to derive the script name)
+- mutate/publish: DEBUG (for --debug)
+
+#### Usage
+
+```bash
+args:dispatch   # call right after parse:arguments
 ```
 
 ---
@@ -151,6 +241,122 @@ args:i config -h "Config file" -a "-c,--config" -d "/etc/app.conf"
 
 ---
 
+### args:reset
+
+Reset all parser state for a fresh parse cycle.
+Clears lookup arrays, metadata arrays, and ARGS_UNPARSED.
+Use between scoped parse phases so the next parse starts clean.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+
+#### Globals
+
+- mutate/publish: lookup_arguments, index_to_outputs, index_to_args_qt,
+                 index_to_default, index_to_keys, args_to_description,
+                 args_to_group, group_to_order, args_to_envs,
+                 args_to_defaults, ARGS_UNPARSED
+
+#### Usage
+
+```bash
+args:reset   # call between parse phases
+```
+
+---
+
+### args:scope
+
+Run a scoped parse: reset state, set definition from named variable, parse.
+Takes a variable NAME (by reference) containing the ARGS_DEFINITION string.
+Scopes are pre-declared as named variables and passed by name.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `scope_var` | string | required | Name of variable holding ARGS_DEFINITION string |
+| `args` | string array | variadic | Arguments to parse |
+
+#### Globals
+
+- reads/listen: variable referenced by scope_var
+- mutate/publish: ARGS_DEFINITION, all parse:arguments globals
+
+#### Usage
+
+```bash
+DEPLOY_SCOPE="--replicas=replicas:1:1 --region=region:us-east-1:1"
+  args:scope DEPLOY_SCOPE "${ARGS_UNPARSED[@]}"
+```
+
+---
+
+### args:t
+
+Register a type/validation rule for an argument flag
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `flag` | string | required | Argument flag name |
+| `rule` | string | required | Validation rule string |
+| `"enum:val1,val2,val3"` | string | required | value must be one of listed strings |
+| `"int:min:max"` | string | required | integer in range (empty min/max = unbounded) |
+| `"float:min:max"` | string | required | float in range (empty min/max = unbounded) |
+| `"string:min_len:max_len"` | string | required | string length bounds |
+| `"pattern:regex"` | string | required | POSIX extended regex match |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: args_to_type
+
+#### Usage
+
+```bash
+args:t "--format" "enum:json,csv,text"
+args:t "--count" "int:1:100"
+args:t "--ratio" "float:0.0:1.0"
+args:t "--name" "string:2:50"
+args:t "--email" "pattern:^[^@]+@[^@]+$"
+```
+
+---
+
+### args:unbundle
+
+Decompose bundled short options into individual flags.
+Expands tokens like -abc into -a -b -c so that parse:arguments
+can process each flag individually. Long options (--flag) and
+non-flag arguments are passed through unchanged.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `args` | string array | variadic | Command-line arguments to expand |
+
+#### Globals
+
+- reads/listen: none
+- mutate/publish: none (outputs expanded args to stdout, one per line)
+
+#### Usage
+
+```bash
+readarray -t expanded < <(args:unbundle "$@")
+  parse:arguments "${expanded[@]}"
+Or inline:
+  eval "set -- $(args:unbundle "$@" | xargs printf '%q ')"
+  parse:arguments "$@"
+```
+
+---
+
 ### args:v
 
 Set default value for an argument flag
@@ -172,6 +378,31 @@ Set default value for an argument flag
 ```bash
 args:v "--port" "8080"
 echo "--timeout" | args:v "30"
+```
+
+---
+
+### args:validate
+
+Validate all parsed arguments against their declared type rules.
+Checks each variable that has a type rule registered via args:t.
+Only validates variables that are currently set (skips unset).
+Returns 1 on first validation failure with error message to stderr.
+
+#### Parameters
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+
+#### Globals
+
+- reads/listen: args_to_type, lookup_arguments, index_to_outputs
+- mutate/publish: none
+
+#### Usage
+
+```bash
+args:validate || exit 1
 ```
 
 ---
