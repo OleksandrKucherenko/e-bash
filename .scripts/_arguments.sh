@@ -226,6 +226,8 @@ function parse:arguments() {
   local last_processed=""   # last processed argument
   local separator=""        # separator between aggregated arguments
 
+  local end_of_options=0 # set to 1 when -- is encountered
+
   # parse the script arguments and resolve them to output variables
   for i in "${!args[@]}"; do
     local argument=${args[i]}
@@ -237,6 +239,34 @@ function parse:arguments() {
       skip_next_counter=$((skip_next_counter - 1))
       skip_aggregated="${skip_aggregated}${separator}${argument}"
       separator=" "
+      continue
+    fi
+
+    # -- end-of-options sentinel: stop flag processing, everything after is positional
+    if [[ "$argument" == "--" ]] && [[ "$end_of_options" -eq 0 ]]; then
+      # flush any pending aggregated value first
+      if [ ${#skip_aggregated} -gt 0 ]; then
+        local tmpValue="$skip_aggregated" && skip_aggregated="" && separator=""
+        local tmp_index=${lookup_arguments[$last_processed]}
+        echo:Parser "assign(aggregated): ${index_to_outputs[$tmp_index]}='$tmpValue'"
+        export "${index_to_outputs[$tmp_index]}=${tmpValue}"
+      fi
+      end_of_options=1
+      echo:Parser "end-of-options: -- encountered, remaining args are positional"
+      continue
+    fi
+
+    # after --, treat everything as positional (no flag processing, no = splitting)
+    if [[ "$end_of_options" -eq 1 ]]; then
+      if [ ${lookup_arguments[$by_index]+_} ]; then
+        last_processed=$by_index
+        local tmp_index=${lookup_arguments[$by_index]}
+        echo:Parser "assign(positional): ${index_to_outputs[$tmp_index]}='$argument'"
+        export "${index_to_outputs[$tmp_index]}=${argument}"
+      else
+        echo:Parser "${cl_grey}skip: unmatched positional '$argument' (index=$by_index)${cl_reset}"
+      fi
+      index=$((index + 1))
       continue
     fi
 
@@ -654,6 +684,61 @@ function print:help() {
     done
 
     echo ""
+  done
+}
+
+# --- Short Option Unbundling ---
+
+##
+## Decompose bundled short options into individual flags.
+##
+## Expands tokens like -abc into -a -b -c so that parse:arguments
+## can process each flag individually. Long options (--flag) and
+## non-flag arguments are passed through unchanged.
+##
+## Parameters:
+## - args - Command-line arguments to expand, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none (outputs expanded args to stdout, one per line)
+##
+## Usage:
+## - readarray -t expanded < <(args:unbundle "$@")
+##   parse:arguments "${expanded[@]}"
+##
+## - Or inline:
+##   eval "set -- $(args:unbundle "$@" | xargs printf '%q ')"
+##   parse:arguments "$@"
+##
+function args:unbundle() {
+  local arg="" char=""
+  for arg in "$@"; do
+    if [[ "$arg" == "--" ]]; then
+      # pass through -- and all remaining args as-is
+      printf '%s\n' "$arg"
+      shift
+      for arg in "$@"; do printf '%s\n' "$arg"; done
+      return 0
+    elif [[ "$arg" == --* ]]; then
+      # long option: pass through unchanged
+      printf '%s\n' "$arg"
+    elif [[ "$arg" == -? ]]; then
+      # single short option: pass through unchanged
+      printf '%s\n' "$arg"
+    elif [[ "$arg" == -[a-zA-Z][a-zA-Z]* ]]; then
+      # bundled short options: decompose -abc -> -a -b -c
+      local chars="${arg#-}"
+      while [[ -n "$chars" ]]; do
+        char="${chars:0:1}"
+        chars="${chars:1}"
+        printf '%s\n' "-${char}"
+      done
+    else
+      # non-flag argument: pass through unchanged
+      printf '%s\n' "$arg"
+    fi
+    shift
   done
 }
 

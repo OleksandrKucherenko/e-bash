@@ -277,15 +277,106 @@ Describe '_arguments.sh stress tests /'
   # ============================================================
   # 4) Short option bundling
   # ============================================================
-  Describe '4) Short option bundling /'
-    # Parser doesn't decompose -abc into -a -b -c.
-    # No ARGS_DEFINITION workaround possible — this is a parser-level feature.
-    xIt '#31-36 -abc bundling (NO WORKAROUND: requires parser decomposition of single token)'
+  Describe '4) Short option bundling (via args:unbundle) /'
+    # args:unbundle decomposes -abc -> -a -b -c before parse:arguments
+
+    It '#31 -abc -> a=true b=true c=true'
+      helper() {
+        readarray -t expanded < <(args:unbundle "$@")
+        parse:arguments "${expanded[@]}"
+      }
+      preserve() { %preserve a:A b:B c:C; }
+      BeforeCall 'export ARGS_DEFINITION="-a=a -b=b -c=c"'
+      AfterCall preserve
+      When call helper -abc
+      The variable A should eq '1'
+      The variable B should eq '1'
+      The variable C should eq '1'
+    End
+
+    It '#33 -vvq -> verbose=1 quiet=1 (via unbundle, last-wins)'
+      helper() {
+        readarray -t expanded < <(args:unbundle "$@")
+        parse:arguments "${expanded[@]}"
+      }
+      preserve() { %preserve verbose:V quiet:Q; }
+      # -v sets verbose=1, second -v overwrites to 1 again (last-wins)
+      BeforeCall 'export ARGS_DEFINITION="-v,--verbose -q,--quiet"'
+      AfterCall preserve
+      When call helper -vvq
+      # unbundle: -v -v -q -> verbose=1 (last-wins), quiet=1
+      The variable V should eq '1'
+      The variable Q should eq '1'
+    End
+
+    It '#35 -xzf archive.tar.gz (last char consumes value)'
+      # With unbundle: -xzf -> -x -z -f, then -f consumes next arg
+      helper() {
+        readarray -t expanded < <(args:unbundle "$@")
+        parse:arguments "${expanded[@]}"
+      }
+      preserve() { %preserve x:X z:Z f:F; }
+      BeforeCall 'export ARGS_DEFINITION="-x=x -z=z -f=f::1"'
+      AfterCall preserve
+      When call helper -xzf "archive.tar.gz"
+      The variable X should eq '1'
+      The variable Z should eq '1'
+      The variable F should eq 'archive.tar.gz'
     End
 
     # -ovalue (value attached to short flag without space)
-    # Parser requires whitespace: -o value
+    # Parser requires whitespace: -o value. No workaround.
     xIt '#37-40 -ovalue attached (NO WORKAROUND: parser requires space between flag and value)'
+    End
+  End
+
+  Describe '4b) args:unbundle unit tests /'
+
+    It 'passes long options through unchanged'
+      When call args:unbundle --flag --key=value
+      The line 1 of stdout should eq '--flag'
+      The line 2 of stdout should eq '--key=value'
+    End
+
+    It 'passes single short options through unchanged'
+      When call args:unbundle -v -q
+      The line 1 of stdout should eq '-v'
+      The line 2 of stdout should eq '-q'
+    End
+
+    It 'decomposes bundled short options'
+      When call args:unbundle -abc
+      The line 1 of stdout should eq '-a'
+      The line 2 of stdout should eq '-b'
+      The line 3 of stdout should eq '-c'
+    End
+
+    It 'passes non-flag arguments through'
+      When call args:unbundle "file.txt" "path/to/dir"
+      The line 1 of stdout should eq 'file.txt'
+      The line 2 of stdout should eq 'path/to/dir'
+    End
+
+    It 'handles mixed input'
+      When call args:unbundle --flag -abc "file.txt" -v
+      The line 1 of stdout should eq '--flag'
+      The line 2 of stdout should eq '-a'
+      The line 3 of stdout should eq '-b'
+      The line 4 of stdout should eq '-c'
+      The line 5 of stdout should eq 'file.txt'
+      The line 6 of stdout should eq '-v'
+    End
+
+    It 'stops decomposing after --'
+      When call args:unbundle -v -- -abc
+      The line 1 of stdout should eq '-v'
+      The line 2 of stdout should eq '--'
+      The line 3 of stdout should eq '-abc'
+    End
+
+    It 'handles empty input'
+      When call args:unbundle
+      The stdout should eq ''
     End
   End
 
@@ -429,10 +520,44 @@ Describe '_arguments.sh stress tests /'
       The variable SVC should eq 'service-a'
     End
 
-    # #57-60: -- end-of-options marker
-    # Parser has no sentinel detection for --.
-    # No ARGS_DEFINITION workaround — requires parser-level change.
-    xIt '#57-60 -- end-of-options (NO WORKAROUND: parser has no -- sentinel detection)'
+    It '#57 build -- target1 target2 (-- stops flag processing)'
+      preserve() { %preserve a1:A1 a2:A2 a3:A3; }
+      BeforeCall 'export ARGS_DEFINITION="\$1=a1::1 \$2=a2::1 \$3=a3::1"'
+      AfterCall preserve
+      When call parse:arguments "build" -- "target1" "target2"
+      The variable A1 should eq 'build'
+      The variable A2 should eq 'target1'
+      The variable A3 should eq 'target2'
+    End
+
+    It '#58 -- --flag -v file.txt (everything after -- is positional)'
+      preserve() { %preserve a1:A1 a2:A2 a3:A3; }
+      BeforeCall 'export ARGS_DEFINITION="--flag -v,--verbose \$1=a1::1 \$2=a2::1 \$3=a3::1"'
+      AfterCall preserve
+      When call parse:arguments -- "--flag" "-v" "file.txt"
+      # --flag and -v are NOT processed as flags after --
+      The variable A1 should eq '--flag'
+      The variable A2 should eq '-v'
+      The variable A3 should eq 'file.txt'
+    End
+
+    It '#59 file.txt -- --not-an-option'
+      preserve() { %preserve a1:A1 a2:A2; }
+      BeforeCall 'export ARGS_DEFINITION="\$1=a1::1 \$2=a2::1"'
+      AfterCall preserve
+      When call parse:arguments "file.txt" -- "--not-an-option"
+      The variable A1 should eq 'file.txt'
+      The variable A2 should eq '--not-an-option'
+    End
+
+    It '#60 --key=1 -- file.txt --key=2 (flag before --, positional after)'
+      preserve() { %preserve key:KEY a1:A1 a2:A2; }
+      BeforeCall 'export ARGS_DEFINITION="--key=key::1 \$1=a1::1 \$2=a2::1"'
+      AfterCall preserve
+      When call parse:arguments --key=1 -- "file.txt" "--key=2"
+      The variable KEY should eq '1'
+      The variable A1 should eq 'file.txt'
+      The variable A2 should eq '--key=2'
     End
   End
 
@@ -614,9 +739,54 @@ Describe '_arguments.sh stress tests /'
   # 10) End-of-options marker
   # ============================================================
   Describe '10) End-of-options -- /'
-    # Parser has no sentinel detection for --.
-    # This is a parser-level feature that would require code changes.
-    xIt '#91-95 -- end-of-options (NO WORKAROUND: requires parser -- sentinel)'
+
+    It '#91 --flag -- file.txt'
+      preserve() { %preserve flag:FLAG a1:A1; }
+      BeforeCall 'export ARGS_DEFINITION="--flag \$1=a1::1"'
+      AfterCall preserve
+      When call parse:arguments --flag -- "file.txt"
+      The variable FLAG should eq '1'
+      The variable A1 should eq 'file.txt'
+    End
+
+    It '#92 -- --flag (flag after -- becomes positional)'
+      preserve() { %preserve flag:FLAG a1:A1; }
+      BeforeCall 'export ARGS_DEFINITION="--flag \$1=a1::1"'
+      AfterCall preserve
+      When call parse:arguments -- "--flag"
+      The variable FLAG should be undefined
+      The variable A1 should eq '--flag'
+    End
+
+    It '#93 --key=1 -- --key=2 (flag processed before --, not after)'
+      preserve() { %preserve key:KEY a1:A1; }
+      BeforeCall 'export ARGS_DEFINITION="--key=key::1 \$1=a1::1"'
+      AfterCall preserve
+      When call parse:arguments --key=1 -- "--key=2"
+      The variable KEY should eq '1'
+      The variable A1 should eq '--key=2'
+    End
+
+    It '#94 -v -- -q -abc (only -v processed as flag)'
+      preserve() { %preserve verbose:V quiet:Q a1:A1 a2:A2; }
+      BeforeCall 'export ARGS_DEFINITION="-v,--verbose -q,--quiet \$1=a1::1 \$2=a2::1"'
+      AfterCall preserve
+      When call parse:arguments -v -- "-q" "-abc"
+      The variable V should eq '1'
+      The variable Q should be undefined
+      The variable A1 should eq '-q'
+      The variable A2 should eq '-abc'
+    End
+
+    It '#95 --range 1 2 -- --range 3 4'
+      preserve() { %preserve range:RANGE a1:A1 a2:A2 a3:A3; }
+      BeforeCall 'export ARGS_DEFINITION="--range=range::2 \$1=a1::1 \$2=a2::1 \$3=a3::1"'
+      AfterCall preserve
+      When call parse:arguments --range 1 2 -- "--range" "3" "4"
+      The variable RANGE should eq '1 2'
+      The variable A1 should eq '--range'
+      The variable A2 should eq '3'
+      The variable A3 should eq '4'
     End
   End
 
