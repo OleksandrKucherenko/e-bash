@@ -802,4 +802,135 @@ Describe "_commons.sh / input:multi-line /"
       The variable __ML_SCROLL should eq 2
     End
   End
+
+  Describe "_input:ml:hscroll /"
+    setup() {
+      _input:ml:init 20 5
+    }
+    Before setup
+
+    It "does not scroll when cursor within visible width"
+      __ML_COL=10
+
+      _input:ml:hscroll
+
+      The variable __ML_HSCROLL should eq 0
+    End
+
+    It "scrolls right when cursor reaches right edge"
+      __ML_COL=20
+
+      _input:ml:hscroll
+
+      # col=20 >= hscroll(0) + width(20), so hscroll = 20 - 20 + 1 = 1
+      The variable __ML_HSCROLL should eq 1
+    End
+
+    It "scrolls right to keep cursor at last visible column"
+      __ML_COL=30
+
+      _input:ml:hscroll
+
+      # col=30 >= hscroll(0) + width(20), so hscroll = 30 - 20 + 1 = 11
+      The variable __ML_HSCROLL should eq 11
+    End
+
+    It "scrolls left when cursor moves before visible area"
+      __ML_HSCROLL=10
+      __ML_COL=5
+
+      _input:ml:hscroll
+
+      # col=5 < hscroll(10), so hscroll = 5
+      The variable __ML_HSCROLL should eq 5
+    End
+
+    It "resets hscroll to 0 when cursor goes to column 0"
+      __ML_HSCROLL=15
+      __ML_COL=0
+
+      _input:ml:hscroll
+
+      The variable __ML_HSCROLL should eq 0
+    End
+
+    It "does not change hscroll when cursor is exactly at left edge"
+      __ML_HSCROLL=10
+      __ML_COL=10
+
+      _input:ml:hscroll
+
+      The variable __ML_HSCROLL should eq 10
+    End
+
+    It "does not change hscroll when cursor is at last visible column"
+      __ML_HSCROLL=5
+      __ML_COL=24
+
+      _input:ml:hscroll
+
+      # col=24 < hscroll(5) + width(20) = 25, so no scroll
+      The variable __ML_HSCROLL should eq 5
+    End
+  End
+
+  Describe "horizontal scroll integration /"
+    setup() {
+      _input:ml:init 10 5
+    }
+    Before setup
+
+    It "scrolls as characters are typed past width"
+      # Type 12 characters into a width-10 editor
+      local i
+      for i in a b c d e f g h i j k l; do
+        _input:ml:insert-char "$i"
+      done
+      _input:ml:hscroll
+
+      The variable __ML_LINES[0] should eq "abcdefghijkl"
+      The variable __ML_COL should eq 12
+      # col=12 >= hscroll(0) + width(10) = 10, so hscroll = 12 - 10 + 1 = 3
+      The variable __ML_HSCROLL should eq 3
+    End
+
+    It "resets hscroll when pressing Home on long line"
+      __ML_LINES[0]="abcdefghijklmnopqrstuvwxyz"
+      __ML_COL=20
+      __ML_HSCROLL=11
+
+      _input:ml:move-home
+      _input:ml:hscroll
+
+      The variable __ML_COL should eq 0
+      The variable __ML_HSCROLL should eq 0
+    End
+
+    It "adjusts hscroll when moving left into scrolled-off area"
+      __ML_LINES[0]="abcdefghijklmnopqrstuvwxyz"
+      __ML_COL=10
+      __ML_HSCROLL=10
+
+      _input:ml:move-left
+      _input:ml:hscroll
+
+      The variable __ML_COL should eq 9
+      The variable __ML_HSCROLL should eq 9
+    End
+
+    It "adjusts hscroll when moving to shorter line"
+      __ML_LINES=("Hi" "abcdefghijklmnopqrstuvwxyz")
+      __ML_ROW=1
+      __ML_COL=20
+      __ML_HSCROLL=11
+
+      _input:ml:move-up
+      _input:ml:hscroll
+
+      # Cursor clamps to len("Hi")=2, hscroll adjusts: col=2 < hscroll(11) → hscroll=2
+      The variable __ML_ROW should eq 0
+      The variable __ML_COL should eq 2
+      The variable __ML_HSCROLL should eq 2
+    End
+  End
 End

@@ -903,6 +903,7 @@ declare -g -a __ML_LINES=("")
 declare -g -i __ML_ROW=0
 declare -g -i __ML_COL=0
 declare -g -i __ML_SCROLL=0
+declare -g -i __ML_HSCROLL=0
 declare -g -i __ML_WIDTH=80
 declare -g -i __ML_HEIGHT=24
 declare -g __ML_MODIFIED=false
@@ -932,6 +933,7 @@ function _input:ml:init() {
   __ML_ROW=0
   __ML_COL=0
   __ML_SCROLL=0
+  __ML_HSCROLL=0
   __ML_LINES=("")
   __ML_MODIFIED=false
   __ML_MESSAGE=""
@@ -1475,6 +1477,33 @@ function _input:ml:scroll() {
 }
 
 ##
+## Adjust horizontal scroll offset to keep cursor visible
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: __ML_COL, __ML_WIDTH
+## - mutate/publish: __ML_HSCROLL
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:ml:hscroll
+##
+function _input:ml:hscroll() {
+  # Scroll right: cursor past right edge
+  if [[ $__ML_COL -ge $((__ML_HSCROLL + __ML_WIDTH)) ]]; then
+    __ML_HSCROLL=$((__ML_COL - __ML_WIDTH + 1))
+  fi
+  # Scroll left: cursor before left edge
+  if [[ $__ML_COL -lt $__ML_HSCROLL ]]; then
+    __ML_HSCROLL=$__ML_COL
+  fi
+}
+
+##
 ## Get buffer content as multi-line string
 ##
 ## Parameters:
@@ -1878,10 +1907,8 @@ function _input:ml:render() {
       line_content="~"
     fi
 
-    # Truncate to fit width
-    if [[ ${#line_content} -gt $__ML_WIDTH ]]; then
-      line_content="${line_content:0:$__ML_WIDTH}"
-    fi
+    # Apply horizontal scroll and truncate to fit width
+    line_content="${line_content:$__ML_HSCROLL:$__ML_WIDTH}"
 
     # Pad with spaces
     padding=$((__ML_WIDTH - ${#line_content}))
@@ -1900,10 +1927,13 @@ function _input:ml:render() {
       # This line has selection — render in segments: before | selected | after
       local s_start=0 s_end=${#line_content}
 
-      if [[ $buf_idx -eq $sel_sr ]]; then s_start=$sel_sc; fi
-      if [[ $buf_idx -eq $sel_er ]]; then s_end=$sel_ec; fi
+      # Adjust selection positions for horizontal scroll
+      if [[ $buf_idx -eq $sel_sr ]]; then s_start=$((sel_sc - __ML_HSCROLL)); fi
+      if [[ $buf_idx -eq $sel_er ]]; then s_end=$((sel_ec - __ML_HSCROLL)); fi
 
-      # Clamp to line width
+      # Clamp to visible line bounds
+      [[ $s_start -lt 0 ]] && s_start=0
+      [[ $s_end -lt 0 ]] && s_end=0
       [[ $s_start -gt ${#line_content} ]] && s_start=${#line_content}
       [[ $s_end -gt ${#line_content} ]] && s_end=${#line_content}
 
@@ -1919,9 +1949,9 @@ function _input:ml:render() {
     fi
   done
 
-  # Show cursor at correct position
+  # Show cursor at correct position (adjusted for both vertical and horizontal scroll)
   local visual_row=$((__ML_ROW - __ML_SCROLL))
-  local visual_col=$__ML_COL
+  local visual_col=$((__ML_COL - __ML_HSCROLL))
   [[ $visual_col -ge $__ML_WIDTH ]] && visual_col=$((__ML_WIDTH - 1))
 
   printf "\033[%d;%dH" "$((pos_y + visual_row + 1 + render_start))" "$((pos_x + visual_col + 1))" >&2
@@ -2166,6 +2196,7 @@ function input:multi-line() {
   trap '_input:ml:cleanup; exit' INT TERM
 
   # WINCH handler: update dimensions on terminal resize
+  local __ml_dirty=true
   function _input:ml:winch() {
     local new_w new_h
     new_w=$(tput cols 2>/dev/null || echo "$__ML_WIDTH")
@@ -2177,16 +2208,24 @@ function input:multi-line() {
       __ML_HEIGHT=$new_h
     fi
     _input:ml:scroll
+    __ml_dirty=true
   }
   trap '_input:ml:winch' WINCH
 
   local key
 
   while true; do
-    _input:ml:render "$pos_x" "$pos_y"
+    # Only re-render when state changed (input received or terminal resized)
+    # This avoids cursor hide/show flicker from continuous idle re-rendering
+    if [[ "$__ml_dirty" == true ]]; then
+      _input:ml:hscroll
+      _input:ml:render "$pos_x" "$pos_y"
+      __ml_dirty=false
+    fi
 
     # Read with timeout for responsive WINCH handling (bed pattern)
     key=$(_input:read-key -t 0.1) || continue
+    __ml_dirty=true
 
     case "$key" in
     # Configurable action keys
