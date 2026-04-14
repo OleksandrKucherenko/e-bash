@@ -43,7 +43,7 @@ function parse:exclude_flags_from_args() {
     if [[ ${args[i]} == --* ]]; then unset 'args[i]'; fi
   done
 
-  echo:Common "${cl_grey}Filtered args:" "$@" "~>" "${args[*]}" "${cl_reset}" >&2
+  echo:Parser "${cl_grey}filter: [$*] -> [${args[*]}]${cl_reset}"
 
   # shellcheck disable=SC2207,SC2116
   ARGS_NO_FLAGS=($(echo "${args[*]}"))
@@ -51,6 +51,10 @@ function parse:exclude_flags_from_args() {
 
 # pattern: "{\$argument_index}[,-{short},--{alias}-]=[output]:[init_value]:[args_quantity]"
 [ -z "$ARGS_DEFINITION" ] && export ARGS_DEFINITION="-h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
+
+# auto-register completion flags for every script (append only if not already present)
+[[ "$ARGS_DEFINITION" != *"--completion"* ]] && ARGS_DEFINITION+=" --completion=completion::1"
+[[ "$ARGS_DEFINITION" != *"--install-completion"* ]] && ARGS_DEFINITION+=" --install-completion=install_completion::1"
 
 ##
 ## Extract variable name, default value, and quantity from argument definition
@@ -106,7 +110,7 @@ function parse:extract_output_definition() {
   if [[ "$args_qt" -gt 1 ]] && [[ "$1" == "\$"* ]]; then
     echo "Warning. Indexed variable '$1' should not be used for multiple arguments." >&2
   fi
-  echo:Common "${cl_grey}$1 '$2' ~> $variable|$default|$args_qt${cl_reset}" >&2
+  echo:Parser "${cl_grey}extract: $1 -> var=${variable} default='${default}' args_qt=${args_qt}${cl_reset}" >&2
 
   echo "$variable|$default|$args_qt"
 }
@@ -142,14 +146,14 @@ function parse:mapping() {
   local helper_output="" helper_default="" helper_args_qt=""
 
   # TODO (olku): trim whitespaces in $ARGS_DEFINITION, no spaces in beginning or end, no double spaces
-  echo:Common "${cl_grey}Definition: $ARGS_DEFINITION${cl_reset}" >&2
+  echo:Parser "${cl_grey}definition: $ARGS_DEFINITION${cl_reset}"
 
   # Remove Windows line endings, replace newlines with spaces, convert multiple spaces to single space
   preParsed="$(echo -n -e "$ARGS_DEFINITION" | tr -d '\r' | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g') "
 
   # extract definition of each argument, separated by space, remove last empty element
   readarray -td ' ' definitions <<<"$preParsed" && unset 'definitions[-1]'
-  echo:Common "${cl_grey}Extracted: ${definitions[*]}${cl_reset}" >&2
+  echo:Parser "${cl_grey}tokens(${#definitions[@]}): ${definitions[*]}${cl_reset}"
 
   # build lookup map of arguments, extract the longest name of each argument
   declare -A -g lookup_arguments && lookup_arguments=() # key-to-index_of_definition. e.g. -c -> 0, --cookies -> 0
@@ -216,11 +220,28 @@ function parse:arguments() {
 
   parse:mapping "$@"
 
+  # reset unparsed args collector for this parse invocation
+  declare -a -g ARGS_UNPARSED && ARGS_UNPARSED=()
+
   local index=1             # indexed input arguments without pre-flag
   local skip_next_counter=0 # how many argument to skip from processing
   local skip_aggregated=""  # all skipped arguments placed into one array
   local last_processed=""   # last processed argument
   local separator=""        # separator between aggregated arguments
+
+  local end_of_options=0 # set to 1 when -- is encountered
+
+  # pre-fill defaults for value flags (args_qt > 0) before processing CLI args
+  # CLI parsing loop will overwrite with user-provided values
+  for _idx in "${!index_to_outputs[@]}"; do
+    local _var="${index_to_outputs[$_idx]}"
+    local _default="${index_to_default[$_idx]}"
+    local _args_qt="${index_to_args_qt[$_idx]}"
+    [[ "$_args_qt" -eq 0 ]] && continue   # skip booleans
+    [[ -z "$_default" ]] && continue       # skip empty defaults
+    echo:Parser "assign(pre-default): ${_var}='${_default}'"
+    export "${_var}=${_default}"
+  done
 
   # parse the script arguments and resolve them to output variables
   for i in "${!args[@]}"; do
@@ -228,11 +249,7 @@ function parse:arguments() {
     local value=""
     local by_index="\$$index"
 
-    # extract key and value from argument, if used format `--key=value`
-    # shellcheck disable=SC2206
-    if [[ "$argument" == *=* ]]; then local tmp=(${argument//=/ }) && value=${tmp[1]:-"<empty>"} && argument=${tmp[0]}; fi
-
-    # accumulate arguments that reserved by last processed argument
+    # accumulate arguments that reserved by last processed argument (before = splitting)
     if [ "$skip_next_counter" -gt 0 ]; then
       skip_next_counter=$((skip_next_counter - 1))
       skip_aggregated="${skip_aggregated}${separator}${argument}"
@@ -240,14 +257,46 @@ function parse:arguments() {
       continue
     fi
 
+    # -- end-of-options sentinel: stop flag processing, everything after is positional
+    if [[ "$argument" == "--" ]] && [[ "$end_of_options" -eq 0 ]]; then
+      # flush any pending aggregated value first
+      if [ ${#skip_aggregated} -gt 0 ]; then
+        local tmpValue="$skip_aggregated" && skip_aggregated="" && separator=""
+        local tmp_index=${lookup_arguments[$last_processed]}
+        echo:Parser "assign(aggregated): ${index_to_outputs[$tmp_index]}='$tmpValue'"
+        export "${index_to_outputs[$tmp_index]}=${tmpValue}"
+      fi
+      end_of_options=1
+      echo:Parser "end-of-options: -- encountered, remaining args are positional"
+      continue
+    fi
+
+    # after --, treat everything as positional (no flag processing, no = splitting)
+    if [[ "$end_of_options" -eq 1 ]]; then
+      if [ ${lookup_arguments[$by_index]+_} ]; then
+        last_processed=$by_index
+        local tmp_index=${lookup_arguments[$by_index]}
+        echo:Parser "assign(positional): ${index_to_outputs[$tmp_index]}='$argument'"
+        export "${index_to_outputs[$tmp_index]}=${argument}"
+      else
+        echo:Parser "${cl_grey}skip: unmatched positional '$argument' (index=$by_index)${cl_reset}"
+        ARGS_UNPARSED+=("$argument")
+      fi
+      index=$((index + 1))
+      continue
+    fi
+
+    # extract key and value from argument, if used format `--key=value`
+    if [[ "$argument" == *=* ]]; then value="${argument#*=}" && value="${value:-"<empty>"}" && argument="${argument%%=*}"; fi
+
     # if skipped aggregated var contains value assign it to the last processed argument
     if [ ${#skip_aggregated} -gt 0 ]; then
       local tmpValue="$skip_aggregated" && skip_aggregated="" && separator=""
 
       # assign aggregated value to output variable
       local tmp_index=${lookup_arguments[$last_processed]}
-      echo:Common "[L1] export ${index_to_outputs[$tmp_index]}='$tmpValue'"
-      eval "export ${index_to_outputs[$tmp_index]}='$tmpValue'"
+      echo:Parser "assign(aggregated): ${index_to_outputs[$tmp_index]}='$tmpValue'"
+      export "${index_to_outputs[$tmp_index]}=${tmpValue}"
     fi
 
     # process flags
@@ -257,8 +306,8 @@ function parse:arguments() {
       local expected=${index_to_args_qt[$tmp_index]}
 
       # assign default value to the output variable first
-      echo:Common "[L2] export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
-      eval "export ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
+      echo:Parser "assign(default): ${index_to_outputs[$tmp_index]}='${index_to_default[$tmp_index]}'"
+      export "${index_to_outputs[$tmp_index]}=${index_to_default[$tmp_index]}"
 
       # if expected more arguments than provided, configure skip_next_counter
       if [ "$expected" -gt 0 ]; then
@@ -272,23 +321,28 @@ function parse:arguments() {
       else
         # default value is re-assigned by provided value
         if [ -n "$value" ]; then
-          echo:Common "[L3] export ${index_to_outputs[$tmp_index]}='$value'"
-          eval "export ${index_to_outputs[$tmp_index]}='$value'"
+          echo:Parser "assign(inline): ${index_to_outputs[$tmp_index]}='$value'"
+          export "${index_to_outputs[$tmp_index]}=${value}"
         fi
       fi
     else
       # process plain unnamed arguments
       case $argument in
-      -*) echo:Common "${cl_grey}ignored: $argument ($value)${cl_reset}" >&2 ;;
+      -*)
+        echo:Parser "${cl_grey}skip: unknown flag '$argument'${cl_reset}"
+        # collect into ARGS_UNPARSED, reconstruct =value if it was split
+        if [ -n "$value" ]; then ARGS_UNPARSED+=("${argument}=${value}"); else ARGS_UNPARSED+=("$argument"); fi
+        ;;
       *)
         if [ ${lookup_arguments[$by_index]+_} ]; then
           last_processed=$by_index
           local tmp_index=${lookup_arguments[$by_index]}
 
-          echo:Common "[L4] export ${index_to_outputs[$tmp_index]}='$argument'"
-          eval "export ${index_to_outputs[$tmp_index]}='$argument'"
+          echo:Parser "assign(positional): ${index_to_outputs[$tmp_index]}='$argument'"
+          export "${index_to_outputs[$tmp_index]}=${argument}"
         else
-          echo:Common "${cl_grey}ignored: $argument [$by_index] vs $last_processed:$skip_next_counter:$skip_aggregated:$value ${cl_reset}" >&2
+          echo:Parser "${cl_grey}skip: unmatched positional '$argument' (index=$by_index)${cl_reset}"
+          ARGS_UNPARSED+=("$argument")
         fi
         index=$((index + 1))
         ;;
@@ -297,27 +351,80 @@ function parse:arguments() {
   done
 
   if [ "$skip_next_counter" -gt 0 ]; then
-    echo "Error. Too little arguments provided"
-    exit 1
+    echo "Error: too few arguments provided (expected $skip_next_counter more for '${last_processed}')" >&2
+    return 1
   fi
 
   # if aggregated var contains something
   if [ ${#skip_aggregated} -gt 0 ]; then
     local value="$skip_aggregated" && skip_aggregated="" && separator=""
     local tmp_index=${lookup_arguments[$last_processed]}
-    echo:Common "[$LINENO] export ${index_to_outputs[$tmp_index]}='$value'"
-    eval "export ${index_to_outputs[$tmp_index]}='$value'"
+    echo:Parser "assign(trailing): ${index_to_outputs[$tmp_index]}='$value'"
+    export "${index_to_outputs[$tmp_index]}=${value}"
   fi
 
-  # debug output
-  echo:Common "definition to output index:"
-  printf:Common '%s\n' "${!definitions[@]}" "${definitions[@]}" | pr -2t
-  echo:Common "'index', 'output variable name', 'args quantity', 'defaults':"
-  printf:Common '\"%s\"\n' "${!index_to_outputs[@]}" "${index_to_outputs[@]}" "${index_to_args_qt[@]}" "${index_to_default[@]}" | pr -4t | sort
+  # debug: show final variable assignments
+  echo:Parser "--- parsed results ---"
   for variable in "${index_to_outputs[@]}"; do
     declare -n var_ref=$variable
-    echo:Parser "${cl_grey}extracted: $variable=$var_ref${cl_reset}"
+    echo:Parser "  ${variable}='${var_ref}'"
   done
+}
+
+##
+## Reset all parser state for a fresh parse cycle.
+##
+## Clears lookup arrays, metadata arrays, and ARGS_UNPARSED.
+## Use between scoped parse phases so the next parse starts clean.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - mutate/publish: lookup_arguments, index_to_outputs, index_to_args_qt,
+##                  index_to_default, index_to_keys, args_to_description,
+##                  args_to_group, group_to_order, args_to_envs,
+##                  args_to_defaults, ARGS_UNPARSED
+##
+## Usage:
+## - args:reset   # call between parse phases
+##
+function args:reset() {
+  # unset + redeclare lookup arrays as associative (parse:mapping also does this)
+  unset lookup_arguments index_to_outputs index_to_args_qt index_to_default index_to_keys
+  declare -A -g lookup_arguments=() index_to_outputs=() index_to_args_qt=()
+  declare -A -g index_to_default=() index_to_keys=()
+  # unset + redeclare metadata arrays as associative
+  unset args_to_description args_to_group group_to_order args_to_envs args_to_defaults args_to_type
+  declare -A -g args_to_description=() args_to_group=() group_to_order=()
+  declare -A -g args_to_envs=() args_to_defaults=() args_to_type=()
+  # reset unparsed collector
+  ARGS_UNPARSED=()
+}
+
+##
+## Run a scoped parse: reset state, set definition from named variable, parse.
+##
+## Takes a variable NAME (by reference) containing the ARGS_DEFINITION string.
+## Scopes are pre-declared as named variables and passed by name.
+##
+## Parameters:
+## - scope_var - Name of variable holding ARGS_DEFINITION string, string, required
+## - args - Arguments to parse, string array, variadic
+##
+## Globals:
+## - reads/listen: variable referenced by scope_var
+## - mutate/publish: ARGS_DEFINITION, all parse:arguments globals
+##
+## Usage:
+## - DEPLOY_SCOPE="--replicas=replicas:1:1 --region=region:us-east-1:1"
+##   args:scope DEPLOY_SCOPE "${ARGS_UNPARSED[@]}"
+##
+function args:scope() {
+  local -n _scope_def="$1" && shift
+  args:reset
+  ARGS_DEFINITION="$_scope_def"
+  parse:arguments "$@"
 }
 
 # for argument to description mapping
@@ -332,6 +439,9 @@ function parse:arguments() {
 
 # argument to default value mapping
 [ -z "$args_to_defaults" ] && declare -A -g args_to_defaults=()
+
+# argument to type/validation rule mapping
+[ -z "$args_to_type" ] && declare -A -g args_to_type=()
 
 ##
 ## Add description for an argument flag (for help output)
@@ -430,6 +540,148 @@ function args:v() {
   echo:Parser "$flag -> defaults:$defaults"
 
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
+}
+
+##
+## Register a type/validation rule for an argument flag
+##
+## Parameters:
+## - flag - Argument flag name, string, required
+## - rule - Validation rule string, string, required
+##
+## Supported rule formats:
+## - "enum:val1,val2,val3"       - value must be one of listed strings
+## - "int:min:max"               - integer in range (empty min/max = unbounded)
+## - "float:min:max"             - float in range (empty min/max = unbounded)
+## - "string:min_len:max_len"    - string length bounds
+## - "pattern:regex"             - POSIX extended regex match
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: args_to_type
+##
+## Usage:
+## - args:t "--format" "enum:json,csv,text"
+## - args:t "--count" "int:1:100"
+## - args:t "--ratio" "float:0.0:1.0"
+## - args:t "--name" "string:2:50"
+## - args:t "--email" "pattern:^[^@]+@[^@]+$"
+##
+function args:t() {
+  local flag="$1"
+  local rule="$2"
+  args_to_type["$flag"]="${rule}"
+  echo:Parser "$flag -> type:$rule"
+}
+
+##
+## Validate all parsed arguments against their declared type rules.
+##
+## Checks each variable that has a type rule registered via args:t.
+## Only validates variables that are currently set (skips unset).
+## Returns 1 on first validation failure with error message to stderr.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: args_to_type, lookup_arguments, index_to_outputs
+## - mutate/publish: none
+##
+## Usage:
+## - args:validate || exit 1
+##
+function args:validate() {
+  local flag="" rule="" type="" spec="" var="" value="" idx=""
+
+  for flag in "${!args_to_type[@]}"; do
+    rule="${args_to_type[$flag]}"
+    type="${rule%%:*}"
+    spec="${rule#*:}"
+
+    # resolve flag to variable name
+    idx="${lookup_arguments[$flag]:-}"
+    [[ -z "$idx" ]] && continue
+    var="${index_to_outputs[$idx]}"
+
+    # skip unset variables
+    [[ -z "${!var+x}" ]] && continue
+    value="${!var}"
+
+    case "$type" in
+    enum)
+      # spec = "val1,val2,val3"
+      local IFS=","
+      local -a allowed=($spec)
+      local found=0
+      for item in "${allowed[@]}"; do
+        [[ "$value" == "$item" ]] && found=1 && break
+      done
+      if [[ "$found" -eq 0 ]]; then
+        echo "Error: $flag value '$value' is not one of: ${spec}" >&2
+        return 1
+      fi
+      ;;
+    int)
+      # spec = "min:max"
+      local min="${spec%%:*}" max="${spec#*:}"
+      if ! [[ "$value" =~ ^-?[0-9]+$ ]]; then
+        echo "Error: $flag value '$value' is not an integer" >&2
+        return 1
+      fi
+      if [[ -n "$min" ]] && [[ "$value" -lt "$min" ]]; then
+        echo "Error: $flag value '$value' is below minimum $min" >&2
+        return 1
+      fi
+      if [[ -n "$max" ]] && [[ "$value" -gt "$max" ]]; then
+        echo "Error: $flag value '$value' exceeds maximum $max" >&2
+        return 1
+      fi
+      ;;
+    float)
+      # spec = "min:max"
+      local min="${spec%%:*}" max="${spec#*:}"
+      if ! [[ "$value" =~ ^-?[0-9]*\.?[0-9]+$ ]]; then
+        echo "Error: $flag value '$value' is not a number" >&2
+        return 1
+      fi
+      if [[ -n "$min" ]] && awk "BEGIN{exit(!($value < $min))}"; then
+        echo "Error: $flag value '$value' is below minimum $min" >&2
+        return 1
+      fi
+      if [[ -n "$max" ]] && awk "BEGIN{exit(!($value > $max))}"; then
+        echo "Error: $flag value '$value' exceeds maximum $max" >&2
+        return 1
+      fi
+      ;;
+    string)
+      # spec = "min_len:max_len"
+      local min_len="${spec%%:*}" max_len="${spec#*:}"
+      local len=${#value}
+      if [[ -n "$min_len" ]] && [[ "$len" -lt "$min_len" ]]; then
+        echo "Error: $flag value '$value' is shorter than minimum $min_len characters" >&2
+        return 1
+      fi
+      if [[ -n "$max_len" ]] && [[ "$len" -gt "$max_len" ]]; then
+        echo "Error: $flag value is longer than maximum $max_len characters" >&2
+        return 1
+      fi
+      ;;
+    pattern)
+      # spec = regex pattern
+      if ! [[ "$value" =~ $spec ]]; then
+        echo "Error: $flag value '$value' does not match pattern '$spec'" >&2
+        return 1
+      fi
+      ;;
+    *)
+      echo "Error: unknown validation type '$type' for $flag" >&2
+      return 1
+      ;;
+    esac
+  done
+
+  return 0
 }
 
 ##
@@ -657,6 +909,541 @@ function print:help() {
   done
 }
 
+# --- Short Option Unbundling ---
+
+##
+## Decompose bundled short options into individual flags.
+##
+## Expands tokens like -abc into -a -b -c so that parse:arguments
+## can process each flag individually. Long options (--flag) and
+## non-flag arguments are passed through unchanged.
+##
+## Parameters:
+## - args - Command-line arguments to expand, string array, variadic
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: none (outputs expanded args to stdout, one per line)
+##
+## Usage:
+## - readarray -t expanded < <(args:unbundle "$@")
+##   parse:arguments "${expanded[@]}"
+##
+## - Or inline:
+##   eval "set -- $(args:unbundle "$@" | xargs printf '%q ')"
+##   parse:arguments "$@"
+##
+function args:unbundle() {
+  local arg="" char=""
+  for arg in "$@"; do
+    if [[ "$arg" == "--" ]]; then
+      # pass through -- and all remaining args as-is
+      printf '%s\n' "$arg"
+      shift
+      for arg in "$@"; do printf '%s\n' "$arg"; done
+      return 0
+    elif [[ "$arg" == --* ]]; then
+      # long option: pass through unchanged
+      printf '%s\n' "$arg"
+    elif [[ "$arg" == -? ]]; then
+      # single short option: pass through unchanged
+      printf '%s\n' "$arg"
+    elif [[ "$arg" == -[a-zA-Z][a-zA-Z]* ]]; then
+      # bundled short options: decompose -abc -> -a -b -c
+      local chars="${arg#-}"
+      while [[ -n "$chars" ]]; do
+        char="${chars:0:1}"
+        chars="${chars:1}"
+        printf '%s\n' "-${char}"
+      done
+    else
+      # non-flag argument: pass through unchanged
+      printf '%s\n' "$arg"
+    fi
+    shift
+  done
+}
+
+# --- Shell Completion Generation ---
+
+##
+## Return space-separated list of all flags (excluding positional arguments)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: lookup_arguments
+## - mutate/publish: none (outputs to stdout)
+##
+## Usage:
+## - flags=$(_args:get:all_flags)
+##
+function _args:get:all_flags() {
+  local flag="" flags=() sorted=()
+
+  for flag in "${!lookup_arguments[@]}"; do
+    [[ "$flag" == \$* ]] && continue
+    [[ "$flag" == \<* ]] && continue
+    flags+=("$flag")
+  done
+
+  readarray -t sorted < <(printf '%s\n' "${flags[@]}" | sort -u)
+  echo "${sorted[*]}"
+}
+
+##
+## Return space-separated list of flags that expect values (args_qt > 0)
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: lookup_arguments, index_to_args_qt, index_to_keys
+## - mutate/publish: none (outputs to stdout)
+##
+## Usage:
+## - value_flags=$(_args:get:value_flags)
+##
+function _args:get:value_flags() {
+  local idx="" args_qt="" keys="" key=""
+  local -a value_flags=() sorted=()
+
+  for idx in "${!index_to_args_qt[@]}"; do
+    args_qt="${index_to_args_qt[$idx]}"
+    [[ "$args_qt" -gt 0 ]] || continue
+    keys="${index_to_keys[$idx]}"
+    for key in $keys; do
+      [[ "$key" == \$* ]] && continue
+      [[ "$key" == \<* ]] && continue
+      value_flags+=("$key")
+    done
+  done
+
+  readarray -t sorted < <(printf '%s\n' "${value_flags[@]}" | sort -u)
+  echo "${sorted[*]}"
+}
+
+##
+## Return description for a specific flag
+##
+## Parameters:
+## - flag - Flag name, string, required
+##
+## Globals:
+## - reads/listen: args_to_description
+## - mutate/publish: none (outputs to stdout)
+##
+## Usage:
+## - desc=$(_args:get:description "--help")
+##
+function _args:get:description() {
+  local flag="$1"
+  echo "${args_to_description[$flag]:-""}"
+}
+
+##
+## Generate BASH completion script from ARGS_DEFINITION metadata
+##
+## Parameters:
+## - script_name - Name of the script/command to complete, string, required
+##
+## Globals:
+## - reads/listen: lookup_arguments, index_to_args_qt, index_to_keys,
+##                 args_to_description
+## - mutate/publish: none (outputs to stdout)
+##
+## Usage:
+## - _args:completion:bash myscript > completions/myscript.bash
+##
+function _args:completion:bash() {
+  local script_name="$1"
+  local safe_name="${script_name//[^a-zA-Z0-9_]/_}"
+  local all_flags="" value_flags=""
+
+  all_flags=$(_args:get:all_flags)
+  value_flags=$(_args:get:value_flags)
+
+  cat <<COMPLETION_BASH
+#!/usr/bin/env bash
+
+# Bash completion for ${script_name}
+# Generated by e-bash args:completion
+# Usage: source this file or place in /etc/bash_completion.d/
+
+_${safe_name}_complete() {
+  local cur="" prev=""
+
+  if declare -F _init_completion >/dev/null 2>&1; then
+    _init_completion -n : || return
+  else
+    cur="\${COMP_WORDS[COMP_CWORD]}"
+    prev="\${COMP_WORDS[COMP_CWORD-1]}"
+  fi
+
+  local all_flags="${all_flags}"
+  local value_flags="${value_flags}"
+
+  # If previous word is a value flag, offer file completion
+  if [[ " \${value_flags} " == *" \${prev} "* ]]; then
+    COMPREPLY=( \$(compgen -f -- "\$cur") )
+    return 0
+  fi
+
+  # If current word starts with -, offer flags
+  if [[ "\$cur" == -* ]]; then
+    COMPREPLY=( \$(compgen -W "\${all_flags}" -- "\$cur") )
+    return 0
+  fi
+}
+
+complete -F _${safe_name}_complete ${script_name}
+COMPLETION_BASH
+}
+
+##
+## Generate ZSH completion script from ARGS_DEFINITION metadata
+##
+## Parameters:
+## - script_name - Name of the script/command to complete, string, required
+##
+## Globals:
+## - reads/listen: lookup_arguments, index_to_args_qt, index_to_keys,
+##                 index_to_outputs, args_to_description
+## - mutate/publish: none (outputs to stdout)
+##
+## Usage:
+## - _args:completion:zsh myscript > completions/_myscript
+##
+function _args:completion:zsh() {
+  local script_name="$1"
+  local safe_name="${script_name//[^a-zA-Z0-9_]/_}"
+  local flag="" idx="" keys="" key="" desc="" args_qt=""
+
+  echo "#compdef ${script_name}"
+  echo ""
+  echo "# Zsh completion for ${script_name}"
+  echo "# Generated by e-bash args:completion"
+  echo "# Usage: place in \$fpath as _${safe_name}"
+  echo ""
+  echo "_${safe_name}() {"
+  echo "  local -a args=()"
+  echo ""
+
+  # Collect unique indices we have already emitted to avoid duplicates
+  local -A emitted_indices=()
+
+  for flag in "${!lookup_arguments[@]}"; do
+    [[ "$flag" == \$* ]] && continue
+    [[ "$flag" == \<* ]] && continue
+
+    idx="${lookup_arguments[$flag]}"
+    # skip if we already emitted this index
+    [[ -n "${emitted_indices[$idx]:-}" ]] && continue
+    emitted_indices[$idx]=1
+
+    keys="${index_to_keys[$idx]}"
+    args_qt="${index_to_args_qt[$idx]:-0}"
+
+    # Build the aliases list from keys
+    local -a key_arr=()
+    for key in $keys; do
+      [[ "$key" == \$* ]] && continue
+      [[ "$key" == \<* ]] && continue
+      key_arr+=("$key")
+    done
+
+    [[ ${#key_arr[@]} -eq 0 ]] && continue
+
+    # Get description from first flag in the group
+    desc=""
+    for key in "${key_arr[@]}"; do
+      desc="${args_to_description[$key]:-}"
+      [[ -n "$desc" ]] && break
+    done
+    desc="${desc:-"${index_to_outputs[$idx]}"}"
+    # Escape brackets in description for zsh _arguments
+    desc="${desc//\[/\\[}"
+    desc="${desc//\]/\\]}"
+
+    if [[ ${#key_arr[@]} -gt 1 ]]; then
+      # Multiple aliases: use '(alias1 alias2)'{alias1,alias2}'[desc]' syntax
+      local aliases_str="${key_arr[*]}"
+      local brace_str=""
+      local sep=""
+      for key in "${key_arr[@]}"; do
+        brace_str+="${sep}${key}"
+        sep=","
+      done
+
+      if [[ "$args_qt" -gt 0 ]]; then
+        echo "  args+=( '(${aliases_str})'{${brace_str}}'[${desc}]:value:_files' )"
+      else
+        echo "  args+=( '(${aliases_str})'{${brace_str}}'[${desc}]' )"
+      fi
+    else
+      # Single flag
+      local single_flag="${key_arr[0]}"
+      if [[ "$args_qt" -gt 0 ]]; then
+        echo "  args+=( '${single_flag}[${desc}]:value:_files' )"
+      else
+        echo "  args+=( '${single_flag}[${desc}]' )"
+      fi
+    fi
+  done
+
+  echo ""
+  echo "  _arguments -s -S \"\${args[@]}\""
+  echo "}"
+  echo ""
+  echo "_${safe_name} \"\$@\""
+}
+
+##
+## Generate shell completion script from ARGS_DEFINITION metadata
+##
+## Parameters:
+## - shell_type - Target shell: "bash" or "zsh", string, required
+## - script_name - Name of the script/command, string, required
+## - output_file - Optional file path (default: stdout), string, optional
+##
+## Globals:
+## - reads/listen: ARGS_DEFINITION, lookup_arguments, index_to_*,
+##                 args_to_description
+## - mutate/publish: none (outputs to stdout or file)
+##
+## Usage:
+## - args:completion bash myscript
+## - args:completion zsh myscript /path/to/_myscript
+##
+function args:completion() {
+  local shell_type="$1"
+  local script_name="$2"
+  local output_file="${3:-}"
+
+  if [[ -z "$shell_type" ]] || [[ -z "$script_name" ]]; then
+    echo "Usage: args:completion <bash|zsh> <script_name> [output_file]" >&2
+    return 1
+  fi
+
+  # Ensure metadata is parsed
+  if [[ ${#lookup_arguments[@]} -eq 0 ]]; then
+    parse:mapping
+  fi
+
+  local output=""
+  case "$shell_type" in
+  bash)
+    output=$(_args:completion:bash "$script_name")
+    ;;
+  zsh)
+    output=$(_args:completion:zsh "$script_name")
+    ;;
+  *)
+    echo "Error: unsupported shell type '${shell_type}'. Use 'bash' or 'zsh'." >&2
+    return 1
+    ;;
+  esac
+
+  if [[ -n "$output_file" ]]; then
+    echo "$output" >"$output_file"
+  else
+    echo "$output"
+  fi
+}
+
+##
+## Discover the OS completion directory for the given shell type
+##
+## Parameters:
+## - shell_type - "bash" or "zsh", string, required
+##
+## Globals:
+## - reads/listen: BASH_COMPLETION_USER_DIR, XDG_DATA_HOME,
+##                 HOMEBREW_PREFIX
+## - mutate/publish: none (outputs directory path to stdout)
+##
+## Usage:
+## - dir=$(_args:completion:dir bash)
+## - dir=$(_args:completion:dir zsh)
+##
+function _args:completion:dir() {
+  local shell_type="$1"
+
+  case "$shell_type" in
+  bash)
+    # 1. Per-user (bash-completion v2 auto-discovers this)
+    local user_dir="${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion}/completions"
+
+    # If BASH_COMPLETION_USER_DIR is explicitly set, always honour it
+    if [[ -n "${BASH_COMPLETION_USER_DIR:-}" ]]; then
+      echo "$user_dir"
+      return 0
+    fi
+
+    # 2. Homebrew (macOS)
+    local brew_prefix="${HOMEBREW_PREFIX:-}"
+    [[ -z "$brew_prefix" ]] && command -v brew &>/dev/null && brew_prefix="$(brew --prefix 2>/dev/null)"
+    local brew_dir="${brew_prefix:+${brew_prefix}/share/bash-completion/completions}"
+
+    # 3. pkg-config (Linux with bash-completion-dev)
+    local pkg_dir=""
+    if command -v pkg-config &>/dev/null && pkg-config --exists bash-completion 2>/dev/null; then
+      pkg_dir="$(pkg-config --variable=completionsdir bash-completion 2>/dev/null)"
+    fi
+
+    # 4. Standard system dirs
+    local sys_dirs=(/usr/share/bash-completion/completions /usr/local/share/bash-completion/completions)
+
+    # Return the first writable directory that exists
+    for dir in "$user_dir" "$brew_dir" "$pkg_dir" "${sys_dirs[@]}"; do
+      [[ -z "$dir" ]] && continue
+      if [[ -d "$dir" ]] && [[ -w "$dir" ]]; then
+        echo "$dir"
+        return 0
+      fi
+    done
+
+    # Fall back to user dir (create it during install)
+    echo "$user_dir"
+    ;;
+  zsh)
+    # 1. Homebrew (macOS) — already in fpath
+    local brew_prefix="${HOMEBREW_PREFIX:-}"
+    [[ -z "$brew_prefix" ]] && command -v brew &>/dev/null && brew_prefix="$(brew --prefix 2>/dev/null)"
+    local brew_dir="${brew_prefix:+${brew_prefix}/share/zsh/site-functions}"
+
+    # 2. System dirs
+    local sys_dirs=(/usr/local/share/zsh/site-functions /usr/share/zsh/site-functions)
+
+    # 3. Per-user fallback
+    local user_dir="$HOME/.zsh/completions"
+
+    for dir in "$brew_dir" "${sys_dirs[@]}" "$user_dir"; do
+      [[ -z "$dir" ]] && continue
+      if [[ -d "$dir" ]] && [[ -w "$dir" ]]; then
+        echo "$dir"
+        return 0
+      fi
+    done
+
+    # Fall back to user dir
+    echo "$user_dir"
+    ;;
+  *)
+    echo "Error: unsupported shell type '${shell_type}'." >&2
+    return 1
+    ;;
+  esac
+}
+
+##
+## Install completion script to the appropriate OS directory
+##
+## Discovers the correct completion directory for the target shell,
+## creates it if necessary, and writes the generated script.
+##
+## Parameters:
+## - shell_type - "bash" or "zsh", string, required
+## - script_name - Command name for completion, string, required
+##
+## Globals:
+## - reads/listen: ARGS_DEFINITION, lookup_arguments, etc.
+## - mutate/publish: none (writes file, outputs path to stdout)
+##
+## Usage:
+## - args:completion:install bash myscript
+## - args:completion:install zsh myscript
+##
+function args:completion:install() {
+  local shell_type="$1"
+  local script_name="$2"
+
+  if [[ -z "$shell_type" ]] || [[ -z "$script_name" ]]; then
+    echo "Usage: args:completion:install <bash|zsh> <script_name>" >&2
+    return 1
+  fi
+
+  local dir="" file=""
+  dir=$(_args:completion:dir "$shell_type") || return 1
+
+  case "$shell_type" in
+  bash)
+    file="${dir}/${script_name}"
+    ;;
+  zsh)
+    local safe_name="${script_name//[^a-zA-Z0-9_]/_}"
+    file="${dir}/_${safe_name}"
+    ;;
+  esac
+
+  # Create directory if needed
+  if [[ ! -d "$dir" ]]; then
+    mkdir -p "$dir" || {
+      echo "Error: cannot create directory '${dir}'." >&2
+      return 1
+    }
+  fi
+
+  # Generate and write
+  args:completion "$shell_type" "$script_name" "$file" || return 1
+
+  echo "$file"
+}
+
+##
+## Auto-dispatch built-in flags after argument parsing.
+##
+## Handles --version, --debug, --completion, and --install-completion
+## so that individual scripts do not need to repeat this boilerplate.
+## NOTE: --help is NOT handled here (scripts have custom help patterns).
+##
+## The function exits the process (exit 0) when a handled flag is detected,
+## so it must be called AFTER parse:arguments.
+##
+## Parameters:
+## - none (reads exported variables set by parse:arguments)
+##
+## Globals:
+## - reads/listen: version, DEBUG, completion, install_completion,
+##                 BASH_SOURCE (to derive the script name)
+## - mutate/publish: DEBUG (for --debug)
+##
+## Usage:
+## - args:dispatch   # call right after parse:arguments
+##
+function args:dispatch() {
+  # --version: print version and exit
+  if [[ -n "${version:-}" ]] && [[ "$version" != "1" ]]; then
+    echo "$version"
+    exit 0
+  fi
+
+  # --debug: ensure DEBUG is exported (parse:arguments already set it)
+  if [[ -n "${DEBUG:-}" ]]; then
+    export DEBUG
+  fi
+
+  # derive script name from the outermost caller
+  local script_name=""
+  script_name="$(basename "${BASH_SOURCE[-1]}" .sh)"
+
+  # --completion <bash|zsh>: print completion script to stdout and exit
+  if [[ -n "${completion:-}" ]]; then
+    args:completion "$completion" "$script_name" || exit 1
+    exit 0
+  fi
+
+  # --install-completion <bash|zsh>: install completion and exit
+  if [[ -n "${install_completion:-}" ]]; then
+    local file=""
+    file=$(args:completion:install "$install_completion" "$script_name") || exit 1
+    echo "Completion installed: $file"
+    [[ "$install_completion" == "zsh" ]] && echo "Note: run 'rm -f ~/.zcompdump; compinit' or restart your shell."
+    exit 0
+  fi
+}
+
 # This is the writing style presented by ShellSpec, which is short but unfamiliar.
 # Note that it returns the current exit status (could be non-zero).
 # DO NOT allow execution of code bellow those line in shellspec tests
@@ -670,6 +1457,7 @@ echo:Loader "loaded: ${cl_grey}${BASH_SOURCE[0]}${cl_reset}"
 
 parse:exclude_flags_from_args "$@"                  # pre-filter arguments from flags
 [ -z "$SKIP_ARGS_PARSING" ] && parse:arguments "$@" # parse arguments and assign them to output variables
+[ -z "$SKIP_ARGS_PARSING" ] && args:dispatch         # auto-handle --version, --debug, --completion, --install-completion
 
 ##
 ## Module: Declarative Command-Line Argument Parser
@@ -677,11 +1465,11 @@ parse:exclude_flags_from_args "$@"                  # pre-filter arguments from 
 ## This module provides a declarative argument parsing system with auto-generated help.
 ##
 ## References:
-## - demo: demo.args.sh
+## - demo: demo.args.sh, completion/demo.completion.sh
 ## - bin: git.log.sh, git.verify-all-commits.sh, git.semantic-version.sh,
 ##   version-up.v2.sh, vhd.sh, npm.versions.sh
-## - documentation: docs/public/arguments.md
-## - tests: spec/arguments_spec.sh
+## - documentation: docs/public/arguments.md, docs/public/completion.md
+## - tests: spec/arguments_spec.sh, spec/arguments_completion_spec.sh
 ##
 ## Globals:
 ## - E_BASH - Path to .scripts directory
