@@ -255,6 +255,59 @@ Describe 'Scoped parsing /'
   End
 
   # ============================================================
+  # Defaults pre-fill
+  # ============================================================
+  Describe 'Defaults pre-fill /'
+
+    It 'applies defaults for value flags when not provided'
+      preserve() { %preserve port:PORT host:HOST; }
+      BeforeCall 'export ARGS_DEFINITION="--port=port:8080:1 --host=host:0.0.0.0:1"'
+      AfterCall preserve
+      When call parse:arguments
+      The variable PORT should eq '8080'
+      The variable HOST should eq '0.0.0.0'
+    End
+
+    It 'CLI value overrides default'
+      preserve() { %preserve port:PORT; }
+      BeforeCall 'export ARGS_DEFINITION="--port=port:8080:1"'
+      AfterCall preserve
+      When call parse:arguments --port 9090
+      The variable PORT should eq '9090'
+    End
+
+    It 'boolean flags are NOT pre-filled'
+      preserve() { %preserve verbose:V; }
+      BeforeCall 'export ARGS_DEFINITION="--verbose"'
+      AfterCall preserve
+      When call parse:arguments
+      The variable V should be undefined
+    End
+
+    It 'defaults work across scoped phases'
+      helper() {
+        export ARGS_DEFINITION="--verbose \$1=command::1"
+        parse:arguments --verbose deploy --port 9090
+
+        local SCOPE="--port=port:8080:1 --region=region:us-east-1:1"
+        args:scope SCOPE "${ARGS_UNPARSED[@]}"
+        echo "port=$port region=$region"
+      }
+      When call helper
+      # port overridden by CLI, region gets default
+      The stdout should eq 'port=9090 region=us-east-1'
+    End
+
+    It 'URL default with colon is pre-filled correctly'
+      preserve() { %preserve registry:REG; }
+      BeforeCall 'export ARGS_DEFINITION="--registry=registry:https://registry.npmjs.org:1"'
+      AfterCall preserve
+      When call parse:arguments
+      The variable REG should eq 'https://registry.npmjs.org'
+    End
+  End
+
+  # ============================================================
   # Backward compatibility
   # ============================================================
   Describe 'Backward compatibility /'

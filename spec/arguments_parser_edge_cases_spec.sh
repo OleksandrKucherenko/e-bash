@@ -177,7 +177,7 @@ Describe 'parse:arguments edge cases /'
   Describe 'default values /'
 
     Context 'when flag is not provided'
-      It 'does not set variable (remains unset/empty)'
+      It 'pre-fills with default value'
         preserve() { %preserve output:OUTPUT; }
         BeforeCall 'export ARGS_DEFINITION="-o,--output=output:default.txt:1"'
         AfterCall preserve
@@ -185,8 +185,8 @@ Describe 'parse:arguments edge cases /'
         When call parse:arguments
 
         The status should be success
-        # Variable is never exported when flag not in args
-        The variable OUTPUT should be undefined
+        # Defaults are pre-filled for value flags (args_qt > 0)
+        The variable OUTPUT should eq 'default.txt'
       End
     End
 

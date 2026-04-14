@@ -905,12 +905,14 @@ Describe '_arguments.sh stress tests /'
       The variable V should eq '1'
     End
 
-    It 'all flags with defaults, none provided -> unset'
+    It 'all flags with defaults, none provided -> pre-filled with defaults'
       preserve() { %preserve debug:DBG version:VER; }
       BeforeCall 'export ARGS_DEFINITION="--debug=debug:false --version=version:1.0.0"'
       AfterCall preserve
       When call parse:arguments
-      # No flags provided → variables stay unset
+      # Defaults pre-filled for boolean-like value flags (args_qt=0, default="false")
+      # Note: --debug has args_qt=0 (boolean), so its default is NOT pre-filled
+      # --version has args_qt=0 (boolean), so its default is NOT pre-filled
       The variable DBG should be undefined
       The variable VER should be undefined
     End

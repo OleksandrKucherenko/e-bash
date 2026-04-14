@@ -185,7 +185,8 @@ Describe '_arguments.sh /'
     The stdout should include "skip: unknown flag '--key1'"
     The stdout should include "skip: unknown flag '--key2'"
     The stdout should include "skip: unmatched positional 'second'"
-    The variable ID should be undefined
+    # ID gets pre-filled with default "dummy" (args_qt=2, default applied)
+    The variable ID should eq 'dummy'
 
     The stdout should include "assign(default): help='1'"
     The stdout should include 'definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'

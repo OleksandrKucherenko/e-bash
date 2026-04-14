@@ -231,6 +231,18 @@ function parse:arguments() {
 
   local end_of_options=0 # set to 1 when -- is encountered
 
+  # pre-fill defaults for value flags (args_qt > 0) before processing CLI args
+  # CLI parsing loop will overwrite with user-provided values
+  for _idx in "${!index_to_outputs[@]}"; do
+    local _var="${index_to_outputs[$_idx]}"
+    local _default="${index_to_default[$_idx]}"
+    local _args_qt="${index_to_args_qt[$_idx]}"
+    [[ "$_args_qt" -eq 0 ]] && continue   # skip booleans
+    [[ -z "$_default" ]] && continue       # skip empty defaults
+    echo:Parser "assign(pre-default): ${_var}='${_default}'"
+    export "${_var}=${_default}"
+  done
+
   # parse the script arguments and resolve them to output variables
   for i in "${!args[@]}"; do
     local argument=${args[i]}
