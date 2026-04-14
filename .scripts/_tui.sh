@@ -1809,10 +1809,10 @@ function _input:ml:delete-line() {
 ## - 0 on success
 ##
 ## Usage:
-## - _input:ml:edit-line "$saved_stty" "$pos_y"
+## - _input:ml:edit-line "$saved_stty" "$pos_y" "$pos_x"
 ##
 function _input:ml:edit-line() {
-  local saved_stty="$1" pos_y=${2:-0}
+  local saved_stty="$1" pos_y=${2:-0} pos_x=${3:-0}
   local visual_row=$((__ML_ROW - __ML_SCROLL))
   local render_start=0
   [[ "$__ML_STATUS_BAR" == "true" ]] && render_start=1
@@ -1821,7 +1821,10 @@ function _input:ml:edit-line() {
   # Restore terminal for readline
   stty "$saved_stty"
   printf "\033[?25h" >&2                  # Show cursor
-  printf "\033[%d;1H\033[0m\033[K" "$line_y" >&2 # Position, reset colors, clear line
+  printf "\033[%d;%dH\033[0m" "$line_y" "$((pos_x + 1))" >&2 # Position within box
+  # Clear only the box width, not the entire terminal line
+  printf "%*s" "$__ML_WIDTH" "" >&2
+  printf "\033[%d;%dH" "$line_y" "$((pos_x + 1))" >&2
 
   # Display prompt with line number and current text
   local prompt="$(printf '%4s ' "$((__ML_ROW + 1))")"
@@ -1829,8 +1832,9 @@ function _input:ml:edit-line() {
 
   # Use readline for editing (full word movement, history, etc.)
   # Redirect to /dev/tty so readline UI stays on terminal, not stdout
+  # Set COLUMNS to constrain readline to box width
   local REPLY
-  if read -rei "$initial_text" -p "$prompt" </dev/tty >/dev/tty 2>/dev/tty; then
+  if COLUMNS=$__ML_WIDTH read -rei "$initial_text" -p "$prompt" </dev/tty >/dev/tty 2>/dev/tty; then
     if [[ "$REPLY" != "$initial_text" ]]; then
       __ML_LINES[$__ML_ROW]="$REPLY"
       __ML_MODIFIED=true
@@ -1877,7 +1881,19 @@ function _input:ml:render() {
     local status_text=" ${status_msg}"
     local status_right=" ${status_info} "
     local status_pad=$((__ML_WIDTH - ${#status_text} - ${#status_right}))
-    [[ $status_pad -lt 0 ]] && status_pad=0
+
+    # Truncate when status bar content exceeds box width
+    if [[ $status_pad -lt 0 ]]; then
+      local max_msg=$((__ML_WIDTH - ${#status_right} - 2))
+      if [[ $max_msg -gt 0 ]]; then
+        status_text=" ${status_msg:0:$max_msg}"
+      else
+        status_text=""
+        status_right="${status_right:0:$__ML_WIDTH}"
+      fi
+      status_pad=$((__ML_WIDTH - ${#status_text} - ${#status_right}))
+      [[ $status_pad -lt 0 ]] && status_pad=0
+    fi
 
     printf "\033[%d;%dH" "$((pos_y + 1))" "$((pos_x + 1))" >&2
     printf "\033[100m\033[37m%s%*s%s\033[0m" "$status_text" "$status_pad" "" "$status_right" >&2
@@ -1908,8 +1924,10 @@ function _input:ml:render() {
       line_content="~"
     fi
 
-    # Apply horizontal scroll and truncate to fit width
-    line_content="${line_content:$__ML_HSCROLL:$__ML_WIDTH}"
+    # Horizontal scroll applies only to the current line; other lines render from offset 0
+    local line_hscroll=0
+    [[ $buf_idx -eq $__ML_ROW ]] && line_hscroll=$__ML_HSCROLL
+    line_content="${line_content:$line_hscroll:$__ML_WIDTH}"
 
     # Pad with spaces
     padding=$((__ML_WIDTH - ${#line_content}))
@@ -1928,9 +1946,9 @@ function _input:ml:render() {
       # This line has selection — render in segments: before | selected | after
       local s_start=0 s_end=${#line_content}
 
-      # Adjust selection positions for horizontal scroll
-      if [[ $buf_idx -eq $sel_sr ]]; then s_start=$((sel_sc - __ML_HSCROLL)); fi
-      if [[ $buf_idx -eq $sel_er ]]; then s_end=$((sel_ec - __ML_HSCROLL)); fi
+      # Adjust selection positions for horizontal scroll (per-line)
+      if [[ $buf_idx -eq $sel_sr ]]; then s_start=$((sel_sc - line_hscroll)); fi
+      if [[ $buf_idx -eq $sel_er ]]; then s_end=$((sel_ec - line_hscroll)); fi
 
       # Clamp to visible line bounds
       [[ $s_start -lt 0 ]] && s_start=0
@@ -2305,7 +2323,7 @@ function input:multi-line() {
     case "$key" in
     # Configurable action keys
     "$key_save") break ;;
-    "$key_edit") _input:ml:sel-clear; _input:ml:edit-line "$saved_stty" "$pos_y" ;;
+    "$key_edit") _input:ml:sel-clear; _input:ml:edit-line "$saved_stty" "$pos_y" "$pos_x" ;;
     "$key_del_word") _input:ml:sel-clear; _input:ml:delete-word ;;
     "$key_del_line") _input:ml:sel-clear; _input:ml:delete-line ;;
     # Selection: shift+arrow enters select mode and extends selection
