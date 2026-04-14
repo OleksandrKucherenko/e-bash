@@ -2282,6 +2282,14 @@ function input:multi-line() {
         fi
         __ML_SELECT_MODE=false
         ;;
+      # Delete selection
+      backspace | delete)
+        if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+          _input:ml:sel-delete
+        fi
+        __ML_SELECT_MODE=false
+        __ML_MESSAGE=""
+        ;;
       # Cancel selection
       escape)
         __ML_SELECT_MODE=false
