@@ -136,13 +136,14 @@ function generate:ssh-key() {
   # RSA keys default to 4096 bits
   [[ "$key_type" == "rsa" ]] && keygen_args+=(-b 4096)
 
-  if ssh-keygen "${keygen_args[@]}" 2>/dev/null; then
+  local keygen_err
+  if keygen_err=$(ssh-keygen "${keygen_args[@]}" 2>&1); then
     chmod 600 "$key_path"
     chmod 644 "${key_path}.pub"
     echo:Step "  ${cl_green}✓${cl_reset} Key pair generated"
     return 0
   else
-    echo:Step "  ${cl_red}✗${cl_reset} Key generation failed"
+    echo:Step "  ${cl_red}✗${cl_reset} Key generation failed: ${keygen_err}"
     return 1
   fi
 }
@@ -524,7 +525,9 @@ ${__SOURCED__:+return}
 logger:init ssh "${cl_grey}[ssh]${cl_reset} " ">&2"
 logger:init step " " ">&2"
 
-# Dependency checks (ssh-keygen is part of the same openssh package as ssh)
+# Dependency checks
+dependency git "2.*.*" "brew install git"
+# ssh-keygen is part of the same openssh package as ssh
 optional ssh "9.*" "brew install openssh" "-V"
 
 # Dry-run wrappers for state-modifying commands
