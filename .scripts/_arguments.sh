@@ -395,9 +395,9 @@ function args:reset() {
   declare -A -g lookup_arguments=() index_to_outputs=() index_to_args_qt=()
   declare -A -g index_to_default=() index_to_keys=()
   # unset + redeclare metadata arrays as associative
-  unset args_to_description args_to_group group_to_order args_to_envs args_to_defaults
+  unset args_to_description args_to_group group_to_order args_to_envs args_to_defaults args_to_type
   declare -A -g args_to_description=() args_to_group=() group_to_order=()
-  declare -A -g args_to_envs=() args_to_defaults=()
+  declare -A -g args_to_envs=() args_to_defaults=() args_to_type=()
   # reset unparsed collector
   ARGS_UNPARSED=()
 }
@@ -439,6 +439,9 @@ function args:scope() {
 
 # argument to default value mapping
 [ -z "$args_to_defaults" ] && declare -A -g args_to_defaults=()
+
+# argument to type/validation rule mapping
+[ -z "$args_to_type" ] && declare -A -g args_to_type=()
 
 ##
 ## Add description for an argument flag (for help output)
@@ -537,6 +540,148 @@ function args:v() {
   echo:Parser "$flag -> defaults:$defaults"
 
   # if [[ ! -t 1 ]]; then echo "$flag"; fi # print flag for pipes
+}
+
+##
+## Register a type/validation rule for an argument flag
+##
+## Parameters:
+## - flag - Argument flag name, string, required
+## - rule - Validation rule string, string, required
+##
+## Supported rule formats:
+## - "enum:val1,val2,val3"       - value must be one of listed strings
+## - "int:min:max"               - integer in range (empty min/max = unbounded)
+## - "float:min:max"             - float in range (empty min/max = unbounded)
+## - "string:min_len:max_len"    - string length bounds
+## - "pattern:regex"             - POSIX extended regex match
+##
+## Globals:
+## - reads/listen: none
+## - mutate/publish: args_to_type
+##
+## Usage:
+## - args:t "--format" "enum:json,csv,text"
+## - args:t "--count" "int:1:100"
+## - args:t "--ratio" "float:0.0:1.0"
+## - args:t "--name" "string:2:50"
+## - args:t "--email" "pattern:^[^@]+@[^@]+$"
+##
+function args:t() {
+  local flag="$1"
+  local rule="$2"
+  args_to_type["$flag"]="${rule}"
+  echo:Parser "$flag -> type:$rule"
+}
+
+##
+## Validate all parsed arguments against their declared type rules.
+##
+## Checks each variable that has a type rule registered via args:t.
+## Only validates variables that are currently set (skips unset).
+## Returns 1 on first validation failure with error message to stderr.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - reads/listen: args_to_type, lookup_arguments, index_to_outputs
+## - mutate/publish: none
+##
+## Usage:
+## - args:validate || exit 1
+##
+function args:validate() {
+  local flag="" rule="" type="" spec="" var="" value="" idx=""
+
+  for flag in "${!args_to_type[@]}"; do
+    rule="${args_to_type[$flag]}"
+    type="${rule%%:*}"
+    spec="${rule#*:}"
+
+    # resolve flag to variable name
+    idx="${lookup_arguments[$flag]:-}"
+    [[ -z "$idx" ]] && continue
+    var="${index_to_outputs[$idx]}"
+
+    # skip unset variables
+    [[ -z "${!var+x}" ]] && continue
+    value="${!var}"
+
+    case "$type" in
+    enum)
+      # spec = "val1,val2,val3"
+      local IFS=","
+      local -a allowed=($spec)
+      local found=0
+      for item in "${allowed[@]}"; do
+        [[ "$value" == "$item" ]] && found=1 && break
+      done
+      if [[ "$found" -eq 0 ]]; then
+        echo "Error: $flag value '$value' is not one of: ${spec}" >&2
+        return 1
+      fi
+      ;;
+    int)
+      # spec = "min:max"
+      local min="${spec%%:*}" max="${spec#*:}"
+      if ! [[ "$value" =~ ^-?[0-9]+$ ]]; then
+        echo "Error: $flag value '$value' is not an integer" >&2
+        return 1
+      fi
+      if [[ -n "$min" ]] && [[ "$value" -lt "$min" ]]; then
+        echo "Error: $flag value '$value' is below minimum $min" >&2
+        return 1
+      fi
+      if [[ -n "$max" ]] && [[ "$value" -gt "$max" ]]; then
+        echo "Error: $flag value '$value' exceeds maximum $max" >&2
+        return 1
+      fi
+      ;;
+    float)
+      # spec = "min:max"
+      local min="${spec%%:*}" max="${spec#*:}"
+      if ! [[ "$value" =~ ^-?[0-9]*\.?[0-9]+$ ]]; then
+        echo "Error: $flag value '$value' is not a number" >&2
+        return 1
+      fi
+      if [[ -n "$min" ]] && awk "BEGIN{exit(!($value < $min))}"; then
+        echo "Error: $flag value '$value' is below minimum $min" >&2
+        return 1
+      fi
+      if [[ -n "$max" ]] && awk "BEGIN{exit(!($value > $max))}"; then
+        echo "Error: $flag value '$value' exceeds maximum $max" >&2
+        return 1
+      fi
+      ;;
+    string)
+      # spec = "min_len:max_len"
+      local min_len="${spec%%:*}" max_len="${spec#*:}"
+      local len=${#value}
+      if [[ -n "$min_len" ]] && [[ "$len" -lt "$min_len" ]]; then
+        echo "Error: $flag value '$value' is shorter than minimum $min_len characters" >&2
+        return 1
+      fi
+      if [[ -n "$max_len" ]] && [[ "$len" -gt "$max_len" ]]; then
+        echo "Error: $flag value is longer than maximum $max_len characters" >&2
+        return 1
+      fi
+      ;;
+    pattern)
+      # spec = regex pattern
+      if ! [[ "$value" =~ $spec ]]; then
+        echo "Error: $flag value '$value' does not match pattern '$spec'" >&2
+        return 1
+      fi
+      ;;
+    *)
+      echo "Error: unknown validation type '$type' for $flag" >&2
+      return 1
+      ;;
+    esac
+  done
+
+  return 0
 }
 
 ##
