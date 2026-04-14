@@ -1847,6 +1847,43 @@ function _input:ml:edit-line() {
 }
 
 ##
+## Copy text to clipboard using available methods
+##
+## Uses local clipboard tool (xclip/xsel/pbcopy) if available, and always
+## sends OSC 52 escape sequence for terminal-level clipboard access. OSC 52
+## is essential for SSH sessions where local tools set the remote clipboard
+## rather than the user's local machine clipboard.
+##
+## Parameters:
+## - text - Text to copy, string, required
+## - clipboard_cmd - Local clipboard command, string, optional
+##
+## Side effects:
+## - Pipes to clipboard command if provided
+## - Writes OSC 52 escape sequence to stderr (terminal)
+##
+## Returns:
+## - 0 on success
+##
+## Usage:
+## - _input:clipboard-copy "hello" "xclip -i -selection clipboard"
+## - _input:clipboard-copy "hello"  # OSC 52 only
+##
+function _input:clipboard-copy() {
+  local text="$1" clip_cmd="${2:-}"
+
+  # Local clipboard tool (xclip, xsel, pbcopy)
+  if [[ -n "$clip_cmd" ]]; then
+    printf '%s' "$text" | $clip_cmd 2>/dev/null
+  fi
+
+  # OSC 52: terminal-level clipboard — works over SSH
+  local encoded
+  encoded=$(printf '%s' "$text" | base64 | tr -d '\n')
+  printf '\033]52;c;%s\033\\' "$encoded" >&2
+}
+
+##
 ## Render the multi-line editor to terminal
 ##
 ## Parameters:
@@ -2284,8 +2321,8 @@ function input:multi-line() {
         ;;
       # Copy selection
       "char:c" | "char:C")
-        if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
-          _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+        if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+          _input:clipboard-copy "$(_input:ml:sel-get-text)" "$clipboard_cmd"
           __ML_MESSAGE="Copied!"
         fi
         __ML_SELECT_MODE=false
@@ -2293,8 +2330,8 @@ function input:multi-line() {
         ;;
       # Cut selection
       "char:x" | "char:X")
-        if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
-          _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+        if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+          _input:clipboard-copy "$(_input:ml:sel-get-text)" "$clipboard_cmd"
           _input:ml:sel-delete
           __ML_MESSAGE="Cut!"
         fi
@@ -2339,13 +2376,13 @@ function input:multi-line() {
     # Note: Ctrl+C is safe here because stty raw disables isig, so 0x03 arrives
     # as a byte (not SIGINT). The INT trap only fires from external kill signals.
     ctrl-c)
-      if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
-        _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+      if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+        _input:clipboard-copy "$(_input:ml:sel-get-text)" "$clipboard_cmd"
       fi
       ;;
     ctrl-x)
-      if [[ "$__ML_SEL_ACTIVE" == "true" && -n "$clipboard_cmd" ]]; then
-        _input:ml:sel-get-text | $clipboard_cmd 2>/dev/null
+      if [[ "$__ML_SEL_ACTIVE" == "true" ]]; then
+        _input:clipboard-copy "$(_input:ml:sel-get-text)" "$clipboard_cmd"
         _input:ml:sel-delete
       fi
       ;;

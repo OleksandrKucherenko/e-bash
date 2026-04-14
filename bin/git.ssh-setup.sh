@@ -161,7 +161,7 @@ function review:public-key() {
   echo "  ${cl_green}${pub_key_content}${cl_reset}"
   echo ""
 
-  # Try to copy to clipboard automatically
+  # Copy to clipboard: local tool + OSC 52 for SSH terminals
   local clipboard_cmd=""
   if command -v xclip >/dev/null 2>&1; then
     clipboard_cmd="xclip -i -selection clipboard"
@@ -172,11 +172,15 @@ function review:public-key() {
   fi
 
   if [[ -n "$clipboard_cmd" ]]; then
-    echo "$pub_key_content" | $clipboard_cmd 2>/dev/null
-    echo:Step "  ${cl_green}✓${cl_reset} Copied to clipboard"
-  else
-    echo:Step "  ${cl_grey}Tip: select the key above and copy manually${cl_reset}"
+    printf '%s' "$pub_key_content" | $clipboard_cmd 2>/dev/null
   fi
+
+  # OSC 52: terminal-level clipboard — works over SSH
+  local encoded
+  encoded=$(printf '%s' "$pub_key_content" | base64 | tr -d '\n')
+  printf '\033]52;c;%s\033\\' "$encoded" >&2
+
+  echo:Step "  ${cl_green}✓${cl_reset} Copied to clipboard"
 }
 
 ##
