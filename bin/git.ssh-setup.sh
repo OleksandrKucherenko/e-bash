@@ -379,6 +379,16 @@ function main() {
   echo:Step "${cl_bold}Git SSH Key Setup${cl_reset} ${cl_grey}v${SCRIPT_VERSION}${cl_reset}"
   echo:Step "${cl_grey}Repository: ${git_root}${cl_reset}"
 
+  # Show current SSH configuration
+  local current_ssh_cmd
+  current_ssh_cmd=$(run:git config --get core.sshCommand 2>/dev/null || echo "")
+  if [[ -n "$current_ssh_cmd" ]]; then
+    echo:Step "  ${cl_yellow}Current config:${cl_reset} core.sshCommand = ${current_ssh_cmd}"
+  else
+    echo:Step "  ${cl_grey}No custom SSH config (using system default)${cl_reset}"
+  fi
+  [[ -f "$key_path" ]] && echo:Step "  ${cl_yellow}Existing key:${cl_reset} ${key_path}"
+
   # ── Step 1: Git host & user
   step:header 1 "Git remote configuration"
   detect:remote
@@ -489,6 +499,12 @@ function main() {
   test:ssh-connection "$ssh_cmd" "$GIT_USER" "$GIT_HOST"
 
   echo:Step "${cl_green}Done.${cl_reset}"
+  echo:Step ""
+  echo:Step "${cl_bold}── Rollback ──${cl_reset}"
+  echo:Step "  To reset SSH config to system default:"
+  echo:Step "    ${cl_grey}\$ git config --unset core.sshCommand${cl_reset}"
+  echo:Step "  To remove generated key files:"
+  echo:Step "    ${cl_grey}\$ rm -rf ${SECRETS_DIR}/${cl_reset}"
   return $EXIT_OK
 }
 
