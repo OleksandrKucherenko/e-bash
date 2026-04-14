@@ -165,7 +165,7 @@ Describe '_arguments.sh /'
 
     The status should be failure
     The variable ID should be undefined
-    The stdout should include 'Error. Too little arguments provided'
+    The stderr should include 'too few arguments'
 
     The stdout should include "assign(default): help='1'"
     The stdout should include 'definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'

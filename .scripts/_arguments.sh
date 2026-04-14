@@ -233,8 +233,7 @@ function parse:arguments() {
     local by_index="\$$index"
 
     # extract key and value from argument, if used format `--key=value`
-    # shellcheck disable=SC2206
-    if [[ "$argument" == *=* ]]; then local tmp=(${argument//=/ }) && value=${tmp[1]:-"<empty>"} && argument=${tmp[0]}; fi
+    if [[ "$argument" == *=* ]]; then value="${argument#*=}" && value="${value:-"<empty>"}" && argument="${argument%%=*}"; fi
 
     # accumulate arguments that reserved by last processed argument
     if [ "$skip_next_counter" -gt 0 ]; then
@@ -301,8 +300,8 @@ function parse:arguments() {
   done
 
   if [ "$skip_next_counter" -gt 0 ]; then
-    echo "Error. Too little arguments provided"
-    exit 1
+    echo "Error: too few arguments provided (expected $skip_next_counter more for '${last_processed}')" >&2
+    return 1
   fi
 
   # if aggregated var contains something
