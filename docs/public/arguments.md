@@ -31,6 +31,12 @@ The `_arguments.sh` script provides a powerful yet simple command-line argument 
     - [Compose Argument Definition by Function](#compose-argument-definition-by-function)
       - [Usage](#usage)
       - [Example](#example)
+  - [Defaults Pre-fill](#defaults-pre-fill)
+  - [Scoped Parsing](#scoped-parsing)
+    - [Pattern A: Named Scopes](#pattern-a-named-scopes)
+    - [Pattern B: COMPOSER Builder Functions](#pattern-b-composer-builder-functions)
+    - [Key Functions](#key-functions)
+  - [Type Validation](#type-validation)
 
 <!-- /TOC -->
 
@@ -42,7 +48,7 @@ The `_arguments.sh` script provides a powerful yet simple command-line argument 
 4. **Validate the number of arguments** to avoid unexpected behavior
 5. **Provide clear help text** for each argument
 
-If you need to create script that accepts multiple commands, sub-commands - you have to develop logic separately. parser will only help you with the initial parsing and placing arguments into specific variables, after that you apply your business logic and validations.
+For scripts with multiple commands and sub-commands, use scoped parsing (see [Scoped Parsing](#scoped-parsing) below) to define per-command flags and parse them in phases.
 
 ## Basic Structure
 
@@ -69,17 +75,37 @@ Where:
 - `{default_value}`: Default value if argument is provided without a value. Use `::` as a `no deafult value`.
 - `{args_quantity}`: Number of parameters this argument expects
 
-### NOT FULLY SUPPORTED CASES WITH WORKAROUNDS
+### WORKAROUNDS AND SPECIAL FEATURES
 
-Not supported use case that are common for linux commands parsing:
+**Counter flags (`-vvv`):** Define separate flags mapping to the same variable with different defaults:
 
-- `-vvv` - multiple flags combined into one argument. As workaround you can define multiple commands: ` -v=verbose1:: -vv=verbose2:: -vvv=verbose3::`. It has limitations in case you want to use to many different simple flags.
+```bash
+ARGS_DEFINITION="-v=verbose:1 -vv=verbose:2 -vvv=verbose:3"
+```
 
-- `--` is not supported. In Bash and many Unix-like command-line utilities, the `--` is used as an "end-of-options" separator. Here’s what that means:
-  - End of Options: When you include `--` in a command or script, it tells the command-line parser to treat everything that follows as positional parameters or arguments, not as options—even if those arguments start with a dash (-).
-  - As a workaround: you should pre-filter arguments before source the `_arguments.sh` script, otherwise parser will skip it and continue with other arguments.
+**Short option bundling (`-abc`):** Use `args:unbundle` to decompose before parsing:
 
-- Order of arguments is not supported. All flags are treated as global and can be used in any place of arguments line. `script.sh arg1 --flag-for-arg1` will be treated as `--flag-for-arg1 arg1`. More complicated cases: `command --flag subcommand --flag2 subsubcommand` === `--flag --flag2 command subcommand subsubcommand`. Be careful with this and support restriction by custom logic.
+```bash
+readarray -t expanded < <(args:unbundle "$@")
+parse:arguments "${expanded[@]}"
+# -abc becomes -a -b -c, then each is parsed individually
+```
+
+**End-of-options (`--`):** Natively supported. Everything after `--` is treated as positional:
+
+```bash
+./script.sh --verbose -- --not-a-flag file.txt
+# --verbose is parsed as flag, --not-a-flag becomes positional
+```
+
+**Flag/no-flag toggle (`--flag`/`--no-flag`):** Two definitions mapping to same variable:
+
+```bash
+ARGS_DEFINITION="--dry-run=dry:true --no-dry-run=dry:false"
+# --dry-run sets dry=true, --no-dry-run sets dry=false, last wins
+```
+
+**Argument order:** All flags are treated as global and can appear in any position. `script.sh arg1 --flag` is equivalent to `--flag arg1`. For subcommand-specific flags, use scoped parsing (see below).
 
 ## Types of Arguments
 
@@ -408,3 +434,107 @@ eval "$COMPOSED_ARGS_DEFINITION" >/dev/null
 ```
 
 This approach improves maintainability and readability, especially for scripts with many arguments.
+
+## Defaults Pre-fill
+
+Value flags (`args_qt > 0`) with default values are automatically pre-filled before CLI parsing. If the user provides a value on the command line, it overrides the default. Boolean flags (`args_qt == 0`) are NOT pre-filled.
+
+```bash
+ARGS_DEFINITION="--port=port:8080:1 --host=host:0.0.0.0:1 --verbose"
+
+source "$E_BASH/_arguments.sh"
+
+# Without any CLI flags:
+# port="8080" (pre-filled from default)
+# host="0.0.0.0" (pre-filled from default)
+# verbose is unset (boolean, not pre-filled)
+
+# With: ./script.sh --port 9090
+# port="9090" (overridden by CLI)
+# host="0.0.0.0" (kept default)
+```
+
+## Scoped Parsing
+
+For CLI tools with subcommands, use scoped parsing to define per-command flags:
+
+### Pattern A: Named Scopes
+
+Pre-declare scopes as variables and pass by name to `args:scope`:
+
+```bash
+export SKIP_ARGS_PARSING=1
+source "$E_BASH/_arguments.sh"
+
+# Pre-declare scopes
+GLOBAL_SCOPE="--verbose --config=config:prod.toml:1 \$1=command::1"
+DEPLOY_SCOPE="--replicas=replicas:1:1 --region=region:us-east-1:1"
+SERVE_SCOPE="--port=port:8080:1 --host=host:0.0.0.0:1"
+
+# Phase 1: parse global flags + extract command
+ARGS_DEFINITION="$GLOBAL_SCOPE"
+parse:arguments "$@"
+# config="prod.toml" (default pre-filled)
+# ARGS_UNPARSED has remaining args not consumed by global scope
+
+# Phase 2: parse command-specific flags
+case "$command" in
+  deploy) args:scope DEPLOY_SCOPE "${ARGS_UNPARSED[@]}" ;;
+  serve)  args:scope SERVE_SCOPE  "${ARGS_UNPARSED[@]}" ;;
+esac
+# replicas="1", region="us-east-1" (defaults pre-filled)
+```
+
+### Pattern B: COMPOSER Builder Functions
+
+For complex CLIs, wrap the COMPOSER pattern in scope functions:
+
+```bash
+function scope:deploy() {
+  args:reset
+  args:i --replicas -q 1 -v 1 -d "Number of replicas" -g deploy
+  args:i --region   -q 1 -v us-east-1 -d "AWS region" -g deploy
+  args:t "--replicas" "int:1:100"
+  args:t "--region" "enum:us-east-1,us-west-2,eu-west-1"
+  parse:arguments "$@"
+  args:validate || return 1
+}
+
+case "$command" in
+  deploy) scope:deploy "${ARGS_UNPARSED[@]}" ;;
+esac
+```
+
+### Key Functions
+
+- `ARGS_UNPARSED` — array collecting unknown flags and unmatched positionals from each parse
+- `args:reset` — clears all parser state for a fresh scope
+- `args:scope VAR_NAME "${args[@]}"` — convenience wrapper: reset + set definition from named variable + parse
+
+## Type Validation
+
+Register validation rules with `args:t` and check with `args:validate`:
+
+```bash
+args:t "--format" "enum:json,csv,text"        # one of listed values
+args:t "--count"  "int:1:100"                  # integer in range
+args:t "--ratio"  "float:0.0:1.0"             # float in range
+args:t "--name"   "string:2:50"               # string length bounds
+args:t "--email"  "pattern:^[^@]+@[^@]+$"     # regex match
+
+parse:arguments "$@"
+args:validate || exit 1
+# Error: --count value '200' exceeds maximum 100
+```
+
+Supported types:
+
+| Type | Format | Example |
+|------|--------|---------|
+| `enum` | `enum:val1,val2,val3` | `enum:json,csv,text` |
+| `int` | `int:min:max` | `int:1:65535` |
+| `float` | `float:min:max` | `float:0.0:1.0` |
+| `string` | `string:min_len:max_len` | `string:2:50` |
+| `pattern` | `pattern:regex` | `pattern:^[a-z]+$` |
+
+Empty bounds mean unbounded (e.g., `int::100` = no minimum, max 100).
