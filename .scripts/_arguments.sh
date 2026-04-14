@@ -1430,14 +1430,14 @@ function args:dispatch() {
 
   # --completion <bash|zsh>: print completion script to stdout and exit
   if [[ -n "${completion:-}" ]]; then
-    args:completion "$completion" "$script_name"
+    args:completion "$completion" "$script_name" || exit 1
     exit 0
   fi
 
   # --install-completion <bash|zsh>: install completion and exit
   if [[ -n "${install_completion:-}" ]]; then
     local file=""
-    file=$(args:completion:install "$install_completion" "$script_name")
+    file=$(args:completion:install "$install_completion" "$script_name") || exit 1
     echo "Completion installed: $file"
     [[ "$install_completion" == "zsh" ]] && echo "Note: run 'rm -f ~/.zcompdump; compinit' or restart your shell."
     exit 0
