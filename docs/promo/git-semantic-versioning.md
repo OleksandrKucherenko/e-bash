@@ -20,21 +20,9 @@ This is every team that "does semantic versioning" without tooling.
 
 Is it `fix:` or `Fix:`? Does `refactor:` bump the version? What about `chore:`?
 
-```bash
-# These are all wrong (but they're in your repo right now)
-git log --oneline | head -5
-# a3f2d1e updated readme
-# 9c1b4a7 fixed bug
-# 2e5f8c3 WIP: trying something
-# 7a9d0e2 Merge branch 'dev'
-# 1b3c5d4 stuff
-```
-
 **2. Nobody knows what the next version should be**
 
-- Last tag is `v1.3.2`. You added a feature and fixed two bugs.
-- Is the next version `v1.4.0`? `v1.3.3`? `v2.0.0`?
-- Did anyone add a `BREAKING CHANGE:` footer? Who checks?
+Last tag is `v1.3.2`. You added a feature and fixed two bugs. Is the next version `v1.4.0`? `v1.3.3`? `v2.0.0`? Did anyone add a `BREAKING CHANGE:` footer?
 
 **3. Nobody audits the history**
 
@@ -45,104 +33,130 @@ git log --oneline | head -5
 ### Step 1: Audit your commit history
 
 ```bash
-git.verify-all-commits.sh
+$ git.verify-all-commits.sh
 ```
 
+Real output from our own repo:
+
 ```
-Checking 247 commits for Conventional Commits compliance...
+ 🔍 Gathering commit history...
+ 🔍 Checking 142 commits for Conventional Commit compliance...
 
-  ✓ 198 valid commits
-  ✗ 49 non-conventional commits
+Progress: 0.........10.........20.........30.........40...(truncated)
 
-  Line 23:  "updated readme"          → should be: "docs: update readme"
-  Line 47:  "fixed login bug"         → should be: "fix: resolve login error"
-  Line 89:  "WIP"                     → should be: "wip: work in progress"
-  ...
+ ❌ 48 commit(s) failed:
 
-Result: 80.2% compliant (49 commits need fixing)
+ 🔴 Commit: c1ac6546, Author: Oleksandr, Date: 2026-02-23
+    Message: "Improve ShellSpec timeout patch robustness and diagnostics (#78)"
+
+ 🔴 Commit: 75598254, Author: Oleksandr, Date: 2026-01-28
+    Message: "Correct code block formatting in README"
+
+ 🔴 Commit: cb10f677, Author: Oleksandr Kucherenko, Date: 2023-10-03
+    Message: "imported version-up.sh script"
+
+ 💡 Conventional Commit format: type(scope): description
+    Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+    Use ! for breaking changes: feat!: breaking change
+    Reference: https://www.conventionalcommits.org/
+
+ 💡 To fix these commits interactively, run with --patch flag
 ```
 
-Want to fix them interactively?
-
-```bash
-git.verify-all-commits.sh --patch
-```
-
-Walks you through each invalid commit and lets you reword it — safely, with a backup branch.
+Yes, even our own repo has 48 non-conventional commits (mostly from the early days). The tool found them in seconds. Use `--patch` to fix them interactively.
 
 ### Step 2: See what version your commits produce
 
 ```bash
-git.semantic-version.sh
+$ git.semantic-version.sh --from-first-commit
 ```
 
+Real output (last 10 of 141 commits):
+
 ```
-Analyzing commit history from v1.3.2...
+Semantic Version History
 
-  feat: add user dashboard          → MINOR bump
-  fix: resolve login timeout        → PATCH bump
-  fix: handle empty email field     → PATCH bump
-  docs: update API reference        → no bump
-  feat!: redesign auth flow         → MAJOR bump (breaking)
+| Commit  | Message                                         | Tag    | Version Change   | Diff   |
+|---------|-------------------------------------------------|--------|------------------|--------|
+| 05c97f4 | fix: strict mode compatibility (set -euo ...)   | -      | 2.7.3 → 2.7.4   | +0.0.1 |
+| 475a687 | feat: Add interactive multi-line text editor ... | -      | 2.7.4 → 2.8.0   | +0.1.0 |
+| a20f55b | feat: Bash/Zsh completion integration (#73)     | -      | 2.8.0 → 2.9.0   | +0.1.0 |
+| 0865f3b | chore: prepare release v2.1.0                   | v2.1.0 | 2.9.0 → 2.1.0   | =2.1.0 |
+| 98eed52 | docs: fix 25 broken references across ...        | -      | 2.1.3 → 2.1.4   | +0.0.1 |
+| 3dc53e3 | ci: upgrade GitHub Actions to latest versions   | -      | 2.1.6 → 2.1.7   | +0.0.1 |
 
-Calculated version: v1.3.2 → v2.0.0
-  MAJOR: 1 breaking change
-  MINOR: 2 features (reset by major)
-  PATCH: 2 fixes (reset by major)
+Summary:
+  Total commits processed: 141
+  Version changes:
+    Major (breaking): 1
+    Minor (features): 24
+    Patch (fixes):    50
+    Tag   (assigned): 5
+    None  (ignored):  61
+
+Final Version: 2.1.9
 ```
 
-The calculator reads your actual commit messages and applies SemVer rules. No guessing.
+The calculator reads your actual commit messages and applies SemVer rules. `feat:` bumps MINOR. `fix:` bumps PATCH. `feat!:` or `BREAKING CHANGE:` bumps MAJOR. Tags override the calculated version.
 
 Options for different scenarios:
 
 ```bash
-# Full history from first commit
-git.semantic-version.sh --from-first-commit
-
-# Only since last tag (fast, for large repos)
-git.semantic-version.sh --from-last-tag
-
-# Since current branch diverged (for PR reviews)
-git.semantic-version.sh --from-branch-start
-
-# Custom keywords for your team
-git.semantic-version.sh --add-keyword "infra:patch"
+git.semantic-version.sh --from-first-commit       # full history
+git.semantic-version.sh --from-last-tag            # fast, for large repos
+git.semantic-version.sh --from-branch-start        # for PR reviews
+git.semantic-version.sh --from-last-n-versions 5   # last 5 releases
+git.semantic-version.sh --add-keyword "infra:patch" # custom keywords
 ```
 
 ### Step 3: Apply the version
 
 ```bash
-# Preview what would happen
-version-up.v2.sh --dry-run
+$ version-up.v2.sh --dry-run
+```
 
-# Apply: creates tag, updates version.properties
-version-up.v2.sh --minor --apply
+Real output:
 
-# Or let it decide based on commits
-version-up.v2.sh --default --apply
+```
+Found tag        : v2.1.0 in branch master
+Current Revision : 142
+Current Branch   : master
+
+Proposed Next Version TAG: v2.2.0
+
+To apply changes manually execute the command(s):
+
+  git tag v2.2.0
+  git push origin v2.2.0
+
+File version.properties is successfully created.
 ```
 
 Full control over the version lifecycle:
 
 ```bash
 # Stage progression
-version-up.v2.sh --alpha           # v1.4.0-alpha
-version-up.v2.sh --beta            # v1.4.0-beta
-version-up.v2.sh --rc              # v1.4.0-rc
-version-up.v2.sh --release         # v1.4.0
+version-up.v2.sh --alpha           # v2.1.0-alpha
+version-up.v2.sh --beta            # v2.1.0-beta
+version-up.v2.sh --rc              # v2.1.0-rc
+version-up.v2.sh --release         # v2.1.0
 
 # Specific bumps
-version-up.v2.sh --major           # v2.0.0
-version-up.v2.sh --minor           # v1.4.0
-version-up.v2.sh --patch           # v1.3.3
-version-up.v2.sh --revision        # v1.3.2.1
+version-up.v2.sh --major           # v3.0.0
+version-up.v2.sh --minor           # v2.2.0
+version-up.v2.sh --patch           # v2.1.1
+
+# Combine: minor bump + release candidate
+version-up.v2.sh --minor --rc      # v2.2.0-rc
 
 # Git revision as build metadata
-version-up.v2.sh --git-revision    # v1.4.0+a3f2d1e
+version-up.v2.sh --git-revision    # v2.2.0+681df0d
 
-# Custom pre-release and build
-version-up.v2.sh --pre-release rc.3 --build 2026.04.14
-# → v1.4.0-rc.3+2026.04.14
+# Apply (creates tag + pushes)
+version-up.v2.sh --minor --apply
+
+# Preview without changes
+version-up.v2.sh --dry-run
 ```
 
 ## The Full Toolkit
@@ -154,7 +168,6 @@ version-up.v2.sh --pre-release rc.3 --build 2026.04.14
 | `version-up.v2.sh` | Apply version bump with git tags |
 | `git.conventional-commits.sh` | Parse and validate individual commits |
 | `git.log.sh` | Pretty git log with conventional commit highlighting |
-| `git.graph.sh` | Branch visualization |
 | `git.files.sh` | Show changed files per commit (plain or tree) |
 
 ## The Workflow
@@ -175,7 +188,7 @@ version-up.v2.sh --pre-release rc.3 --build 2026.04.14
                   ┌───────────▼─────────────┐
                   │  Release time:          │
                   │  git.semantic-version   │
-                  │  (calculates v2.1.0)    │
+                  │  (calculates v2.2.0)    │
                   └───────────┬─────────────┘
                               │
                   ┌───────────▼─────────────┐
@@ -191,13 +204,6 @@ Add the commit verifier to your CI:
 # .github/workflows/ci.yml
 - name: Verify conventional commits
   run: git.verify-all-commits.sh --branch
-```
-
-Add the pre-commit hook to enforce locally:
-
-```bash
-# .lefthook/pre-commit/conventional-commits.sh
-git.conventional-commits.sh "$(git log -1 --format=%s)"
 ```
 
 ## Install
