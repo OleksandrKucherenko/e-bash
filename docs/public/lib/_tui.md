@@ -10,7 +10,7 @@ multi-line text editing, and menu selection.
 
 - demo: demo.readpswd.sh, demo.selector.sh, demo.multi-line.sh, demo.capture-key.sh
 - bin: vhd.sh, git.sync-by-patches.sh
-- documentation: docs/public/tui.md
+- documentation: docs/public/commons.md
 - tests: spec/commons_spec.sh, spec/multi_line_input_spec.sh, spec/read_key_spec.sh
 
 ## Module Globals

@@ -36,7 +36,8 @@ These are the core library files meant to be sourced by other scripts.
 ├── _self-update.sh     # Self-update functionality
 ├── _semver.sh          # Semantic versioning
 ├── _tmux.sh            # Tmux integration
-└── _traps.sh           # Signal/trap management
+├── _traps.sh           # Signal/trap management
+└── _tui.sh             # Terminal UI (cursor, input, editor)
 ```
 
 ### Rules
@@ -213,8 +214,9 @@ spec/
 ├── dryrun_spec.sh                   # Tests .scripts/_dryrun.sh
 ├── hooks_spec.sh                    # Tests .scripts/_hooks.sh
 ├── logger_spec.sh                   # Tests .scripts/_logger.sh
-├── semver_spec.sh                   # Tests .scripts/_semver.sh
+├── git_semantic_version_spec.sh      # Tests bin/git.semantic-version.sh
 ├── traps_spec.sh                    # Tests .scripts/_traps.sh
+├── tui_spec.sh                      # Tests .scripts/_tui.sh
 ├── traps_nested_spec.sh             # Additional trap tests
 ├── version-up_spec.sh               # Tests bin/version-up.v2.sh
 └── bin/                             # Mirror bin/ structure

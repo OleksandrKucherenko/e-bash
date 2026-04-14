@@ -30,7 +30,7 @@ Replace `shellspec` with `shellspec-formatted`:
 shellspec
 
 # Use:
-./bin/shellspec-formatted
+./bin/shellspec.format.sh
 ```
 
 ### With Options
@@ -38,9 +38,9 @@ shellspec
 All ShellSpec options are preserved:
 
 ```bash
-./bin/shellspec-formatted --dry-run
-./bin/shellspec-formatted spec/traps_spec.sh
-./bin/shellspec-formatted --format documentation
+./bin/shellspec.format.sh --dry-run
+./bin/shellspec.format.sh spec/traps_spec.sh
+./bin/shellspec.format.sh --format documentation
 ```
 
 ### Examples
@@ -87,8 +87,8 @@ test: case description → test / case / description
 
 ### Files Created
 
-1. **`bin/shellspec-formatter`** - Core formatting logic
-2. **`bin/shellspec-formatted`** - Wrapper script that runs ShellSpec and pipes output through formatter
+1. **`bin/shellspec.format.sh`** - Core formatting logic
+2. **`bin/shellspec.format.sh`** - Wrapper script that runs ShellSpec and pipes output through formatter
 
 ### How It Works
 
@@ -130,7 +130,7 @@ The formatter preserves ShellSpec exit codes, making it safe for CI/CD:
 
 ```bash
 # In CI scripts:
-./bin/shellspec-formatted || exit 1
+./bin/shellspec.format.sh || exit 1
 ```
 
 ### Development Workflow
@@ -139,22 +139,22 @@ For daily development:
 
 ```bash
 # Run tests with formatted output
-alias test='./bin/shellspec-formatted'
+alias test='./bin/shellspec.format.sh'
 test
 
 # Quick dry-run to see formatting
-./bin/shellspec-formatted --dry-run | head -20
+./bin/shellspec.format.sh --dry-run | head -20
 ```
 
 ### IDE Integration
 
-Configure your IDE to run `./bin/shellspec-formatted` instead of `shellspec` for test commands.
+Configure your IDE to run `./bin/shellspec.format.sh` instead of `shellspec` for test commands.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Function name not preserved**: Add it to the `func_names` array in `bin/shellspec-formatter`
+1. **Function name not preserved**: Add it to the `func_names` array in `bin/shellspec.format.sh`
 2. **Incorrect formatting**: Check if the test description contains unusual patterns
 3. **Performance**: The formatter has minimal overhead (<100ms for 468 tests)
 
@@ -163,7 +163,7 @@ Configure your IDE to run `./bin/shellspec-formatted` instead of `shellspec` for
 To preserve additional function names:
 
 ```bash
-# Edit bin/shellspec-formatter, line 40
+# Edit bin/shellspec.format.sh, line 40
 local func_names=(
     "trap:off" "trap:on" # existing...
     "new:func" "another:command"  # add new ones here

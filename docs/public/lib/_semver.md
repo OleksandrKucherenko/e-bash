@@ -10,7 +10,7 @@ parsing, comparison, constraint checking, and version sorting.
 - demo: demo.semver.sh, demo.sorting.sh, demo.sorting.v2.sh
 - bin: git.semantic-version.sh, version-up.v2.sh, install.e-bash.sh
 - documentation: Referenced in docs/public/version-up.md
-- tests: spec/semver_spec.sh
+- tests: spec/git_semantic_version_spec.sh, spec/self_update_version_spec.sh
 
 ---
 

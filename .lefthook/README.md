@@ -62,7 +62,7 @@ pre-commit:
 
 ## Migration Notes
 
-This is the new hook system replacing the legacy `.githook/` directory. See the [migration plan](../../docs/plans/2025-01-25-lefthook-migration.md) for details.
+This is the new hook system replacing the legacy `.githook/` directory. See the [migration plan](../../docs/plans/2026-01-25-lefthook-migration.md) for details.
 
 ## Exit Codes
 

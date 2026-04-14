@@ -62,11 +62,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Core Architecture
 
 ### Library Structure
-- `.scripts/` - Core library functions (12 modules) that can be sourced individually
+- `.scripts/` - Core library functions (13 modules) that can be sourced individually
   - Each module has one-time initialization guards - `source` is idempotent
   - Modules declare their own dependencies and `source` each other as needed
-- `bin/` - Standalone tools and scripts (16 executables) including git helpers
-- `spec/` - ShellSpec test suite (16 test files)
+- `bin/` - Standalone tools and scripts (24 executables) including git helpers
+- `spec/` - ShellSpec test suite (29 test files)
 - `docs/` - Comprehensive documentation and analysis documents
 - `demos/` - Demo scripts showing usage patterns
 - `.lefthook/` - Git hooks managed by lefthook for pre-commit quality checks
@@ -91,6 +91,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **_hooks.sh** - Declarative hooks system for extensibility points in scripts
 - **_dryrun.sh** - Dry-run wrapper system for safe command execution preview
 - **_colors.sh** - Terminal color detection and ANSI color definitions
+- **_tui.sh** - Terminal UI: cursor positioning, input validation, multi-line editor, key capture
+- **_gnu.sh** - GNU tool detection and shim setup for macOS compatibility
 
 ## Development Commands
 
@@ -311,7 +313,7 @@ trap:on on_exit_update EXIT
 
 ### Git Hooks
 - Managed by [lefthook](https://github.com/evilmartians/lefthook) v2.0+
-- Configuration in `lefthook.yml` and scripts in `.lefthook/pre-commit/`
+- Configuration in `.lefthook.yml` and scripts in `.lefthook/pre-commit/`
 - Pre-commit hooks verify copyright headers and refresh "Last revisit" dates
 - Automatically configured by `.envrc`: `lefthook install`
 - Run manually: `lefthook run pre-commit`
@@ -322,7 +324,6 @@ trap:on on_exit_update EXIT
 - Coverage reporting and artifact collection
 
 ### IDE Integration
-- VS Code settings in `.vscode/settings.json`
 - ShellCheck integration
 - Custom shell formatter support (altshfmt)
 
@@ -332,14 +333,15 @@ trap:on on_exit_update EXIT
 - `docs/public/installation.md` - Detailed installation scenarios
 - `docs/public/logger.md` - Logger usage patterns
 - `docs/public/arguments.md` - Argument parsing guide
-- `docs/public/commons.md` - Commons utilities, UI components, input functions guide
+- `docs/public/commons.md` - Commons utilities guide
 - `docs/public/hooks.md` - Hooks system comprehensive guide
 - `docs/public/dryrun-wrapper.md` - Dry-run wrapper system guide
 - `docs/public/version-up.md` - Version management guide
+- `docs/public/completion.md` - Shell completion generation guide
+- `docs/public/cli-strategy.md` - Strategy for building complex CLI tools
+- `docs/public/migration-v2.0-to-v2.1.md` - Upgrade guide v2.0 → v2.1
 
 ### Technical Analysis
-- `TMUX_PATTERN_ANALYSIS.md` - Deep analysis of tmux integration
-- `ROADMAP.IDEAS.MD` - Future development plans
 - `docs/plans/lefthook-migration.md` - Lefthook migration plans
 - Various demo scripts in `demos/` directory
 

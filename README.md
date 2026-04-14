@@ -341,7 +341,7 @@ echo -n "Select connection type: " && tput civis # hide cursor
 selected=$(input:selector "connections") && echo "${cl_blue}${selected}${cl_reset}"
 ```
 
-[API Reference](docs/public/lib/_commons.md#inputselector)
+[API Reference](docs/public/lib/_tui.md#inputselector)
 
 ### UI: Ask for Password
 
@@ -355,7 +355,7 @@ echo -n "Enter password: "
 password=$(input:readpwd) && echo "" && echo "Password: $password"
 ```
 
-[API Reference](docs/public/lib/_commons.md#inputreadpwd)
+[API Reference](docs/public/lib/_tui.md#inputreadpwd)
 
 ### UI: Multi-line Text Editor
 
@@ -389,7 +389,7 @@ Backspace to delete, Ctrl+W delete word, Ctrl+U delete line, Ctrl+V paste,
 Ctrl+E readline edit, Tab inserts 2 spaces. Status bar shows position and [+] modified indicator.
 Supports bracketed paste detection and box mode clamping to terminal boundaries.
 
-[API Reference](docs/public/lib/_commons.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh), [Key Capture Demo](demos/demo.capture-key.sh)
+[API Reference](docs/public/lib/_tui.md#inputmulti-line), [Demo script](demos/demo.multi-line.sh), [Key Capture Demo](demos/demo.capture-key.sh)
 
 ### Dry-Run Wrapper System
 
