@@ -2139,6 +2139,7 @@ function input:multi-line() {
   local key_del_word=${ML_KEY_DEL_WORD:-"ctrl-w"}
   local key_del_line=${ML_KEY_DEL_LINE:-"ctrl-u"}
   local key_select=${ML_KEY_SELECT:-"f3"}
+  local select_hint="SELECT: arrows=select | c=copy | x=cut | Esc=cancel"
 
   # Detect clipboard commands (read from / write to system clipboard)
   local paste_cmd="" clipboard_cmd=""
@@ -2240,7 +2241,7 @@ function input:multi-line() {
       else
         __ML_SELECT_MODE=true
         _input:ml:sel-start
-        __ML_MESSAGE="SELECT: arrows=select | c=copy | x=cut | Esc=cancel"
+        __ML_MESSAGE="$select_hint"
       fi
       continue
     fi
@@ -2299,15 +2300,15 @@ function input:multi-line() {
     "$key_edit") _input:ml:sel-clear; _input:ml:edit-line "$saved_stty" "$pos_y" ;;
     "$key_del_word") _input:ml:sel-clear; _input:ml:delete-word ;;
     "$key_del_line") _input:ml:sel-clear; _input:ml:delete-line ;;
-    # Selection: shift+arrow extends selection
-    shift-up) _input:ml:sel-start; _input:ml:move-up ;;
-    shift-down) _input:ml:sel-start; _input:ml:move-down ;;
-    shift-left) _input:ml:sel-start; _input:ml:move-left ;;
-    shift-right) _input:ml:sel-start; _input:ml:move-right ;;
-    shift-home | ctrl-shift-left) _input:ml:sel-start; _input:ml:move-home ;;
-    shift-end | ctrl-shift-right) _input:ml:sel-start; _input:ml:move-end ;;
-    # Select all
-    ctrl-a) _input:ml:sel-all ;;
+    # Selection: shift+arrow enters select mode and extends selection
+    shift-up) __ML_SELECT_MODE=true; __ML_MESSAGE="$select_hint"; _input:ml:sel-start; _input:ml:move-up ;;
+    shift-down) __ML_SELECT_MODE=true; __ML_MESSAGE="$select_hint"; _input:ml:sel-start; _input:ml:move-down ;;
+    shift-left) __ML_SELECT_MODE=true; __ML_MESSAGE="$select_hint"; _input:ml:sel-start; _input:ml:move-left ;;
+    shift-right) __ML_SELECT_MODE=true; __ML_MESSAGE="$select_hint"; _input:ml:sel-start; _input:ml:move-right ;;
+    shift-home | ctrl-shift-left) __ML_SELECT_MODE=true; __ML_MESSAGE="$select_hint"; _input:ml:sel-start; _input:ml:move-home ;;
+    shift-end | ctrl-shift-right) __ML_SELECT_MODE=true; __ML_MESSAGE="$select_hint"; _input:ml:sel-start; _input:ml:move-end ;;
+    # Select all enters select mode
+    ctrl-a) __ML_SELECT_MODE=true; __ML_MESSAGE="$select_hint"; _input:ml:sel-all ;;
     # Clipboard: copy / cut
     # Note: Ctrl+C is safe here because stty raw disables isig, so 0x03 arrives
     # as a byte (not SIGINT). The INT trap only fires from external kill signals.
