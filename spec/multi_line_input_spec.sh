@@ -933,4 +933,408 @@ Describe "_commons.sh / input:multi-line /"
       The variable __ML_HSCROLL should eq 2
     End
   End
+
+  Describe "_input:ml:sel-start /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "activates selection and anchors at cursor position"
+      __ML_ROW=2
+      __ML_COL=5
+
+      _input:ml:sel-start
+
+      The variable __ML_SEL_ACTIVE should eq "true"
+      The variable __ML_SEL_ANCHOR_ROW should eq 2
+      The variable __ML_SEL_ANCHOR_COL should eq 5
+    End
+
+    It "does not move anchor when already active"
+      __ML_ROW=2
+      __ML_COL=5
+      _input:ml:sel-start
+
+      # Move cursor, call sel-start again
+      __ML_ROW=3
+      __ML_COL=10
+      _input:ml:sel-start
+
+      # Anchor stays at original position
+      The variable __ML_SEL_ANCHOR_ROW should eq 2
+      The variable __ML_SEL_ANCHOR_COL should eq 5
+    End
+  End
+
+  Describe "_input:ml:sel-clear /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "deactivates selection"
+      __ML_SEL_ACTIVE=true
+
+      _input:ml:sel-clear
+
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+  End
+
+  Describe "_input:ml:sel-bounds /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "returns anchor before cursor when selecting forward"
+      __ML_SEL_ANCHOR_ROW=1
+      __ML_SEL_ANCHOR_COL=3
+      __ML_ROW=2
+      __ML_COL=7
+
+      When call _input:ml:sel-bounds
+
+      The output should eq "1;3;2;7"
+    End
+
+    It "normalizes when cursor is before anchor (backward selection)"
+      __ML_SEL_ANCHOR_ROW=3
+      __ML_SEL_ANCHOR_COL=10
+      __ML_ROW=1
+      __ML_COL=2
+
+      When call _input:ml:sel-bounds
+
+      The output should eq "1;2;3;10"
+    End
+
+    It "normalizes on same row when cursor col is before anchor col"
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=8
+      __ML_ROW=0
+      __ML_COL=3
+
+      When call _input:ml:sel-bounds
+
+      The output should eq "0;3;0;8"
+    End
+
+    It "returns equal bounds when cursor equals anchor"
+      __ML_SEL_ANCHOR_ROW=1
+      __ML_SEL_ANCHOR_COL=5
+      __ML_ROW=1
+      __ML_COL=5
+
+      When call _input:ml:sel-bounds
+
+      The output should eq "1;5;1;5"
+    End
+  End
+
+  Describe "_input:ml:sel-get-text /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "returns empty when selection is not active"
+      __ML_SEL_ACTIVE=false
+      __ML_LINES=("Hello World")
+
+      When call _input:ml:sel-get-text
+
+      The output should eq ""
+    End
+
+    It "extracts text from single-line selection"
+      __ML_SEL_ACTIVE=true
+      __ML_LINES=("Hello World")
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=0
+      __ML_ROW=0
+      __ML_COL=5
+
+      When call _input:ml:sel-get-text
+
+      The output should eq "Hello"
+    End
+
+    It "extracts middle portion of a line"
+      __ML_SEL_ACTIVE=true
+      __ML_LINES=("Hello Beautiful World")
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=6
+      __ML_ROW=0
+      __ML_COL=15
+
+      When call _input:ml:sel-get-text
+
+      The output should eq "Beautiful"
+    End
+
+    It "extracts multi-line selection"
+      __ML_SEL_ACTIVE=true
+      __ML_LINES=("Line1" "Line2" "Line3")
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=3
+      __ML_ROW=2
+      __ML_COL=2
+
+      When call _input:ml:sel-get-text
+
+      The line 1 of output should eq "e1"
+      The line 2 of output should eq "Line2"
+      The line 3 of output should eq "Li"
+    End
+
+    It "works with backward selection (cursor before anchor)"
+      __ML_SEL_ACTIVE=true
+      __ML_LINES=("Hello World")
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=11
+      __ML_ROW=0
+      __ML_COL=6
+
+      When call _input:ml:sel-get-text
+
+      The output should eq "World"
+    End
+  End
+
+  Describe "_input:ml:sel-delete /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "returns 1 when no selection active"
+      __ML_SEL_ACTIVE=false
+
+      When call _input:ml:sel-delete
+
+      The status should eq 1
+    End
+
+    It "deletes single-line selection"
+      __ML_SEL_ACTIVE=true
+      __ML_LINES=("Hello Beautiful World")
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=5
+      __ML_ROW=0
+      __ML_COL=15
+
+      _input:ml:sel-delete
+
+      The variable __ML_LINES[0] should eq "Hello World"
+      The variable __ML_ROW should eq 0
+      The variable __ML_COL should eq 5
+      The variable __ML_SEL_ACTIVE should eq "false"
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "deletes multi-line selection and joins lines"
+      __ML_SEL_ACTIVE=true
+      __ML_LINES=("First" "Second" "Third")
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=3
+      __ML_ROW=2
+      __ML_COL=2
+
+      _input:ml:sel-delete
+
+      The variable __ML_LINES[0] should eq "Firird"
+      The variable __ML_ROW should eq 0
+      The variable __ML_COL should eq 3
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "deletes entire content with select-all"
+      __ML_LINES=("Hello" "World")
+      _input:ml:sel-all
+      _input:ml:sel-delete
+
+      The variable __ML_LINES[0] should eq ""
+      The variable __ML_ROW should eq 0
+      The variable __ML_COL should eq 0
+    End
+
+    It "deletes backward selection correctly"
+      __ML_SEL_ACTIVE=true
+      __ML_LINES=("abcdef")
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=5
+      __ML_ROW=0
+      __ML_COL=2
+
+      _input:ml:sel-delete
+
+      The variable __ML_LINES[0] should eq "abf"
+      The variable __ML_COL should eq 2
+    End
+  End
+
+  Describe "_input:ml:sel-all /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "selects all content"
+      __ML_LINES=("Hello" "World" "Test")
+
+      _input:ml:sel-all
+
+      The variable __ML_SEL_ACTIVE should eq "true"
+      The variable __ML_SEL_ANCHOR_ROW should eq 0
+      The variable __ML_SEL_ANCHOR_COL should eq 0
+      The variable __ML_ROW should eq 2
+      The variable __ML_COL should eq 4
+    End
+
+    It "handles single empty line"
+      __ML_LINES=("")
+
+      _input:ml:sel-all
+
+      The variable __ML_SEL_ACTIVE should eq "true"
+      The variable __ML_ROW should eq 0
+      The variable __ML_COL should eq 0
+    End
+  End
+
+  Describe "_input:ml:delete-char-forward /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "deletes character at cursor"
+      __ML_LINES[0]="Hello"
+      __ML_COL=2
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq "Helo"
+      The variable __ML_COL should eq 2
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "deletes first character"
+      __ML_LINES[0]="Hello"
+      __ML_COL=0
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq "ello"
+      The variable __ML_COL should eq 0
+    End
+
+    It "joins with next line at end of line"
+      __ML_LINES=("Hello" "World")
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq "HelloWorld"
+      The variable __ML_COL should eq 5
+      The variable __ML_MODIFIED should eq "true"
+    End
+
+    It "does nothing at end of last line"
+      __ML_LINES=("Hello")
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq "Hello"
+      The variable __ML_MODIFIED should eq "false"
+    End
+
+    It "deletes selection instead when active"
+      __ML_LINES=("Hello World")
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=0
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:delete-char-forward
+
+      The variable __ML_LINES[0] should eq " World"
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+  End
+
+  Describe "select mode state /"
+    setup() {
+      _input:ml:init 80 24
+    }
+    Before setup
+
+    It "initializes select mode as false"
+      The variable __ML_SELECT_MODE should eq "false"
+    End
+
+    It "insert-char replaces selection when active"
+      __ML_LINES=("Hello World")
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=0
+      __ML_ROW=0
+      __ML_COL=5
+
+      _input:ml:insert-char "X"
+
+      The variable __ML_LINES[0] should eq "X World"
+      The variable __ML_COL should eq 1
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "backspace deletes selection when active"
+      __ML_LINES=("Hello World")
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=6
+      __ML_ROW=0
+      __ML_COL=11
+
+      _input:ml:delete-char
+
+      The variable __ML_LINES[0] should eq "Hello "
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "paste replaces selection when active"
+      __ML_LINES=("Hello World")
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=6
+      __ML_ROW=0
+      __ML_COL=11
+
+      _input:ml:paste "Earth"
+
+      The variable __ML_LINES[0] should eq "Hello Earth"
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+
+    It "newline replaces selection when active"
+      __ML_LINES=("Hello World")
+      __ML_SEL_ACTIVE=true
+      __ML_SEL_ANCHOR_ROW=0
+      __ML_SEL_ANCHOR_COL=5
+      __ML_ROW=0
+      __ML_COL=11
+
+      _input:ml:insert-newline
+
+      The variable __ML_LINES[0] should eq "Hello"
+      The variable __ML_LINES[1] should eq ""
+      The variable __ML_SEL_ACTIVE should eq "false"
+    End
+  End
 End
