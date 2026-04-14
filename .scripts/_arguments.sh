@@ -220,6 +220,9 @@ function parse:arguments() {
 
   parse:mapping "$@"
 
+  # reset unparsed args collector for this parse invocation
+  declare -a -g ARGS_UNPARSED && ARGS_UNPARSED=()
+
   local index=1             # indexed input arguments without pre-flag
   local skip_next_counter=0 # how many argument to skip from processing
   local skip_aggregated=""  # all skipped arguments placed into one array
@@ -265,6 +268,7 @@ function parse:arguments() {
         export "${index_to_outputs[$tmp_index]}=${argument}"
       else
         echo:Parser "${cl_grey}skip: unmatched positional '$argument' (index=$by_index)${cl_reset}"
+        ARGS_UNPARSED+=("$argument")
       fi
       index=$((index + 1))
       continue
@@ -312,7 +316,11 @@ function parse:arguments() {
     else
       # process plain unnamed arguments
       case $argument in
-      -*) echo:Parser "${cl_grey}skip: unknown flag '$argument'${cl_reset}" ;;
+      -*)
+        echo:Parser "${cl_grey}skip: unknown flag '$argument'${cl_reset}"
+        # collect into ARGS_UNPARSED, reconstruct =value if it was split
+        if [ -n "$value" ]; then ARGS_UNPARSED+=("${argument}=${value}"); else ARGS_UNPARSED+=("$argument"); fi
+        ;;
       *)
         if [ ${lookup_arguments[$by_index]+_} ]; then
           last_processed=$by_index
@@ -322,6 +330,7 @@ function parse:arguments() {
           export "${index_to_outputs[$tmp_index]}=${argument}"
         else
           echo:Parser "${cl_grey}skip: unmatched positional '$argument' (index=$by_index)${cl_reset}"
+          ARGS_UNPARSED+=("$argument")
         fi
         index=$((index + 1))
         ;;
@@ -348,6 +357,62 @@ function parse:arguments() {
     declare -n var_ref=$variable
     echo:Parser "  ${variable}='${var_ref}'"
   done
+}
+
+##
+## Reset all parser state for a fresh parse cycle.
+##
+## Clears lookup arrays, metadata arrays, and ARGS_UNPARSED.
+## Use between scoped parse phases so the next parse starts clean.
+##
+## Parameters:
+## - none
+##
+## Globals:
+## - mutate/publish: lookup_arguments, index_to_outputs, index_to_args_qt,
+##                  index_to_default, index_to_keys, args_to_description,
+##                  args_to_group, group_to_order, args_to_envs,
+##                  args_to_defaults, ARGS_UNPARSED
+##
+## Usage:
+## - args:reset   # call between parse phases
+##
+function args:reset() {
+  # unset + redeclare lookup arrays as associative (parse:mapping also does this)
+  unset lookup_arguments index_to_outputs index_to_args_qt index_to_default index_to_keys
+  declare -A -g lookup_arguments=() index_to_outputs=() index_to_args_qt=()
+  declare -A -g index_to_default=() index_to_keys=()
+  # unset + redeclare metadata arrays as associative
+  unset args_to_description args_to_group group_to_order args_to_envs args_to_defaults
+  declare -A -g args_to_description=() args_to_group=() group_to_order=()
+  declare -A -g args_to_envs=() args_to_defaults=()
+  # reset unparsed collector
+  ARGS_UNPARSED=()
+}
+
+##
+## Run a scoped parse: reset state, set definition from named variable, parse.
+##
+## Takes a variable NAME (by reference) containing the ARGS_DEFINITION string.
+## Scopes are pre-declared as named variables and passed by name.
+##
+## Parameters:
+## - scope_var - Name of variable holding ARGS_DEFINITION string, string, required
+## - args - Arguments to parse, string array, variadic
+##
+## Globals:
+## - reads/listen: variable referenced by scope_var
+## - mutate/publish: ARGS_DEFINITION, all parse:arguments globals
+##
+## Usage:
+## - DEPLOY_SCOPE="--replicas=replicas:1:1 --region=region:us-east-1:1"
+##   args:scope DEPLOY_SCOPE "${ARGS_UNPARSED[@]}"
+##
+function args:scope() {
+  local -n _scope_def="$1" && shift
+  args:reset
+  ARGS_DEFINITION="$_scope_def"
+  parse:arguments "$@"
 }
 
 # for argument to description mapping
