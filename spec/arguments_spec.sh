@@ -4,17 +4,12 @@
 # shellcheck disable=SC2317,SC2016
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
-## Last revisit: 2026-01-07
-## Version: 2.0.0
+## Last revisit: 2026-04-14
+## Version: 2.1.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 eval "$(shellspec - -c) exit 1"
-
-export line_1="L1" # 147
-export line_2="L2" # 158
-export line_3="L3" # 173
-export line_4="L4" # 186
 
 Describe '_arguments.sh /'
   BeforeRun 'export DEBUG="*"'
@@ -41,14 +36,14 @@ Describe '_arguments.sh /'
     The variable VERSION should eq '1.0.0'
 
     # debug output is printed
-    The stdout should include "[$line_2] export help='1'"
-    The stdout should include "[$line_2] export version='1.0.0'"
-    The stdout should include "[$line_2] export DEBUG='*'"
-    The stdout should include 'definition to output index:'
-    The stdout should include "'index', 'output variable name', 'args quantity', 'defaults':"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include "assign(default): version='1.0.0'"
+    The stdout should include "assign(default): DEBUG='*'"
+    The stdout should include '--- parsed results ---'
 
-    The stderr should include 'Definition: -h,--help -v,--version=:1.0.0 --debug=DEBUG:*'
-    The stderr should include 'ignored: --something'
+    The stdout should include "definition: -h,--help -v,--version=:1.0.0 --debug=DEBUG:*"
+    The stdout should include "skip: unknown flag '--something'"
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -63,10 +58,11 @@ Describe '_arguments.sh /'
     The status should be success
     The variable HELP should eq '1'
 
-    The stdout should include "[$line_2] export help='1'"
-    The stdout should include 'extracted: help=1'
+    The stdout should include "assign(default): help='1'"
+    The stdout should include "  help='1'"
 
-    The stderr should include 'Definition: -h,--help'
+    The stdout should include 'definition: -h,--help'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -81,9 +77,10 @@ Describe '_arguments.sh /'
     The status should be success
     The variable ID should eq 'test'
 
-    The stdout should include "[$line_1] export args_pno='test'"
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno::1 -h,--help'
+    The stdout should include "assign(aggregated): args_pno='test'"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno::1 -h,--help'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -98,9 +95,10 @@ Describe '_arguments.sh /'
     The status should be success
     The variable ID should eq 'test'
 
-    The stdout should include "[$line_1] export args_pno='test'"
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno::1 -h,--help'
+    The stdout should include "assign(aggregated): args_pno='test'"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno::1 -h,--help'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -115,9 +113,10 @@ Describe '_arguments.sh /'
     The status should be success
     The variable ID should eq '<empty>'
 
-    The stdout should include "[$line_1] export args_pno='<empty>'"
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno::1 -h,--help'
+    The stdout should include "assign(aggregated): args_pno='<empty>'"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno::1 -h,--help'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -129,9 +128,10 @@ Describe '_arguments.sh /'
 
     When call parse:arguments --id="" --help
 
-    The stdout should include "[$line_1] export args_pno='<empty>'"
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:1 -h,--help'
+    The stdout should include "assign(aggregated): args_pno='<empty>'"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno:dummy:1 -h,--help'
+    The stderr should include "extract:"
     The status should be success
     The variable ID should eq '<empty>'
 
@@ -148,9 +148,10 @@ Describe '_arguments.sh /'
     The status should be success
     The variable ID should eq 'first second'
 
-    The stdout should include "[$line_1] export args_pno='first second'"
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
+    The stdout should include "assign(aggregated): args_pno='first second'"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -166,8 +167,9 @@ Describe '_arguments.sh /'
     The variable ID should be undefined
     The stdout should include 'Error. Too little arguments provided'
 
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -180,13 +182,14 @@ Describe '_arguments.sh /'
     When call parse:arguments --help --key1="first" --key2 "second"
 
     The status should be success
-    The stderr should include 'ignored: --key1 (first)'
-    The stderr should include 'ignored: --key2'
-    The stderr should include "ignored: second [\$1]"
+    The stdout should include "skip: unknown flag '--key1'"
+    The stdout should include "skip: unknown flag '--key2'"
+    The stdout should include "skip: unmatched positional 'second'"
     The variable ID should be undefined
 
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno:dummy:2 -h,--help'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -201,9 +204,10 @@ Describe '_arguments.sh /'
     The status should be success
     The variable DEBUG should eq '*,-common'
 
-    The stdout should include "[$line_2] export DEBUG='*'"
-    The stdout should include "[$line_3] export DEBUG='*,-common'"
-    The stderr should include 'Definition: --debug=DEBUG:*'
+    The stdout should include "assign(default): DEBUG='*'"
+    The stdout should include "assign(inline): DEBUG='*,-common'"
+    The stdout should include 'definition: --debug=DEBUG:*'
+    The stderr should include "extract:"
 
     # Dump
   End
@@ -223,9 +227,9 @@ Describe '_arguments.sh /'
     The variable ID should eq 'first'
 
     # The stdout should include 'Too little arguments provided'
-    The stdout should include "[$line_2] export help='1'"
-    The stdout should include "[$line_4] export args_pno='first'"
-    The stderr should include "Definition: \$1,-i,--id,--pno=args_pno:dummy:2 -h,--help"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include "assign(positional): args_pno='first'"
+    The stdout should include "definition: \$1,-i,--id,--pno=args_pno:dummy:2 -h,--help"
 
     # Dump
   End
@@ -243,9 +247,9 @@ Describe '_arguments.sh /'
     The status should be success
     The variable ID should eq 'dummy'
 
-    The stdout should include "[$line_2] export args_pno='dummy'"
-    The stdout should include "[$line_2] export help='1'"
-    The stderr should include 'Definition: -i,--id,--pno=args_pno:dummy:1 -h,--help'
+    The stdout should include "assign(default): args_pno='dummy'"
+    The stdout should include "assign(default): help='1'"
+    The stdout should include 'definition: -i,--id,--pno=args_pno:dummy:1 -h,--help'
 
     Dump
   End
@@ -273,7 +277,7 @@ Describe '_arguments.sh /'
         When call parse:extract_output_definition "$2" "$3"
 
         The stdout should include "$4"
-        The stderr should include "~> $4"
+        The stderr should include "extract:"
 
         # Dump
       End
@@ -284,7 +288,7 @@ Describe '_arguments.sh /'
 
       The stdout should include "first|default|2"
       The stderr should include "Warning. Indexed variable '\$1' should not be used for multiple arguments."
-      The stderr should include "~> first|default|2"
+      The stderr should include "extract:"
 
       # Dump
     End
