@@ -1,85 +1,155 @@
 # Release 2.1.0
 
-Version 2.1.0 is a major enhancement to the argument parsing system, adding shell completion generation, scoped parsing for subcommand-style CLIs, type validation, and numerous parser bug fixes discovered via comprehensive TDD testing (214 new tests).
+## 📦 Installation
 
-## ✨ Features
+e-bash is now distributed via **Homebrew** for both macOS and Linux, in addition to the web installer.
+
+### Homebrew (recommended)
+
+```bash
+# Add the tap (first time only)
+brew tap artfulbits-se/tap
+
+# Install
+brew install e-bash
+
+# Complete setup
+e-bash versions
+```
+
+Upgrade from v2.0.0:
+
+```bash
+brew update && brew upgrade e-bash
+```
+
+### Web installer (alternative)
+
+```bash
+curl -sSL https://git.new/e-bash | bash -s --
+```
+
+### Upgrade guide
+
+See [migration-v2.0-to-v2.1.md](docs/public/migration-v2.0-to-v2.1.md) — no breaking changes, all existing scripts continue to work.
+
+---
+
+## What's New
+
+Version 2.1.0 brings professional-grade argument parsing: shell completion, subcommand-style scoped parsing, type validation, and 214 new tests. The TUI module (`_tui.sh`) is extracted as a standalone component.
 
 ### Shell Completion (#73)
-- Add `args:completion` for generating Bash and Zsh completion scripts from `ARGS_DEFINITION` metadata
-- Add `args:completion:install` for cross-platform auto-install to OS completion directories
-- Add `args:dispatch` for auto-handling `--version`, `--debug`, `--completion`, `--install-completion` flags
-- Completion flags auto-appended to every `ARGS_DEFINITION` — all scripts get completion for free
+
+Every script using `_arguments.sh` now supports `--completion` and `--install-completion` out of the box:
+
+```bash
+./myscript.sh --completion bash    # print Bash completion script
+./myscript.sh --install-completion zsh   # install to OS directory
+```
+
+- `args:completion` generates Bash and Zsh completion scripts from `ARGS_DEFINITION` metadata
+- `args:completion:install` auto-discovers OS completion directories (Homebrew, XDG, system)
+- `args:dispatch` auto-handles `--version`, `--debug`, `--completion`, `--install-completion`
 
 ### Scoped Parsing (#73)
-- Add `ARGS_UNPARSED` array — collects unknown flags and unmatched positionals for forwarding to sub-parsers
-- Add `args:reset` — clears all parser state for clean re-parsing in a new scope
-- Add `args:scope` — convenience wrapper taking a variable name (nameref) for scoped definitions
-- Enable 2-3 phase subcommand-style parsing: `global → service → action`
 
-### Defaults Pre-fill (#73)
-- Value flags (`args_qt > 0`) with defaults are now pre-filled before CLI parsing
-- CLI values override defaults — standard pattern: defaults first, user input wins
-- Boolean flags (`args_qt == 0`) are NOT pre-filled
+Build AWS CLI-grade tools with multi-phase subcommand parsing:
+
+```bash
+ARGS_DEFINITION="--verbose \$1=command::1"
+parse:arguments "$@"
+
+DEPLOY_SCOPE="--replicas=replicas:1:1 --region=region:us-east-1:1"
+args:scope DEPLOY_SCOPE "${ARGS_UNPARSED[@]}"
+```
+
+- `ARGS_UNPARSED` array collects unknown flags and unmatched positionals
+- `args:reset` clears parser state between scopes
+- `args:scope` takes a variable name (nameref) for reusable scope definitions
+- See [cli-strategy.md](docs/public/cli-strategy.md) for the full AWS CLI-grade pattern
 
 ### Type Validation (#73)
-- Add `args:t` to register type/validation rules per flag
-- Add `args:validate` with 5 type checkers: `enum`, `int`, `float`, `string` (length), `pattern` (regex)
-- Returns descriptive error messages to stderr on validation failure
 
-### End-of-Options Sentinel (#73)
-- `--` now stops flag processing — everything after becomes positional
-- Works correctly with `ARGS_UNPARSED` for scoped parsing
+Declare constraints, validate after parsing:
+
+```bash
+args:t "--port" "int:1:65535"
+args:t "--format" "enum:json,csv,text"
+args:t "--email" "pattern:^[^@]+@[^@]+$"
+
+parse:arguments "$@"
+args:validate || exit 1
+```
+
+Supported types: `enum`, `int`, `float`, `string` (length), `pattern` (regex).
+
+### Defaults Pre-fill (#73)
+
+Value flags with defaults are now pre-filled before CLI parsing — CLI values override:
+
+```bash
+ARGS_DEFINITION="--port=port:8080:1"
+parse:arguments  # port="8080" even without --port on CLI
+```
+
+### End-of-Options `--` (#73)
+
+Everything after `--` becomes positional:
+
+```bash
+./script.sh --verbose -- --not-a-flag file.txt
+```
 
 ### Short Option Unbundling (#73)
-- Add `args:unbundle` helper to decompose `-abc` into `-a -b -c` before parsing
+
+```bash
+readarray -t expanded < <(args:unbundle "$@")
+parse:arguments "${expanded[@]}"
+# -abc → -a -b -c
+```
+
+### TUI Module (#75)
+
+Terminal UI functions extracted to standalone `_tui.sh`:
+- Interactive multi-line text editor component
+- Cursor positioning, password input, input validation
+- 62 functions — `_commons.sh` sources it automatically (backward compatible)
 
 ### Other Features
-- feat: Add interactive multi-line text editor component (#75)
-- feat(wsl): Add xdg-open shim for WSL environments (#77)
+
+- feat(wsl): xdg-open shim for WSL environments (#77)
 - feat: Smart graphics detection for clipboard-image-save
-- feat: Improve ASCII preview quality with sextant symbols
-- feat: Add JSON structural logging in ECS format (#64)
-- feat: Add caching and short-form existence checks to dependency management (#68)
-- feat: Fix semantic version script tag capture (#60)
+- feat: JSON structural logging in ECS format (#64)
+- feat: Caching and short-form checks in dependency management (#68)
 
 ## 🐛 Bug Fixes
 
 ### Parser Security & Correctness (#73)
-- fix: Replace unsafe `eval "export X='$val'"` with safe `export "${X}=${val}"` — prevents command injection via values with quotes or shell metacharacters
-- fix: `--key=val=ue` no longer truncates at first `=` — splits only on first `=` sign
-- fix: `parse:arguments` returns 1 instead of `exit 1` on missing args — no longer kills caller
-- fix: Value consumed by preceding flag (e.g., `--env KEY=VALUE`) no longer corrupted by `=` splitter
-- fix: `args:dispatch` propagates completion/install errors instead of masking with `exit 0`
+- Replace unsafe `eval "export X='$val'"` with safe `export "${X}=${val}"` — prevents injection
+- `--key=val=ue` no longer truncates at first `=`
+- `parse:arguments` returns 1 instead of `exit 1` on missing args
+- `--env KEY=VALUE` via space syntax no longer corrupted by `=` splitter
+- `args:dispatch` propagates completion/install errors
 
 ### Other Fixes
 - fix: strict mode compatibility (set -euo pipefail) (#89)
-- fix: make ShellSpec timeout patching resilient to Homebrew formula changes (#74)
-- fix(ci): include lib/ directory in Homebrew cache for baseline workflow
+- fix: ShellSpec timeout patching resilient to Homebrew formula changes (#74)
 - fix(xdg): tested on win11 work configuration
 - fix: detect sixels support for SSH sessions
 
 ## 📝 Documentation
-- Add CLI strategy guide for building AWS-grade CLI tools (`docs/public/cli-strategy.md`)
-- Update `docs/public/arguments.md` with scoped parsing, defaults, validation sections
-- Add shell completion documentation (`docs/public/completion.md`)
-- Add Zsh manual completion testing guide
-- Add e-docs auto-generated API reference for new functions
-- Create BASH to e-bash migration guide (#62)
-- Add self-installing dependencies mode documentation (#65)
+- [cli-strategy.md](docs/public/cli-strategy.md) — strategy guide for building AWS CLI-grade tools
+- [arguments.md](docs/public/arguments.md) — updated with scoped parsing, defaults, validation
+- [completion.md](docs/public/completion.md) — shell completion documentation
+- [migration-v2.0-to-v2.1.md](docs/public/migration-v2.0-to-v2.1.md) — upgrade guide (no breaking changes)
+- [migration-guide.md](docs/public/migration-guide.md) — BASH to e-bash migration (#62)
 
 ## 🧪 Testing
 - 214 new argument parser tests across 6 test files
 - Stress test corpus covering 110 CLI argument patterns
-- Edge case tests for parser correctness
 - Scoped parsing tests with multi-phase subcommand scenarios
 - Type validation tests for all 5 type checkers
-- Completion generation and install tests
-
-## ♻️ Refactoring
-- Improve `_arguments.sh` debug logging — replace cryptic `[L1]`-`[L4]` labels with descriptive messages
-- All parser logs use `echo:Parser` exclusively (not `echo:Common`)
-- Move completion demos to `demos/completion/` subfolder
-- Standardize bootstrap across all scripts
 
 ---
 
