@@ -12,7 +12,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SHELLSPEC_VERSION: 0.28.1
   TERM: xterm-256color
   HOMEBREW_NO_AUTO_UPDATE: 1
@@ -41,7 +40,7 @@ jobs:
         chunk: [0, 1, 2, 3]
     steps:
       - name: Checkout Code with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
@@ -110,7 +109,7 @@ jobs:
 
       - name: Cache Homebrew packages
         if: steps.cache_check.outputs.should_cache == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ steps.brew_path.outputs.path }}
@@ -232,7 +231,7 @@ jobs:
 
       - name: Upload test results as artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-macos-chunk-${{ matrix.chunk }}
           path: report/
@@ -250,7 +249,7 @@ jobs:
         chunk: [0, 1, 2, 3]
     steps:
       - name: Checkout Code with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0   # Full history needed for release-it to generate proper changelog
           fetch-tags: true # For correct version detection by release-it
@@ -331,7 +330,7 @@ jobs:
 
       - name: Cache Homebrew packages
         if: steps.cache_check.outputs.should_cache == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ steps.brew_path.outputs.path }}
@@ -513,7 +512,7 @@ jobs:
 
       - name: Upload coverage HTML report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-ubuntu-chunk-${{ matrix.chunk }}
           path: coverage/
@@ -531,7 +530,7 @@ jobs:
 
       - name: Upload test results as artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-ubuntu-chunk-${{ matrix.chunk }}
           path: report/
@@ -547,7 +546,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -615,7 +614,7 @@ jobs:
 
       - name: Post PR comment with metrics
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -665,7 +664,7 @@ jobs:
 
       - name: Upload metrics artifacts (push events)
         if: always() && github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shellmetrics-reports
           path: current-metrics.csv
@@ -673,7 +672,7 @@ jobs:
 
       - name: Upload metrics artifacts (PR events)
         if: always() && github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shellmetrics-reports
           path: |

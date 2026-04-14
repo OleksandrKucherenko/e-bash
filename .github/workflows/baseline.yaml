@@ -19,7 +19,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SHELLSPEC_VERSION: 0.28.1
   TERM: xterm-256color
   HOMEBREW_NO_AUTO_UPDATE: 1
@@ -34,7 +33,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout Code with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0   # Full history needed for git-dependent tests
           fetch-tags: true # Required for tests that check git tags
@@ -103,7 +102,7 @@ jobs:
 
       - name: Cache Homebrew packages
         if: steps.cache_check.outputs.should_cache == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ steps.brew_path.outputs.path }}
@@ -232,7 +231,7 @@ jobs:
           mv .github/data/linux/test-timings.json.tmp .github/data/linux/test-timings.json
 
       - name: Upload baseline artifact (Linux)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: baseline-linux
           path: .github/data/linux
@@ -244,7 +243,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout Code with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0   # Full history needed for git-dependent tests
           fetch-tags: true # Required for tests that check git tags
@@ -331,7 +330,7 @@ jobs:
 
       - name: Cache Homebrew packages (CI-required only, excludes pre-installed tools)
         if: steps.cache_check.outputs.should_cache == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ${{ steps.brew_path.outputs.path }}/Cellar/direnv
@@ -444,7 +443,7 @@ jobs:
           mv .github/data/macos/test-timings.json.tmp .github/data/macos/test-timings.json
 
       - name: Upload baseline artifact (macOS)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: baseline-macos
           path: .github/data/macos
@@ -457,16 +456,16 @@ jobs:
     needs: [baseline-linux, baseline-macos]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download baseline artifact (Linux)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: baseline-linux
           path: .github/data/linux
 
       - name: Download baseline artifact (macOS)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: baseline-macos
           path: .github/data/macos
