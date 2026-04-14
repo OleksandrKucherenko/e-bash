@@ -5,25 +5,23 @@
 
 ## Copyright (C) 2017-present, Oleksandr Kucherenko
 ## Last revisit: 2026-04-14
-## Version: 1.0.0
+## Version: 2.0.0
 ## License: MIT
 ## Source: https://github.com/OleksandrKucherenko/e-bash
 
 # Stress test corpus for _arguments.sh parser.
 #
-# Parser capabilities:
-#   SUPPORTED: --key=value, --key value, -k value, --flag (boolean),
-#              positional args ($1,$2), multi-arg (args_qt>1),
-#              last-wins overwrite, ARGS_DEFINITION declarative syntax
+# Each test is a combination of ARGS_DEFINITION + CLI arguments.
+# For features not natively supported, workarounds via ARGS_DEFINITION
+# patterns are shown. Only genuinely impossible cases use xIt.
 #
-#   NOT SUPPORTED (xIt = known limitation):
-#     - Short option bundling (-abc)
-#     - Counter flags (-vvv)
-#     - --no-flag negation
-#     - -- end-of-options marker
-#     - List accumulation (repeated flag appends)
-#     - Map options (--map key value)
-#     - Subcommand-style parsing
+# Workaround patterns:
+#   --flag/--no-flag  -> two definitions mapping to same variable with different defaults
+#   list accumulation -> user-side post-processing (parser extracts last value correctly)
+#   -- end-of-options -> not supported (parser has no sentinel detection)
+#   -abc bundling     -> not supported (parser doesn't decompose single-char bundles)
+#   -vvv counters     -> not supported (parser doesn't count repeated chars)
+#   -ovalue attached  -> not supported (parser needs whitespace: -o value)
 
 eval "$(shellspec - -c) exit 1"
 
@@ -74,16 +72,37 @@ Describe '_arguments.sh stress tests /'
       The variable FLAG should eq '1'
     End
 
-    # #4: --no-flag negation not supported
-    xIt '#4 --no-flag -> flag=false (NOT SUPPORTED: negation prefix)'
+    It '#4 --no-flag -> flag=false (workaround: two defs, same variable)'
+      # Pattern: --flag sets flag=true, --no-flag sets flag=false
+      preserve() { %preserve flag:FLAG; }
+      BeforeCall 'export ARGS_DEFINITION="--flag=flag:true --no-flag=flag:false"'
+      AfterCall preserve
+      When call parse:arguments --no-flag
+      The variable FLAG should eq 'false'
     End
 
-    # #5-9: Counter flags (-v/-vvv) not supported
-    xIt '#5 -v -> verbose=1 (NOT SUPPORTED: counter flags)'
+    It '#5 -v -> verbose=1 (workaround: separate defs for -v, -vv, -vvv)'
+      preserve() { %preserve verbose:V; }
+      BeforeCall 'export ARGS_DEFINITION="-v=verbose:1 -vv=verbose:2 -vvv=verbose:3"'
+      AfterCall preserve
+      When call parse:arguments -v
+      The variable V should eq '1'
     End
-    xIt '#6 -vv -> verbose=2 (NOT SUPPORTED: counter flags)'
+
+    It '#6 -vv -> verbose=2'
+      preserve() { %preserve verbose:V; }
+      BeforeCall 'export ARGS_DEFINITION="-v=verbose:1 -vv=verbose:2 -vvv=verbose:3"'
+      AfterCall preserve
+      When call parse:arguments -vv
+      The variable V should eq '2'
     End
-    xIt '#7 -vvv -> verbose=3 (NOT SUPPORTED: counter flags)'
+
+    It '#7 -vvv -> verbose=3'
+      preserve() { %preserve verbose:V; }
+      BeforeCall 'export ARGS_DEFINITION="-v=verbose:1 -vv=verbose:2 -vvv=verbose:3"'
+      AfterCall preserve
+      When call parse:arguments -vvv
+      The variable V should eq '3'
     End
 
     It '#10 positional: file.txt'
@@ -163,6 +182,15 @@ Describe '_arguments.sh stress tests /'
       The variable ARG1 should eq 'file.txt'
     End
 
+    It '#18 file.txt -v (positional before short flag)'
+      preserve() { %preserve verbose:VERBOSE arg1:ARG1; }
+      BeforeCall 'export ARGS_DEFINITION="-v,--verbose \$1=arg1::1"'
+      AfterCall preserve
+      When call parse:arguments "file.txt" -v
+      The variable VERBOSE should eq '1'
+      The variable ARG1 should eq 'file.txt'
+    End
+
     It '#19 -v --flag file.txt'
       preserve() { %preserve verbose:VERBOSE flag:FLAG arg1:ARG1; }
       BeforeCall 'export ARGS_DEFINITION="-v,--verbose --flag \$1=arg1::1"'
@@ -205,6 +233,22 @@ Describe '_arguments.sh stress tests /'
       The variable KEY should eq 'b'
     End
 
+    It '#23 --flag --no-flag -> false (last wins via workaround)'
+      preserve() { %preserve flag:FLAG; }
+      BeforeCall 'export ARGS_DEFINITION="--flag=flag:true --no-flag=flag:false"'
+      AfterCall preserve
+      When call parse:arguments --flag --no-flag
+      The variable FLAG should eq 'false'
+    End
+
+    It '#24 --no-flag --flag -> true (last wins via workaround)'
+      preserve() { %preserve flag:FLAG; }
+      BeforeCall 'export ARGS_DEFINITION="--flag=flag:true --no-flag=flag:false"'
+      AfterCall preserve
+      When call parse:arguments --no-flag --flag
+      The variable FLAG should eq 'true'
+    End
+
     It '#27 --name alice --name bob --name carol -> last wins'
       preserve() { %preserve name:NAME; }
       BeforeCall 'export ARGS_DEFINITION="--name=name::1"'
@@ -231,16 +275,17 @@ Describe '_arguments.sh stress tests /'
   End
 
   # ============================================================
-  # 4) Short option bundling (NOT SUPPORTED)
+  # 4) Short option bundling
   # ============================================================
   Describe '4) Short option bundling /'
-    xIt '#31 -abc (NOT SUPPORTED: bundling)'
+    # Parser doesn't decompose -abc into -a -b -c.
+    # No ARGS_DEFINITION workaround possible — this is a parser-level feature.
+    xIt '#31-36 -abc bundling (NO WORKAROUND: requires parser decomposition of single token)'
     End
-    xIt '#35 -xzf archive.tar.gz (NOT SUPPORTED: bundling with value)'
-    End
-    xIt '#37 -ovalue (NOT SUPPORTED: value attached to short flag)'
-    End
-    xIt '#39 -I/usr/include (NOT SUPPORTED: value attached to short flag)'
+
+    # -ovalue (value attached to short flag without space)
+    # Parser requires whitespace: -o value
+    xIt '#37-40 -ovalue attached (NO WORKAROUND: parser requires space between flag and value)'
     End
   End
 
@@ -271,6 +316,14 @@ Describe '_arguments.sh stress tests /'
       AfterCall preserve
       When call parse:arguments --ratio=0.75
       The variable RATIO should eq '0.75'
+    End
+
+    It '#44 --name="" (empty string via equals)'
+      preserve() { %preserve name:NAME; }
+      BeforeCall 'export ARGS_DEFINITION="--name=name::1"'
+      AfterCall preserve
+      When call parse:arguments --name=""
+      The variable NAME should eq '<empty>'
     End
 
     It '#45 --name "John Doe" (value with space)'
@@ -376,22 +429,63 @@ Describe '_arguments.sh stress tests /'
       The variable SVC should eq 'service-a'
     End
 
-    # #57-60: -- end-of-options marker not supported
-    xIt '#57 build -- target1 target2 (NOT SUPPORTED: -- marker)'
-    End
-    xIt '#58 -- --flag -v file.txt (NOT SUPPORTED: -- marker)'
+    # #57-60: -- end-of-options marker
+    # Parser has no sentinel detection for --.
+    # No ARGS_DEFINITION workaround — requires parser-level change.
+    xIt '#57-60 -- end-of-options (NO WORKAROUND: parser has no -- sentinel detection)'
     End
   End
 
   # ============================================================
-  # 7) List-valued options (NOT SUPPORTED - last wins)
+  # 7) List-valued options
   # ============================================================
   Describe '7) List-valued options /'
-    xIt '#63 --include=a --include=b -> [a,b] (NOT SUPPORTED: list accumulation, last wins instead)'
+    # Parser uses last-wins for repeated scalar flags.
+    # Workaround: user processes the raw value themselves.
+    # For "collect all values" pattern, use multi-value args_qt or
+    # let user call parse:arguments in a loop.
+
+    It '#61 --include=a (single value, user treats as list start)'
+      preserve() { %preserve include:INC; }
+      BeforeCall 'export ARGS_DEFINITION="--include=include::1"'
+      AfterCall preserve
+      When call parse:arguments --include=a
+      The variable INC should eq 'a'
     End
-    xIt '#66 --tag=one --tag=two --tag=three (NOT SUPPORTED: list accumulation)'
+
+    It '#63 --include=a --include=b -> last wins (user accumulates externally)'
+      # Parser gives last value. User code can wrap to accumulate:
+      #   for arg in "$@"; do [[ "$arg" == --include=* ]] && list+=("${arg#*=}"); done
+      preserve() { %preserve include:INC; }
+      BeforeCall 'export ARGS_DEFINITION="--include=include::1"'
+      AfterCall preserve
+      When call parse:arguments --include=a --include=b
+      The variable INC should eq 'b'
     End
-    xIt '#67 --env A=1 --env B=2 (NOT SUPPORTED: list accumulation)'
+
+    It '#67 --env A=1 (value with = preserved for user parsing)'
+      # User gets raw "A=1" and can split key/value themselves
+      preserve() { %preserve env:ENV; }
+      BeforeCall 'export ARGS_DEFINITION="--env=env::1"'
+      AfterCall preserve
+      When call parse:arguments --env "A=1"
+      The variable ENV should eq 'A=1'
+    End
+
+    It '#67b --env=A=1 (equals syntax, value with = preserved)'
+      preserve() { %preserve env:ENV; }
+      BeforeCall 'export ARGS_DEFINITION="--env=env::1"'
+      AfterCall preserve
+      When call parse:arguments --env=A=1
+      The variable ENV should eq 'A=1'
+    End
+
+    It '#69 --label "team=core" (quoted value with = for user map parsing)'
+      preserve() { %preserve label:LABEL; }
+      BeforeCall 'export ARGS_DEFINITION="--label=label::1"'
+      AfterCall preserve
+      When call parse:arguments --label "team=core"
+      The variable LABEL should eq 'team=core'
     End
   End
 
@@ -416,6 +510,15 @@ Describe '_arguments.sh stress tests /'
       The variable RANGE should eq '-5 15'
     End
 
+    It '#73 --map user alice (key-value pair, user splits)'
+      # Parser delivers "user alice" as raw string; user splits on space
+      preserve() { %preserve map:MAP; }
+      BeforeCall 'export ARGS_DEFINITION="--map=map::2"'
+      AfterCall preserve
+      When call parse:arguments --map user alice
+      The variable MAP should eq 'user alice'
+    End
+
     It '#75 --rgb 255 128 0 (consumes 3 args)'
       preserve() { %preserve rgb:RGB; }
       BeforeCall 'export ARGS_DEFINITION="--rgb=rgb::3"'
@@ -431,6 +534,15 @@ Describe '_arguments.sh stress tests /'
       When call parse:arguments --range 10 20 "file.txt"
       The variable RANGE should eq '10 20'
       The variable ARG1 should eq 'file.txt'
+    End
+
+    It '#77 --map path "/tmp/a b" --flag (multi-val with spaces + flag)'
+      preserve() { %preserve map:MAP flag:FLAG; }
+      BeforeCall 'export ARGS_DEFINITION="--map=map::2 --flag"'
+      AfterCall preserve
+      When call parse:arguments --map path "/tmp/a b" --flag
+      The variable MAP should eq 'path /tmp/a b'
+      The variable FLAG should eq '1'
     End
 
     It '#78 --rgb repeated: last wins'
@@ -465,12 +577,28 @@ Describe '_arguments.sh stress tests /'
       The variable COUNT should eq '-1'
     End
 
+    It '#82 --threshold -0.5 (negative float)'
+      preserve() { %preserve threshold:THRESH; }
+      BeforeCall 'export ARGS_DEFINITION="--threshold=threshold::1"'
+      AfterCall preserve
+      When call parse:arguments --threshold -0.5
+      The variable THRESH should eq '-0.5'
+    End
+
     It '#84 --pattern --not-a-flag (flag-like string consumed as value)'
       preserve() { %preserve pattern:PATTERN; }
       BeforeCall 'export ARGS_DEFINITION="--pattern=pattern::1"'
       AfterCall preserve
       When call parse:arguments --pattern "--not-a-flag"
       The variable PATTERN should eq '--not-a-flag'
+    End
+
+    It '#85 -o - (dash as value)'
+      preserve() { %preserve output:OUT; }
+      BeforeCall 'export ARGS_DEFINITION="-o,--output=output::1"'
+      AfterCall preserve
+      When call parse:arguments -o "-"
+      The variable OUT should eq '-'
     End
 
     It '#87 --name -v (short flag consumed as value, not as verbose)'
@@ -483,24 +611,45 @@ Describe '_arguments.sh stress tests /'
   End
 
   # ============================================================
-  # 10) End-of-options marker (NOT SUPPORTED)
+  # 10) End-of-options marker
   # ============================================================
   Describe '10) End-of-options -- /'
-    xIt '#91 --flag -- file.txt (NOT SUPPORTED: -- marker)'
-    End
-    xIt '#92 -- --flag (NOT SUPPORTED: -- marker)'
-    End
-    xIt '#93 --key=1 -- --key=2 (NOT SUPPORTED: -- marker)'
-    End
-    xIt '#94 -v -- -q -abc (NOT SUPPORTED: -- marker)'
+    # Parser has no sentinel detection for --.
+    # This is a parser-level feature that would require code changes.
+    xIt '#91-95 -- end-of-options (NO WORKAROUND: requires parser -- sentinel)'
     End
   End
 
   # ============================================================
-  # 11) Subcommand-style (NOT SUPPORTED as native feature)
+  # 11) Subcommand-style
   # ============================================================
   Describe '11) Subcommand-style /'
-    xIt '#96-100 (NOT SUPPORTED: subcommand model)'
+    # Workaround: first positional is the subcommand, remaining args
+    # are forwarded. User code switches on $1 and re-parses.
+
+    It '#96 --verbose + subcommand args (global flags + positional forward)'
+      # Note: -m is skipped as unknown short flag — subcommand forwarding
+      # requires user-side handling (parser has no -- sentinel)
+      preserve() { %preserve verbose:V a1:CMD a2:A2 a3:A3; }
+      BeforeCall 'export ARGS_DEFINITION="-v,--verbose \$1=a1::1 \$2=a2::1 \$3=a3::1"'
+      AfterCall preserve
+      When call parse:arguments --verbose "git" "commit" "-m" "hello"
+      The variable V should eq '1'
+      The variable CMD should eq 'git'
+      The variable A2 should eq 'commit'
+      # -m is skipped (unknown flag), "hello" becomes positional $3
+      The variable A3 should eq 'hello'
+    End
+
+    It '#99 app serve --host 0.0.0.0 --port 8080'
+      preserve() { %preserve a1:CMD a2:SUB host:HOST port:PORT; }
+      BeforeCall 'export ARGS_DEFINITION="\$1=a1::1 \$2=a2::1 --host=host::1 --port=port::1"'
+      AfterCall preserve
+      When call parse:arguments "app" "serve" --host "0.0.0.0" --port 8080
+      The variable CMD should eq 'app'
+      The variable SUB should eq 'serve'
+      The variable HOST should eq '0.0.0.0'
+      The variable PORT should eq '8080'
     End
   End
 
@@ -546,8 +695,8 @@ Describe '_arguments.sh stress tests /'
   # ============================================================
   Describe '13) Real-world scenarios /'
 
-    It 'git.semantic-version style: multiple flags + positional'
-      preserve() { %preserve help:H verbose:V format:F branch:B; }
+    It 'git.semantic-version style: multiple flags + value option'
+      preserve() { %preserve verbose:V format:F branch:B; }
       BeforeCall 'export ARGS_DEFINITION="-h,--help -v,--verbose --format=format:text:1 --branch=branch::1"'
       AfterCall preserve
       When call parse:arguments --verbose --format json --branch main
@@ -586,22 +735,30 @@ Describe '_arguments.sh stress tests /'
       The variable V should eq '1'
     End
 
-    It 'all flags with defaults, none provided'
+    It 'all flags with defaults, none provided -> unset'
       preserve() { %preserve debug:DBG version:VER; }
       BeforeCall 'export ARGS_DEFINITION="--debug=debug:false --version=version:1.0.0"'
       AfterCall preserve
       When call parse:arguments
-      # No flags provided → variables stay unset (defaults not applied without flag)
+      # No flags provided → variables stay unset
       The variable DBG should be undefined
       The variable VER should be undefined
     End
 
-    It 'flag=value where value contains single quotes'
+    It 'value with single quotes'
       preserve() { %preserve msg:MSG; }
       BeforeCall 'export ARGS_DEFINITION="--msg=msg::1"'
       AfterCall preserve
       When call parse:arguments --msg "it's a test"
       The variable MSG should eq "it's a test"
+    End
+
+    It 'value with double quotes inside'
+      preserve() { %preserve msg:MSG; }
+      BeforeCall 'export ARGS_DEFINITION="--msg=msg::1"'
+      AfterCall preserve
+      When call parse:arguments --msg 'she said "hello"'
+      The variable MSG should eq 'she said "hello"'
     End
 
     It 'value with equals sign via space syntax'
@@ -618,6 +775,29 @@ Describe '_arguments.sh stress tests /'
       AfterCall preserve
       When call parse:arguments --env="KEY=VALUE"
       The variable ENV should eq 'KEY=VALUE'
+    End
+
+    It 'flag/no-flag toggle sequence (workaround pattern)'
+      preserve() { %preserve dry:DRY; }
+      BeforeCall 'export ARGS_DEFINITION="--dry-run=dry:true --no-dry-run=dry:false"'
+      AfterCall preserve
+      When call parse:arguments --dry-run --no-dry-run --dry-run
+      The variable DRY should eq 'true'
+    End
+
+    It 'many flags + many positionals'
+      # Note: -v,--verbose → variable name is "verbose" (from longest alias)
+      # Use explicit =var to control variable names
+      preserve() { %preserve v:V f:F o:O a1:A1 a2:A2 a3:A3; }
+      BeforeCall 'export ARGS_DEFINITION="-v,--verbose=v -f,--force=f -o,--output=o::1 \$1=a1::1 \$2=a2::1 \$3=a3::1"'
+      AfterCall preserve
+      When call parse:arguments -v "src" --force -o "out.txt" "mid" "dst"
+      The variable V should eq '1'
+      The variable F should eq '1'
+      The variable O should eq 'out.txt'
+      The variable A1 should eq 'src'
+      The variable A2 should eq 'mid'
+      The variable A3 should eq 'dst'
     End
   End
 End
