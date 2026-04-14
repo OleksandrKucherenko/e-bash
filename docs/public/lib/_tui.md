@@ -77,10 +77,10 @@ Multi-line Editor Functions (Internal):
 - __ML_SCROLL - Scroll offset
 - __ML_WIDTH, __ML_HEIGHT - Editor dimensions
 - __ML_MODIFIED - Modified flag
-- __ML_MESSAGE - Status message
-- __ML_STATUS_BAR - Status bar visibility
 - __ML_SEL_ACTIVE - Selection active flag
 - __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL - Selection anchor position
+- __ML_MESSAGE - Status message
+- __ML_STATUS_BAR - Status bar visibility
 
 
 ---
@@ -235,6 +235,7 @@ Features inspired by the bed (bash editor) project:
 - Configurable keybindings via ML_KEY_* environment variables
 - Bracketed paste detection (paste from clipboard)
 - Text selection via Shift+arrow keys (highlighted with cl_selected)
+- Select mode (F3): modal selection with c=copy, x=cut, Esc=cancel
 - Clipboard integration: Ctrl+C copy, Ctrl+X cut, Ctrl+V paste
 - Select all with Ctrl+A
 - Modified indicator in status bar
@@ -251,9 +252,10 @@ Features inspired by the bed (bash editor) project:
 #### Globals
 
 - reads/listen: TERM, ML_KEY_SAVE, ML_KEY_EDIT, ML_KEY_DEL_WORD, ML_KEY_DEL_LINE,
-                cl_selected
+                ML_KEY_SELECT, cl_selected
 - mutate/publish: __ML_LINES, __ML_ROW, __ML_COL, __ML_SCROLL, __ML_MODIFIED,
-                  __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL
+                  __ML_SEL_ACTIVE, __ML_SEL_ANCHOR_ROW, __ML_SEL_ANCHOR_COL,
+                  __ML_SELECT_MODE
 
 #### Side Effects
 
