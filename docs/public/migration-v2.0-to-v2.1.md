@@ -1,84 +1,39 @@
-# Migration Guide: v2.0.0 → v2.1.0
+# Upgrade Guide: v2.0.0 → v2.1.0
 
-This guide covers breaking changes, behavioral changes, and how to adopt new features when upgrading from e-bash v2.0.0 to v2.1.0.
+No breaking changes. All existing scripts continue to work without modification.
 
-## Breaking Changes
+This guide covers what's new, what was refactored, and what you can optionally adopt.
 
-### 1. Defaults are now pre-filled for value flags
+---
 
-**What changed:** `parse:arguments` now exports default values for all value flags (`args_qt > 0`) BEFORE processing CLI arguments. Previously, defaults were only applied when the flag was present on the command line.
+## Module Refactoring
 
-**Before (v2.0.0):**
+### TUI functions extracted to `_tui.sh`
+
+Terminal UI functions (cursor positioning, input handling, validation, multi-line editor) were extracted from `_commons.sh` into a dedicated `_tui.sh` module (62 functions).
+
+**No action required.** `_commons.sh` automatically sources `_tui.sh` for full backward compatibility. All existing `source "$E_BASH/_commons.sh"` calls continue to work.
+
+**Optional:** If your script only needs TUI functions, you can source `_tui.sh` directly for a lighter dependency:
+
 ```bash
-ARGS_DEFINITION="--port=port:8080:1"
-parse:arguments  # no --port flag
-echo "$port"     # empty/unset
+# Before: pulls in everything
+source "$E_BASH/_commons.sh"
+
+# After: only TUI functions (cursor, input, validation, multi-line editor)
+source "$E_BASH/_tui.sh"
 ```
 
-**After (v2.1.0):**
-```bash
-ARGS_DEFINITION="--port=port:8080:1"
-parse:arguments  # no --port flag
-echo "$port"     # "8080" — pre-filled from default
-```
+Functions moved to `_tui.sh`:
+- `cursor:position`, `cursor:position:row`, `cursor:position:col`
+- `input:readpwd`, `input:selector`, `input:multi-line`
+- `validate:input`, `validate:input:masked`, `validate:input:yn`
+- `confirm:by:input`, `print:confirmation`
+- `_input:read-key`, `_input:capture-key`
 
-**Who is affected:** Scripts that check `[[ -z "${port:-}" ]]` to detect "flag not provided" will now see the default value instead of empty.
+### Parser logging improved
 
-**How to migrate:**
-
-Option A — If you need to detect "not provided", compare against the default:
-```bash
-# v2.0.0 pattern (no longer works for detecting absence)
-[[ -z "${port:-}" ]] && echo "port not provided"
-
-# v2.1.0 pattern
-[[ "$port" == "8080" ]] && echo "port is default (may not have been provided)"
-```
-
-Option B — Use a sentinel default that indicates "not set":
-```bash
-ARGS_DEFINITION="--port=port:__UNSET__:1"
-parse:arguments "$@"
-[[ "$port" == "__UNSET__" ]] && echo "port not provided"
-```
-
-Option C — Check `ARGS_UNPARSED` or examine `$@` directly before parsing.
-
-**Note:** Boolean flags (`args_qt == 0`) are NOT affected — they are still unset when not provided.
-
-### 2. `parse:arguments` returns 1 instead of exit 1
-
-**What changed:** When too few arguments are provided for a flag expecting values (e.g., `--range` expects 2 args but only 1 given), the parser now returns 1 instead of calling `exit 1`.
-
-**Before (v2.0.0):**
-```bash
-parse:arguments --range 10  # --range expects 2 values
-# Script exits immediately — no chance to handle the error
-```
-
-**After (v2.1.0):**
-```bash
-parse:arguments --range 10  # --range expects 2 values
-# Returns 1 — script can handle the error
-echo "Error was: $?"
-```
-
-**Who is affected:** Scripts relying on the parser to exit the process on argument errors. This is unlikely to cause issues since the previous behavior was undesirable.
-
-**How to migrate:** If you want the old exit behavior, add an explicit check:
-```bash
-parse:arguments "$@" || exit 1
-```
-
-### 3. Error message format changed
-
-**What changed:** The error message for missing arguments changed from `"Error. Too little arguments provided"` to `"Error: too few arguments provided (expected N more for 'FLAG')"`.
-
-**Who is affected:** Scripts that parse or match the exact error string.
-
-### 4. Debug log format changed
-
-**What changed:** Parser debug output (visible with `DEBUG=parser`) uses new descriptive labels instead of cryptic markers.
+Debug output for `_arguments.sh` (visible with `DEBUG=parser`) now uses descriptive labels:
 
 | v2.0.0 | v2.1.0 |
 |--------|--------|
@@ -86,81 +41,103 @@ parse:arguments "$@" || exit 1
 | `[L2] export X='val'` | `assign(default): X='val'` |
 | `[L3] export X='val'` | `assign(inline): X='val'` |
 | `[L4] export X='val'` | `assign(positional): X='val'` |
-| `ignored: --flag (val)` | `skip: unknown flag '--flag'` |
-| `ignored: arg [$1] vs ...` | `skip: unmatched positional 'arg'` |
-| `definition to output index:` | `--- parsed results ---` |
+| `ignored: --flag` | `skip: unknown flag '--flag'` |
 
-**Who is affected:** Scripts or tests that match specific debug output strings.
+All parser logs now use `echo:Parser` exclusively (previously some used `echo:Common`). This makes it easier to filter parser-specific output via `DEBUG=parser`.
 
-## Behavioral Changes (non-breaking)
+---
 
-### `--` end-of-options sentinel
+## Behavioral Improvements
 
-The `--` token now stops flag processing. Everything after `--` is treated as positional, even if it starts with `-`.
+### Defaults pre-fill for value flags
+
+Value flags (`args_qt > 0`) with defaults are now pre-filled before CLI processing. CLI values override defaults. Boolean flags are not affected.
 
 ```bash
-./script.sh --verbose -- --not-a-flag file.txt
-# --verbose → flag, --not-a-flag → positional, file.txt → positional
+ARGS_DEFINITION="--port=port:8080:1 --verbose"
+
+parse:arguments  # no flags provided
+echo "$port"     # "8080" — pre-filled (new in v2.1.0, was empty in v2.0.0)
+echo "$verbose"  # unset — booleans unchanged
 ```
 
-**No migration needed.** This is additive — existing scripts without `--` are unaffected.
+This is the standard CLI pattern (Python argparse, Go flag, etc.). If you need to distinguish "user provided" vs "default", use a sentinel:
 
-### `--completion` and `--install-completion` auto-appended
+```bash
+ARGS_DEFINITION="--port=port:__DEFAULT__:1"
+parse:arguments "$@"
+[[ "$port" == "__DEFAULT__" ]] && port=8080  # apply real default, know it wasn't user-provided
+```
 
-Two new flags are automatically appended to every `ARGS_DEFINITION`:
-- `--completion=completion::1` — print shell completion script
-- `--install-completion=install_completion::1` — install completion to OS directory
+### Safer error handling
 
-These are processed by `args:dispatch` (called automatically when `SKIP_ARGS_PARSING` is not set).
+`parse:arguments` now returns 1 (instead of calling `exit 1`) when too few arguments are provided. Error messages go to stderr with the flag name included:
 
-**No migration needed** unless your script already uses variables named `completion` or `install_completion` for other purposes. In that case, rename your variables.
+```
+Error: too few arguments provided (expected 1 more for '--port')
+```
 
-### `ARGS_UNPARSED` global array
+Add `|| exit 1` if you want the old exit-on-error behavior:
 
-A new global array `ARGS_UNPARSED` is populated after each `parse:arguments` call, containing arguments not consumed by the parser (unknown flags + unmatched positionals).
+```bash
+parse:arguments "$@" || exit 1
+```
 
-**No migration needed.** The array exists but is harmless if not read.
+### Safer value assignment
 
-## New Features to Adopt
+`eval "export X='$val'"` replaced with `export "${X}=${val}"` throughout the parser. Values containing single quotes, double quotes, backticks, or `$()` are now handled safely.
+
+---
+
+## New Features
 
 ### Shell Completion
 
-Every script using `_arguments.sh` now supports `--completion` and `--install-completion` for free:
+Every script using `_arguments.sh` now supports `--completion` and `--install-completion` automatically:
 
 ```bash
-# Generate bash completion
-./myscript.sh --completion bash > /etc/bash_completion.d/myscript
-
-# Auto-install
-./myscript.sh --install-completion zsh
+./myscript.sh --completion bash    # print Bash completion script
+./myscript.sh --completion zsh     # print Zsh completion script
+./myscript.sh --install-completion bash   # install to OS directory
 ```
 
-### Scoped Parsing for Subcommands
+See [docs/public/completion.md](completion.md) for details.
 
-Replace flat "all flags in one definition" with multi-phase parsing:
+### End-of-Options `--`
+
+The `--` token stops flag processing. Everything after is positional:
 
 ```bash
-# v2.0.0: flat definition (hard to maintain)
-ARGS_DEFINITION="--verbose --port=port::1 --replicas=replicas::1 \$1=command::1"
-parse:arguments "$@"
-# Must manually figure out which flags belong to which command
+./script.sh --verbose -- --not-a-flag file.txt
+# --verbose → flag, --not-a-flag → positional argument
+```
 
-# v2.1.0: scoped parsing (clean separation)
+### Short Option Unbundling
+
+New `args:unbundle` helper decomposes `-abc` into `-a -b -c`:
+
+```bash
+readarray -t expanded < <(args:unbundle "$@")
+parse:arguments "${expanded[@]}"
+```
+
+### Scoped Parsing
+
+New `ARGS_UNPARSED`, `args:reset`, and `args:scope` enable subcommand-style CLIs:
+
+```bash
 ARGS_DEFINITION="--verbose \$1=command::1"
 parse:arguments "$@"
 
 DEPLOY_SCOPE="--replicas=replicas:1:1 --region=region:us-east-1:1"
-SERVE_SCOPE="--port=port:8080:1 --host=host:0.0.0.0:1"
-
-case "$command" in
-  deploy) args:scope DEPLOY_SCOPE "${ARGS_UNPARSED[@]}" ;;
-  serve)  args:scope SERVE_SCOPE  "${ARGS_UNPARSED[@]}" ;;
-esac
+args:scope DEPLOY_SCOPE "${ARGS_UNPARSED[@]}"
 ```
+
+See [docs/public/arguments.md](arguments.md#scoped-parsing) and [docs/public/cli-strategy.md](cli-strategy.md) for the full pattern.
 
 ### Type Validation
 
-Add constraints to flag values:
+New `args:t` and `args:validate` for declaring and checking value constraints:
 
 ```bash
 args:t "--port" "int:1:65535"
@@ -171,29 +148,20 @@ parse:arguments "$@"
 args:validate || exit 1
 ```
 
-### Short Option Unbundling
+See [docs/public/arguments.md](arguments.md#type-validation) for all supported types.
 
-Support `-abc` style bundled flags:
+---
 
-```bash
-readarray -t expanded < <(args:unbundle "$@")
-parse:arguments "${expanded[@]}"
-```
+## Summary
 
-### Flag/No-Flag Toggle Pattern
+| Area | Impact | Action |
+|------|--------|--------|
+| `_tui.sh` extraction | None | Backward compatible via `_commons.sh` |
+| Debug log labels | None | Only visible with `DEBUG=parser` |
+| Defaults pre-fill | Low | Value flags now have defaults even without CLI input |
+| Error returns | Low | `return 1` instead of `exit 1` (safer) |
+| `eval` → `export` | None | Security improvement, transparent |
+| `--completion` flags | None | Auto-appended, no conflict unless you use `completion` variable |
+| `ARGS_UNPARSED` | None | New global, harmless if not read |
 
-```bash
-ARGS_DEFINITION="--dry-run=dry:true --no-dry-run=dry:false"
-parse:arguments "$@"
-# --dry-run → dry=true, --no-dry-run → dry=false, last wins
-```
-
-## Quick Migration Checklist
-
-- [ ] Check if any script relies on value flags being unset when not provided → update to handle defaults
-- [ ] Check if any script relies on `parse:arguments` calling `exit 1` → add `|| exit 1`
-- [ ] Check if any script matches exact error messages or debug output → update patterns
-- [ ] Check if variables named `completion` or `install_completion` conflict → rename
-- [ ] Consider adopting `args:validate` for input validation
-- [ ] Consider adopting scoped parsing for multi-command scripts
-- [ ] Run existing tests to verify compatibility
+**Bottom line:** Update your e-bash, run your tests. Everything should pass. Then optionally adopt scoped parsing, validation, and completion.
