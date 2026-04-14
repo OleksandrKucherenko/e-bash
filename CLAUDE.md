@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **e-bash** is a comprehensive Bash script enhancement framework that provides reusable utilities, tools, and best practices for Bash development. It's designed as a library that projects can integrate to get professional-grade logging, dependency management, argument parsing, semantic versioning, and more.
 
-**Current Version:** v1.16.2 (check individual scripts for version numbers)
+**Current Version:** v2.1.0 (check individual scripts for version numbers)
 **License:** MIT
 **Repository:** https://github.com/OleksandrKucherenko/e-bash
 
