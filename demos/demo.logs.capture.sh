@@ -52,10 +52,11 @@ echo "Live joined view below (tag-colored, ERROR/WARN highlighted, JSON formatte
 echo
 
 # Bounded live capture; timeout sends SIGTERM and the tool's trap kills the services.
-timeout "$DURATION" "$LOGS" capture --out "$RUN_BASE" \
-  --service "web=bash -c '$svc_web'" \
-  --service "api=bash -c '$svc_api'" \
-  --service "db=bash -c '$svc_db'" || true
+# Services are positional "tag=command" specs, passed after "--".
+timeout "$DURATION" "$LOGS" capture --out "$RUN_BASE" -- \
+  "web=bash -c '$svc_web'" \
+  "api=bash -c '$svc_api'" \
+  "db=bash -c '$svc_db'" || true
 
 run="$(readlink -f "$RUN_BASE/latest" 2>/dev/null || true)"
 echo

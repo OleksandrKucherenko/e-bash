@@ -74,20 +74,6 @@ Describe 'bin/logs.sh /'
     End
   End
 
-  Context 'argument validation /'
-    It 'capture rejects a value flag that is missing its value'
-      When run logs:capture:main --service
-      The status should eq 2
-      The stderr should include 'missing value'
-    End
-
-    It 'search rejects a value flag that is missing its value'
-      When run logs:search:main --run
-      The status should eq 2
-      The stderr should include 'missing value'
-    End
-  End
-
   Context '_logs:parse_service /'
     It 'splits on the first = so the command may contain ='
       parse() { _logs:parse_service "db=psql -c 'a=1'" T C && echo "$T :: $C"; }

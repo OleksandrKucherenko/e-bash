@@ -20,7 +20,7 @@
 # Setup terminal
 if [[ -z $TERM ]]; then export TERM=xterm-256color; fi
 
-# We parse arguments ourselves (the --service flag is repeatable).
+# Defer parsing: each subcommand parses its own flags via _arguments.sh (scoped).
 export SKIP_ARGS_PARSING=1
 
 # Bootstrap: 1) E_BASH discovery (only if not set), 2) gnubin setup (always)
@@ -43,6 +43,8 @@ DEBUG="${DEBUG:-logs}"
 source "$E_BASH/_colors.sh"
 # shellcheck source=../.scripts/_logger.sh
 source "$E_BASH/_logger.sh"
+# shellcheck source=../.scripts/_arguments.sh
+source "$E_BASH/_arguments.sh"
 # shellcheck source=../.scripts/_dependencies.sh
 source "$E_BASH/_dependencies.sh"
 # shellcheck source=../.scripts/_commons.sh
@@ -57,7 +59,10 @@ readonly EXIT_MISSING_DEP=3
 # Module configuration (overridable via env or flags)
 LOGS_BASE_DIR="${LOGS_BASE_DIR:-}"                                                            # default resolved to $PWD/.logs
 LOGS_CONFIG_NAME="${LOGS_CONFIG_NAME:-.logs-services}"                                         # discovered config file name
-LOGS_HIGHLIGHT="${LOGS_HIGHLIGHT:-ERROR:lred,FATAL:lred,FAIL:lred,WARN:yellow,WARNING:yellow}" # keyword:color pairs
+# default lives in a constant because ':' in the value collides with the
+# ARGS_DEFINITION "output:default:quantity" grammar, so it can't be a flag default.
+readonly __LOGS_HL_DEFAULT="ERROR:lred,FATAL:lred,FAIL:lred,WARN:yellow,WARNING:yellow"
+LOGS_HIGHLIGHT="${LOGS_HIGHLIGHT:-$__LOGS_HL_DEFAULT}" # keyword:color pairs
 LOGS_TIMESTAMPS="${LOGS_TIMESTAMPS:-}"                                                         # non-empty => prepend UTC time to each line
 
 # Runtime state
@@ -91,12 +96,6 @@ function _logs:die() {
   shift
   echo "${cl_red}error:${cl_reset} $*" >&2
   exit "$code"
-}
-
-# Die when a value-taking flag has no value left to consume (prevents the
-# parser from spinning when `shift 2` would fail on a missing argument).
-function _logs:need() {
-  [[ "$1" -ge 2 ]] || _logs:die "$EXIT_INVALID_ARGS" "missing value for $2"
 }
 
 # Are colors disabled for this session?
@@ -432,7 +431,7 @@ function logs:capture() {
 
   for spec in "${SERVICES[@]}"; do
     _logs:parse_service "$spec" tag cmd || {
-      echo:Logs "${cl_red}skipping invalid --service: $spec${cl_reset}"
+      echo:Logs "${cl_red}skipping invalid service (want \"tag=command\"): $spec${cl_reset}"
       continue
     }
     if [[ ! "$tag" =~ ^[A-Za-z0-9._-]+$ ]]; then
@@ -454,69 +453,51 @@ function logs:capture() {
   esac
 }
 
-# Parse capture arguments, merge config, then run the supervisor.
+# Parse capture arguments (e-bash _arguments.sh, scoped), merge config, then run.
 function logs:capture:main() {
-  SERVICES=()
-  local config_file=""
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    -s | --service)
-      _logs:need "$#" "$1"
-      SERVICES+=("$2")
-      shift 2
-      ;;
-    -c | --config)
-      _logs:need "$#" "$1"
-      config_file="$2"
-      shift 2
-      ;;
-    -o | --out)
-      _logs:need "$#" "$1"
-      LOGS_BASE_DIR="$2"
-      shift 2
-      ;;
-    --joined)
-      VIEW="joined"
-      shift
-      ;;
-    --separated)
-      VIEW="separated"
-      shift
-      ;;
-    --no-view)
-      VIEW="none"
-      shift
-      ;;
-    --timestamps)
-      LOGS_TIMESTAMPS=1
-      shift
-      ;;
-    --highlight)
-      _logs:need "$#" "$1"
-      LOGS_HIGHLIGHT="$2"
-      shift 2
-      ;;
-    -h | --help)
-      logs:capture:usage
-      return 0
-      ;;
-    --)
-      shift
-      break
-      ;;
-    -*) _logs:die "$EXIT_INVALID_ARGS" "unknown capture flag: $1" ;;
-    *)
-      SERVICES+=("$1")
-      shift
-      ;;
-    esac
-  done
+  args:reset
+  ARGS_DEFINITION=""
+  ARGS_DEFINITION+=" -h,--help=help"
+  ARGS_DEFINITION+=" -c,--config=ARG_CONFIG::1"
+  ARGS_DEFINITION+=" -o,--out=ARG_OUT::1"
+  ARGS_DEFINITION+=" --highlight=ARG_HIGHLIGHT::1"
+  ARGS_DEFINITION+=" --timestamps=ARG_TS:1"
+  ARGS_DEFINITION+=" --joined=VIEW:joined"
+  ARGS_DEFINITION+=" --separated=VIEW:separated"
+  ARGS_DEFINITION+=" --no-view=VIEW:none"
+  local help="" ARG_CONFIG="" ARG_OUT="" ARG_HIGHLIGHT="" ARG_TS=""
+  VIEW="joined"
+  parse:arguments "$@"
 
-  _logs:load_config "$config_file"
+  args:d '-h' 'Show this help and exit.' 'global' 1
+  args:d '-c' 'Load services from FILE (one "tag=command" per line).' 'options' 10
+  args:d '-o' 'Base directory for runs (default: ./.logs).' 'options' 11
+  args:d '--highlight' 'Keyword colors, e.g. "ERROR:lred,WARN:yellow".' 'options' 12
+  args:d '--timestamps' 'Prepend a UTC timestamp to every captured line.' 'options' 13
+  args:d '--joined' 'Interleaved colored stream (default).' 'views' 20
+  args:d '--separated' 'One tmux pane per service (falls back to file hints).' 'views' 21
+  args:d '--no-view' 'Capture to files only; no live terminal output.' 'views' 22
+
+  [[ "$help" == "1" ]] && {
+    logs:capture:usage
+    return 0
+  }
+
+  # env/module defaults are the base; flags override only when provided.
+  [[ -n "$ARG_OUT" ]] && LOGS_BASE_DIR="$ARG_OUT"
+  [[ -n "$ARG_HIGHLIGHT" ]] && LOGS_HIGHLIGHT="$ARG_HIGHLIGHT"
+  [[ -n "$ARG_TS" ]] && LOGS_TIMESTAMPS="$ARG_TS"
+  [[ -n "$LOGS_HIGHLIGHT" ]] || LOGS_HIGHLIGHT="$__LOGS_HL_DEFAULT"
+
+  # Services are positional "tag=command" specs collected from ARGS_UNPARSED.
+  # They must follow "--" (see e-bash issue #94: key=value positionals are
+  # otherwise truncated by parse:arguments).
+  SERVICES=("${ARGS_UNPARSED[@]}")
+  _logs:load_config "$ARG_CONFIG"
 
   [[ ${#SERVICES[@]} -eq 0 ]] && {
     logs:capture:usage
-    _logs:die "$EXIT_INVALID_ARGS" "no services registered (use --service \"tag=command\")"
+    _logs:die "$EXIT_INVALID_ARGS" 'no services; pass them after "--", e.g. -- "api=node server.js"'
   }
   [[ -z "$__LOGS_HAS_JQ" ]] && echo:Logs "${cl_yellow}jq not found; JSON lines won't be formatted${cl_reset}"
 
@@ -569,42 +550,36 @@ function logs:search:preview() {
 }
 
 function logs:search:main() {
-  local run="" base="" tag="" query="" src
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    __preview)
-      shift
-      logs:search:preview "$@"
-      return $?
-      ;;
-    --run)
-      _logs:need "$#" "$1"
-      run="$2"
-      shift 2
-      ;;
-    --base)
-      _logs:need "$#" "$1"
-      base="$2"
-      shift 2
-      ;;
-    --tag)
-      _logs:need "$#" "$1"
-      tag="$2"
-      shift 2
-      ;;
-    -g | --grep)
-      _logs:need "$#" "$1"
-      query="$2"
-      shift 2
-      ;;
-    -h | --help)
-      logs:search:usage
-      return 0
-      ;;
-    *) _logs:die "$EXIT_INVALID_ARGS" "unknown search argument: $1" ;;
-    esac
-  done
+  # Internal preview dispatch (invoked by fzf) bypasses arg parsing, since the
+  # focused raw line may itself contain dashes/flags.
+  if [[ "${1:-}" == "__preview" ]]; then
+    shift
+    logs:search:preview "$@"
+    return $?
+  fi
 
+  args:reset
+  ARGS_DEFINITION=""
+  ARGS_DEFINITION+=" -h,--help=help"
+  ARGS_DEFINITION+=" --run=ARG_RUN::1"
+  ARGS_DEFINITION+=" --base=ARG_BASE::1"
+  ARGS_DEFINITION+=" --tag=ARG_TAG::1"
+  ARGS_DEFINITION+=" -g,--grep=ARG_QUERY::1"
+  local help="" ARG_RUN="" ARG_BASE="" ARG_TAG="" ARG_QUERY="" src
+  parse:arguments "$@"
+
+  args:d '-h' 'Show this help and exit.' 'global' 1
+  args:d '--run' 'Search this run directory (default: newest under base).' 'filters' 10
+  args:d '--base' 'Base directory holding runs (default: ./.logs).' 'filters' 11
+  args:d '--tag' "Search one service's file instead of the consolidated all.log." 'filters' 12
+  args:d '-g' 'Seed the fzf query with TEXT.' 'filters' 13
+
+  [[ "$help" == "1" ]] && {
+    logs:search:usage
+    return 0
+  }
+
+  local run="$ARG_RUN" base="$ARG_BASE" tag="$ARG_TAG" query="$ARG_QUERY"
   [[ -z "$base" ]] && base="$(_logs:base_dir)"
   [[ -z "$run" ]] && run="$(logs:latest_run "$base")"
   [[ -z "$run" || ! -d "$run" ]] && _logs:die "$EXIT_ERROR" "no run found under $base (capture some logs first)"
@@ -632,7 +607,7 @@ function logs:usage() {
 ${cl_yellow}logs.sh${cl_reset} - capture and search logs from multiple services.
 
 ${cl_yellow}Usage:${cl_reset}
-  logs.sh capture --service "tag=command" [--service ...] [options]
+  logs.sh capture [options] -- "tag=command" ["tag=command" ...]
   logs.sh search  [--run DIR] [--tag TAG] [--grep TEXT]
   logs.sh --help | --version
 
@@ -642,51 +617,30 @@ Run a subcommand with --help for its options:
 EOF
 }
 
+# Flag lists below are rendered by print:help from the args:d metadata that the
+# subcommand's *:main sets up before calling these.
 function logs:capture:usage() {
-  cat <<EOF
-${cl_yellow}logs.sh capture${cl_reset} - run services in parallel and tail their logs.
-
-${cl_yellow}Usage:${cl_reset}
-  logs.sh capture --service "api=node server.js" --service "db=docker logs -f db"
-
-${cl_yellow}Options:${cl_reset}
-  -s, --service "tag=cmd"  Register a service (repeatable). 'tag' is [A-Za-z0-9._-].
-  -c, --config FILE        Load services from FILE (one 'tag=command' per line).
-                           Without --config, the nearest ${LOGS_CONFIG_NAME} up to the
-                           git root is used if present. CLI services win on conflict.
-  -o, --out DIR            Base directory for runs (default: ./.logs).
-      --joined             Interleaved colored stream (default).
-      --separated          One tmux pane per service (falls back to file hints).
-      --no-view            Capture to files only; no live terminal output.
-      --timestamps         Prepend a UTC timestamp to every captured line.
-      --highlight PAIRS    Keyword colors, e.g. "ERROR:lred,WARN:yellow".
-  -h, --help               Show this help.
-
-${cl_yellow}Output (under ./.logs/<UTC-timestamp>/):${cl_reset}
-  <tag>.log    raw per-service stream     all.log   consolidated, tag-prefixed
-  manifest.env tag=command map            latest -> newest run (symlink)
-
-Stop with Ctrl-C. One service dying leaves the others running.
-EOF
+  echo "${cl_yellow}logs.sh capture${cl_reset} - run services in parallel and tail their logs."
+  echo ""
+  echo "${cl_yellow}Usage:${cl_reset} logs.sh capture [options] -- \"tag=command\" [\"tag=command\" ...]"
+  echo ""
+  print:help
+  echo "${cl_yellow}Output${cl_reset} (./.logs/<UTC-timestamp>/): <tag>.log (raw), all.log (tagged),"
+  echo "  manifest.env, and a 'latest' symlink. Stop with Ctrl-C; survivors keep running."
+  echo ""
+  echo "${cl_yellow}Examples:${cl_reset}"
+  echo '  logs.sh capture -- "api=node server.js" "db=docker logs -f db"'
+  echo '  logs.sh capture --separated --out .logs -- "web=npm run dev"'
 }
 
 function logs:search:usage() {
-  cat <<EOF
-${cl_yellow}logs.sh search${cl_reset} - fuzzy-search a recorded run with fzf.
-
-${cl_yellow}Usage:${cl_reset}
-  logs.sh search [--run DIR] [--base DIR] [--tag TAG] [--grep TEXT]
-
-${cl_yellow}Options:${cl_reset}
-  --run DIR     Search this run (default: newest under the base directory).
-  --base DIR    Base directory holding runs (default: ./.logs).
-  --tag TAG     Search a single service's file instead of the consolidated one.
-  -g, --grep T  Seed the fzf query with T.
-  -h, --help    Show this help.
-
-Inside fzf: Enter prints the line, the preview pane shows pretty JSON when the
-focused line is JSON. Requires fzf and (for JSON) jq.
-EOF
+  echo "${cl_yellow}logs.sh search${cl_reset} - fuzzy-search a recorded run with fzf."
+  echo ""
+  echo "${cl_yellow}Usage:${cl_reset} logs.sh search [--run DIR] [--base DIR] [--tag TAG] [--grep TEXT]"
+  echo ""
+  print:help
+  echo "Inside fzf: Enter prints the line; the preview shows pretty JSON when the"
+  echo "focused line is JSON. Requires fzf and (for JSON) jq."
 }
 
 # ============================================================================
