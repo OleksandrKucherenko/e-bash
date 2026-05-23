@@ -22,11 +22,12 @@ export NO_COLOR=1
 readonly ESC="$(printf '\033')"
 
 # Mock the tool's own logger so logger:init / status lines never run in tests.
+# Silent, so status messages don't leak to stderr and trip ShellSpec.
 Mock echo:Logs
-  echo "$*" >&2
+  :
 End
 Mock printf:Logs
-  printf '%s' "$@" >&2
+  :
 End
 
 # Mock loggers used internally by _arguments.sh / _commons.sh.
@@ -70,6 +71,20 @@ Describe 'bin/logs.sh /'
 
     It "defines function $1"
       The function "$1" should be defined
+    End
+  End
+
+  Context 'argument validation /'
+    It 'capture rejects a value flag that is missing its value'
+      When run logs:capture:main --service
+      The status should eq 2
+      The stderr should include 'missing value'
+    End
+
+    It 'search rejects a value flag that is missing its value'
+      When run logs:search:main --run
+      The status should eq 2
+      The stderr should include 'missing value'
     End
   End
 

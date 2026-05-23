@@ -93,6 +93,12 @@ function _logs:die() {
   exit "$code"
 }
 
+# Die when a value-taking flag has no value left to consume (prevents the
+# parser from spinning when `shift 2` would fail on a missing argument).
+function _logs:need() {
+  [[ "$1" -ge 2 ]] || _logs:die "$EXIT_INVALID_ARGS" "missing value for $2"
+}
+
 # Are colors disabled for this session?
 function _logs:no_color() {
   [[ -n "${NO_COLOR:-}" || "$TERM" == "dumb" ]]
@@ -213,14 +219,17 @@ function _logs:highlight() {
   printf '%s' "$text"
 }
 
-# Render a JSON value compact+colored, or fall back to the raw text.
+# Render a JSON value compact (colored unless colors are disabled), or fall
+# back to the raw text on any jq failure.
 function _logs:render_json_compact() {
   local raw="$1" out
-  out="$(printf '%s' "$raw" | jq -C -c . 2>/dev/null)" && {
+  local -a flags=(-c)
+  _logs:no_color || flags=(-C -c)
+  if out="$(printf '%s' "$raw" | jq "${flags[@]}" . 2>/dev/null)"; then
     printf '%s' "$out"
-    return
-  }
-  printf '%s' "$raw"
+  else
+    printf '%s' "$raw"
+  fi
 }
 
 # Read consolidated "<tag> <body>" lines from stdin, render to the terminal.
@@ -389,7 +398,8 @@ function _logs:load_config() {
     file="$explicit"
     [[ -r "$file" ]] || _logs:die "$EXIT_INVALID_ARGS" "config not readable: $file"
   else
-    file="$(config:hierarchy "$LOGS_CONFIG_NAME" "." "git" "" 2>/dev/null | head -1)"
+    # config:hierarchy lists matches root-to-current; the nearest is last.
+    file="$(config:hierarchy "$LOGS_CONFIG_NAME" "." "git" "" 2>/dev/null | tail -1)"
   fi
   [[ -z "$file" || ! -r "$file" ]] && return 0
   echo:Logs "loading services from ${cl_yellow}$file${cl_reset}"
@@ -451,14 +461,17 @@ function logs:capture:main() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
     -s | --service)
+      _logs:need "$#" "$1"
       SERVICES+=("$2")
       shift 2
       ;;
     -c | --config)
+      _logs:need "$#" "$1"
       config_file="$2"
       shift 2
       ;;
     -o | --out)
+      _logs:need "$#" "$1"
       LOGS_BASE_DIR="$2"
       shift 2
       ;;
@@ -479,6 +492,7 @@ function logs:capture:main() {
       shift
       ;;
     --highlight)
+      _logs:need "$#" "$1"
       LOGS_HIGHLIGHT="$2"
       shift 2
       ;;
@@ -539,13 +553,15 @@ function logs:search:feed() {
 # Pretty-print one selected raw line for the fzf preview pane.
 function logs:search:preview() {
   local raw="$*" rest
+  local -a jqc=(-C)
+  _logs:no_color && jqc=()
   if _logs:is_json "$raw"; then
-    printf '%s' "$raw" | jq -C .
+    printf '%s' "$raw" | jq "${jqc[@]}" .
     return
   fi
   rest="${raw#* }"
   if [[ "$raw" == *" "* ]] && _logs:is_json "$rest"; then
-    printf '%s' "$rest" | jq -C .
+    printf '%s' "$rest" | jq "${jqc[@]}" .
   else
     _logs:highlight "$raw"
     printf '\n'
@@ -562,18 +578,22 @@ function logs:search:main() {
       return $?
       ;;
     --run)
+      _logs:need "$#" "$1"
       run="$2"
       shift 2
       ;;
     --base)
+      _logs:need "$#" "$1"
       base="$2"
       shift 2
       ;;
     --tag)
+      _logs:need "$#" "$1"
       tag="$2"
       shift 2
       ;;
     -g | --grep)
+      _logs:need "$#" "$1"
       query="$2"
       shift 2
       ;;
