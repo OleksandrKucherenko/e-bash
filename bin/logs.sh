@@ -490,8 +490,8 @@ function logs:capture:main() {
   [[ -n "$LOGS_HIGHLIGHT" ]] || LOGS_HIGHLIGHT="$__LOGS_HL_DEFAULT"
 
   # Services are positional "tag=command" specs collected from ARGS_UNPARSED.
-  # They must follow "--" (see e-bash issue #94: key=value positionals are
-  # otherwise truncated by parse:arguments).
+  # Pass them after "--" (end-of-options), the documented way _arguments.sh
+  # marks the rest of the line as positional (see docs/public/arguments.md).
   SERVICES=("${ARGS_UNPARSED[@]}")
   _logs:load_config "$ARG_CONFIG"
 

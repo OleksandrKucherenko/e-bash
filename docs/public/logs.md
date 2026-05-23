@@ -119,10 +119,10 @@ Services are positional `tag=command` arguments passed **after `--`**:
 bin/logs.sh capture --separated -- "api=node server.js" "db=docker logs -f db"
 ```
 
-> The `--` is required: `_arguments.sh` currently truncates the value of a
-> `key=value` positional unless it follows `--` (tracked in
-> [issue #94](https://github.com/OleksandrKucherenko/e-bash/issues/94)); the
-> `--` requirement can be dropped once the library preserves them.
+> Pass services after `--`. This is `_arguments.sh`'s documented *end-of-options*
+> behavior — everything after `--` is treated as positional (see
+> [arguments.md](arguments.md)) — and `logs.sh` reads those specs from
+> `ARGS_UNPARSED`.
 
 ### Registering services from a config file
 
