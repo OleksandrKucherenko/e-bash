@@ -26,6 +26,9 @@ bun.lockb
 # logs
 *.log
 
+# logs.sh capture runs
+/.logs/
+
 # temp scripts
 *.tmp.sh
 
