@@ -10,6 +10,33 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **License:** MIT
 **Repository:** https://github.com/OleksandrKucherenko/e-bash
 
+## Documentation-First (Read Before You Code)
+
+**IMPORTANT:** Before writing code that uses an e-bash module, **read that module's
+guide in `docs/public/` first — not just its source or one example tool.** The
+guides document the intended patterns, special features, and workarounds (e.g.
+argument *scoped parsing*, *end-of-options `--`*, and `ARGS_UNPARSED`; logger
+pipe/redirect modes; trap stacking) that are easy to miss by grepping
+`.scripts/_*.sh` alone. Prefer the documented pattern over hand-rolling or
+reinventing — and if the docs seem to be missing a capability, re-check the
+"WORKAROUNDS AND SPECIAL FEATURES" / "Advanced Usage" sections before concluding
+it is unsupported.
+
+| Module (`.scripts/`) | Read first (`docs/public/`) |
+|---|---|
+| `_arguments.sh` | [arguments.md](docs/public/arguments.md), [completion.md](docs/public/completion.md) |
+| `_logger.sh` | [logger.md](docs/public/logger.md) |
+| `_commons.sh` | [commons.md](docs/public/commons.md) |
+| `_hooks.sh` | [hooks.md](docs/public/hooks.md) |
+| `_traps.sh` | [traps.md](docs/public/traps.md) |
+| `_dryrun.sh` | [dryrun-wrapper.md](docs/public/dryrun-wrapper.md) |
+| `_self-update.sh` | [self-healing-scripts.md](docs/public/self-healing-scripts.md) |
+| `_semver.sh` | [version-up.md](docs/public/version-up.md) |
+
+- **Building a new `bin/` CLI tool?** Read [cli-strategy.md](docs/public/cli-strategy.md) first.
+- When unsure which doc applies, invoke the `/e-bash` skill (it indexes modules, tools, demos, and docs).
+- Full index: see [Documentation Structure](#documentation-structure) below.
+
 ## Naming Conventions
 
 **IMPORTANT:** Before modifying or adding code, please review the [comprehensive naming conventions](docs/conventions/NAMING_CONVENTIONS.md).
