@@ -549,14 +549,68 @@ function logs:search:preview() {
   fi
 }
 
+# Echo a clipboard "copy" command for this platform (or empty if none found).
+# Override with LOGS_CLIP_CMD to force a specific tool.
+function _logs:clipboard_cmd() {
+  [[ -n "${LOGS_CLIP_CMD:-}" ]] && {
+    printf '%s' "$LOGS_CLIP_CMD"
+    return
+  }
+  local c
+  for c in pbcopy wl-copy "xclip -selection clipboard" "xsel --clipboard --input" clip.exe; do
+    command -v "${c%% *}" >/dev/null 2>&1 && {
+      printf '%s' "$c"
+      return
+    }
+  done
+}
+
+# Copy a selected line to the system clipboard (fzf Ctrl-Y).
+function logs:search:copy() {
+  local raw="$*" cmd
+  cmd="$(_logs:clipboard_cmd)"
+  [[ -z "$cmd" ]] && return 0 # no clipboard tool; silent no-op
+  printf '%s' "$raw" | $cmd >/dev/null 2>&1 || true
+}
+
+# Open a selected line in $EDITOR (fallback nano), pretty-printing JSON (fzf Ctrl-E).
+function logs:search:edit() {
+  local raw="$*" tmp rest
+  local -a ed
+  read -ra ed <<<"${EDITOR:-nano}"
+  tmp="$(mktemp -t logs-msg.XXXXXX)" || return 0
+  rest="${raw#* }"
+  if _logs:is_json "$raw"; then
+    printf '%s' "$raw" | jq . >"$tmp" 2>/dev/null
+  elif [[ "$raw" == *" "* ]] && _logs:is_json "$rest"; then
+    printf '%s' "$rest" | jq . >"$tmp" 2>/dev/null
+  else
+    printf '%s\n' "$raw" >"$tmp"
+  fi
+  "${ed[@]}" "$tmp"
+  rm -f "$tmp"
+}
+
 function logs:search:main() {
-  # Internal preview dispatch (invoked by fzf) bypasses arg parsing, since the
+  # Internal dispatch (invoked by fzf bindings) bypasses arg parsing, since the
   # focused raw line may itself contain dashes/flags.
-  if [[ "${1:-}" == "__preview" ]]; then
+  case "${1:-}" in
+  __preview)
     shift
     logs:search:preview "$@"
     return $?
-  fi
+    ;;
+  __copy)
+    shift
+    logs:search:copy "$@"
+    return $?
+    ;;
+  __edit)
+    shift
+    logs:search:edit "$@"
+    return $?
+    ;;
+  esac
 
   args:reset
   ARGS_DEFINITION=""
@@ -590,12 +644,26 @@ function logs:search:main() {
   dependency fzf "*" "brew install fzf  # or: apt-get install fzf" || _logs:die "$EXIT_MISSING_DEP" "fzf is required for search"
 
   echo:Logs "searching ${cl_yellow}$src${cl_reset}"
+
+  local list_label=" Logs · $(basename "$run")${tag:+ · $tag} "
+  # No --height: fzf takes the full screen via the alternate buffer, so the
+  # previous terminal contents are saved on entry and restored on exit.
   logs:search:feed "$src" "$tag" |
-    fzf --ansi --delimiter=$'\t' --with-nth=1 --no-sort --layout=reverse --height=90% \
-      ${query:+--query="$query"} \
+    fzf --ansi \
+      --delimiter=$'\t' --with-nth=1 \
+      --no-sort --layout=reverse --info=inline \
+      --border --border-label="$list_label" \
+      --prompt='filter> ' \
       --preview "'$SCRIPT_PATH' search __preview {2}" \
-      --preview-window='right,60%,wrap' \
-      --header 'Enter: print | Ctrl-/: toggle preview | Esc: quit'
+      --preview-window='right,60%,wrap,border-left' \
+      --preview-label=' Message details ' \
+      --bind 'ctrl-p:toggle-preview' \
+      --bind "ctrl-y:execute-silent('$SCRIPT_PATH' search __copy {2})" \
+      --bind "ctrl-e:execute('$SCRIPT_PATH' search __edit {2})" \
+      --bind 'ctrl-q:abort' \
+      --bind 'esc:clear-query' \
+      --header 'Enter: print   Ctrl-Y: copy   Ctrl-E: editor   Ctrl-P: toggle preview   Ctrl-C / Ctrl-Q: quit   Esc: clear filter' \
+      ${query:+--query="$query"}
 }
 
 # ============================================================================
@@ -629,8 +697,22 @@ function logs:capture:usage() {
   echo "  manifest.env, and a 'latest' symlink. Stop with Ctrl-C; survivors keep running."
   echo ""
   echo "${cl_yellow}Examples:${cl_reset}"
-  echo '  logs.sh capture -- "api=node server.js" "db=docker logs -f db"'
-  echo '  logs.sh capture --separated --out .logs -- "web=npm run dev"'
+  echo '  # local dev servers'
+  echo '  logs.sh capture -- "api=node server.js" "web=npm run dev"'
+  echo ''
+  echo '  # containers / kubernetes'
+  echo '  logs.sh capture -- "db=docker logs -f db" "app=kubectl logs -f deploy/app"'
+  echo ''
+  echo '  # systemd / files'
+  echo '  logs.sh capture -- "nginx=tail -F /var/log/nginx/access.log" "sys=journalctl -f"'
+  echo ''
+  echo '  # Cloudflare Workers (JSON tails are auto pretty-printed and searchable)'
+  echo '  logs.sh capture -- \'
+  echo '    "auth=wrangler tail my-auth-worker --format json" \'
+  echo '    "api=wrangler tail my-api-worker --format json"'
+  echo ''
+  echo '  # separated tmux panes, one per service'
+  echo '  logs.sh capture --separated -- "a=./a" "b=./b"'
 }
 
 function logs:search:usage() {
@@ -639,8 +721,13 @@ function logs:search:usage() {
   echo "${cl_yellow}Usage:${cl_reset} logs.sh search [--run DIR] [--base DIR] [--tag TAG] [--grep TEXT]"
   echo ""
   print:help
-  echo "Inside fzf: Enter prints the line; the preview shows pretty JSON when the"
-  echo "focused line is JSON. Requires fzf and (for JSON) jq."
+  echo "${cl_yellow}Keys (inside fzf):${cl_reset}"
+  echo "  Enter   print the selected line to stdout      Ctrl-Y  copy line to clipboard"
+  echo "  Ctrl-P  toggle the preview pane                Ctrl-E  open line in \$EDITOR (else nano)"
+  echo "  Esc     clear the filter                       Ctrl-C / Ctrl-Q  quit"
+  echo ""
+  echo "The preview shows pretty, colorized JSON when the focused line is JSON."
+  echo "Requires fzf (>= 0.35 for panel labels) and, for JSON, jq."
 }
 
 # ============================================================================

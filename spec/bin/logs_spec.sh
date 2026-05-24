@@ -57,8 +57,11 @@ Describe 'bin/logs.sh /'
       logs:capture:main
       logs:search:feed
       logs:search:preview
+      logs:search:copy
+      logs:search:edit
       logs:search:main
       logs:view:tail
+      _logs:clipboard_cmd
       _logs:parse_service
       _logs:slug
       _logs:is_json
@@ -197,6 +200,31 @@ Describe 'bin/logs.sh /'
     It 'passes plain text through'
       When call logs:search:preview 'db just connected'
       The output should include 'just connected'
+    End
+  End
+
+  Context 'clipboard and editor helpers /'
+    setup() { XD="$(mktemp -d "$SHELLSPEC_TMPBASE/clip.XXXXXX")"; }
+    cleanup() { rm -rf "$XD"; }
+    BeforeEach 'setup'
+    AfterEach 'cleanup'
+
+    It '_logs:clipboard_cmd honors the LOGS_CLIP_CMD override'
+      export LOGS_CLIP_CMD="my-clip-tool --flag"
+      When call _logs:clipboard_cmd
+      The output should eq "my-clip-tool --flag"
+    End
+
+    It 'logs:search:copy pipes the line to the clipboard command'
+      export LOGS_CLIP_CMD="tee $XD/clip.txt"
+      When call logs:search:copy 'api {"level":"error"}'
+      The contents of file "$XD/clip.txt" should eq 'api {"level":"error"}'
+    End
+
+    It 'logs:search:edit opens the editor on a pretty-printed JSON line'
+      export EDITOR="cat"
+      When call logs:search:edit 'svc {"a":1}'
+      The output should include '"a": 1'
     End
   End
 

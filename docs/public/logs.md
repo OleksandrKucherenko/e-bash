@@ -140,10 +140,26 @@ db=docker logs -f my-db
 
 ### Fuzzy search
 
-`logs.sh search` feeds a recorded run into `fzf`. The list shows a scannable
-line per record; the preview pane shows the focused line pretty-printed (JSON
-via `jq -C`, otherwise highlighted text). Pre-filter by service with `--tag`,
-seed the query with `--grep`, or pick a run with `--run`.
+`logs.sh search` feeds a recorded run into `fzf`, full-screen on the alternate
+buffer (your terminal contents are restored on exit). The left **Logs** panel
+lists one scannable line per record; the right **Message details** panel previews
+the focused line pretty-printed (JSON via `jq -C`, otherwise highlighted text).
+Pre-filter by service with `--tag`, seed the query with `--grep`, or pick a run
+with `--run`.
+
+Keys (also shown in the header bar):
+
+| Key | Action |
+|---|---|
+| `Enter` | print the selected line to stdout and quit |
+| `Ctrl-Y` | copy the line to the system clipboard |
+| `Ctrl-E` | open the line in `$EDITOR` (falls back to `nano`), JSON pretty-printed |
+| `Ctrl-P` | toggle the preview panel |
+| `Esc` | clear the current filter |
+| `Ctrl-C` / `Ctrl-Q` | quit |
+
+Clipboard auto-detects `pbcopy` / `wl-copy` / `xclip` / `xsel` / `clip.exe`;
+override with `LOGS_CLIP_CMD`. Panel labels need `fzf >= 0.35`.
 
 ## Reference
 
@@ -189,6 +205,8 @@ is `[A-Za-z0-9._-]`.
 | `LOGS_CONFIG_NAME` | Config file name discovered up to the git root. | `.logs-services` |
 | `LOGS_HIGHLIGHT` | Keyword:color pairs (same as `--highlight`). | `ERROR:lred,FATAL:lred,FAIL:lred,WARN:yellow,WARNING:yellow` |
 | `LOGS_TIMESTAMPS` | Non-empty enables per-line timestamps (same as `--timestamps`). | unset |
+| `LOGS_CLIP_CMD` | Clipboard command for `search` Ctrl-Y (else auto-detected). | auto |
+| `EDITOR` | Editor for `search` Ctrl-E. | `nano` |
 | `DEBUG` | e-bash logger tags; `logs` shows the tool's own status. | `logs` |
 | `NO_COLOR` / `TERM=dumb` | Disable all coloring/highlighting. | unset |
 
@@ -228,6 +246,14 @@ bin/logs.sh capture --highlight "ERROR:lred,WARN:yellow,SLOW:purple" -- \
   "web=npm run dev" \
   "worker=npm run worker" \
   "db=docker logs -f pg"
+
+# Cloudflare Workers: tail several workers as JSON (auto pretty-printed/searchable):
+bin/logs.sh capture -- \
+  "auth=wrangler tail my-auth-worker --format json" \
+  "api=wrangler tail my-api-worker --format json"
+
+# systemd journal + an nginx access log:
+bin/logs.sh capture -- "sys=journalctl -f" "nginx=tail -F /var/log/nginx/access.log"
 
 # Capture silently to a chosen directory with timestamps, then search later:
 bin/logs.sh capture --no-view --timestamps --out /tmp/run -- "job=./batch.sh"
