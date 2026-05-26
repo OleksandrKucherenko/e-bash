@@ -655,14 +655,14 @@ function logs:search:main() {
       --border --border-label="$list_label" \
       --prompt='filter> ' \
       --preview "'$SCRIPT_PATH' search __preview {2}" \
-      --preview-window='right,60%,wrap,border-left' \
+      --preview-window='right,58%,wrap,border-rounded' \
       --preview-label=' Message details ' \
       --bind 'ctrl-p:toggle-preview' \
       --bind "ctrl-y:execute-silent('$SCRIPT_PATH' search __copy {2})" \
       --bind "ctrl-e:execute('$SCRIPT_PATH' search __edit {2})" \
       --bind 'ctrl-q:abort' \
       --bind 'esc:clear-query' \
-      --header 'Enter: print   Ctrl-Y: copy   Ctrl-E: editor   Ctrl-P: toggle preview   Ctrl-C / Ctrl-Q: quit   Esc: clear filter' \
+      --header $'Enter: print   Ctrl-Y: copy   Ctrl-E: editor\nCtrl-P: preview   Ctrl-C / Ctrl-Q: quit   Esc: clear filter' \
       ${query:+--query="$query"}
 }
 
