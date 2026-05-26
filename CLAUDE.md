@@ -171,6 +171,46 @@ lefthook run pre-commit
 lefthook run pre-commit --commands copyright-verification
 ```
 
+## Capturing Terminal Screenshots (Headless)
+
+To produce PNG screenshots of `bin/` tools, demos, or TUIs (e.g. for `docs/`) on
+a headless machine — where there is no display, so `scrot`/`gnome-screenshot`
+don't apply — render the terminal output directly:
+
+**Stack:** PTY → [`pyte`](https://github.com/selectel/pyte) (VT/xterm screen
+emulation, preserves per-cell colors) → [`Pillow`](https://python-pillow.org)
+(rasterize the screen grid with a monospace font). The reusable renderer lives
+at `docs/tools/ttyshot.py`.
+
+```bash
+# Prerequisites (monospace TTF ships with Debian/Ubuntu as DejaVu Sans Mono):
+pip install pyte pillow
+# plus whatever the captured tool needs (e.g. `apt-get install fzf` for search)
+
+# Non-interactive output (a streaming command), captured after 5s:
+python3 docs/tools/ttyshot.py --cols 134 --rows 30 --duration 5 \
+  --title "logs.sh capture" --out docs/images/public/logs.capture.png \
+  -- bash -c 'DEBUG=zzz bin/logs.sh capture --config /tmp/services'
+
+# Interactive TUI: drive keystrokes with --send "offset:keys" (repeatable).
+# \016 = Ctrl-N (down); type a query, move the cursor, then capture:
+python3 docs/tools/ttyshot.py --cols 134 --rows 30 --duration 3 \
+  --title "logs.sh search" --out docs/images/public/logs.search.png \
+  --send 1.0:error --send "1.9:$(printf '\016\016')" \
+  -- bash -c 'DEBUG=zzz bin/logs.sh search --base /tmp/run'
+```
+
+Notes:
+- Full-screen TUIs (`fzf` without `--height`) use the alternate buffer; `pyte`
+  reproduces the final screen — no scrollback noise.
+- Set `--cols/--rows` to the desired terminal size **before** launch (the PTY
+  winsize drives how the app draws).
+- Silence a tool's own status logger for a clean frame (`DEBUG=zzz` here, since
+  e-bash loggers print only for enabled tags).
+- Alternatives considered: `pilotty` (Rust) drives a PTY but its snapshots are
+  text/JSON, not images; `asciinema`+`agg` make GIFs. For a single colored
+  still, PTY+pyte+Pillow needs no display and no browser.
+
 ## Installation & Integration
 
 ### Quick Installation (for other projects)

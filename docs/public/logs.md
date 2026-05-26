@@ -7,6 +7,8 @@ highlighted, JSON-aware view to your terminal. A `search` subcommand fuzzy-finds
 through a recorded run with `fzf`, previewing the focused line as pretty JSON
 when applicable.
 
+![logs.sh capture — live multi-service joined view](../images/public/logs.capture.png)
+
 <!-- TOC -->
 
 - [Quick Start Guide](#quick-start-guide)
@@ -146,6 +148,8 @@ lists one scannable line per record; the right **Message details** panel preview
 the focused line pretty-printed (JSON via `jq -C`, otherwise highlighted text).
 Pre-filter by service with `--tag`, seed the query with `--grep`, or pick a run
 with `--run`.
+
+![logs.sh search — fuzzy search with named panels and a JSON preview](../images/public/logs.search.png)
 
 Keys (also shown in the header bar):
 
