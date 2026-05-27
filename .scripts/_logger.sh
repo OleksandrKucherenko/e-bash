@@ -283,8 +283,11 @@ function logger() {
   # dump created loggers
   # shellcheck disable=SC2154
   if [[ "$tag" != "common" ]]; then
-    # ignore output error (subshell ensures process substitution completes; || true guards against pipefail)
-    ( eval "echo:Common \"Logger tags  :\" \"\${!TAGS[@]}\" \"|\" \"\${TAGS[@]}\" " 2>/dev/null | tee >(cat >&2) ) || true
+    # Mirror the dump to stdout + stderr synchronously. `tee /dev/stderr` is used
+    # instead of `tee >(cat >&2)` because the process-substitution child is not
+    # waited for and may not flush before the output is captured (flaky on macOS).
+    # `|| true` guards pipefail under `set -euo pipefail`.
+    ( eval "echo:Common \"Logger tags  :\" \"\${!TAGS[@]}\" \"|\" \"\${TAGS[@]}\" " 2>/dev/null | tee /dev/stderr ) || true
   fi
 
   # create named pipe, if it does not exist
