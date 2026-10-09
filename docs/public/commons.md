@@ -1037,6 +1037,9 @@ The `_commons.sh` module provides three interactive terminal input components, e
 
 ### input:multi-line - Multi-line Text Editor
 
+A practical [TUI walkthrough with box/stream recordings](tui.md) covers terminal
+requirements, cancellation, clipboard support and semantic key bindings.
+
 A full-featured modal text editor that opens directly in the terminal. Supports multi-line editing with arrow key navigation, scrolling, word/line deletion, text selection, and clipboard integration.
 
 #### Function Signature
@@ -1079,7 +1082,7 @@ text=$(input:multi-line -m stream)
 text=$(input:multi-line -m stream -h 10)
 
 # Custom save keybinding (Ctrl+S instead of Ctrl+D)
-ML_KEY_SAVE=$'\x13' text=$(input:multi-line -w 60 -h 10)
+text=$(ML_KEY_SAVE="ctrl-s" input:multi-line -w 60 -h 10)
 
 # Handle save vs cancel
 if text=$(input:multi-line -w 60 -h 10); then
@@ -1137,6 +1140,7 @@ All control keys can be overridden via environment variables using semantic toke
 | `ML_KEY_EDIT` | `ctrl-e` | Enter readline editing mode |
 | `ML_KEY_DEL_WORD` | `ctrl-w` | Delete word backward |
 | `ML_KEY_DEL_LINE` | `ctrl-u` | Clear current line |
+| `ML_KEY_SELECT` | `f3` | Toggle selection mode |
 
 #### Architecture
 

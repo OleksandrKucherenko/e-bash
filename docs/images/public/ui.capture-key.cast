@@ -1,0 +1,8 @@
+{"version": 2, "width": 96, "height": 30, "title": "ui.capture-key", "env": {"TERM": "xterm-256color"}}
+[0.1544, "o", "Key Capture Diagnostic Tool\r\nPress any key combination to see its token, hex bytes, and bash literal.\r\nPress Ctrl+D to exit.\r\n\r\nPress keys to see their sequences. Ctrl+D to exit.\r\nToken                    Hex                      Bash literal                  \r\n------------------------ ------------------------ ------------------------------\r\n"]
+[0.9769, "o", "up                                                                              \r\n"]
+[1.5228, "o", "ctrl-up                                                                         \r\n"]
+[2.0687, "o", "shift-f5                                                                        \r\n"]
+[2.6127, "o", "alt-a                                                                           \r\n"]
+[3.1563, "o", "ctrl-w                                                                          \r\n"]
+[3.7447, "o", "\r\r\n"]

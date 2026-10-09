@@ -12,6 +12,7 @@
     - [Colors](#colors)
     - [Script Dependencies](#script-dependencies)
     - [Logger](#logger)
+    - [Multi-service Log Capture and Search](#multi-service-log-capture-and-search)
     - [Arguments Parsing](#arguments-parsing)
     - [Common(s) Functions And Inputs](#commons-functions-and-inputs)
     - [UI: Selector](#ui-selector)
@@ -32,6 +33,7 @@
     - [Emoji support in my terminal](#emoji-support-in-my-terminal)
     - [References](#references)
   - [Contributing](#contributing)
+    - [Demo Catalog](#demo-catalog)
     - [Roadmap](#roadmap)
     - [Local Dev Environment - Requirements](#local-dev-environment---requirements)
     - [TDD - Test Driven Development, run tests on file change](#tdd---test-driven-development-run-tests-on-file-change)
@@ -267,6 +269,27 @@ find . -type d -max-depth 1 >log:Common
 
 Complete demo: [Logger Demo](demos/demo.logs.sh)
 
+### Multi-service Log Capture and Search
+
+`bin/logs.sh` runs commands together, tags their output, and records it for later
+search. This is separate from the logger library above.
+
+![Multi-service capture with tagged output](docs/images/public/logs.capture.png)
+
+```bash
+# Capture two finite sample commands (run from the repository root)
+bin/logs.sh capture --no-view -- \
+  "api=printf 'API ready\n'" \
+  "worker=printf 'Worker ready\n'"
+
+# Search the latest recorded run; requires fzf and an interactive terminal
+bin/logs.sh search
+```
+
+[Capture/search guide, prerequisites and controls](docs/public/logs.md) ·
+[Search screenshot](docs/images/public/logs.search.png) ·
+[Demo catalog](docs/public/demos.md)
+
 ### Arguments Parsing
 
 Requirements:
@@ -359,6 +382,10 @@ password=$(input:readpwd) && echo "" && echo "Password: $password"
 
 ### UI: Multi-line Text Editor
 
+![Multi-line editor: type, navigate, edit and save in box mode](docs/images/public/ui.multi-line-box.gif)
+
+[Box and stream walkthrough, keyboard controls and terminal requirements](docs/public/tui.md)
+
 ```bash
 source ".scripts/_commons.sh"
 
@@ -376,11 +403,11 @@ text=$(input:multi-line -m stream)
 text=$(input:multi-line -m stream -h 10)
 
 # Custom keybinding: Ctrl+S to save (use _input:capture-key to discover tokens)
-ML_KEY_SAVE="ctrl-s" text=$(input:multi-line -x 5 -y 2 -w 80 -h 20)
+text=$(ML_KEY_SAVE="ctrl-s" input:multi-line -x 5 -y 2 -w 80 -h 20)
 
 # Ctrl+E opens readline for current line (full word movement, history)
 
-# Key capture diagnostic: see hex bytes and tokens for any keypress
+# Key capture diagnostic: inspect semantic tokens (see guide for raw-byte limitations)
 _input:capture-key
 ```
 
@@ -824,6 +851,12 @@ demos/demo.emojis.sh
 ## Contributing
 
 Conventions and folder structure: [docs/public/conventions.md](docs/public/conventions.md)
+
+### Demo Catalog
+
+[Browse demos and tool guides](docs/public/demos.md) by feature, including
+interactive controls, dependencies and existing visuals. The
+[documentation audit](docs/work/documentation-audit.md) tracks remaining gaps.
 
 ### Roadmap
 
